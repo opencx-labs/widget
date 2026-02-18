@@ -1,5 +1,13 @@
 # @opencx/widget-react-headless
 
+## 4.0.43
+
+### Patch Changes
+
+- add translations
+- Updated dependencies
+  - @opencx/widget-core@4.0.43
+
 ## 4.0.42
 
 ### Patch Changes

@@ -29,9 +29,14 @@ import { VietnameseLanguage } from './vi';
 import { ChineseSimplifiedLanguage } from './zh-cn';
 import { CroatianLanguage } from './hr';
 import { EstonianLanguage } from './et';
+import { HungarianLanguage } from './hu';
+import { IcelandicLanguage } from './is';
 import { LatvianLanguage } from './lv';
+import { LithuanianLanguage } from './lt';
 import { LuxembourgishLanguage } from './lb';
 import { MalteseLanguage } from './mt';
+import { NorwegianBokmalLanguage } from './nb';
+import { SlovakLanguage } from './sk';
 
 const languages = {
   ar: ArabicLanguage,
@@ -49,18 +54,23 @@ const languages = {
   fr: FrenchLanguage,
   hi: HindiLanguage,
   hr: CroatianLanguage,
+  hu: HungarianLanguage,
+  is: IcelandicLanguage,
   it: ItalianLanguage,
   ja: JapaneseLanguage,
   ko: KoreanLanguage,
   lb: LuxembourgishLanguage,
+  lt: LithuanianLanguage,
   lv: LatvianLanguage,
   mt: MalteseLanguage,
+  nb: NorwegianBokmalLanguage,
   nl: DutchLanguage,
   no: NorwegianLanguage,
   pl: PolishLanguage,
   pt: PortugueseLanguage,
   ro: RomanianLanguage,
   ru: RussianLanguage,
+  sk: SlovakLanguage,
   sv: SwedishLanguage,
   th: ThaiLanguage,
   tr: TurkishLanguage,

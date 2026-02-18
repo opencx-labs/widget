@@ -1,5 +1,11 @@
 # @opencx/widget-core
 
+## 4.0.43
+
+### Patch Changes
+
+- add translations
+
 ## 4.0.42
 
 ### Patch Changes
