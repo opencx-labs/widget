@@ -1,5 +1,11 @@
 # @opencx/widget-core
 
+## 4.0.44
+
+### Patch Changes
+
+- fix paste issue on input on mobile
+
 ## 4.0.43
 
 ### Patch Changes

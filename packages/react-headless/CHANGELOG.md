@@ -1,5 +1,13 @@
 # @opencx/widget-react-headless
 
+## 4.0.44
+
+### Patch Changes
+
+- fix paste issue on input on mobile
+- Updated dependencies
+  - @opencx/widget-core@4.0.44
+
 ## 4.0.43
 
 ### Patch Changes
