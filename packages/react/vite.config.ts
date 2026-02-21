@@ -2,6 +2,7 @@ import { resolve } from 'node:path';
 import react from '@vitejs/plugin-react-swc';
 import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
+import { qrcode } from 'vite-plugin-qrcode';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import { name } from './package.json';
 import { externalizeDeps } from 'vite-plugin-externalize-deps';
@@ -15,8 +16,10 @@ export default defineConfig({
     }),
     react(),
     externalizeDeps(),
+    qrcode(),
   ],
   server: {
+    host: true,
     port: 3005,
   },
   build: {
