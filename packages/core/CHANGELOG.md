@@ -1,5 +1,11 @@
 # @opencx/widget-core
 
+## 4.0.45
+
+### Patch Changes
+
+- expose widget ref with newChat method
+
 ## 4.0.44
 
 ### Patch Changes

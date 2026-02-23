@@ -17,6 +17,10 @@ import { LoadingDefaultComponent } from './components/custom-components/LoadingD
 import { WidgetContent, WidgetPopoverContent } from './WidgetPopoverContent';
 import { WidgetPopoverTrigger } from './WidgetPopoverTrigger';
 import { WidgetPopoverAnchor } from './WidgetPopoverAnchor';
+import {
+  WidgetImperativeHandler,
+  type WidgetRef,
+} from './WidgetImperativeHandler';
 
 function WidgetPopoverTriggerAndContent() {
   const { isOpen, setIsOpen } = useWidgetTrigger();
@@ -61,15 +65,14 @@ const storage: ExternalStorage = {
   },
 };
 
-function WidgetWrapper({
-  options,
-  components = [],
-  loadingComponent,
-}: {
-  options: WidgetConfig;
-  components?: WidgetComponentType[];
-  loadingComponent?: React.ReactNode;
-}) {
+const Widget = React.forwardRef<
+  WidgetRef,
+  {
+    options: WidgetConfig;
+    components?: WidgetComponentType[];
+    loadingComponent?: React.ReactNode;
+  }
+>(function Widget({ options, components = [], loadingComponent }, ref) {
   return (
     <WidgetProvider
       components={[...defaultComponents, ...components]}
@@ -78,6 +81,7 @@ function WidgetWrapper({
       loadingComponent={loadingComponent}
     >
       <WidgetTriggerProvider>
+        <WidgetImperativeHandler widgetRef={ref} />
         {options.inline ? (
           <WidgetContent />
         ) : (
@@ -86,6 +90,8 @@ function WidgetWrapper({
       </WidgetTriggerProvider>
     </WidgetProvider>
   );
-}
+});
+Widget.displayName = 'Widget';
 
-export { WidgetWrapper as Widget };
+export { Widget };
+export type { WidgetRef };

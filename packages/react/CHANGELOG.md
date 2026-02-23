@@ -1,5 +1,14 @@
 # @opencx/widget-react
 
+## 4.0.45
+
+### Patch Changes
+
+- expose widget ref with newChat method
+- Updated dependencies
+  - @opencx/widget-core@4.0.45
+  - @opencx/widget-react-headless@4.0.45
+
 ## 4.0.44
 
 ### Patch Changes
