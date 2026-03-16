@@ -138,6 +138,7 @@ export class SessionCtx {
     });
     if (session) {
       this.sessionState.setPartial({ session, isCreatingSession: false });
+      this.config.hooks?.onSessionCreated?.({ session });
       return session;
     }
 

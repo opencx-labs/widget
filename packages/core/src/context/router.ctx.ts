@@ -1,3 +1,4 @@
+import type { SessionDto } from '../types/dtos';
 import type { WidgetConfig } from '../types/widget-config';
 import { PrimitiveState } from '../utils/PrimitiveState';
 import type { ContactCtx } from './contact.ctx';
@@ -96,8 +97,10 @@ export class RouterCtx {
   toChatScreen = (sessionId?: string) => {
     this.resetChat();
 
+    let session: SessionDto | undefined;
+
     if (sessionId) {
-      const session = this.sessionCtx.sessionsState
+      session = this.sessionCtx.sessionsState
         .get()
         .data.find((s) => s.id === sessionId);
       // Do not navigate if session is not found (this shouldn't happen, unless a wrong ID is passed)
@@ -106,5 +109,9 @@ export class RouterCtx {
     }
 
     this.state.setPartial({ screen: 'chat' });
+
+    this.config.hooks?.onNavigateToChat?.({
+      session: session,
+    });
   };
 }

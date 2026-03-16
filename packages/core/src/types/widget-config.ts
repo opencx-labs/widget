@@ -500,6 +500,23 @@ export interface WidgetConfig {
   };
 
   /**
+   * Lifecycle hooks that fire on certain widget events.
+   */
+  hooks?: {
+    /**
+     * Fires when the widget navigates to the chat screen,
+     * whether opening an existing session or starting a new one.
+     */
+    onNavigateToChat?: (ctx: { session?: SessionDto }) => void;
+
+    /**
+     * Fires after the user sends their first message and
+     * the backend returns the newly created session.
+     */
+    onSessionCreated?: (ctx: { session: SessionDto }) => void;
+  };
+
+  /**
    * By default, the user can have multiple open sessions.
    *
    * Setting this option to `true` will hide the `new conversation` button if there is an open session.

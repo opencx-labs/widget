@@ -1,5 +1,11 @@
 # @opencx/widget-core
 
+## 4.0.46
+
+### Patch Changes
+
+- add hooks when navigating to chat or a new session is created
+
 ## 4.0.45
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @opencx/widget-react-headless
 
+## 4.0.46
+
+### Patch Changes
+
+- add hooks when navigating to chat or a new session is created
+- Updated dependencies
+  - @opencx/widget-core@4.0.46
+
 ## 4.0.45
 
 ### Patch Changes
