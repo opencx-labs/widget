@@ -1,5 +1,11 @@
 # @opencx/widget-core
 
+## 4.0.47
+
+### Patch Changes
+
+- add custom widget trigger component option
+
 ## 4.0.46
 
 ### Patch Changes

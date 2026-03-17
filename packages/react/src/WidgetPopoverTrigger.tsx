@@ -31,9 +31,17 @@ html, body {
 </html>`;
 
 function WidgetPopoverTrigger() {
-  const { isOpen } = useWidgetTrigger();
-  const { cssOverrides, assets } = useConfig();
+  const { isOpen, setIsOpen } = useWidgetTrigger();
+  const { cssOverrides, assets, customComponents } = useConfig();
   const { theme, cssVars } = useTheme();
+
+  if (customComponents?.widgetTrigger) {
+    return customComponents.widgetTrigger({
+      react: React,
+      isOpen,
+      setIsOpen: (open: boolean) => setIsOpen(open),
+    });
+  }
 
   return (
     <IFrame

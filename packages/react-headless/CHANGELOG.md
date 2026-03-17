@@ -1,5 +1,13 @@
 # @opencx/widget-react-headless
 
+## 4.0.47
+
+### Patch Changes
+
+- add custom widget trigger component option
+- Updated dependencies
+  - @opencx/widget-core@4.0.47
+
 ## 4.0.46
 
 ### Patch Changes

@@ -476,6 +476,12 @@ export interface WidgetConfig {
         currentMessage: WidgetMessageU;
       },
     ) => ReturnType<typeof React.createElement> | null;
+
+    widgetTrigger?: (props: {
+      react: typeof React;
+      isOpen: boolean;
+      setIsOpen: (open: boolean) => void;
+    }) => ReturnType<typeof React.createElement> | null;
   };
 
   /**
