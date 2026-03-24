@@ -1,5 +1,11 @@
 # @opencx/widget-core
 
+## 4.0.48
+
+### Patch Changes
+
+- add zoom in image preview
+
 ## 4.0.47
 
 ### Patch Changes

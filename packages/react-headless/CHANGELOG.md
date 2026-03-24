@@ -1,5 +1,13 @@
 # @opencx/widget-react-headless
 
+## 4.0.48
+
+### Patch Changes
+
+- add zoom in image preview
+- Updated dependencies
+  - @opencx/widget-core@4.0.48
+
 ## 4.0.47
 
 ### Patch Changes

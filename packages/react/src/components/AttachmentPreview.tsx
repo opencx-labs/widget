@@ -3,6 +3,7 @@ import React from 'react';
 import { cn } from './lib/utils/cn';
 import { Wobble } from './lib/wobble';
 import { Dialoger, DialogerContent } from './Dialoger';
+import { ZoomableImage } from './ZoomableImage';
 
 type Props = {
   attachment: MessageAttachmentType;
@@ -41,55 +42,49 @@ export function AttachmentPreview({ attachment }: Props) {
     );
   }
 
-  if (!isImage && !isVideo && !isAudio) {
+  if (isImage) {
     return (
-      <Wobble>
-        <div className="size-fit border shrink-0 rounded-2xl overflow-hidden">
-          <div className="flex items-end gap-2 p-2">
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cn(
-                'text-xs text-blue-500 line-clamp-2 underline hover:text-blue-600',
-                'break-words [word-break:break-word]', // `[word-break:break-word]` is deprecated but works in the browser, while `break-words` which is `[overflow-wrap: break-word]` does not work
-              )}
-            >
-              {name}
-            </a>
-            <span className="text-xs text-muted-foreground whitespace-nowrap">
-              {(size / 1024).toFixed(2)} KB
-            </span>
+      <Dialoger
+        trigger={
+          <div>
+            <Wobble>
+              <div className="size-fit border shrink-0 rounded-2xl overflow-hidden">
+                <img src={url} className="object-cover size-16" alt={name} />
+              </div>
+            </Wobble>
           </div>
-        </div>
-      </Wobble>
+        }
+      >
+        <DialogerContent
+          className="size-full max-w-full rounded-3xl flex items-center justify-center bg-transparent border-none gap-0"
+          withClose
+        >
+          <ZoomableImage src={url} alt={name} />
+        </DialogerContent>
+      </Dialoger>
     );
   }
 
   return (
-    <Dialoger
-      trigger={
-        <div>
-          <Wobble>
-            <div className="size-fit border shrink-0 rounded-2xl overflow-hidden">
-              {isImage && (
-                <img src={url} className="object-cover size-16" alt={name} />
-              )}
-            </div>
-          </Wobble>
+    <Wobble>
+      <div className="size-fit border shrink-0 rounded-2xl overflow-hidden">
+        <div className="flex items-end gap-2 p-2">
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              'text-xs text-blue-500 line-clamp-2 underline hover:text-blue-600',
+              'break-words [word-break:break-word]', // `[word-break:break-word]` is deprecated but works in the browser, while `break-words` which is `[overflow-wrap: break-word]` does not work
+            )}
+          >
+            {name}
+          </a>
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            {(size / 1024).toFixed(2)} KB
+          </span>
         </div>
-      }
-    >
-      <DialogerContent
-        className="size-full max-w-full rounded-3xl flex items-center justify-center bg-transparent border-none gap-0"
-        withClose
-      >
-        {isImage && (
-          <div className="size-fit shrink-0 rounded-2xl overflow-hidden max-h-full">
-            <img src={url} className="object-cover size-auto" alt={name} />
-          </div>
-        )}
-      </DialogerContent>
-    </Dialoger>
+      </div>
+    </Wobble>
   );
 }

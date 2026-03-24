@@ -127,8 +127,7 @@ export function DialogerContent({
       {withClose && (
         <Button
           size="fit"
-          className="rounded-full absolute top-4 right-4"
-          variant="secondary"
+          className="rounded-full absolute top-4 right-4 opacity-50 hover:opacity-100"
           onClick={close}
         >
           <X className="h-4 w-4" />
