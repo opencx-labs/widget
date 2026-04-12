@@ -18,8 +18,8 @@ import {
   CircleDashed,
   FileAudio2Icon,
   FileIcon,
+  FileText,
   FileVideo2Icon,
-  ImageIcon,
   Loader2,
   PaperclipIcon,
   XIcon,
@@ -90,8 +90,13 @@ function FileDisplay({
     if (fileType === 'video') {
       return <FileVideo2Icon />;
     }
+    if (file.type === 'application/pdf') {
+      return <FileText className="size-5 text-muted-foreground" />;
+    }
     return <FileIcon />;
   };
+
+  const isPdf = file.type === 'application/pdf';
 
   return (
     <Tooltippy
@@ -106,27 +111,42 @@ function FileDisplay({
     >
       <div
         className={cn(
-          status === 'uploading' && 'opacity-50',
-          'group',
-          'size-12 border rounded-2xl overflow-hidden relative',
-          'flex items-center justify-center shrink-0',
+          'flex flex-col items-center gap-1 min-w-0',
+          isPdf && 'max-w-[8.5rem]',
         )}
       >
-        <div className="absolute inset-0 flex items-center justify-center">
-          {getStatusIcon()}
-        </div>
-        <button
-          type="button"
+        <div
           className={cn(
-            'absolute bg-black/50 inset-0 size-full z-10 opacity-0',
-            'flex items-center justify-center',
-            'opacity-0 group-hover:opacity-100 transition',
+            status === 'uploading' && 'opacity-50',
+            'group',
+            'size-12 border rounded-2xl overflow-hidden relative',
+            'flex items-center justify-center shrink-0',
           )}
-          onClick={onCancel}
         >
-          <XIcon className="size-4 text-primary-foreground" />
-        </button>
-        <FileContent />
+          <div className="absolute inset-0 flex items-center justify-center">
+            {getStatusIcon()}
+          </div>
+          <button
+            type="button"
+            className={cn(
+              'absolute bg-black/50 inset-0 size-full z-10 opacity-0',
+              'flex items-center justify-center',
+              'opacity-0 group-hover:opacity-100 transition',
+            )}
+            onClick={onCancel}
+          >
+            <XIcon className="size-4 text-primary-foreground" />
+          </button>
+          <FileContent />
+        </div>
+        {isPdf && (
+          <span
+            className="w-full text-center text-[11px] leading-tight text-muted-foreground truncate px-0.5"
+            title={file.name}
+          >
+            {file.name}
+          </span>
+        )}
       </div>
     </Tooltippy>
   );
@@ -216,6 +236,7 @@ function ChatInput() {
           'image/jpeg': ['.jpg', '.jpeg'],
           'image/gif': ['.gif'],
           'image/webp': ['.webp'],
+          'application/pdf': ['.pdf'],
         },
   });
 
@@ -298,7 +319,7 @@ function ChatInput() {
           <Tooltippy
             side="top"
             align="start"
-            content="attach files, (maximum size 5mb)"
+            content="attach images or PDF (maximum size 5mb)"
           >
             <Button
               onClick={dropzone__openFileSelect}
@@ -309,13 +330,13 @@ function ChatInput() {
               )}
             >
               <AnimatePresence mode="wait">
-                {isHandedOff && !isAwaitingBotReply ? (
+                {!isAwaitingBotReply ? (
                   <MotionDiv key="paper-clip">
                     <PaperclipIcon className="size-4" />
                   </MotionDiv>
                 ) : (
-                  <MotionDiv key="image-icon">
-                    <ImageIcon className="size-4" />
+                  <MotionDiv key="paper-clip-disabled">
+                    <PaperclipIcon className="size-4 opacity-50" />
                   </MotionDiv>
                 )}
               </AnimatePresence>
