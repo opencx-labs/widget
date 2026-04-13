@@ -85,18 +85,16 @@ function FileDisplay({
       );
     }
     if (fileType === 'audio') {
-      return <FileAudio2Icon />;
+      return <FileAudio2Icon className="size-4 text-muted-foreground" />;
     }
     if (fileType === 'video') {
-      return <FileVideo2Icon />;
+      return <FileVideo2Icon className="size-4 text-muted-foreground" />;
     }
     if (file.type === 'application/pdf') {
-      return <FileText className="size-5 text-muted-foreground" />;
+      return <FileText className="size-4 text-muted-foreground" />;
     }
-    return <FileIcon />;
+    return <FileIcon className="size-4 text-muted-foreground" />;
   };
-
-  const isPdf = file.type === 'application/pdf';
 
   return (
     <Tooltippy
@@ -111,42 +109,27 @@ function FileDisplay({
     >
       <div
         className={cn(
-          'flex flex-col items-center gap-1 min-w-0',
-          isPdf && 'max-w-[8.5rem]',
+          status === 'uploading' && 'opacity-50',
+          'group',
+          'size-12 border rounded-2xl overflow-hidden relative',
+          'flex items-center justify-center shrink-0',
         )}
       >
-        <div
-          className={cn(
-            status === 'uploading' && 'opacity-50',
-            'group',
-            'size-12 border rounded-2xl overflow-hidden relative',
-            'flex items-center justify-center shrink-0',
-          )}
-        >
-          <div className="absolute inset-0 flex items-center justify-center">
-            {getStatusIcon()}
-          </div>
-          <button
-            type="button"
-            className={cn(
-              'absolute bg-black/50 inset-0 size-full z-10 opacity-0',
-              'flex items-center justify-center',
-              'opacity-0 group-hover:opacity-100 transition',
-            )}
-            onClick={onCancel}
-          >
-            <XIcon className="size-4 text-primary-foreground" />
-          </button>
-          <FileContent />
+        <div className="absolute inset-0 flex items-center justify-center">
+          {getStatusIcon()}
         </div>
-        {isPdf && (
-          <span
-            className="w-full text-center text-[11px] leading-tight text-muted-foreground truncate px-0.5"
-            title={file.name}
-          >
-            {file.name}
-          </span>
-        )}
+        <button
+          type="button"
+          className={cn(
+            'absolute bg-black/50 inset-0 size-full z-10 opacity-0',
+            'flex items-center justify-center',
+            'opacity-0 group-hover:opacity-100 transition',
+          )}
+          onClick={onCancel}
+        >
+          <XIcon className="size-4 text-primary-foreground" />
+        </button>
+        <FileContent />
       </div>
     </Tooltippy>
   );
