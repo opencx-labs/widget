@@ -18,8 +18,8 @@ import {
   CircleDashed,
   FileAudio2Icon,
   FileIcon,
+  FileText,
   FileVideo2Icon,
-  ImageIcon,
   Loader2,
   PaperclipIcon,
   XIcon,
@@ -85,12 +85,15 @@ function FileDisplay({
       );
     }
     if (fileType === 'audio') {
-      return <FileAudio2Icon />;
+      return <FileAudio2Icon className="size-4 text-muted-foreground" />;
     }
     if (fileType === 'video') {
-      return <FileVideo2Icon />;
+      return <FileVideo2Icon className="size-4 text-muted-foreground" />;
     }
-    return <FileIcon />;
+    if (file.type === 'application/pdf') {
+      return <FileText className="size-4 text-muted-foreground" />;
+    }
+    return <FileIcon className="size-4 text-muted-foreground" />;
   };
 
   return (
@@ -216,6 +219,7 @@ function ChatInput() {
           'image/jpeg': ['.jpg', '.jpeg'],
           'image/gif': ['.gif'],
           'image/webp': ['.webp'],
+          'application/pdf': ['.pdf'],
         },
   });
 
@@ -298,7 +302,7 @@ function ChatInput() {
           <Tooltippy
             side="top"
             align="start"
-            content="attach files, (maximum size 5mb)"
+            content="attach images or PDF (maximum size 5mb)"
           >
             <Button
               onClick={dropzone__openFileSelect}
@@ -309,13 +313,13 @@ function ChatInput() {
               )}
             >
               <AnimatePresence mode="wait">
-                {isHandedOff && !isAwaitingBotReply ? (
+                {!isAwaitingBotReply ? (
                   <MotionDiv key="paper-clip">
                     <PaperclipIcon className="size-4" />
                   </MotionDiv>
                 ) : (
-                  <MotionDiv key="image-icon">
-                    <ImageIcon className="size-4" />
+                  <MotionDiv key="paper-clip-disabled">
+                    <PaperclipIcon className="size-4 opacity-50" />
                   </MotionDiv>
                 )}
               </AnimatePresence>
