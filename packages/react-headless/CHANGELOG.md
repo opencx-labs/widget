@@ -1,5 +1,13 @@
 # @opencx/widget-react-headless
 
+## 4.0.49
+
+### Patch Changes
+
+- enable pdf attachments when talking to ai
+- Updated dependencies
+  - @opencx/widget-core@4.0.49
+
 ## 4.0.48
 
 ### Patch Changes

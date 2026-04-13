@@ -1,5 +1,11 @@
 # @opencx/widget
 
+## 4.0.49
+
+### Patch Changes
+
+- enable pdf attachments when talking to ai
+
 ## 4.0.48
 
 ### Patch Changes
