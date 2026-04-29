@@ -68,6 +68,7 @@ export class MessageCtx {
     customData?: SendMessageDto['custom_data'];
     exitModePrompt?: string;
   }): Promise<void> => {
+    let localAbortController: AbortController | undefined;
     try {
       /* ------------------------------------------------------ */
       /*         Prevent sending if there is no content         */
@@ -89,10 +90,13 @@ export class MessageCtx {
       const isAssignedToAI = assignee === 'ai';
       const isSendingToAI = this.state.get().isSendingMessageToAI;
       const lastMessage = this.state.get().messages.at(-1);
+      const blockWhileAwaitingAI =
+        this.config.disableSendingWhenAwaitingAIReply !== false;
       if (
-        isSendingToAI ||
-        // If last message is from user, then bot response did not arrive yet
-        (isAssignedToAI && lastMessage?.type === 'USER')
+        blockWhileAwaitingAI &&
+        (isSendingToAI ||
+          // If last message is from user, then bot response did not arrive yet
+          (isAssignedToAI && lastMessage?.type === 'USER'))
       ) {
         console.warn('Cannot send messages while awaiting AI response');
         return;
@@ -101,7 +105,12 @@ export class MessageCtx {
       /* ------------------------------------------------------ */
       /*                          Start                         */
       /* ------------------------------------------------------ */
+      // Abort any prior in-flight send so only the latest call is awaited.
+      // We rely on aggressive polling to recover any messages whose responses
+      // we drop here.
+      this.sendMessageAbortController.abort('Superseded by a newer message');
       this.sendMessageAbortController = new AbortController();
+      localAbortController = this.sendMessageAbortController;
       this.state.setPartial({
         lastAIResMightSolveUserIssue: false,
         isSendingMessage: true,
@@ -188,7 +197,7 @@ export class MessageCtx {
               }))
             : undefined,
         },
-        this.sendMessageAbortController.signal,
+        localAbortController.signal,
       );
 
       if (data?.success) {
@@ -229,14 +238,18 @@ export class MessageCtx {
         });
       }
     } catch (error) {
-      if (!this.sendMessageAbortController.signal.aborted) {
+      if (!localAbortController?.signal.aborted) {
         console.error('Failed to send message:', error);
       }
     } finally {
-      this.state.setPartial({
-        isSendingMessage: false,
-        isSendingMessageToAI: false,
-      });
+      // If our local controller was aborted, a newer send has taken over —
+      // don't clear the in-flight flags out from under it.
+      if (!localAbortController?.signal.aborted) {
+        this.state.setPartial({
+          isSendingMessage: false,
+          isSendingMessageToAI: false,
+        });
+      }
     }
   };
 

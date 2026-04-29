@@ -1,5 +1,11 @@
 # @opencx/widget-core
 
+## 4.0.50
+
+### Patch Changes
+
+- enable sending while ai is replying
+
 ## 4.0.49
 
 ### Patch Changes

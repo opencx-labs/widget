@@ -1,5 +1,14 @@
 # @opencx/widget-react
 
+## 4.0.50
+
+### Patch Changes
+
+- enable sending while ai is replying
+- Updated dependencies
+  - @opencx/widget-core@4.0.50
+  - @opencx/widget-react-headless@4.0.50
+
 ## 4.0.49
 
 ### Patch Changes

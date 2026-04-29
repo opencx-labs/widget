@@ -140,6 +140,7 @@ function ChatInput() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { sendMessage } = useMessages();
   const { sessionState } = useSessions();
+  const { disableSendingWhenAwaitingAIReply } = useConfig();
   const { t } = useTranslation();
   const [inputText, setInputText] = useState('');
 
@@ -155,6 +156,8 @@ function ChatInput() {
   const isHandedOff = !!sessionState.session?.isHandedOff;
 
   const { isAwaitingBotReply } = useIsAwaitingBotReply();
+  const shouldBlockSending =
+    disableSendingWhenAwaitingAIReply !== false && isAwaitingBotReply;
 
   const handleFileDrop = (acceptedFiles: File[]) => {
     appendFiles(acceptedFiles);
@@ -163,7 +166,7 @@ function ChatInput() {
   const cannotSend = !inputText.trim() && successFiles.length === 0;
 
   const handleSubmit = async () => {
-    if (isAwaitingBotReply) return;
+    if (shouldBlockSending) return;
     if (cannotSend) return;
 
     if (isUploading) {
@@ -313,7 +316,7 @@ function ChatInput() {
               )}
             >
               <AnimatePresence mode="wait">
-                {!isAwaitingBotReply ? (
+                {!shouldBlockSending ? (
                   <MotionDiv key="paper-clip">
                     <PaperclipIcon className="size-4" />
                   </MotionDiv>
@@ -330,11 +333,11 @@ function ChatInput() {
             <Button
               size="fit"
               onClick={handleSubmit}
-              disabled={isAwaitingBotReply || isUploading || cannotSend}
+              disabled={shouldBlockSending || isUploading || cannotSend}
               className="rounded-full size-8 flex items-center justify-center p-0"
             >
               <AnimatePresence mode="wait">
-                {isAwaitingBotReply || isUploading ? (
+                {shouldBlockSending || isUploading ? (
                   <MotionDiv key="loading" snapExit>
                     <CircleDashed className="size-4 animate-spin animate-iteration-infinite" />
                   </MotionDiv>

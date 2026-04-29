@@ -610,6 +610,18 @@ export interface WidgetConfig {
   };
 
   /**
+   * By default, the send button is disabled while the AI is generating a reply,
+   * preventing the user from sending another message until the AI is done.
+   *
+   * Set this to `false` to let the user send messages even while the AI is still
+   * generating. The in-chat typing indicator is preserved; only the send button's
+   * disabled/spinner state is dropped.
+   *
+   * @default true
+   */
+  disableSendingWhenAwaitingAIReply?: boolean;
+
+  /**
    * An apiUrl to override production backend.
    * This is for us to test the widget locally, you don't need to play with this option 😊.
    * @default https://api.open.cx
