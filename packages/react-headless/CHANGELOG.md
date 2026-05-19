@@ -1,5 +1,13 @@
 # @opencx/widget-react-headless
 
+## 4.0.51
+
+### Patch Changes
+
+- add accessibility.widgetTriggerButton.label option
+- Updated dependencies
+  - @opencx/widget-core@4.0.51
+
 ## 4.0.50
 
 ### Patch Changes

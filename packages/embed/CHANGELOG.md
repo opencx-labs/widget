@@ -1,5 +1,11 @@
 # @opencx/widget
 
+## 4.0.51
+
+### Patch Changes
+
+- add accessibility.widgetTriggerButton.label option
+
 ## 4.0.50
 
 ### Patch Changes

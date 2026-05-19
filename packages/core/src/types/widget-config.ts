@@ -610,6 +610,21 @@ export interface WidgetConfig {
   };
 
   /**
+   * Accessibility options.
+   */
+  accessibility?: {
+    widgetTriggerButton?: {
+      /**
+       * The accessible name for the widget trigger button.
+       * Applied as `aria-label` (for assistive tech) and `title` (native hover tooltip).
+       * Required to satisfy WCAG 2.4.4 / 4.1.2 (button-name), since the trigger is icon-only.
+       * @default 'Chat with us'
+       */
+      label?: string;
+    };
+  };
+
+  /**
    * By default, the send button is disabled while the AI is generating a reply,
    * preventing the user from sending another message until the AI is done.
    *

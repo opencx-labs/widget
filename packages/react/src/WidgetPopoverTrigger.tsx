@@ -32,8 +32,11 @@ html, body {
 
 function WidgetPopoverTrigger() {
   const { isOpen, setIsOpen } = useWidgetTrigger();
-  const { cssOverrides, assets, customComponents } = useConfig();
+  const { cssOverrides, assets, customComponents, accessibility } = useConfig();
   const { theme, cssVars } = useTheme();
+
+  const triggerLabel =
+    accessibility?.widgetTriggerButton?.label ?? 'Chat with us';
 
   if (customComponents?.widgetTrigger) {
     return customComponents.widgetTrigger({
@@ -77,6 +80,8 @@ function WidgetPopoverTrigger() {
         }}
       >
         <PopoverPrimitive.PopoverTrigger
+          aria-label={triggerLabel}
+          title={triggerLabel}
           className={cn(
             'font-sans flex items-center justify-center rounded-full',
           )}
