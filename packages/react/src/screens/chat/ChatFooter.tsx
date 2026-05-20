@@ -10,7 +10,7 @@ import {
   useWidgetRouter,
   type FileWithProgress,
 } from '@opencx/widget-react-headless';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion, useAnimationControls } from 'framer-motion';
 import {
   AlertCircle,
   ArrowUpIcon,
@@ -159,6 +159,14 @@ function ChatInput() {
   const shouldBlockSending =
     disableSendingWhenAwaitingAIReply !== false && isAwaitingBotReply;
 
+  const wiggleControls = useAnimationControls();
+  const wiggle = () => {
+    void wiggleControls.start({
+      x: [0, -1.2, 1.2, -0.9, 0.9, -0.6, 0.6, 0],
+      transition: { duration: 0.4, ease: 'easeInOut' },
+    });
+  };
+
   const handleFileDrop = (acceptedFiles: File[]) => {
     appendFiles(acceptedFiles);
   };
@@ -166,7 +174,10 @@ function ChatInput() {
   const cannotSend = !inputText.trim() && successFiles.length === 0;
 
   const handleSubmit = async () => {
-    if (shouldBlockSending) return;
+    if (shouldBlockSending) {
+      wiggle();
+      return;
+    }
     if (cannotSend) return;
 
     if (isUploading) {
@@ -241,10 +252,12 @@ function ChatInput() {
       {...dropzone__getRootProps()}
     >
       <input {...dropzone__getInputProps()} />
-      <div
+      <motion.div
         {...dc('chat/input_box/inner_root')}
+        initial={{ x: 0 }}
+        animate={wiggleControls}
         className={cn(
-          'transition-all',
+          'transition-colors',
           'bg-white',
           // 'border',
           'relative rounded-3xl flex flex-col gap-2 p-2',
@@ -333,8 +346,13 @@ function ChatInput() {
             <Button
               size="fit"
               onClick={handleSubmit}
-              disabled={shouldBlockSending || isUploading || cannotSend}
-              className="rounded-full size-8 flex items-center justify-center p-0"
+              disabled={isUploading || cannotSend}
+              aria-disabled={shouldBlockSending || undefined}
+              className={cn(
+                'rounded-full size-8 flex items-center justify-center p-0',
+                shouldBlockSending &&
+                  'opacity-50 cursor-not-allowed active:scale-100 hover:active:scale-100',
+              )}
             >
               <AnimatePresence mode="wait">
                 {shouldBlockSending || isUploading ? (
@@ -350,7 +368,7 @@ function ChatInput() {
             </Button>
           </Tooltippy>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
