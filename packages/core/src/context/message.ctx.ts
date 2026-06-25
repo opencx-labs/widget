@@ -40,6 +40,8 @@ export class MessageCtx {
 
   private sendMessageAbortController = new AbortController();
 
+  private messageIdsDispatchedToOnMessageReceivedHook = new Set<string>();
+
   constructor({
     config,
     api,
@@ -60,6 +62,33 @@ export class MessageCtx {
   reset = () => {
     this.sendMessageAbortController.abort('Resetting chat');
     this.state.reset();
+    this.messageIdsDispatchedToOnMessageReceivedHook.clear();
+  };
+
+  /**
+   * Fires `config.hooks.onMessageReceived` for AI or human-agent messages exactly
+   * once per id. Safe to call from any path that ingests messages from the server
+   * (send-message response, polling, initial history fetch).
+   */
+  dispatchToOnMessageReceivedHook = (message: WidgetMessageU): void => {
+    if (message.type === 'USER') return;
+    if (this.messageIdsDispatchedToOnMessageReceivedHook.has(message.id)) return;
+    const session = this.sessionCtx.sessionState.get().session;
+    if (!session) return;
+    this.messageIdsDispatchedToOnMessageReceivedHook.add(message.id);
+    this.config.hooks?.onMessageReceived?.({ message, session });
+  };
+
+  /**
+   * Records the given message ids as already-dispatched without firing the hook.
+   * Used to suppress `onMessageReceived` for historical messages that flow in
+   * when an existing session is opened — the user is loading context, not
+   * receiving new messages. Subsequent polls still dedupe against these ids.
+   */
+  markAsDispatchedToOnMessageReceivedHook = (messageIds: string[]): void => {
+    messageIds.forEach((id) =>
+      this.messageIdsDispatchedToOnMessageReceivedHook.add(id),
+    );
   };
 
   sendMessage = async (input: {
@@ -224,6 +253,7 @@ export class MessageCtx {
               data.autopilotResponse?.mightSolveUserIssue ||
               data.uiResponse?.mightSolveUserIssue,
           });
+          this.dispatchToOnMessageReceivedHook(botMessage);
         }
         if (data.session) {
           this.sessionCtx.sessionState.setPartial({ session: data.session });

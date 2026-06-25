@@ -1,5 +1,14 @@
 # @opencx/widget-react
 
+## 4.0.52
+
+### Patch Changes
+
+- add hooks.onMessageReceived
+- Updated dependencies
+  - @opencx/widget-core@4.0.52
+  - @opencx/widget-react-headless@4.0.52
+
 ## 4.0.51
 
 ### Patch Changes

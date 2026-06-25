@@ -520,6 +520,22 @@ export interface WidgetConfig {
      * the backend returns the newly created session.
      */
     onSessionCreated?: (ctx: { session: SessionDto }) => void;
+
+    /**
+     * Fires when a new non-user message (AI, human-agent, or system) arrives in the widget,
+     * whether from the response to the user's send-message request or from polling.
+     *
+     * Does NOT fire for the historical messages that flow in when an existing session
+     * is opened — those are treated as loaded context, not new arrivals.
+     *
+     * Guaranteed to be called at most once per message id within a widget instance —
+     * an internal set tracks dispatched ids to dedupe races between the send-message
+     * response and the background poller.
+     */
+    onMessageReceived?: (ctx: {
+      message: WidgetMessageU;
+      session: SessionDto;
+    }) => void;
   };
 
   /**

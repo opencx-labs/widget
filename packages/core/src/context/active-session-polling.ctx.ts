@@ -97,7 +97,8 @@ export class ActiveSessionPollingCtx {
      * 2. There is a single message in state, which is the optimistically rendered user message,
      *    in this case, we don't want to show a loading indicator
      */
-    if (this.messageCtx.state.get().messages.length === 0) {
+    const isInitialFetch = this.messageCtx.state.get().messages.length === 0;
+    if (isInitialFetch) {
       this.messageCtx.state.setPartial({ isInitialFetchLoading: true });
     }
 
@@ -131,6 +132,18 @@ export class ActiveSessionPollingCtx {
       this.messageCtx.state.setPartial({
         messages: [...prevMessages, ...newMessages],
       });
+      if (isInitialFetch) {
+        // Opening an existing session: history flows in as one batch. The user
+        // is loading context, not receiving new messages — suppress the hook
+        // but seed the dedup set so later polls don't re-fire these ids.
+        this.messageCtx.markAsDispatchedToOnMessageReceivedHook(
+          newMessages.map((m) => m.id),
+        );
+      } else {
+        for (const newMessage of newMessages) {
+          this.messageCtx.dispatchToOnMessageReceivedHook(newMessage);
+        }
+      }
     }
 
     if (this.messageCtx.state.get().isInitialFetchLoading) {

@@ -1,5 +1,11 @@
 # @opencx/widget
 
+## 4.0.52
+
+### Patch Changes
+
+- add hooks.onMessageReceived
+
 ## 4.0.51
 
 ### Patch Changes
