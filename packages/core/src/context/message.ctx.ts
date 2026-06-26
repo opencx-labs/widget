@@ -66,13 +66,47 @@ export class MessageCtx {
   };
 
   /**
+   * Appends a client-only AI ("agent") bubble to the transcript WITHOUT contacting
+   * the server. Used by the host-facing `presentAnswer` trigger to show a canned
+   * answer. The bubble carries a client-generated id, so the active-session poller
+   * (which only appends server messages and dedupes by id) never removes or
+   * duplicates it. It is ephemeral: not persisted, not part of the AI's context,
+   * and cleared by `reset()` / `resetChat()`. No-ops on empty input.
+   */
+  injectLocalAgentMessage = (message: string): void => {
+    const trimmed = message.trim();
+    if (!trimmed) return;
+    const aiMessage: WidgetAiMessage = {
+      id: genUuid(),
+      type: 'AI',
+      timestamp: new Date().toISOString(),
+      component: 'bot_message',
+      agent: this.config.bot
+        ? {
+            name: this.config.bot.name || '',
+            isAi: true,
+            // Let avatar be resolved from config at render time (mirror toBotMessage)
+            avatarUrl: null,
+            avatar: null,
+            id: null,
+          }
+        : undefined,
+      data: { message: trimmed },
+    };
+    this.state.setPartial({
+      messages: [...this.state.get().messages, aiMessage],
+    });
+  };
+
+  /**
    * Fires `config.hooks.onMessageReceived` for AI or human-agent messages exactly
    * once per id. Safe to call from any path that ingests messages from the server
    * (send-message response, polling, initial history fetch).
    */
   dispatchToOnMessageReceivedHook = (message: WidgetMessageU): void => {
     if (message.type === 'USER') return;
-    if (this.messageIdsDispatchedToOnMessageReceivedHook.has(message.id)) return;
+    if (this.messageIdsDispatchedToOnMessageReceivedHook.has(message.id))
+      return;
     const session = this.sessionCtx.sessionState.get().session;
     if (!session) return;
     this.messageIdsDispatchedToOnMessageReceivedHook.add(message.id);
@@ -166,7 +200,9 @@ export class MessageCtx {
                   data: {
                     message: m.message,
                   },
-                  agent: this.config.bot ? { ...this.config.bot, isAi: true, id: null } : undefined,
+                  agent: this.config.bot
+                    ? { ...this.config.bot, isAi: true, id: null }
+                    : undefined,
                 }) satisfies WidgetAiMessage,
             )
         : [];
@@ -260,7 +296,8 @@ export class MessageCtx {
         }
       } else {
         const errorMessage = this.toBotErrorMessage(
-          data?.error?.message || 'Something went wrong. Please refresh the page or try again.',
+          data?.error?.message ||
+            'Something went wrong. Please refresh the page or try again.',
         );
         const currentMessages = this.state.get().messages;
         this.state.setPartial({
