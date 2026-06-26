@@ -1,5 +1,6 @@
 import { type SendMessageDto } from '@opencx/widget-core';
 import {
+  useComposerDraft,
   useConfig,
   useCsat,
   useIsAwaitingBotReply,
@@ -142,7 +143,16 @@ function ChatInput() {
   const { sessionState } = useSessions();
   const { disableSendingWhenAwaitingAIReply } = useConfig();
   const { t } = useTranslation();
-  const [inputText, setInputText] = useState('');
+  // Composer draft lives in core state so it can be set programmatically (the
+  // host-facing `prefill` trigger) as well as by typing here.
+  const { draft: inputText, setDraft: setInputText } = useComposerDraft();
+
+  // When the composer mounts already holding draft text (e.g. set by `prefill`
+  // before navigating to chat), focus it so the visitor can just press Enter.
+  useEffect(() => {
+    if (inputText.trim()) inputRef.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const {
     allFiles,
