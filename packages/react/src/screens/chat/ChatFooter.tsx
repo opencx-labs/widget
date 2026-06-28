@@ -18,6 +18,7 @@ import {
   CircleDashed,
   FileAudio2Icon,
   FileIcon,
+  FileSpreadsheet,
   FileText,
   FileVideo2Icon,
   Loader2,
@@ -36,6 +37,10 @@ import { Tooltippy } from '../../components/lib/tooltip';
 import { cn } from '../../components/lib/utils/cn';
 import { useIsSmallScreen } from '../../hooks/useIsSmallScreen';
 import { useTranslation } from '../../hooks/useTranslation';
+import {
+  getSpreadsheet,
+  SPREADSHEET_ACCEPT,
+} from '../../utils/attachment-kind';
 import { dc } from '../../utils/data-component';
 import { ChatFooterItems } from './ChatFooterItems';
 
@@ -92,6 +97,9 @@ function FileDisplay({
     }
     if (file.type === 'application/pdf') {
       return <FileText className="size-4 text-muted-foreground" />;
+    }
+    if (getSpreadsheet({ type: file.type, name: file.name })) {
+      return <FileSpreadsheet className="size-4 text-muted-foreground" />;
     }
     return <FileIcon className="size-4 text-muted-foreground" />;
   };
@@ -216,6 +224,7 @@ function ChatInput() {
           'text/*': ['.txt'],
           'image/*': ['.png', '.jpg', '.jpeg', '.gif'],
           'application/pdf': ['.pdf'],
+          ...SPREADSHEET_ACCEPT,
         }
       : {
           'image/png': ['.png'],
@@ -223,6 +232,7 @@ function ChatInput() {
           'image/gif': ['.gif'],
           'image/webp': ['.webp'],
           'application/pdf': ['.pdf'],
+          ...SPREADSHEET_ACCEPT,
         },
   });
 
@@ -305,7 +315,7 @@ function ChatInput() {
           <Tooltippy
             side="top"
             align="start"
-            content="attach images or PDF (maximum size 5mb)"
+            content="attach images, PDFs, or spreadsheets (maximum size 5mb)"
           >
             <Button
               onClick={dropzone__openFileSelect}
