@@ -1,5 +1,11 @@
 # @opencx/widget-core
 
+## 4.0.54
+
+### Patch Changes
+
+- support for csv and excel attachments
+
 ## 4.0.53
 
 ### Patch Changes

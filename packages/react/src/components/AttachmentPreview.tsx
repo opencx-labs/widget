@@ -1,6 +1,7 @@
 import type { MessageAttachmentType } from '@opencx/widget-core';
-import { FileText } from 'lucide-react';
+import { FileSpreadsheet, FileText } from 'lucide-react';
 import React from 'react';
+import { getSpreadsheet } from '../utils/attachment-kind';
 import { cn } from './lib/utils/cn';
 import { Wobble } from './lib/wobble';
 import { Dialoger, DialogerContent } from './Dialoger';
@@ -9,6 +10,62 @@ import { ZoomableImage } from './ZoomableImage';
 type Props = {
   attachment: MessageAttachmentType;
 };
+
+// Downloadable file chip (icon + name + "size · label"), used for PDFs and
+// spreadsheets that render as a card rather than inline.
+function FileCard({
+  url,
+  name,
+  size,
+  icon,
+  label,
+}: {
+  url: string;
+  name: string;
+  size: number;
+  icon: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <Wobble>
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cn(
+          'block size-fit max-w-[min(100%,16rem)] shrink-0 rounded-2xl border',
+          'bg-background/80 transition-colors hover:bg-accent/60',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        )}
+      >
+        <div className="flex items-center gap-3 p-3 min-w-0">
+          <div
+            className={cn(
+              'flex size-10 shrink-0 items-center justify-center rounded-xl',
+              'bg-secondary text-muted-foreground',
+            )}
+            aria-hidden
+          >
+            {icon}
+          </div>
+          <div className="min-w-0 flex-1 flex flex-col gap-0.5 text-left">
+            <span
+              className={cn(
+                'text-xs font-medium text-foreground line-clamp-1',
+                'break-words [word-break:break-word]', // `[word-break:break-word]` is deprecated but works in the browser, while `break-words` which is `[overflow-wrap: break-word]` does not work
+              )}
+            >
+              {name}
+            </span>
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {(size / 1024).toFixed(2)} KB · {label}
+            </span>
+          </div>
+        </div>
+      </a>
+    </Wobble>
+  );
+}
 
 export function AttachmentPreview({ attachment }: Props) {
   const { name, size, type, url } = attachment;
@@ -69,43 +126,26 @@ export function AttachmentPreview({ attachment }: Props) {
 
   if (isPdf) {
     return (
-      <Wobble>
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn(
-            'block size-fit max-w-[min(100%,16rem)] shrink-0 rounded-2xl border',
-            'bg-background/80 transition-colors hover:bg-accent/60',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-          )}
-        >
-          <div className="flex items-center gap-3 p-3 min-w-0">
-            <div
-              className={cn(
-                'flex size-10 shrink-0 items-center justify-center rounded-xl',
-                'bg-secondary text-muted-foreground',
-              )}
-              aria-hidden
-            >
-              <FileText className="size-5" strokeWidth={1.75} />
-            </div>
-            <div className="min-w-0 flex-1 flex flex-col gap-0.5 text-left">
-              <span
-                className={cn(
-                  'text-xs font-medium text-foreground line-clamp-1',
-                  'break-words [word-break:break-word]', // `[word-break:break-word]` is deprecated but works in the browser, while `break-words` which is `[overflow-wrap: break-word]` does not work
-                )}
-              >
-                {name}
-              </span>
-              <span className="text-xs text-muted-foreground tabular-nums">
-                {(size / 1024).toFixed(2)} KB · PDF
-              </span>
-            </div>
-          </div>
-        </a>
-      </Wobble>
+      <FileCard
+        url={url}
+        name={name}
+        size={size}
+        icon={<FileText className="size-5" strokeWidth={1.75} />}
+        label="PDF"
+      />
+    );
+  }
+
+  const spreadsheet = getSpreadsheet({ type, name });
+  if (spreadsheet) {
+    return (
+      <FileCard
+        url={url}
+        name={name}
+        size={size}
+        icon={<FileSpreadsheet className="size-5" strokeWidth={1.75} />}
+        label={spreadsheet.label}
+      />
     );
   }
 
