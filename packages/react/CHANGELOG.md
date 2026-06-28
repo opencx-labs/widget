@@ -1,5 +1,14 @@
 # @opencx/widget-react
 
+## 4.0.53
+
+### Patch Changes
+
+- fix CSAT emoji direction in RTL and add survey translations
+- Updated dependencies
+  - @opencx/widget-core@4.0.53
+  - @opencx/widget-react-headless@4.0.53
+
 ## 4.0.52
 
 ### Patch Changes
