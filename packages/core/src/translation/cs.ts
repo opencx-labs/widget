@@ -17,5 +17,7 @@ export const CzechLanguage: TranslationInterface = {
   no_conversations_yet: 'Zatím žádné konverzace',
   back_to_conversations: 'Zpět na konverzace',
   closed_conversations: 'Uzavřené konverzace',
+  csat_title: 'Jaká byla vaše konverzace?',
+  csat_submitted_title: 'Konverzaci jste ohodnotili jako',
+  csat_feedback_placeholder: 'Řekněte nám více... (nepovinné)',
 };
-

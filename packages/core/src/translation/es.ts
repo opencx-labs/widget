@@ -17,4 +17,7 @@ export const SpanishLanguage: TranslationInterface = {
   no_conversations_yet: 'Sin conversaciones aún',
   back_to_conversations: 'Volver a conversaciones',
   closed_conversations: 'Conversaciones cerradas',
+  csat_title: '¿Qué tal fue tu conversación?',
+  csat_submitted_title: 'Valoraste la conversación como',
+  csat_feedback_placeholder: 'Cuéntanos más... (opcional)',
 };

@@ -17,4 +17,7 @@ export const RomanianLanguage: TranslationInterface = {
   no_conversations_yet: 'Încă nu există conversații',
   back_to_conversations: 'Înapoi la conversații',
   closed_conversations: 'Conversații închise',
+  csat_title: 'Cum a fost conversația ta?',
+  csat_submitted_title: 'Ai evaluat conversația ca',
+  csat_feedback_placeholder: 'Spune-ne mai multe... (opțional)',
 };

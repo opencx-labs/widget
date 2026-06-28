@@ -17,4 +17,7 @@ export const EstonianLanguage: TranslationInterface = {
   no_conversations_yet: 'Vestlusi pole veel',
   back_to_conversations: 'Tagasi vestluste juurde',
   closed_conversations: 'Suletud vestlused',
+  csat_title: 'Milline oli teie vestlus?',
+  csat_submitted_title: 'Hindasite vestlust kui',
+  csat_feedback_placeholder: 'Rääkige meile rohkem... (valikuline)',
 };

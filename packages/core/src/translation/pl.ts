@@ -17,4 +17,7 @@ export const PolishLanguage: TranslationInterface = {
   no_conversations_yet: 'Jeszcze brak rozmów',
   back_to_conversations: 'Powrót do rozmów',
   closed_conversations: 'Zamknięte rozmowy',
+  csat_title: 'Jak przebiegła Twoja rozmowa?',
+  csat_submitted_title: 'Oceniłeś rozmowę jako',
+  csat_feedback_placeholder: 'Powiedz nam więcej... (opcjonalnie)',
 };

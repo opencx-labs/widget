@@ -17,5 +17,7 @@ export const BulgarianLanguage: TranslationInterface = {
   no_conversations_yet: 'Все още няма разговори',
   back_to_conversations: 'Назад към разговорите',
   closed_conversations: 'Затворени разговори',
+  csat_title: 'Как мина разговорът ви?',
+  csat_submitted_title: 'Оценихте разговора като',
+  csat_feedback_placeholder: 'Кажете ни повече... (по желание)',
 };
-

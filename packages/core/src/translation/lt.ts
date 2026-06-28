@@ -17,4 +17,7 @@ export const LithuanianLanguage: TranslationInterface = {
   no_conversations_yet: 'Pokalbių dar nėra',
   back_to_conversations: 'Grįžti į pokalbius',
   closed_conversations: 'Uždaryti pokalbiai',
+  csat_title: 'Koks buvo jūsų pokalbis?',
+  csat_submitted_title: 'Pokalbį įvertinote kaip',
+  csat_feedback_placeholder: 'Papasakokite daugiau... (neprivaloma)',
 };

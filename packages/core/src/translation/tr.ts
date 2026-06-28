@@ -17,4 +17,7 @@ export const TurkishLanguage: TranslationInterface = {
   no_conversations_yet: 'Henüz konuşma yok',
   back_to_conversations: 'Konuşmalara geri dön',
   closed_conversations: 'Kapatılan konuşmalar',
+  csat_title: 'Görüşmeniz nasıldı?',
+  csat_submitted_title: 'Görüşmeyi şöyle değerlendirdiniz',
+  csat_feedback_placeholder: 'Bize daha fazlasını anlatın... (isteğe bağlı)',
 };

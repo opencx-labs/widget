@@ -17,4 +17,7 @@ export const LuxembourgishLanguage: TranslationInterface = {
   no_conversations_yet: 'Nach keng Konversatiounen',
   back_to_conversations: 'Zréck zu de Konversatiounen',
   closed_conversations: 'Zougemaachte Konversatiounen',
+  csat_title: 'Wéi war Är Konversatioun?',
+  csat_submitted_title: 'Dir hutt d’Konversatioun bewäert als',
+  csat_feedback_placeholder: 'Sot eis méi... (fakultativ)',
 };

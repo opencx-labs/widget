@@ -17,4 +17,7 @@ export const HungarianLanguage: TranslationInterface = {
   no_conversations_yet: 'Még nincsenek beszélgetések',
   back_to_conversations: 'Vissza a beszélgetésekhez',
   closed_conversations: 'Lezárt beszélgetések',
+  csat_title: 'Milyen volt a beszélgetése?',
+  csat_submitted_title: 'A beszélgetést így értékelte',
+  csat_feedback_placeholder: 'Mondjon többet... (opcionális)',
 };

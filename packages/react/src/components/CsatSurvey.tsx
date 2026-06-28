@@ -1,11 +1,9 @@
-import {
-  useCsat,
-  type WidgetComponentProps,
-} from '@opencx/widget-react-headless';
+import { useCsat } from '@opencx/widget-react-headless';
 import { AnimatePresence } from 'framer-motion';
 import { ArrowUpIcon } from 'lucide-react';
 import React, { useState } from 'react';
 import { useIsSmallScreen } from '../hooks/useIsSmallScreen';
+import { useTranslation } from '../hooks/useTranslation';
 import { Button } from './lib/button';
 import { MotionDiv__VerticalReveal } from './lib/MotionDiv__VerticalReveal';
 import { cn } from './lib/utils/cn';
@@ -40,6 +38,7 @@ const CSAT_SCORES = [
 
 export function CsatSurvey() {
   const { isSmallScreen } = useIsSmallScreen();
+  const { t } = useTranslation();
   const {
     submitCsat,
     isCsatRequested,
@@ -72,20 +71,27 @@ export function CsatSurvey() {
         {isCsatRequested && !score ? (
           <MotionDiv__VerticalReveal key="csat-requested-title">
             <p className="text-sm text-muted-foreground text-center pt-2">
-              How was your conversation?
+              {t('csat_title')}
             </p>
           </MotionDiv__VerticalReveal>
         ) : isCsatSubmitted ? (
           <MotionDiv__VerticalReveal key="csat-submitted-title">
             <p className="text-sm text-muted-foreground text-center pt-2">
-              You rated the conversation as
+              {t('csat_submitted_title')}
             </p>
           </MotionDiv__VerticalReveal>
         ) : null}
       </AnimatePresence>
 
       {/* ------------------------ EMOJI ----------------------- */}
+      {/*
+        Force LTR so the rating scale always renders 😡(left) → 😍(right),
+        independent of the widget's language direction. In RTL (e.g. Arabic)
+        an inherited `dir=rtl` would reverse the flex row and surface 😡 first
+        to a right-to-left reader, skewing CSAT toward negative scores.
+      */}
       <div
+        dir="ltr"
         className={cn(
           'flex gap-4 justify-between pt-2 px-2 pb-2',
           'transition-all',
@@ -148,7 +154,7 @@ export function CsatSurvey() {
                 }
                 readOnly={isCsatSubmitted}
                 placeholder={
-                  isCsatRequested ? 'Tell us more... (optional)' : undefined
+                  isCsatRequested ? t('csat_feedback_placeholder') : undefined
                 }
               />
               <Button
@@ -169,7 +175,9 @@ export function CsatSurvey() {
       </AnimatePresence>
 
       {/* ----------------------- SPACER ----------------------- */}
-      <div className={cn('h-0 transition-[height]', isCsatSubmitted && 'h-4')} />
+      <div
+        className={cn('h-0 transition-[height]', isCsatSubmitted && 'h-4')}
+      />
     </div>
   );
 }

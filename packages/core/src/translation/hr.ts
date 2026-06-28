@@ -17,4 +17,7 @@ export const CroatianLanguage: TranslationInterface = {
   no_conversations_yet: 'Još nema razgovora',
   back_to_conversations: 'Natrag na razgovore',
   closed_conversations: 'Zatvoreni razgovori',
+  csat_title: 'Kakav je bio vaš razgovor?',
+  csat_submitted_title: 'Ocijenili ste razgovor kao',
+  csat_feedback_placeholder: 'Recite nam više... (neobavezno)',
 };

@@ -17,4 +17,7 @@ export const LatvianLanguage: TranslationInterface = {
   no_conversations_yet: 'Pagaidām nav sarunu',
   back_to_conversations: 'Atpakaļ pie sarunām',
   closed_conversations: 'Slēgtās sarunas',
+  csat_title: 'Kāda bija jūsu saruna?',
+  csat_submitted_title: 'Jūs novērtējāt sarunu kā',
+  csat_feedback_placeholder: 'Pastāstiet mums vairāk... (neobligāti)',
 };

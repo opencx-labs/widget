@@ -17,4 +17,7 @@ export const GreekLanguage: TranslationInterface = {
   no_conversations_yet: 'Δεν υπάρχουν συνομιλίες ακόμα',
   back_to_conversations: 'Πίσω στις συνομιλίες',
   closed_conversations: 'Κλειστές συνομιλίες',
+  csat_title: 'Πώς ήταν η συνομιλία σας;',
+  csat_submitted_title: 'Βαθμολογήσατε τη συνομιλία ως',
+  csat_feedback_placeholder: 'Πείτε μας περισσότερα... (προαιρετικό)',
 };

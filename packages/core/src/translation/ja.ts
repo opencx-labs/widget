@@ -17,4 +17,7 @@ export const JapaneseLanguage: TranslationInterface = {
   no_conversations_yet: 'まだ会話がありません',
   back_to_conversations: '会話一覧に戻る',
   closed_conversations: '終了した会話',
+  csat_title: '会話はいかがでしたか？',
+  csat_submitted_title: '会話を次のように評価しました',
+  csat_feedback_placeholder: '詳しく教えてください...（任意）',
 };

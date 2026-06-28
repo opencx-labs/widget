@@ -17,4 +17,7 @@ export const ChineseSimplifiedLanguage: TranslationInterface = {
   no_conversations_yet: '暂无对话',
   back_to_conversations: '返回对话',
   closed_conversations: '已关闭的对话',
+  csat_title: '您的对话感觉如何？',
+  csat_submitted_title: '您将此对话评价为',
+  csat_feedback_placeholder: '告诉我们更多...（可选）',
 };

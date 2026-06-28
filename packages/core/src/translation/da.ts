@@ -17,4 +17,7 @@ export const DanishLanguage: TranslationInterface = {
   no_conversations_yet: 'Ingen samtaler endnu',
   back_to_conversations: 'Tilbage til samtaler',
   closed_conversations: 'Lukkede samtaler',
+  csat_title: 'Hvordan var din samtale?',
+  csat_submitted_title: 'Du vurderede samtalen som',
+  csat_feedback_placeholder: 'Fortæl os mere... (valgfrit)',
 };

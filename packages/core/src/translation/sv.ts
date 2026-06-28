@@ -17,4 +17,7 @@ export const SwedishLanguage: TranslationInterface = {
   no_conversations_yet: 'Inga konversationer ännu',
   back_to_conversations: 'Tillbaka till konversationer',
   closed_conversations: 'Stängda konversationer',
+  csat_title: 'Hur var din konversation?',
+  csat_submitted_title: 'Du betygsatte konversationen som',
+  csat_feedback_placeholder: 'Berätta mer... (valfritt)',
 };

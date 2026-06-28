@@ -17,4 +17,7 @@ export const BengaliLanguage: TranslationInterface = {
   no_conversations_yet: 'এখনো কোনো কথোপকথন নেই',
   back_to_conversations: 'কথোপকথনে ফিরে যান',
   closed_conversations: 'বন্ধ কথোপকথন',
+  csat_title: 'আপনার কথোপকথন কেমন ছিল?',
+  csat_submitted_title: 'আপনি কথোপকথনটি মূল্যায়ন করেছেন',
+  csat_feedback_placeholder: 'আমাদের আরও বলুন... (ঐচ্ছিক)',
 };

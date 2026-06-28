@@ -112,5 +112,8 @@ export type TranslationInterface = {
   optional: string;
   start_chat_button: string;
   start_chat_button_loading: string;
+  csat_title: string;
+  csat_submitted_title: string;
+  csat_feedback_placeholder: string;
 };
 export type TranslationKeyU = keyof TranslationInterface;
