@@ -17,4 +17,7 @@ export const RussianLanguage: TranslationInterface = {
   no_conversations_yet: 'Пока нет разговоров',
   back_to_conversations: 'Назад к разговорам',
   closed_conversations: 'Закрытые разговоры',
+  csat_title: 'Как прошёл ваш разговор?',
+  csat_submitted_title: 'Вы оценили разговор как',
+  csat_feedback_placeholder: 'Расскажите подробнее... (необязательно)',
 };

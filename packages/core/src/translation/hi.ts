@@ -17,4 +17,7 @@ export const HindiLanguage: TranslationInterface = {
   no_conversations_yet: 'अभी तक कोई बातचीत नहीं',
   back_to_conversations: 'बातचीत पर वापस जाएं',
   closed_conversations: 'बंद बातचीत',
+  csat_title: 'आपकी बातचीत कैसी रही?',
+  csat_submitted_title: 'आपने बातचीत को आंका',
+  csat_feedback_placeholder: 'हमें और बताएं... (वैकल्पिक)',
 };

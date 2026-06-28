@@ -17,4 +17,7 @@ export const FrenchLanguage: TranslationInterface = {
   no_conversations_yet: 'Aucune conversation pour le moment',
   back_to_conversations: 'Retour aux conversations',
   closed_conversations: 'Conversations fermées',
+  csat_title: 'Comment s’est passée votre conversation ?',
+  csat_submitted_title: 'Vous avez évalué la conversation comme',
+  csat_feedback_placeholder: 'Dites-nous en plus... (facultatif)',
 };

@@ -17,5 +17,7 @@ export const VietnameseLanguage: TranslationInterface = {
   no_conversations_yet: 'Chưa có cuộc trò chuyện nào',
   back_to_conversations: 'Quay lại cuộc trò chuyện',
   closed_conversations: 'Cuộc trò chuyện đã đóng',
+  csat_title: 'Cuộc trò chuyện của bạn thế nào?',
+  csat_submitted_title: 'Bạn đã đánh giá cuộc trò chuyện là',
+  csat_feedback_placeholder: 'Cho chúng tôi biết thêm... (tùy chọn)',
 };
-

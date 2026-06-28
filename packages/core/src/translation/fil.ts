@@ -17,4 +17,7 @@ export const FilipinoLanguage: TranslationInterface = {
   no_conversations_yet: 'Wala pang mga usapan',
   back_to_conversations: 'Bumalik sa mga usapan',
   closed_conversations: 'Mga saradong usapan',
+  csat_title: 'Kumusta ang iyong usapan?',
+  csat_submitted_title: 'Ni-rate mo ang usapan bilang',
+  csat_feedback_placeholder: 'Sabihin pa sa amin... (opsyonal)',
 };

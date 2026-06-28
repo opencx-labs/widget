@@ -17,4 +17,7 @@ export const KoreanLanguage: TranslationInterface = {
   no_conversations_yet: '아직 대화가 없습니다',
   back_to_conversations: '대화 목록으로 돌아가기',
   closed_conversations: '종료된 대화',
+  csat_title: '대화는 어떠셨나요?',
+  csat_submitted_title: '대화를 다음과 같이 평가했습니다',
+  csat_feedback_placeholder: '더 알려주세요... (선택 사항)',
 };

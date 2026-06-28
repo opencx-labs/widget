@@ -17,4 +17,7 @@ export const UrduLanguage: TranslationInterface = {
   no_conversations_yet: 'ابھی تک کوئی گفتگو نہیں',
   back_to_conversations: 'گفتگو پر واپس جائیں',
   closed_conversations: 'بند گفتگو',
+  csat_title: 'آپ کی گفتگو کیسی رہی؟',
+  csat_submitted_title: 'آپ نے گفتگو کو درجہ دیا',
+  csat_feedback_placeholder: 'ہمیں مزید بتائیں... (اختیاری)',
 };

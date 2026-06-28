@@ -17,4 +17,7 @@ export const IcelandicLanguage: TranslationInterface = {
   no_conversations_yet: 'Engin samtöl ennþá',
   back_to_conversations: 'Til baka í samtöl',
   closed_conversations: 'Lokuð samtöl',
+  csat_title: 'Hvernig var samtalið þitt?',
+  csat_submitted_title: 'Þú gafst samtalinu einkunnina',
+  csat_feedback_placeholder: 'Segðu okkur meira... (valfrjálst)',
 };

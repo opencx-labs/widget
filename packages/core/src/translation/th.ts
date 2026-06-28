@@ -17,5 +17,7 @@ export const ThaiLanguage: TranslationInterface = {
   no_conversations_yet: 'ยังไม่มีการสนทนา',
   back_to_conversations: 'กลับไปที่การสนทนา',
   closed_conversations: 'การสนทนาที่ปิดแล้ว',
+  csat_title: 'การสนทนาของคุณเป็นอย่างไรบ้าง?',
+  csat_submitted_title: 'คุณให้คะแนนการสนทนาว่า',
+  csat_feedback_placeholder: 'บอกเราเพิ่มเติม... (ไม่บังคับ)',
 };
-

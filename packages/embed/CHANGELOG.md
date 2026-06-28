@@ -1,5 +1,11 @@
 # @opencx/widget
 
+## 4.0.53
+
+### Patch Changes
+
+- fix CSAT emoji direction in RTL and add survey translations
+
 ## 4.0.52
 
 ### Patch Changes

@@ -17,4 +17,7 @@ export const EnglishLanguage: TranslationInterface = {
   no_conversations_yet: 'No conversations yet',
   back_to_conversations: 'Back to conversations',
   closed_conversations: 'Closed conversations',
+  csat_title: 'How was your conversation?',
+  csat_submitted_title: 'You rated the conversation as',
+  csat_feedback_placeholder: 'Tell us more... (optional)',
 };

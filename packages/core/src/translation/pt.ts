@@ -17,4 +17,7 @@ export const PortugueseLanguage: TranslationInterface = {
   no_conversations_yet: 'Nenhuma conversa ainda',
   back_to_conversations: 'Voltar para conversas',
   closed_conversations: 'Conversas fechadas',
+  csat_title: 'Como foi a sua conversa?',
+  csat_submitted_title: 'Você avaliou a conversa como',
+  csat_feedback_placeholder: 'Conte-nos mais... (opcional)',
 };

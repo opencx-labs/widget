@@ -17,4 +17,7 @@ export const DutchLanguage: TranslationInterface = {
   no_conversations_yet: 'Nog geen gesprekken',
   back_to_conversations: 'Terug naar gesprekken',
   closed_conversations: 'Afgesloten gesprekken',
+  csat_title: 'Hoe was je gesprek?',
+  csat_submitted_title: 'Je hebt het gesprek beoordeeld als',
+  csat_feedback_placeholder: 'Vertel ons meer... (optioneel)',
 };

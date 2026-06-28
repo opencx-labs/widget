@@ -17,4 +17,7 @@ export const NorwegianBokmalLanguage: TranslationInterface = {
   no_conversations_yet: 'Ingen samtaler ennå',
   back_to_conversations: 'Tilbake til samtaler',
   closed_conversations: 'Lukkede samtaler',
+  csat_title: 'Hvordan var samtalen din?',
+  csat_submitted_title: 'Du vurderte samtalen som',
+  csat_feedback_placeholder: 'Fortell oss mer... (valgfritt)',
 };

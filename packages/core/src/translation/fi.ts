@@ -17,4 +17,7 @@ export const FinnishLanguage: TranslationInterface = {
   no_conversations_yet: 'Ei vielä keskusteluja',
   back_to_conversations: 'Takaisin keskusteluihin',
   closed_conversations: 'Suljetut keskustelut',
+  csat_title: 'Millainen keskustelusi oli?',
+  csat_submitted_title: 'Arvioit keskustelun',
+  csat_feedback_placeholder: 'Kerro lisää... (valinnainen)',
 };

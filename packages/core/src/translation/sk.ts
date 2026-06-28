@@ -17,4 +17,7 @@ export const SlovakLanguage: TranslationInterface = {
   no_conversations_yet: 'Zatiaľ žiadne konverzácie',
   back_to_conversations: 'Späť na konverzácie',
   closed_conversations: 'Uzavreté konverzácie',
+  csat_title: 'Aká bola vaša konverzácia?',
+  csat_submitted_title: 'Konverzáciu ste ohodnotili ako',
+  csat_feedback_placeholder: 'Povedzte nám viac... (nepovinné)',
 };

@@ -17,4 +17,7 @@ export const ArabicLanguage: TranslationInterface = {
   no_conversations_yet: 'لا يوجد محادثات',
   back_to_conversations: 'العودة إلى المحادثات',
   closed_conversations: 'المحادثات المغلقة',
+  csat_title: 'كيف كانت محادثتك؟',
+  csat_submitted_title: 'لقد قيّمت المحادثة بـ',
+  csat_feedback_placeholder: 'أخبرنا المزيد... (اختياري)',
 };
