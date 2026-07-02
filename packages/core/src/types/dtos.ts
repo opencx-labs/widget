@@ -8,6 +8,8 @@ export type SendMessageOutputDto = Dto['WidgetSendMessageOutputDto'];
 
 export type ResolveSessionDto = Dto['WidgetResolveSessionInputDto'];
 
+export type CreateSessionDto = NonNullable<Dto['CreateWidgetSessionDto']>;
+
 export type SessionDto = Dto['WidgetSessionDto'];
 export type MessageDto = Dto['WidgetHistoryDto'];
 export type MessageAttachmentType = NonNullable<

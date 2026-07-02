@@ -1,6 +1,6 @@
 import type { ApiCaller } from '../api/api-caller';
 import type { Dto } from '../api/client';
-import type { SessionDto } from '../types/dtos';
+import type { CreateSessionDto, SessionDto } from '../types/dtos';
 import type { WidgetConfig } from '../types/widget-config';
 import { Poller } from '../utils/Poller';
 import { PrimitiveState } from '../utils/PrimitiveState';
@@ -107,29 +107,28 @@ export class SessionCtx {
     }, this.sessionsPollingIntervalSeconds * 1000);
   };
 
-  private getParsedCustomData =
-    (): Dto['CreateWidgetSessionDto']['customData'] => {
-      return Object.fromEntries<
-        NonNullable<Dto['CreateWidgetSessionDto']['customData']>[string]
-      >(
-        Object.entries(this.config.sessionCustomData || {}).map(
-          ([key, value]) => {
-            if (typeof value === 'string') return [key, value];
-            if (typeof value === 'boolean') return [key, value];
-            if (typeof value === 'number') return [key, value];
-            // TODO maybe better to unnest instead of stringify-ing
-            return [key, runCatching(() => JSON.stringify(value))?.data || ''];
-          },
-        ),
-      );
-    };
+  private getParsedCustomData = (): CreateSessionDto['customData'] => {
+    return Object.fromEntries<
+      NonNullable<CreateSessionDto['customData']>[string]
+    >(
+      Object.entries(this.config.sessionCustomData || {}).map(
+        ([key, value]) => {
+          if (typeof value === 'string') return [key, value];
+          if (typeof value === 'boolean') return [key, value];
+          if (typeof value === 'number') return [key, value];
+          // TODO maybe better to unnest instead of stringify-ing
+          return [key, runCatching(() => JSON.stringify(value))?.data || ''];
+        },
+      ),
+    );
+  };
 
   createSession = async () => {
     this.sessionState.setPartial({ session: null, isCreatingSession: true });
 
     const externalId = this.contactCtx.state.get().contact?.externalId;
 
-    const customData: Dto['CreateWidgetSessionDto']['customData'] = {
+    const customData: CreateSessionDto['customData'] = {
       ...this.getParsedCustomData(),
       ...(externalId ? { external_id: externalId } : {}),
     };

@@ -60,7 +60,7 @@ export class ApiCaller {
 
   getExternalWidgetConfig = async () => {
     return await this.client.GET('/backend/widget/v2/config', {
-      params: { header: { 'X-Bot-Token': this.config.token } },
+      params: { header: { 'x-bot-token': this.config.token } },
     });
   };
 
@@ -89,16 +89,13 @@ export class ApiCaller {
 
   pollSessionAndHistory = async ({
     sessionId,
-    lastMessageTimestamp,
     abortSignal,
   }: {
     sessionId: string;
-    lastMessageTimestamp?: string;
     abortSignal: AbortSignal;
   }) => {
-    const query = lastMessageTimestamp ? { lastMessageTimestamp } : undefined;
     return await this.client.GET('/backend/widget/v2/poll/{sessionId}', {
-      params: { path: { sessionId }, query },
+      params: { path: { sessionId } },
       signal: abortSignal,
     });
   };

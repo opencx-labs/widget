@@ -14,6 +14,7 @@ export const TestUtils = {
             data: {
               id: genUuid(),
               ticketNumber: 1,
+              title: null,
               assignee: { kind: 'ai', name: null, avatarUrl: null },
               channel: '',
               createdAt: new Date().toISOString(),
@@ -24,6 +25,7 @@ export const TestUtils = {
               updatedAt: new Date().toISOString(),
               latestStateCheckpointPayload: null,
               modeId: null,
+              sessionAttributes: {},
               ...returnValue?.data,
             },
           });
@@ -125,6 +127,7 @@ export const TestUtils = {
               session: {
                 id: genUuid(),
                 ticketNumber: 1,
+                title: null,
                 assignee: { kind: 'ai', name: null, avatarUrl: null },
                 channel: '',
                 createdAt: new Date().toISOString(),
@@ -135,6 +138,7 @@ export const TestUtils = {
                 updatedAt: new Date().toISOString(),
                 modeId: null,
                 latestStateCheckpointPayload: null,
+                sessionAttributes: {},
                 ...returnValue?.data?.session,
               },
               history: [...(returnValue?.data?.history || [])],
@@ -149,6 +153,7 @@ export const TestUtils = {
             data: {
               id: genUuid(),
               ticketNumber: 1,
+              title: null,
               assignee: { kind: 'ai', name: null, avatarUrl: null },
               channel: '',
               createdAt: new Date().toISOString(),
@@ -159,6 +164,7 @@ export const TestUtils = {
               updatedAt: new Date().toISOString(),
               modeId: null,
               latestStateCheckpointPayload: null,
+              sessionAttributes: {},
               ...returnValue?.data,
             },
           });

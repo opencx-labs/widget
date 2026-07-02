@@ -1,5 +1,14 @@
 # @opencx/widget-react
 
+## 4.0.55
+
+### Patch Changes
+
+- expose session.title
+- Updated dependencies
+  - @opencx/widget-core@4.0.55
+  - @opencx/widget-react-headless@4.0.55
+
 ## 4.0.54
 
 ### Patch Changes

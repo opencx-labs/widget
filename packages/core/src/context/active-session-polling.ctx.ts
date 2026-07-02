@@ -55,10 +55,8 @@ export class ActiveSessionPollingCtx {
     });
 
     /**
-     * When session is closed... fetch the whole history... because of some race conditions that might happen.
-     *
-     * example:
-     * - the csat_requested system message is sometimes inserted in db before the AI's response, but the AI's response might sometimes arrive before the polling's response, which makes the `lastMessageTimestamp` greater than the csat_requested system message's timestamp... so it's never polled in that case
+     * When the session is closed, fetch immediately instead of waiting for the
+     * next poll tick, so closing messages (e.g. csat_requested) show up right away.
      */
     this.sessionCtx.sessionState.subscribe(({ session }) => {
       if (session?.id && !session.isOpened) {
@@ -68,7 +66,6 @@ export class ActiveSessionPollingCtx {
           this.fetchSessionAndHistory({
             sessionId: session.id,
             abortSignal: this.fetchSessionAndFullHistoryAbortController.signal,
-            fetchFullHistory: true,
           });
         } catch (error) {
           if (!this.fetchSessionAndFullHistoryAbortController.signal.aborted) {
@@ -84,11 +81,9 @@ export class ActiveSessionPollingCtx {
   fetchSessionAndHistory = async ({
     sessionId,
     abortSignal,
-    fetchFullHistory = false,
   }: {
     sessionId: string;
     abortSignal: AbortSignal;
-    fetchFullHistory?: boolean;
   }): Promise<void> => {
     /**
      * This is a bit of an implicit contract... there are two cases here
@@ -102,16 +97,9 @@ export class ActiveSessionPollingCtx {
       this.messageCtx.state.setPartial({ isInitialFetchLoading: true });
     }
 
-    const messages = this.messageCtx.state.get().messages;
-    const lastMessageTimestamp =
-      messages.length > 0
-        ? (messages[messages.length - 1]?.timestamp ?? undefined)
-        : undefined;
-
     const { data } = await this.api.pollSessionAndHistory({
       sessionId,
       abortSignal,
-      lastMessageTimestamp: fetchFullHistory ? undefined : lastMessageTimestamp,
     });
 
     if (data?.session) {

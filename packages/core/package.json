@@ -1,7 +1,7 @@
 {
   "name": "@opencx/widget-core",
   "private": false,
-  "version": "4.0.54",
+  "version": "4.0.55",
   "type": "module",
   "repository": {
     "type": "git",
@@ -11,7 +11,7 @@
     "clean": "rm -rf node_modules dist .turbo",
     "clean:dist": "rm -rf dist .turbo",
     "build": "vite build",
-    "gen:sdk": "pnpm dlx openapi-typescript http://localhost:8080/widget-api-yaml -o ./src/api/schema.ts && prettier --write ./src/api/schema.ts",
+    "gen:sdk": "pnpm dlx openapi-typescript http://localhost:8080/backend/widget-api-json -o ./src/api/schema.ts && prettier --write ./src/api/schema.ts",
     "test": "vitest run",
     "type-check": "tsc --noEmit",
     "lint": "eslint .",

@@ -19,6 +19,7 @@ import { TestUtils } from '../../test-utils';
 const makeSessionDto = (overrides: Partial<SessionDto> = {}): SessionDto => ({
   id: genUuid(),
   ticketNumber: 1,
+  title: null,
   assignee: { kind: 'ai', name: null, avatarUrl: null },
   channel: '',
   createdAt: new Date().toISOString(),
@@ -29,6 +30,7 @@ const makeSessionDto = (overrides: Partial<SessionDto> = {}): SessionDto => ({
   updatedAt: new Date().toISOString(),
   modeId: null,
   latestStateCheckpointPayload: null,
+  sessionAttributes: {},
   ...overrides,
 });
 

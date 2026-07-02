@@ -11,7 +11,39 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get: operations['getWidgetConfig'];
+    get: {
+      parameters: {
+        query?: never;
+        header: {
+          'x-bot-token': string;
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Default Response */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json':
+              | components['schemas']['WidgetConfigDto']
+              | components['schemas']['WidgetPreludeDto'];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorDto'];
+          };
+        };
+      };
+    };
     put?: never;
     post?: never;
     delete?: never;
@@ -20,16 +52,50 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/backend/widget/v2/prelude': {
+  '/backend/widget/v2/contact/create-unverified': {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    get: operations['widgetPrelude'];
+    get?: never;
     put?: never;
-    post?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          'x-bot-token': string;
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['CreateUnverifiedContactDto'];
+        };
+      };
+      responses: {
+        /** @description Default Response */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['WidgetContactTokenResponseDto'];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorDto'];
+          };
+        };
+      };
+    };
     delete?: never;
     options?: never;
     head?: never;
@@ -43,7 +109,38 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get: operations['getSessions'];
+    get: {
+      parameters: {
+        query: {
+          filters: string;
+          offset?: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Default Response */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['PaginatedWidgetSessionsDto'];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorDto'];
+          };
+        };
+      };
+    };
     put?: never;
     post?: never;
     delete?: never;
@@ -59,7 +156,37 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get: operations['getSessionHistory'];
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          sessionId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Default Response */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['WidgetHistoryDto'][];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorDto'];
+          };
+        };
+      };
+    };
     put?: never;
     post?: never;
     delete?: never;
@@ -75,7 +202,37 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get: operations['pollSessionAndHistory'];
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          sessionId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Default Response */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['WidgetSessionAndHistoryDto'];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorDto'];
+          };
+        };
+      };
+    };
     put?: never;
     post?: never;
     delete?: never;
@@ -93,7 +250,39 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    post: operations['createChatSession'];
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['CreateWidgetSessionDto'];
+        };
+      };
+      responses: {
+        /** @description WidgetSession */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['WidgetSessionDto'];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorDto'];
+          };
+        };
+      };
+    };
     delete?: never;
     options?: never;
     head?: never;
@@ -109,7 +298,39 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    post: operations['chatSend'];
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['WidgetSendMessageInputDto'];
+        };
+      };
+      responses: {
+        /** @description Default Response */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['WidgetSendMessageOutputDto'];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorDto'];
+          };
+        };
+      };
+    };
     delete?: never;
     options?: never;
     head?: never;
@@ -125,7 +346,39 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    post: operations['createStateCheckpoint'];
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['WidgetCreateStateCheckpointInputDto'];
+        };
+      };
+      responses: {
+        /** @description Default Response */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['WidgetCreateStateCheckpointOutputDto'];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorDto'];
+          };
+        };
+      };
+    };
     delete?: never;
     options?: never;
     head?: never;
@@ -141,23 +394,39 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    post: operations['uploadFile'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/backend/widget/v2/upload/v2': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['FileUploadDto'];
+        };
+      };
+      responses: {
+        /** @description Default Response */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['UploadWidgetFileResponseDto'];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorDto'];
+          };
+        };
+      };
     };
-    get?: never;
-    put?: never;
-    post: operations['uploadFileV2'];
     delete?: never;
     options?: never;
     head?: never;
@@ -173,7 +442,39 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    post: operations['voteMessage'];
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['WidgetVoteDto'];
+        };
+      };
+      responses: {
+        /** @description Default Response */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['WidgetVoteResponseDto'];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorDto'];
+          };
+        };
+      };
+    };
     delete?: never;
     options?: never;
     head?: never;
@@ -189,23 +490,39 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    post: operations['resolveSession'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/backend/widget/v2/contact/create-unverified': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['WidgetResolveSessionInputDto'];
+        };
+      };
+      responses: {
+        /** @description WidgetSession */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['WidgetSessionDto'];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorDto'];
+          };
+        };
+      };
     };
-    get?: never;
-    put?: never;
-    post: operations['createUnverifiedContact'];
     delete?: never;
     options?: never;
     head?: never;
@@ -221,7 +538,39 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    post: operations['executeAction'];
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['WidgetActionFormSubmissionInputDto'];
+        };
+      };
+      responses: {
+        /** @description Default Response */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['WidgetActionFormSubmissionOutputDto'];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorDto'];
+          };
+        };
+      };
+    };
     delete?: never;
     options?: never;
     head?: never;
@@ -237,7 +586,39 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    post: operations['submitCsat'];
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['WidgetSubmitCsatInputDto'];
+        };
+      };
+      responses: {
+        /** @description Default Response */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['WidgetSubmitCsatOutputDto'];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorDto'];
+          };
+        };
+      };
+    };
     delete?: never;
     options?: never;
     head?: never;
@@ -248,99 +629,89 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
-    /** @enum {string} */
-    AssigneeKindEnum: 'human' | 'ai' | 'none';
-    CreateUnverifiedContactDto: {
-      email?: string;
-      non_verified_name?: string;
-      non_verified_custom_data?: {
-        [key: string]: string | number | boolean;
-      };
+    ErrorDto: {
+      statusCode?: number;
+      message?: string;
+      error?: string;
     };
+    ChatAttachmentDto: {
+      id: string;
+      name: string;
+      size: number;
+      type: string;
+      url: string;
+      openai_file_id?: string;
+    };
+    FileUploadDto: {
+      /**
+       * Format: binary
+       * @description The file to upload. 5MB max.
+       */
+      file: string;
+    } | null;
     CreateWidgetSessionDto: {
       customData?: {
         [key: string]: string | number | boolean;
       };
-    };
-    FileUploadDto: {
-      /** Format: binary */
-      file: string;
-    };
-    /** @enum {string} */
-    MessageTypeEnum:
-      | 'agent_comment'
-      | 'agent_joined'
-      | 'agent_message'
-      | 'agent_reopened_session'
-      | 'agent_took_session_from_ai'
-      | 'ai_assumed_the_session_resolved'
-      | 'ai_decided_to_resolve_the_issue'
-      | 'csat_requested'
-      | 'csat_submitted'
-      | 'email_draft_message'
-      | 'handoff'
-      | 'handoff_to_salesforce_miaw'
-      | 'handoff_to_zendesk'
-      | 'message'
-      | 'state_checkpoint'
-      | 'user_confirmed_the_session_resolved';
-    /** @description Paginated response. */
-    PaginatedWidgetSessionsDto: {
-      items: {
-        /** Format: uuid */
-        id: string;
-        ticketNumber: number;
-        createdAt: string;
-        updatedAt: string;
-        isHandedOff: boolean;
-        isOpened: boolean;
-        assignee: {
-          kind: components['schemas']['AssigneeKindEnum'];
-          name: string | null;
-          avatarUrl: string | null;
-        };
-        channel: string;
-        isVerified: boolean;
-        lastMessage: string | null;
-        modeId: string | null;
-        latestStateCheckpointPayload: {
-          [key: string]: unknown;
-        } | null;
+    } | null;
+    WidgetSendMessageInputDto: {
+      /** Format: uuid */
+      uuid: string;
+      content: string;
+      session_id: string;
+      bot_token: string;
+      /** @description Additional headers to be included in the request of action calls */
+      headers?: {
+        [key: string]: string;
+      } | null;
+      /** @description Additional query parameters to be included in the query of action calls */
+      query_params?: {
+        [key: string]: string;
+      } | null;
+      /** @description Additional body properties to be included in the body of action calls */
+      body_properties?: {
+        [key: string]: unknown;
+      } | null;
+      language?: string | null;
+      attachments?: components['schemas']['ChatAttachmentDto'][] | null;
+      /** @description Context for the AI to be sent with each contact message */
+      clientContext?: {
+        [key: string]: unknown;
+      } | null;
+      /** @description Custom data to be sent with each contact message */
+      custom_data?: {
+        [key: string]: unknown;
+      } | null;
+      /** @description If there is an active mode, it will be exited and the prompt will be given to the AI for a customized response */
+      exit_mode_prompt?: string;
+      /** @description A prompt to be given to the AI for a customized response, should be used after an action form is submitted */
+      action_form_submitted_prompt?: string;
+      initial_messages?: {
+        uuid: string;
+        content: string;
       }[];
-      /** @description The `cursor` for the request to get the next set of items. Null if there is no more data. */
-      next: string | null;
     };
-    /** @enum {string} */
-    SenderTypeEnum: 'user' | 'agent' | 'ai' | 'system' | 'unknown';
-    SystemMessagePayload:
-      | {
-          /** @enum {string} */
-          type: 'state_checkpoint';
-          payload: {
-            [key: string]: unknown;
-          } | null;
-        }
-      | {
-          /** @enum {string} */
-          type: 'csat_requested';
-          payload?: unknown;
-        }
-      | {
-          /** @enum {string} */
-          type: 'csat_submitted';
-          payload: {
-            score?: number | null;
-            feedback?: string | null;
-          };
-        }
-      | {
-          /** @enum {string} */
-          type: 'none';
-          payload?: unknown;
-        };
-    UploadWidgetFileResponseDto: {
-      fileName: string;
-      fileUrl: string;
+    WidgetCreateStateCheckpointInputDto: {
+      session_id: string;
+      payload: {
+        [key: string]: unknown;
+      };
+    };
+    WidgetVoteDto: {
+      /** @enum {string} */
+      action: 'upvote' | 'downvote';
+      sessionId: string;
+      messagePublicId: string;
+    };
+    WidgetResolveSessionInputDto: {
+      session_id: string;
+    };
+    CreateUnverifiedContactDto: {
+      email?: string | null;
+      non_verified_name?: string | null;
+      non_verified_custom_data?: {
+        [key: string]: string | number | boolean;
+      } | null;
     };
     WidgetActionFormSubmissionInputDto: {
       sessionId: string;
@@ -361,12 +732,30 @@ export interface components {
         };
       };
     };
-    WidgetActionFormSubmissionOutputDto: {
-      action: {
-        response?: unknown;
-      };
+    WidgetSubmitCsatInputDto: {
+      session_id: string;
+      score: number;
+      feedback?: string;
+      system_message_uuid?: string;
+    };
+    WidgetVoteResponseDto: {
+      messagePublicId: string | null;
+      success: boolean;
     };
     WidgetConfigDto: {
+      org: {
+        id: string;
+        name: string;
+      };
+      sessionsPollingIntervalSeconds: number;
+      sessionPollingIntervalSeconds: number;
+      modes: {
+        id: string;
+        name: string;
+        slug?: string | null;
+      }[];
+    };
+    WidgetPreludeDto: {
       org: {
         id: string;
         name: string;
@@ -383,15 +772,137 @@ export interface components {
       /** @description The JWT token to use for further requests */
       token: string;
     };
-    WidgetCreateStateCheckpointInputDto: {
-      session_id: string;
-      payload: {
-        [key: string]: unknown;
-      };
-    };
     WidgetCreateStateCheckpointOutputDto: {
       success: boolean;
     };
+    /** @enum {string} */
+    AssigneeKindEnum: 'human' | 'ai' | 'none';
+    /** @enum {string} */
+    MessageTypeEnum:
+      | 'agent_assigned_by_integration'
+      | 'agent_assigned_by_system'
+      | 'agent_assigned_by_user'
+      | 'agent_changed'
+      | 'agent_comment'
+      | 'agent_initiated_session'
+      | 'agent_joined'
+      | 'agent_message'
+      | 'agent_reopened_session'
+      | 'agent_took_session_from_ai'
+      | 'agent_unassigned_by_integration'
+      | 'agent_unassigned_by_system'
+      | 'agent_unassigned_by_user'
+      | 'ai_assumed_the_session_resolved'
+      | 'ai_decided_to_not_reply'
+      | 'ai_decided_to_resolve_the_issue'
+      | 'ai_reopened_session'
+      | 'ai_response_cancelled'
+      | 'ai_resumed_by_system'
+      | 'call_history'
+      | 'call_transferred'
+      | 'closed_resolved_by_agent'
+      | 'closed_resolved_by_api'
+      | 'closed_resolved_by_contact'
+      | 'closed_resolved_by_integration'
+      | 'closed_resolved_by_system'
+      | 'closed_unresolved_by_agent'
+      | 'closed_unresolved_by_api'
+      | 'closed_unresolved_by_system'
+      | 'contact_data_updated'
+      | 'csat_requested'
+      | 'csat_submitted'
+      | 'email_draft_message'
+      | 'handoff'
+      | 'handoff_to_salesforce_miaw'
+      | 'handoff_to_zendesk'
+      | 'integration_reopened_session'
+      | 'message'
+      | 'prohibited_topic_detected'
+      | 'sequence_message'
+      | 'skills_added_by_system'
+      | 'sla_applied_by_agent'
+      | 'sla_applied_by_system'
+      | 'sla_first_reply_breached'
+      | 'sla_first_reply_completed_after_breach'
+      | 'sla_first_reply_fulfilled'
+      | 'sla_first_reply_metric_started'
+      | 'sla_freezed_office_hours_ended'
+      | 'sla_freezed_snoozed'
+      | 'sla_next_reply_breached'
+      | 'sla_next_reply_completed_after_breach'
+      | 'sla_next_reply_fulfilled'
+      | 'sla_next_reply_metric_started'
+      | 'sla_removed_by_agent'
+      | 'sla_removed_by_system'
+      | 'sla_resolution_breached'
+      | 'sla_resolution_completed_after_breach'
+      | 'sla_resolution_fulfilled'
+      | 'sla_resolution_metric_started'
+      | 'sla_resolution_paused_resolved'
+      | 'sla_resolution_paused_waiting_on_customer'
+      | 'sla_resolution_resumed_customer_replied'
+      | 'sla_resolution_resumed_reopened'
+      | 'sla_resumed_office_hours_started'
+      | 'sla_resumed_snooze_cancelled'
+      | 'sla_resumed_snooze_expired'
+      | 'state_checkpoint'
+      | 'sub_status_removed_by_agent'
+      | 'sub_status_removed_by_api'
+      | 'sub_status_removed_by_integration'
+      | 'sub_status_removed_by_system'
+      | 'sub_status_set_by_agent'
+      | 'sub_status_set_by_api'
+      | 'sub_status_set_by_integration'
+      | 'sub_status_set_by_system'
+      | 'system_reopened_session'
+      | 'tag_added_by_agent'
+      | 'tag_added_by_api'
+      | 'tag_added_by_integration'
+      | 'tag_added_by_system'
+      | 'tag_removed_by_agent'
+      | 'tag_removed_by_api'
+      | 'tag_removed_by_integration'
+      | 'tag_removed_by_system'
+      | 'team_assigned_by_system'
+      | 'team_assigned_by_user'
+      | 'team_unassigned_by_system'
+      | 'team_unassigned_by_user'
+      | 'user_confirmed_the_session_resolved'
+      | 'workflow_message'
+      | 'workflow_note'
+      | 'workflow_triggered';
+    /** @enum {string} */
+    SenderTypeEnum: 'user' | 'agent' | 'ai' | 'system' | 'unknown';
+    SystemMessagePayload:
+      | (
+          | (
+              | {
+                  /** @constant */
+                  type: 'state_checkpoint';
+                  payload: {
+                    [key: string]: unknown;
+                  } | null;
+                }
+              | {
+                  /** @constant */
+                  type: 'csat_requested';
+                  payload?: null;
+                }
+            )
+          | {
+              /** @constant */
+              type: 'csat_submitted';
+              payload: {
+                score?: number | null;
+                feedback?: string | null;
+              };
+            }
+        )
+      | {
+          /** @constant */
+          type: 'none';
+          payload?: null;
+        };
     WidgetHistoryDto: {
       publicId: string;
       type: components['schemas']['MessageTypeEnum'];
@@ -407,137 +918,69 @@ export interface components {
       actionCalls?:
         | {
             actionName: string;
-            args?: unknown;
-            result?: unknown;
+            args: unknown;
+            result: unknown;
             action: {
               name: string;
               id: string;
               openapi?: {
                 openapi_spec_id?: string;
-                operation_spec?: unknown;
+                operation_spec: unknown;
                 operation_id?: string;
                 operation_method?: string;
               };
-              metadata?: unknown;
+              metadata: unknown;
               required_form_submission?: boolean;
               is_handoff_like?: boolean;
             };
           }[]
         | null;
-      attachments?:
-        | {
-            id: string;
-            name: string;
-            size: number;
-            type: string;
-            url: string;
-          }[]
-        | null;
+      attachments?: components['schemas']['ChatAttachmentDto'][] | null;
       systemMessagePayload: components['schemas']['SystemMessagePayload'];
     };
-    WidgetPreludeDto: {
-      initialQuestions: string[];
-      aiEnabled: boolean;
-      officeHours: unknown & {
-        monday?: {
-          from: string;
-          to: string;
-        };
-        tuesday?: {
-          from: string;
-          to: string;
-        };
-        wednesday?: {
-          from: string;
-          to: string;
-        };
-        thursday?: {
-          from: string;
-          to: string;
-        };
-        friday?: {
-          from: string;
-          to: string;
-        };
-        saturday?: {
-          from: string;
-          to: string;
-        };
-        sunday?: {
-          from: string;
-          to: string;
-        };
-        Everyday?: {
-          from: string;
-          to: string;
-        };
-        WeekDays?: {
-          from: string;
-          to: string;
-        };
-      };
-      officeHoursTimezone: string | null;
-      organizationName: string;
-    };
-    WidgetResolveSessionInputDto: {
-      session_id: string;
-    };
-    WidgetSendMessageInputDto: {
+    WidgetSessionDto: {
       /** Format: uuid */
-      uuid: string;
-      content: string;
-      session_id: string;
-      bot_token: string;
-      /** @description Additional headers to be included in the request of action calls */
-      headers?: {
-        [key: string]: string;
-      } | null;
-      /** @description Additional query parameters to be included in the query of action calls */
-      query_params?: {
-        [key: string]: string;
-      } | null;
-      /** @description Additional body properties to be included in the body of action calls */
-      body_properties?: {
+      id: string;
+      ticketNumber: number;
+      title: string | null;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      updatedAt: string;
+      isHandedOff: boolean;
+      isOpened: boolean;
+      assignee: {
+        kind: components['schemas']['AssigneeKindEnum'];
+        name: string | null;
+        avatarUrl: string | null;
+      };
+      channel: string;
+      isVerified: boolean;
+      lastMessage: string | null;
+      modeId: string | null;
+      latestStateCheckpointPayload: {
         [key: string]: unknown;
       } | null;
-      language?: string | null;
-      attachments?:
-        | {
-            id: string;
-            name: string;
-            size: number;
-            type: string;
-            url: string;
-          }[]
-        | null;
-      /** @description Context for the AI to be sent with each contact message */
-      clientContext?: {
-        [key: string]: unknown;
-      } | null;
-      /** @description Custom data to be sent with each contact message */
-      custom_data?: {
-        [key: string]: unknown;
-      } | null;
-      /** @description If there is an active mode, it will be exited and the prompt will be given to the AI for a customized response */
-      exit_mode_prompt?: string;
-      /** @description A prompt to be given to the AI for a customized response, should be used after an action form is submitted */
-      action_form_submitted_prompt?: string;
-      initial_messages?: {
-        uuid: string;
-        content: string;
-      }[];
+      sessionAttributes: {
+        [key: string]: string | number | boolean;
+      };
+    };
+    PaginatedWidgetSessionsDto: {
+      items: components['schemas']['WidgetSessionDto'][];
+      next: string | null;
     };
     WidgetSendMessageOutputDto:
       | {
-          /** @enum {boolean} */
+          /** @constant */
           success: true;
           code?:
             | string
             | 'session_assigned_to_human_agent'
             | 'response_cancelled'
-            | 'skipping_unuseful_response';
+            | 'skipping_unuseful_response'
+            | 'duplicate_message_ignored';
           autopilotResponse?: {
-            /** @enum {string} */
+            /** @constant */
             type: 'text';
             value: {
               error: boolean;
@@ -554,12 +997,12 @@ export interface components {
             didExitMode?: boolean;
           };
           uiResponse?: {
-            /** @enum {string} */
+            /** @constant */
             type: 'ui';
             value: {
-              /** @enum {string} */
+              /** @constant */
               type: 'ui_component';
-              request_response?: unknown;
+              request_response: unknown;
               name: string;
               content?: string;
             };
@@ -570,649 +1013,59 @@ export interface components {
             id: string;
             openapi?: {
               openapi_spec_id?: string;
-              operation_spec?: unknown;
+              operation_spec: unknown;
               operation_id?: string;
               operation_method?: string;
             };
-            metadata?: unknown;
+            metadata: unknown;
             required_form_submission?: boolean;
             is_handoff_like?: boolean;
           };
           sessionIsHandedOff?: boolean;
           /** @description WidgetSession */
-          session?: {
-            /** Format: uuid */
-            id: string;
-            ticketNumber: number;
-            createdAt: string;
-            updatedAt: string;
-            isHandedOff: boolean;
-            isOpened: boolean;
-            assignee: {
-              kind: components['schemas']['AssigneeKindEnum'];
-              name: string | null;
-              avatarUrl: string | null;
-            };
-            channel: string;
-            isVerified: boolean;
-            lastMessage: string | null;
-            modeId: string | null;
-            latestStateCheckpointPayload: {
-              [key: string]: unknown;
-            } | null;
-          };
+          session?: components['schemas']['WidgetSessionDto'];
         }
       | {
-          /** @enum {boolean} */
+          /** @constant */
           success: false;
           error: {
             code?: string;
             message?: string;
           };
         };
-    WidgetSessionAndHistoryDto: {
-      /** @description WidgetSession */
-      session: {
-        /** Format: uuid */
-        id: string;
-        ticketNumber: number;
-        createdAt: string;
-        updatedAt: string;
-        isHandedOff: boolean;
-        isOpened: boolean;
-        assignee: {
-          kind: components['schemas']['AssigneeKindEnum'];
-          name: string | null;
-          avatarUrl: string | null;
-        };
-        channel: string;
-        isVerified: boolean;
-        lastMessage: string | null;
-        modeId: string | null;
-        latestStateCheckpointPayload: {
-          [key: string]: unknown;
-        } | null;
-      };
-      history: {
-        publicId: string;
-        type: components['schemas']['MessageTypeEnum'];
-        content: {
-          text?: string | null;
-        };
-        sender: {
-          kind: components['schemas']['SenderTypeEnum'];
-          name?: string | null;
-          avatar?: string | null;
-        };
-        sentAt?: string | null;
-        actionCalls?:
-          | {
-              actionName: string;
-              args?: unknown;
-              result?: unknown;
-              action: {
-                name: string;
-                id: string;
-                openapi?: {
-                  openapi_spec_id?: string;
-                  operation_spec?: unknown;
-                  operation_id?: string;
-                  operation_method?: string;
-                };
-                metadata?: unknown;
-                required_form_submission?: boolean;
-                is_handoff_like?: boolean;
-              };
-            }[]
-          | null;
-        attachments?:
-          | {
-              id: string;
-              name: string;
-              size: number;
-              type: string;
-              url: string;
-            }[]
-          | null;
-        systemMessagePayload: components['schemas']['SystemMessagePayload'];
-      }[];
-    };
-    /** @description WidgetSession */
-    WidgetSessionDto: {
-      /** Format: uuid */
-      id: string;
-      ticketNumber: number;
-      createdAt: string;
-      updatedAt: string;
-      isHandedOff: boolean;
-      isOpened: boolean;
-      assignee: {
-        kind: components['schemas']['AssigneeKindEnum'];
-        name: string | null;
-        avatarUrl: string | null;
-      };
-      channel: string;
-      isVerified: boolean;
-      lastMessage: string | null;
-      modeId: string | null;
-      latestStateCheckpointPayload: {
-        [key: string]: unknown;
-      } | null;
-    };
-    WidgetSubmitCsatInputDto: {
-      session_id: string;
-      score: number;
-      feedback?: string;
-      system_message_uuid?: string;
-    };
     WidgetSubmitCsatOutputDto: {
       success: boolean;
     };
-    WidgetVoteDto: {
-      /** @enum {string} */
-      action: 'upvote' | 'downvote';
-      sessionId: string;
-      messagePublicId: string;
+    WidgetSessionAndHistoryDto: {
+      /** @description WidgetSession */
+      session: components['schemas']['WidgetSessionDto'];
+      history: components['schemas']['WidgetHistoryDto'][];
     };
-    WidgetVoteResponseDto: {
-      messagePublicId: string | null;
-      success: boolean;
+    WidgetActionFormSubmissionOutputDto: {
+      action: {
+        response: unknown;
+      };
     };
-    ErrorDto: {
-      statusCode?: number;
-      message?: string;
-      error?: string;
+    UploadWidgetFileResponseDto: {
+      fileName: string;
+      fileUrl: string;
     };
   };
-  responses: never;
+  responses: {
+    /** @description Internal Server Error */
+    500: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        'application/json': components['schemas']['ErrorDto'];
+      };
+    };
+  };
   parameters: never;
   requestBodies: never;
   headers: never;
   pathItems: never;
 }
 export type $defs = Record<string, never>;
-export interface operations {
-  getWidgetConfig: {
-    parameters: {
-      query?: never;
-      header: {
-        'X-Bot-Token': string;
-      };
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['WidgetConfigDto'];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorDto'];
-        };
-      };
-    };
-  };
-  widgetPrelude: {
-    parameters: {
-      query?: never;
-      header: {
-        'X-Bot-Token': string;
-      };
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['WidgetPreludeDto'];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorDto'];
-        };
-      };
-    };
-  };
-  getSessions: {
-    parameters: {
-      query: {
-        /** @description A JSON-stringified Record<string, string>. These filters will be compared against the sessions' custom_data */
-        filters: string;
-        /** @description Pagination cursor to fetch the next set of results */
-        cursor?: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['PaginatedWidgetSessionsDto'];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorDto'];
-        };
-      };
-    };
-  };
-  getSessionHistory: {
-    parameters: {
-      query?: {
-        /** @description The timestamp of the last message received by the widget in order to get any messages after. */
-        lastMessageTimestamp?: string;
-      };
-      header?: never;
-      path: {
-        sessionId: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['WidgetHistoryDto'][];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorDto'];
-        };
-      };
-    };
-  };
-  pollSessionAndHistory: {
-    parameters: {
-      query?: {
-        /** @description The timestamp of the last message received by the widget in order to get any messages after. */
-        lastMessageTimestamp?: string;
-      };
-      header?: never;
-      path: {
-        sessionId: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['WidgetSessionAndHistoryDto'];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorDto'];
-        };
-      };
-    };
-  };
-  createChatSession: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['CreateWidgetSessionDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['WidgetSessionDto'];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorDto'];
-        };
-      };
-    };
-  };
-  chatSend: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['WidgetSendMessageInputDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['WidgetSendMessageOutputDto'];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorDto'];
-        };
-      };
-    };
-  };
-  createStateCheckpoint: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['WidgetCreateStateCheckpointInputDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['WidgetCreateStateCheckpointOutputDto'];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorDto'];
-        };
-      };
-    };
-  };
-  uploadFile: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** @description The file to upload */
-    requestBody: {
-      content: {
-        'multipart/form-data': components['schemas']['FileUploadDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['UploadWidgetFileResponseDto'];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorDto'];
-        };
-      };
-    };
-  };
-  uploadFileV2: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** @description The file to upload */
-    requestBody: {
-      content: {
-        'multipart/form-data': components['schemas']['FileUploadDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['UploadWidgetFileResponseDto'];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorDto'];
-        };
-      };
-    };
-  };
-  voteMessage: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['WidgetVoteDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['WidgetVoteResponseDto'];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorDto'];
-        };
-      };
-    };
-  };
-  resolveSession: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['WidgetResolveSessionInputDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['WidgetSessionDto'];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorDto'];
-        };
-      };
-    };
-  };
-  createUnverifiedContact: {
-    parameters: {
-      query?: never;
-      header: {
-        'x-bot-token': string;
-      };
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['CreateUnverifiedContactDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['WidgetContactTokenResponseDto'];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorDto'];
-        };
-      };
-    };
-  };
-  executeAction: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['WidgetActionFormSubmissionInputDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['WidgetActionFormSubmissionOutputDto'];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorDto'];
-        };
-      };
-    };
-  };
-  submitCsat: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['WidgetSubmitCsatInputDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['WidgetSubmitCsatOutputDto'];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorDto'];
-        };
-      };
-    };
-  };
-}
+export type operations = Record<string, never>;

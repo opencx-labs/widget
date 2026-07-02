@@ -1,5 +1,11 @@
 # @opencx/widget
 
+## 4.0.55
+
+### Patch Changes
+
+- expose session.title
+
 ## 4.0.54
 
 ### Patch Changes
