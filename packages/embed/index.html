@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script type="module" src="index.tsx"></script>
+    <script type="module" src="/src/index.tsx"></script>
     <title>OpenCX Widget</title>
     <style>
       body {
@@ -13,9 +13,46 @@
         width: 100vw;
         background-color: white;
       }
-
-      
     </style>
+    <script>
+      const options = {
+        token: '232d2c4e33db9ff8372c5fef8d649cb0',
+        cta: {
+          title: 'Do you have any questions? 😀',
+          body: 'The team is online and typically replies in minutes.',
+          avatarUrls: [
+            'https://i.pravatar.cc/56?img=1',
+            'https://i.pravatar.cc/56?img=2',
+            'https://i.pravatar.cc/56?img=3',
+          ],
+          buttons: [
+            { text: 'Chat with the team', action: 'open-chat' },
+            {
+              text: 'How do earnings work?',
+              action: 'ask',
+              message: 'How do earnings work?',
+              variant: 'secondary',
+            },
+            {
+              text: 'Sign up free',
+              action: 'url',
+              url: 'https://open.cx',
+              variant: 'secondary',
+            },
+          ],
+          composer: { placeholder: 'Write a message…' },
+          dismissForDays: 7,
+        },
+        hooks: {
+          onCtaDisplayed: () => console.log('[cta] displayed'),
+          onCtaClicked: (ctx) => console.log('[cta] clicked', ctx),
+          onCtaDismissed: () => console.log('[cta] dismissed'),
+        },
+      };
+      window.addEventListener('DOMContentLoaded', () => {
+        initOpenScript(options);
+      });
+    </script>
   </head>
 
   <body>
