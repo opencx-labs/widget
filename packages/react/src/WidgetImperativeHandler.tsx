@@ -33,6 +33,13 @@ export type WidgetRef = {
   presentAnswer: (message: string) => void;
   /** Open the widget on a fresh chat, optionally sending an initial `message`. */
   newChat: (options?: { message?: string }) => Promise<void>;
+  /**
+   * Force-show the CTA card (config `cta` required), bypassing its dismissal,
+   * URL, and delay rules. No-op while the widget is open.
+   */
+  showCta: () => void;
+  /** Force-hide the CTA card until `showCta()` or a reload. */
+  hideCta: () => void;
 };
 
 export function WidgetImperativeHandler({
@@ -83,6 +90,8 @@ export function WidgetImperativeHandler({
         injectLocalAgentMessage(message);
       },
       newChat,
+      showCta: () => widgetCtx.setCtaOverride('show'),
+      hideCta: () => widgetCtx.setCtaOverride('hide'),
     };
   }, [
     widgetCtx,

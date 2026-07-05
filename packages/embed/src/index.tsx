@@ -25,6 +25,10 @@ type OpenCXWidgetController = {
   ask: (message: string) => void;
   /** Open the widget on a fresh chat and show `message` as a canned AI bubble. */
   presentAnswer: (message: string) => void;
+  /** Force-show the configured CTA card, bypassing dismissal/URL/delay rules. */
+  showCta: () => void;
+  /** Force-hide the CTA card until `showCta()` or a reload. */
+  hideCta: () => void;
 };
 
 declare global {
@@ -61,6 +65,8 @@ const controller: OpenCXWidgetController = {
   presentAnswer: withWidget((ref, message: string) =>
     ref.presentAnswer(message),
   ),
+  showCta: withWidget((ref) => ref.showCta()),
+  hideCta: withWidget((ref) => ref.hideCta()),
 };
 
 /**
