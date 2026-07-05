@@ -4,6 +4,7 @@ import styles from '../index.css?inline.css';
 import {
   ctaUrlMatches,
   isCtaDismissed,
+  isExhaustive,
   parseCtaDismissalRecord,
   resolveCtaVisible,
   type CtaButton,
@@ -42,6 +43,14 @@ function dismissalStorageKey(token: string) {
   return `opencx:cta:dismissed:${token}`;
 }
 
+function readDismissalRecord(token: string): string | null {
+  try {
+    return localStorage.getItem(dismissalStorageKey(token));
+  } catch {
+    return null;
+  }
+}
+
 export function CtaContainer() {
   const config = useConfig();
   const { widgetCtx } = useWidget();
@@ -58,9 +67,10 @@ export function CtaContainer() {
 
   const [dismissed, setDismissed] = React.useState(() =>
     isCtaDismissed(
-      parseCtaDismissalRecord(
-        localStorage.getItem(dismissalStorageKey(config.token)),
-      ),
+      // Guarded: this initializer runs during render for every non-inline
+      // widget (hooks precede the no-cta early return), and localStorage
+      // access throws synchronously when the host blocks site data.
+      parseCtaDismissalRecord(readDismissalRecord(config.token)),
       cta?.dismissForDays,
       Date.now(),
     ),
@@ -116,10 +126,15 @@ export function CtaContainer() {
   if (!cta || !visible) return null;
 
   const dismiss = () => {
-    localStorage.setItem(
-      dismissalStorageKey(config.token),
-      JSON.stringify({ dismissedAt: Date.now() }),
-    );
+    try {
+      localStorage.setItem(
+        dismissalStorageKey(config.token),
+        JSON.stringify({ dismissedAt: Date.now() }),
+      );
+    } catch (e) {
+      // Blocked/full storage must not keep the card on screen.
+      console.warn('CTA: could not persist dismissal', e);
+    }
     setDismissed(true);
     if (override === 'show') widgetCtx.setCtaOverride(null);
     config.hooks?.onCtaDismissed?.();
@@ -158,6 +173,8 @@ export function CtaContainer() {
           button.openInNewTab === false ? '_self' : '_blank',
         );
         break;
+      default:
+        isExhaustive(button);
     }
   };
 

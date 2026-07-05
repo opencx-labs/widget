@@ -48,6 +48,10 @@ suite('isCtaDismissed', () => {
   test('record past the dismissForDays window → shown again', () => {
     expect(isCtaDismissed({ dismissedAt: 0 }, 7, 8 * DAY)).toBe(false);
   });
+
+  test('exact window boundary → shown again (strict comparison)', () => {
+    expect(isCtaDismissed({ dismissedAt: 0 }, 7, 7 * DAY)).toBe(false);
+  });
 });
 
 suite('ctaUrlMatches', () => {
