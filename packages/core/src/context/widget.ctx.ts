@@ -10,6 +10,7 @@ import { RouterCtx } from './router.ctx';
 import { SessionCtx } from './session.ctx';
 import { StorageCtx } from './storage.ctx';
 import { PrimitiveState } from '../utils/PrimitiveState';
+import type { CtaOverride } from '../cta/cta-visibility';
 
 export class WidgetCtx {
   public config: WidgetConfig;
@@ -30,6 +31,13 @@ export class WidgetCtx {
    * new chat" behaviour.
    */
   public composerDraft = new PrimitiveState<string>('');
+
+  /**
+   * Host/API-driven override of the CTA card's visibility (`showCta()` /
+   * `hideCta()`). `null` = the config rules decide. Deliberately NOT cleared
+   * by `resetChat()` — the CTA is launcher state, not chat state.
+   */
+  public ctaOverride = new PrimitiveState<CtaOverride>(null);
 
   public org: {
     id: string;
@@ -144,6 +152,10 @@ export class WidgetCtx {
 
   setComposerDraft = (text: string) => {
     this.composerDraft.set(text);
+  };
+
+  setCtaOverride = (value: CtaOverride) => {
+    this.ctaOverride.set(value);
   };
 
   resetChat = () => {

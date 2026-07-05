@@ -50,6 +50,14 @@ export { PrimitiveState } from './utils/PrimitiveState';
 export { isExhaustive } from './utils/is-exhaustive';
 
 export {
+  ctaUrlMatches,
+  isCtaDismissed,
+  parseCtaDismissalRecord,
+  resolveCtaVisible,
+} from './cta/cta-visibility';
+export type { CtaDismissalRecord, CtaOverride } from './cta/cta-visibility';
+
+export {
   type Language,
   type TranslationInterface,
   type TranslationKeyU,
