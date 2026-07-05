@@ -9,6 +9,20 @@ export type OpenCxComponentNameU =
   | 'trigger/btn'
 
   /* ------------------------------------------------------ */
+  /*                         CTA Card                       */
+  /* ------------------------------------------------------ */
+  | 'cta/root'
+  | 'cta/dismiss_btn'
+  | 'cta/image'
+  | 'cta/title'
+  | 'cta/body'
+  | 'cta/avatars'
+  | 'cta/btn'
+  | 'cta/composer/root'
+  | 'cta/composer/input'
+  | 'cta/composer/send_btn'
+
+  /* ------------------------------------------------------ */
   /*                     Sessions Screen                    */
   /* ------------------------------------------------------ */
   | 'sessions/root'
