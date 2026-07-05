@@ -64,12 +64,13 @@ const controller: OpenCXWidgetController = {
 };
 
 /**
- * Zero-JS triggers: any element carrying one of these data attributes drives the
+ * Zero-JS triggers: any element carrying one of these attributes drives the
  * widget on click.
- *   <a data-opencx-open>Chat</a>
- *   <a data-opencx-prefill="How do I...?">Ask</a>
- *   <a data-opencx-ask="What are your fees?">Fees</a>
- *   <a data-opencx-answer="Onboarding takes ~2 minutes...">Onboarding</a>
+ *   <a opencx-open>Chat</a>
+ *   <a opencx-prefill="How do I...?">Ask</a>
+ *   <a opencx-ask="What are your fees?">Fees</a>
+ *   <a opencx-answer="Onboarding takes ~2 minutes...">Onboarding</a>
+ * The `data-opencx-*` form is also accepted.
  */
 function handleTriggerClick(event: MouseEvent) {
   const action = resolveTriggerAction(event.target);
