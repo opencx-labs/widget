@@ -110,6 +110,15 @@ Everything except `title` is opt-in. Restyle any slot via
 - Debug method that found it: measure `getBoundingClientRect()` of image vs
   card root inside the iframe, then diff the stylesheet rule against the
   element's computed style — visual inspection alone mis-attributes the cause.
+- **Host-page CSS can defeat ANY specificity you throw at it.** Recreating a
+  widget as bare host-DOM elements on open.cx: their stylesheet overrode our
+  border-radius/padding even against id-prefixed selectors and inline styles
+  (`!important` resets). Diagnosis trick: an inline-styled probe element whose
+  computed style doesn't match its inline value proves an `!important`
+  override, ending the specificity duel. The only real fix is an isolated
+  iframe (`srcdoc`) — which is exactly why the production widget renders every
+  surface (trigger, content, CTA card) inside iframes. Never ship a host-DOM
+  widget surface.
 
 ## cssOverrides recipes (tested)
 
