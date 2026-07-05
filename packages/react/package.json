@@ -60,10 +60,15 @@
     "@opencx/eslint-config": "workspace:*",
     "@opencx/tsconfig": "workspace:*",
     "@tailwindcss/typography": "^0.5.15",
+    "@testing-library/react": "^16.3.2",
     "@types/tinycolor2": "^1.4.6",
+    "@vitejs/plugin-react-swc": "^4.0.0",
+    "jsdom": "^25.0.1",
     "postcss": "^8.4.41",
     "tailwindcss": "^3.4.6",
     "tailwindcss-animate": "^1.0.7",
-    "vite-plugin-qrcode": "^0.3.0"
+    "vite-plugin-qrcode": "^0.3.0",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^3.2.4"
   }
 }
