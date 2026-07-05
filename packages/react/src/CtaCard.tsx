@@ -55,7 +55,13 @@ export function CtaCard({
           {...dc('cta/image')}
           src={cta.imageUrl}
           alt=""
-          className="-mx-4 -mt-4 mb-3.5 max-h-44 w-[calc(100%+2rem)] rounded-t-2xl object-cover"
+          // Full bleed across the card's p-4. Two traps here: the calc()
+          // underscores are required (Tailwind renders them as spaces; calc
+          // without spaces around '+' is invalid CSS and gets dropped), and
+          // max-w-none is required to defeat preflight's `img { max-width:
+          // 100% }` — either one alone leaves the image shifted left with a
+          // gap at the dismiss button.
+          className="-mx-4 -mt-4 mb-3.5 max-h-44 w-[calc(100%_+_2rem)] max-w-none rounded-t-2xl object-cover"
         />
       )}
 

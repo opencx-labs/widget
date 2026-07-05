@@ -97,6 +97,20 @@ Everything except `title` is opt-in. Restyle any slot via
 
 ---
 
+## Traps found the hard way
+
+- **Full-bleed images inside a padded Tailwind card need BOTH fixes:**
+  `w-[calc(100%_+_2rem)]` — the underscores are mandatory (Tailwind turns them
+  into spaces; `calc(100%+2rem)` without spaces is invalid CSS and the browser
+  silently drops it) — **and** `max-w-none`, because preflight ships
+  `img { max-width: 100% }` which clamps the calc right back. Either one
+  missing = image shifted left with a mystery gap under the dismiss button.
+  Symptom is asymmetric (margin pulls left, width stays short), so it reads
+  as "the X button pushed my image" when nothing of the sort happened.
+- Debug method that found it: measure `getBoundingClientRect()` of image vs
+  card root inside the iframe, then diff the stylesheet rule against the
+  element's computed style — visual inspection alone mis-attributes the cause.
+
 ## cssOverrides recipes (tested)
 
 ```css
