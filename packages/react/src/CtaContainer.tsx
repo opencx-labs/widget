@@ -97,16 +97,21 @@ export function CtaContainer() {
 
   // The card's children render into the iframe via a portal, so this observer
   // runs in the host context and can size the iframe element to its content.
+  // Callback ref (not an effect): @uiw/react-iframe re-portals the children
+  // once the iframe document loads, so we must observe whichever node is
+  // currently mounted — an effect keyed on `visible` would keep watching the
+  // first, detached node and the iframe would stay at its 150px default.
   const [height, setHeight] = React.useState(0);
-  const wrapperRef = React.useRef<HTMLDivElement>(null);
-  React.useEffect(() => {
-    const el = wrapperRef.current;
+  const resizeObserverRef = React.useRef<ResizeObserver | null>(null);
+  const wrapperRef = React.useCallback((el: HTMLDivElement | null) => {
+    resizeObserverRef.current?.disconnect();
+    resizeObserverRef.current = null;
     if (!el) return;
     const observer = new ResizeObserver(() => setHeight(el.offsetHeight));
     observer.observe(el);
     setHeight(el.offsetHeight);
-    return () => observer.disconnect();
-  }, [visible]);
+    resizeObserverRef.current = observer;
+  }, []);
 
   if (!cta || !visible) return null;
 
