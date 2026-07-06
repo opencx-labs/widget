@@ -20,4 +20,7 @@ export const BulgarianLanguage: TranslationInterface = {
   csat_title: 'Как мина разговорът ви?',
   csat_submitted_title: 'Оценихте разговора като',
   csat_feedback_placeholder: 'Кажете ни повече... (по желание)',
+  send_message: 'Изпращане на съобщение',
+  attach_file_tooltip: 'Прикачване на изображения, PDF файлове или таблици (максимален размер 5 МБ)',
+  failed_to_upload: 'Неуспешно качване:',
 };

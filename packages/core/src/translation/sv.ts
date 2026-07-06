@@ -20,4 +20,7 @@ export const SwedishLanguage: TranslationInterface = {
   csat_title: 'Hur var din konversation?',
   csat_submitted_title: 'Du betygsatte konversationen som',
   csat_feedback_placeholder: 'Berätta mer... (valfritt)',
+  send_message: 'Skicka meddelande',
+  attach_file_tooltip: 'Bifoga bilder, PDF-filer eller kalkylblad (maximal storlek 5 MB)',
+  failed_to_upload: 'Uppladdningen misslyckades:',
 };

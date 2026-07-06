@@ -20,4 +20,7 @@ export const IcelandicLanguage: TranslationInterface = {
   csat_title: 'Hvernig var samtalið þitt?',
   csat_submitted_title: 'Þú gafst samtalinu einkunnina',
   csat_feedback_placeholder: 'Segðu okkur meira... (valfrjálst)',
+  send_message: 'Senda skilaboð',
+  attach_file_tooltip: 'Hengja við myndir, PDF eða töflureikna (hámarksstærð 5 MB)',
+  failed_to_upload: 'Upphleðsla mistókst:',
 };

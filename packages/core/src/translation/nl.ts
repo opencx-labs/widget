@@ -20,4 +20,7 @@ export const DutchLanguage: TranslationInterface = {
   csat_title: 'Hoe was je gesprek?',
   csat_submitted_title: 'Je hebt het gesprek beoordeeld als',
   csat_feedback_placeholder: 'Vertel ons meer... (optioneel)',
+  send_message: 'Bericht versturen',
+  attach_file_tooltip: "Afbeeldingen, PDF's of spreadsheets bijvoegen (maximale grootte 5 MB)",
+  failed_to_upload: 'Uploaden mislukt:',
 };

@@ -20,4 +20,7 @@ export const BengaliLanguage: TranslationInterface = {
   csat_title: 'আপনার কথোপকথন কেমন ছিল?',
   csat_submitted_title: 'আপনি কথোপকথনটি মূল্যায়ন করেছেন',
   csat_feedback_placeholder: 'আমাদের আরও বলুন... (ঐচ্ছিক)',
+  send_message: 'বার্তা পাঠান',
+  attach_file_tooltip: 'ছবি, PDF বা স্প্রেডশিট সংযুক্ত করুন (সর্বোচ্চ আকার 5 এমবি)',
+  failed_to_upload: 'আপলোড ব্যর্থ হয়েছে:',
 };

@@ -20,4 +20,7 @@ export const SlovakLanguage: TranslationInterface = {
   csat_title: 'Aká bola vaša konverzácia?',
   csat_submitted_title: 'Konverzáciu ste ohodnotili ako',
   csat_feedback_placeholder: 'Povedzte nám viac... (nepovinné)',
+  send_message: 'Odoslať správu',
+  attach_file_tooltip: 'Priložiť obrázky, PDF alebo tabuľky (maximálna veľkosť 5 MB)',
+  failed_to_upload: 'Nahrávanie zlyhalo:',
 };

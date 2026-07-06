@@ -20,4 +20,7 @@ export const JapaneseLanguage: TranslationInterface = {
   csat_title: '会話はいかがでしたか？',
   csat_submitted_title: '会話を次のように評価しました',
   csat_feedback_placeholder: '詳しく教えてください...（任意）',
+  send_message: 'メッセージを送信',
+  attach_file_tooltip: '画像、PDF、スプレッドシートを添付（最大サイズ5MB）',
+  failed_to_upload: 'アップロードに失敗しました:',
 };

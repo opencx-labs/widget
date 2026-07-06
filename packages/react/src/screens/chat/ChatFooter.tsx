@@ -51,6 +51,7 @@ function FileDisplay({
   file: FileWithProgress;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
   const [fileContent, setFileContent] = useState<string | ArrayBuffer | null>(
     null,
   );
@@ -109,7 +110,9 @@ function FileDisplay({
       side="bottom"
       content={
         status === 'error' ? (
-          <span className="text-destructive">Failed to upload: {error}</span>
+          <span className="text-destructive">
+            {t('failed_to_upload')} {error}
+          </span>
         ) : (
           file.name
         )
@@ -315,7 +318,7 @@ function ChatInput() {
           <Tooltippy
             side="top"
             align="start"
-            content="attach images, PDFs, or spreadsheets (maximum size 5mb)"
+            content={t('attach_file_tooltip')}
           >
             <Button
               onClick={dropzone__openFileSelect}
@@ -339,7 +342,7 @@ function ChatInput() {
             </Button>
           </Tooltippy>
 
-          <Tooltippy content="send message" side="top" align="end">
+          <Tooltippy content={t('send_message')} side="top" align="end">
             <Button
               size="fit"
               onClick={handleSubmit}

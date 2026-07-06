@@ -20,4 +20,7 @@ export const HungarianLanguage: TranslationInterface = {
   csat_title: 'Milyen volt a beszélgetése?',
   csat_submitted_title: 'A beszélgetést így értékelte',
   csat_feedback_placeholder: 'Mondjon többet... (opcionális)',
+  send_message: 'Üzenet küldése',
+  attach_file_tooltip: 'Képek, PDF-ek vagy táblázatok csatolása (maximális méret 5 MB)',
+  failed_to_upload: 'A feltöltés sikertelen:',
 };

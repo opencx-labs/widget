@@ -20,4 +20,7 @@ export const LuxembourgishLanguage: TranslationInterface = {
   csat_title: 'Wéi war Är Konversatioun?',
   csat_submitted_title: 'Dir hutt d’Konversatioun bewäert als',
   csat_feedback_placeholder: 'Sot eis méi... (fakultativ)',
+  send_message: 'Message schécken',
+  attach_file_tooltip: 'Biller, PDFen oder Tabellen unhänken (maximal Gréisst 5 MB)',
+  failed_to_upload: 'Eroplueden feelgeschloen:',
 };

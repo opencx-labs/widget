@@ -20,4 +20,7 @@ export const FilipinoLanguage: TranslationInterface = {
   csat_title: 'Kumusta ang iyong usapan?',
   csat_submitted_title: 'Ni-rate mo ang usapan bilang',
   csat_feedback_placeholder: 'Sabihin pa sa amin... (opsyonal)',
+  send_message: 'Ipadala ang mensahe',
+  attach_file_tooltip: 'Maglakip ng mga larawan, PDF, o spreadsheet (maximum na laki 5mb)',
+  failed_to_upload: 'Nabigo ang pag-upload:',
 };

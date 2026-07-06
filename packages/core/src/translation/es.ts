@@ -20,4 +20,7 @@ export const SpanishLanguage: TranslationInterface = {
   csat_title: '¿Qué tal fue tu conversación?',
   csat_submitted_title: 'Valoraste la conversación como',
   csat_feedback_placeholder: 'Cuéntanos más... (opcional)',
+  send_message: 'Enviar mensaje',
+  attach_file_tooltip: 'Adjuntar imágenes, PDF u hojas de cálculo (tamaño máximo 5 MB)',
+  failed_to_upload: 'Error al subir:',
 };

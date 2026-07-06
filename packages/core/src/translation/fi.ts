@@ -20,4 +20,7 @@ export const FinnishLanguage: TranslationInterface = {
   csat_title: 'Millainen keskustelusi oli?',
   csat_submitted_title: 'Arvioit keskustelun',
   csat_feedback_placeholder: 'Kerro lisää... (valinnainen)',
+  send_message: 'Lähetä viesti',
+  attach_file_tooltip: 'Liitä kuvia, PDF-tiedostoja tai taulukoita (enimmäiskoko 5 Mt)',
+  failed_to_upload: 'Lataus epäonnistui:',
 };

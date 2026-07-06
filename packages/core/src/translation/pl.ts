@@ -20,4 +20,7 @@ export const PolishLanguage: TranslationInterface = {
   csat_title: 'Jak przebiegła Twoja rozmowa?',
   csat_submitted_title: 'Oceniłeś rozmowę jako',
   csat_feedback_placeholder: 'Powiedz nam więcej... (opcjonalnie)',
+  send_message: 'Wyślij wiadomość',
+  attach_file_tooltip: 'Załącz obrazy, pliki PDF lub arkusze kalkulacyjne (maksymalny rozmiar 5 MB)',
+  failed_to_upload: 'Przesyłanie nie powiodło się:',
 };

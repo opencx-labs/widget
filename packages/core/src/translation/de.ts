@@ -20,4 +20,7 @@ export const GermanLanguage: TranslationInterface = {
   csat_title: 'Wie war Ihr Gespräch?',
   csat_submitted_title: 'Sie haben das Gespräch bewertet als',
   csat_feedback_placeholder: 'Erzählen Sie uns mehr... (optional)',
+  send_message: 'Nachricht senden',
+  attach_file_tooltip: 'Bilder, PDFs oder Tabellen anhängen (maximale Größe 5 MB)',
+  failed_to_upload: 'Hochladen fehlgeschlagen:',
 };

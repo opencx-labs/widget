@@ -20,4 +20,7 @@ export const TurkishLanguage: TranslationInterface = {
   csat_title: 'Görüşmeniz nasıldı?',
   csat_submitted_title: 'Görüşmeyi şöyle değerlendirdiniz',
   csat_feedback_placeholder: 'Bize daha fazlasını anlatın... (isteğe bağlı)',
+  send_message: 'Mesaj gönder',
+  attach_file_tooltip: 'Resim, PDF veya elektronik tablo ekle (maksimum boyut 5 MB)',
+  failed_to_upload: 'Yükleme başarısız:',
 };

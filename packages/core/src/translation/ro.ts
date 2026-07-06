@@ -20,4 +20,7 @@ export const RomanianLanguage: TranslationInterface = {
   csat_title: 'Cum a fost conversația ta?',
   csat_submitted_title: 'Ai evaluat conversația ca',
   csat_feedback_placeholder: 'Spune-ne mai multe... (opțional)',
+  send_message: 'Trimite mesajul',
+  attach_file_tooltip: 'Atașează imagini, PDF-uri sau foi de calcul (dimensiune maximă 5 MB)',
+  failed_to_upload: 'Încărcarea a eșuat:',
 };

@@ -20,4 +20,7 @@ export const DanishLanguage: TranslationInterface = {
   csat_title: 'Hvordan var din samtale?',
   csat_submitted_title: 'Du vurderede samtalen som',
   csat_feedback_placeholder: 'Fortæl os mere... (valgfrit)',
+  send_message: 'Send besked',
+  attach_file_tooltip: 'Vedhæft billeder, PDF-filer eller regneark (maksimal størrelse 5 MB)',
+  failed_to_upload: 'Upload mislykkedes:',
 };

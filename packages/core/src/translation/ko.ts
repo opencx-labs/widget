@@ -20,4 +20,7 @@ export const KoreanLanguage: TranslationInterface = {
   csat_title: '대화는 어떠셨나요?',
   csat_submitted_title: '대화를 다음과 같이 평가했습니다',
   csat_feedback_placeholder: '더 알려주세요... (선택 사항)',
+  send_message: '메시지 보내기',
+  attach_file_tooltip: '이미지, PDF 또는 스프레드시트 첨부 (최대 크기 5MB)',
+  failed_to_upload: '업로드 실패:',
 };
