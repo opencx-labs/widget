@@ -20,4 +20,7 @@ export const UrduLanguage: TranslationInterface = {
   csat_title: 'آپ کی گفتگو کیسی رہی؟',
   csat_submitted_title: 'آپ نے گفتگو کو درجہ دیا',
   csat_feedback_placeholder: 'ہمیں مزید بتائیں... (اختیاری)',
+  send_message: 'پیغام بھیجیں',
+  attach_file_tooltip: 'تصاویر، PDF یا اسپریڈ شیٹس منسلک کریں (زیادہ سے زیادہ سائز 5 ایم بی)',
+  failed_to_upload: 'اپ لوڈ ناکام:',
 };

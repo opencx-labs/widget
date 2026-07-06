@@ -20,4 +20,7 @@ export const CroatianLanguage: TranslationInterface = {
   csat_title: 'Kakav je bio vaš razgovor?',
   csat_submitted_title: 'Ocijenili ste razgovor kao',
   csat_feedback_placeholder: 'Recite nam više... (neobavezno)',
+  send_message: 'Pošalji poruku',
+  attach_file_tooltip: 'Priloži slike, PDF-ove ili proračunske tablice (najveća veličina 5 MB)',
+  failed_to_upload: 'Prijenos nije uspio:',
 };

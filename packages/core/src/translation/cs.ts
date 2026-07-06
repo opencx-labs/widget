@@ -20,4 +20,7 @@ export const CzechLanguage: TranslationInterface = {
   csat_title: 'Jaká byla vaše konverzace?',
   csat_submitted_title: 'Konverzaci jste ohodnotili jako',
   csat_feedback_placeholder: 'Řekněte nám více... (nepovinné)',
+  send_message: 'Odeslat zprávu',
+  attach_file_tooltip: 'Připojit obrázky, PDF nebo tabulky (maximální velikost 5 MB)',
+  failed_to_upload: 'Nahrání se nezdařilo:',
 };

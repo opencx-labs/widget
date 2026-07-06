@@ -20,4 +20,7 @@ export const VietnameseLanguage: TranslationInterface = {
   csat_title: 'Cuộc trò chuyện của bạn thế nào?',
   csat_submitted_title: 'Bạn đã đánh giá cuộc trò chuyện là',
   csat_feedback_placeholder: 'Cho chúng tôi biết thêm... (tùy chọn)',
+  send_message: 'Gửi tin nhắn',
+  attach_file_tooltip: 'Đính kèm hình ảnh, PDF hoặc bảng tính (kích thước tối đa 5 MB)',
+  failed_to_upload: 'Tải lên thất bại:',
 };

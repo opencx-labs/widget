@@ -20,4 +20,7 @@ export const RussianLanguage: TranslationInterface = {
   csat_title: 'Как прошёл ваш разговор?',
   csat_submitted_title: 'Вы оценили разговор как',
   csat_feedback_placeholder: 'Расскажите подробнее... (необязательно)',
+  send_message: 'Отправить сообщение',
+  attach_file_tooltip: 'Прикрепить изображения, PDF или таблицы (максимальный размер 5 МБ)',
+  failed_to_upload: 'Ошибка загрузки:',
 };

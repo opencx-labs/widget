@@ -20,4 +20,7 @@ export const NorwegianLanguage: TranslationInterface = {
   csat_title: 'Hvordan var samtalen din?',
   csat_submitted_title: 'Du vurderte samtalen som',
   csat_feedback_placeholder: 'Fortell oss mer... (valgfritt)',
+  send_message: 'Send melding',
+  attach_file_tooltip: 'Legg ved bilder, PDF-er eller regneark (maksimal størrelse 5 MB)',
+  failed_to_upload: 'Opplasting mislyktes:',
 };

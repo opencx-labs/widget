@@ -20,4 +20,7 @@ export const LithuanianLanguage: TranslationInterface = {
   csat_title: 'Koks buvo jūsų pokalbis?',
   csat_submitted_title: 'Pokalbį įvertinote kaip',
   csat_feedback_placeholder: 'Papasakokite daugiau... (neprivaloma)',
+  send_message: 'Siųsti žinutę',
+  attach_file_tooltip: 'Pridėti vaizdų, PDF arba skaičiuoklių (didžiausias dydis 5 MB)',
+  failed_to_upload: 'Nepavyko įkelti:',
 };

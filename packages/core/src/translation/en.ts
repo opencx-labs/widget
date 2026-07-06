@@ -20,4 +20,7 @@ export const EnglishLanguage: TranslationInterface = {
   csat_title: 'How was your conversation?',
   csat_submitted_title: 'You rated the conversation as',
   csat_feedback_placeholder: 'Tell us more... (optional)',
+  send_message: 'Send message',
+  attach_file_tooltip: 'Attach images, PDFs, or spreadsheets (maximum size 5mb)',
+  failed_to_upload: 'Failed to upload:',
 };

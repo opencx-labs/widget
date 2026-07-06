@@ -20,4 +20,7 @@ export const EstonianLanguage: TranslationInterface = {
   csat_title: 'Milline oli teie vestlus?',
   csat_submitted_title: 'Hindasite vestlust kui',
   csat_feedback_placeholder: 'Rääkige meile rohkem... (valikuline)',
+  send_message: 'Saada sõnum',
+  attach_file_tooltip: 'Lisa pilte, PDF-e või tabeleid (maksimaalne suurus 5 MB)',
+  failed_to_upload: 'Üleslaadimine ebaõnnestus:',
 };

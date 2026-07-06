@@ -1,5 +1,11 @@
 # @opencx/widget
 
+## 4.0.56
+
+### Patch Changes
+
+- added translations for the tooltips
+
 ## 4.0.55
 
 ### Patch Changes

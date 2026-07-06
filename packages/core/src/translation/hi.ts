@@ -20,4 +20,7 @@ export const HindiLanguage: TranslationInterface = {
   csat_title: 'आपकी बातचीत कैसी रही?',
   csat_submitted_title: 'आपने बातचीत को आंका',
   csat_feedback_placeholder: 'हमें और बताएं... (वैकल्पिक)',
+  send_message: 'संदेश भेजें',
+  attach_file_tooltip: 'छवियाँ, PDF या स्प्रेडशीट संलग्न करें (अधिकतम आकार 5 एमबी)',
+  failed_to_upload: 'अपलोड विफल:',
 };

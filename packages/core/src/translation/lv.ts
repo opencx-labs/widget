@@ -20,4 +20,7 @@ export const LatvianLanguage: TranslationInterface = {
   csat_title: 'Kāda bija jūsu saruna?',
   csat_submitted_title: 'Jūs novērtējāt sarunu kā',
   csat_feedback_placeholder: 'Pastāstiet mums vairāk... (neobligāti)',
+  send_message: 'Sūtīt ziņojumu',
+  attach_file_tooltip: 'Pievienot attēlus, PDF vai izklājlapas (maksimālais izmērs 5 MB)',
+  failed_to_upload: 'Augšupielāde neizdevās:',
 };

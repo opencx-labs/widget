@@ -20,4 +20,7 @@ export const MalteseLanguage: TranslationInterface = {
   csat_title: 'Kif kienet il-konversazzjoni tiegħek?',
   csat_submitted_title: 'Int ivvalutajt il-konversazzjoni bħala',
   csat_feedback_placeholder: 'Għidilna aktar... (mhux obbligatorju)',
+  send_message: 'Ibgħat messaġġ',
+  attach_file_tooltip: 'Ehmeż stampi, PDFs, jew spreadsheets (daqs massimu 5mb)',
+  failed_to_upload: 'It-tlgħ falla:',
 };

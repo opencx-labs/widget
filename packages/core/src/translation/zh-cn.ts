@@ -20,4 +20,7 @@ export const ChineseSimplifiedLanguage: TranslationInterface = {
   csat_title: '您的对话感觉如何？',
   csat_submitted_title: '您将此对话评价为',
   csat_feedback_placeholder: '告诉我们更多...（可选）',
+  send_message: '发送消息',
+  attach_file_tooltip: '附加图片、PDF 或电子表格（最大 5MB）',
+  failed_to_upload: '上传失败：',
 };

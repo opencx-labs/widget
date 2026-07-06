@@ -20,4 +20,7 @@ export const GreekLanguage: TranslationInterface = {
   csat_title: 'Πώς ήταν η συνομιλία σας;',
   csat_submitted_title: 'Βαθμολογήσατε τη συνομιλία ως',
   csat_feedback_placeholder: 'Πείτε μας περισσότερα... (προαιρετικό)',
+  send_message: 'Αποστολή μηνύματος',
+  attach_file_tooltip: 'Επισύναψη εικόνων, PDF ή υπολογιστικών φύλλων (μέγιστο μέγεθος 5 MB)',
+  failed_to_upload: 'Η μεταφόρτωση απέτυχε:',
 };

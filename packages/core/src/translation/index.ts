@@ -115,5 +115,8 @@ export type TranslationInterface = {
   csat_title: string;
   csat_submitted_title: string;
   csat_feedback_placeholder: string;
+  send_message: string;
+  attach_file_tooltip: string;
+  failed_to_upload: string;
 };
 export type TranslationKeyU = keyof TranslationInterface;
