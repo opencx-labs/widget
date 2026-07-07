@@ -97,6 +97,13 @@ export function CtaContainer() {
     delayElapsed,
   });
 
+  // Publish the resolved visibility so the launcher can consume it
+  // (`cta.mode: 'transform'` swaps the bubble for the card).
+  React.useEffect(() => {
+    widgetCtx.setCtaVisible(visible);
+    return () => widgetCtx.setCtaVisible(false);
+  }, [widgetCtx, visible]);
+
   const displayedRef = React.useRef(false);
   React.useEffect(() => {
     if (visible && !displayedRef.current) {
@@ -123,7 +130,11 @@ export function CtaContainer() {
     resizeObserverRef.current = observer;
   }, []);
 
-  if (!cta || !visible) return null;
+  // Stay MOUNTED while merely hidden (widget open, rules pending): the card's
+  // local state — e.g. a half-typed composer draft — must survive open/close
+  // round-trips ("picks up where it left off"), and a persistent element is
+  // what the future transform animation will interpolate between.
+  if (!cta) return null;
 
   const dismiss = () => {
     try {
@@ -188,11 +199,17 @@ export function CtaContainer() {
       initialContent={initialContent}
       title="OpenCX Chat CTA"
       style={{
+        display: visible ? undefined : 'none',
         position: 'fixed',
         zIndex: theme.widgetTrigger.zIndex,
         right: theme.widgetTrigger.offset.right,
         left: theme.widgetTrigger.offset.left,
-        bottom: `calc(${theme.widgetTrigger.offset.bottom}px + ${theme.widgetTrigger.size.button}px + 16px)`,
+        // In transform mode the card IS the launcher, so it takes the
+        // launcher's spot; in coexist mode it floats above the bubble.
+        bottom:
+          cta.mode === 'transform'
+            ? theme.widgetTrigger.offset.bottom
+            : `calc(${theme.widgetTrigger.offset.bottom}px + ${theme.widgetTrigger.size.button}px + 16px)`,
         width: 'min(360px, calc(100vw - 32px))',
         height: height || undefined,
         fontSize: '16px',

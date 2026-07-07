@@ -243,6 +243,16 @@ export type CtaButton =
     };
 
 export type CtaConfig = {
+  /**
+   * How the card relates to the launcher bubble.
+   * - `'coexist'` (default): the card floats above the launcher.
+   * - `'transform'`: the card REPLACES the launcher — opening the widget swaps
+   *   the card for the panel, closing swaps back (card state preserved), and
+   *   dismissing the card falls back to the launcher bubble.
+   * @default 'coexist'
+   */
+  mode?: 'coexist' | 'transform';
+
   /** Card headline. */
   title: string;
   /** Optional supporting copy under the title. */

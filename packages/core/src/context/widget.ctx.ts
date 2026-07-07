@@ -39,6 +39,14 @@ export class WidgetCtx {
    */
   public ctaOverride = new PrimitiveState<CtaOverride>(null);
 
+  /**
+   * The CTA card's CURRENT resolved visibility, published by the card
+   * container (single source of truth: `resolveCtaVisible`). Read by the
+   * launcher so `cta.mode: 'transform'` can swap the bubble for the card
+   * without re-deriving the rules.
+   */
+  public ctaVisible = new PrimitiveState<boolean>(false);
+
   public org: {
     id: string;
     name: string;
@@ -156,6 +164,10 @@ export class WidgetCtx {
 
   setCtaOverride = (value: CtaOverride) => {
     this.ctaOverride.set(value);
+  };
+
+  setCtaVisible = (value: boolean) => {
+    this.ctaVisible.set(value);
   };
 
   resetChat = () => {

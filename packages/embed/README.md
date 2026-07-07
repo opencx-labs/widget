@@ -56,6 +56,11 @@ initOpenScript(options);
 
 ### Rule options
 
+- `mode: 'transform'` — the card REPLACES the launcher bubble instead of
+  floating above it: opening the widget swaps the card for the chat panel,
+  closing swaps back (the card keeps its state, including a half-typed
+  composer draft), and dismissing the card falls back to the launcher bubble
+  so the visitor always has an entry point. Default is `'coexist'`.
 - `dismissForDays` — re-show the card this many days after the visitor
   dismisses it. Omit and a dismissal is permanent (per browser).
 - `showAfterSeconds` — delay before the card first appears. Defaults to `0`.
