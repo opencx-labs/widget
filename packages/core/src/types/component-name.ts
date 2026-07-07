@@ -21,6 +21,7 @@ export type OpenCxComponentNameU =
   | 'cta/composer/root'
   | 'cta/composer/input'
   | 'cta/composer/send_btn'
+  | 'cta/goo_blob'
 
   /* ------------------------------------------------------ */
   /*                     Sessions Screen                    */

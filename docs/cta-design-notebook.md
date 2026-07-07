@@ -120,6 +120,29 @@ Everything except `title` is opt-in. Restyle any slot via
   surface (trigger, content, CTA card) inside iframes. Never ship a host-DOM
   widget surface.
 
+## The transform animation (gooey)
+
+Philosophy borrowed from Aceternity's gooey-input (Chris Coyier goo): two UI
+states connected by a liquid metaball morph.
+
+- **Filter on the blob layer only.** `feGaussianBlur` + high-contrast alpha
+  `feColorMatrix` on a background blob + corner droplet; the real card content
+  is a separate unfiltered layer that fades fast — live text must never sit in
+  the goo.
+- **Springs, not tweens.** Framer springs retarget mid-flight, which is what
+  makes rapid open/close safe: verified 4 toggles in 1.6s with clean settle.
+- **Hidden ≠ unmounted.** The card toggles `visibility`/`pointer-events`, never
+  `display:none` mid-animation and never unmounts — state (composer draft)
+  survives and the animation always has both endpoints alive.
+- **Reduced motion is the same variants with `duration: 0`** — one render
+  path, identical end states (asserted in tests).
+- **Verification trap:** Chrome's `--virtual-time-budget` starves framer's rAF
+  loop (one frame then freeze — two runs froze at *different* poses). Verify
+  JS-driven animation in REAL-time headless: block the `load` event with a
+  hanging image and let `--timeout` force the DOM dump; sample computed
+  transforms into data-attributes. Occluded interactive windows freeze rAF
+  too — headless is the reliable instrument.
+
 ## cssOverrides recipes (tested)
 
 ```css
