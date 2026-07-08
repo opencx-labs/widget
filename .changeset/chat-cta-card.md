@@ -1,5 +1,6 @@
 ---
 '@opencx/widget-core': minor
+'@opencx/widget-react-headless': minor
 '@opencx/widget-react': minor
 '@opencx/widget': minor
 ---
