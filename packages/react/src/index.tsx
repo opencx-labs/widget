@@ -6,7 +6,9 @@ import type {
   WidgetConfig,
 } from '@opencx/widget-core';
 import {
+  useWidgetLayout,
   useWidgetTrigger,
+  WidgetLayoutProvider,
   WidgetProvider,
   WidgetTriggerProvider,
   type WidgetComponentType,
@@ -17,6 +19,8 @@ import { LoadingDefaultComponent } from './components/custom-components/LoadingD
 import { WidgetContent, WidgetPopoverContent } from './WidgetPopoverContent';
 import { WidgetPopoverTrigger } from './WidgetPopoverTrigger';
 import { WidgetPopoverAnchor } from './WidgetPopoverAnchor';
+import { WidgetCompanion } from './companion/WidgetCompanion';
+import { WidgetSidebar } from './companion/WidgetSidebar';
 import {
   WidgetImperativeHandler,
   type WidgetRef,
@@ -31,6 +35,26 @@ function WidgetPopoverTriggerAndContent() {
       <WidgetPopoverTrigger />
       <WidgetPopoverContent />
     </PopoverPrimitive.Root>
+  );
+}
+
+/**
+ * Companion + sidebar are one display mode with two runtime layouts: the
+ * floating companion and the docked sidebar swap by mount/unmount as the
+ * layout crosses the sidebar boundary. Session/message/isOpen state live in
+ * shared providers, so the conversation persists across the swap.
+ */
+function WidgetCompanionRoot() {
+  const { layout } = useWidgetLayout();
+  const { isOpen } = useWidgetTrigger();
+  // The sidebar is only the OPEN presentation of the sidebar layout. The
+  // resting trigger is ALWAYS the companion pill (one consistent launcher), so
+  // a closed sidebar falls back to the companion pill — not the sidebar's own
+  // corner trigger.
+  return layout === 'sidebar' && isOpen ? (
+    <WidgetSidebar />
+  ) : (
+    <WidgetCompanion />
   );
 }
 
@@ -81,12 +105,17 @@ const Widget = React.forwardRef<
       loadingComponent={loadingComponent}
     >
       <WidgetTriggerProvider>
-        <WidgetImperativeHandler widgetRef={ref} />
-        {options.inline ? (
-          <WidgetContent />
-        ) : (
-          <WidgetPopoverTriggerAndContent />
-        )}
+        <WidgetLayoutProvider>
+          <WidgetImperativeHandler widgetRef={ref} />
+          {options.inline ? (
+            <WidgetContent />
+          ) : options.displayMode === 'companion' ||
+            options.displayMode === 'sidebar' ? (
+            <WidgetCompanionRoot />
+          ) : (
+            <WidgetPopoverTriggerAndContent />
+          )}
+        </WidgetLayoutProvider>
       </WidgetTriggerProvider>
     </WidgetProvider>
   );

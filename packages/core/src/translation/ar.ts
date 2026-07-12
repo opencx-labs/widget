@@ -20,4 +20,11 @@ export const ArabicLanguage: TranslationInterface = {
   csat_title: 'كيف كانت محادثتك؟',
   csat_submitted_title: 'لقد قيّمت المحادثة بـ',
   csat_feedback_placeholder: 'أخبرنا المزيد... (اختياري)',
+  follow_up_placeholder: 'تابع المحادثة…',
+  ask_button: 'اسأل',
+  companion_layout_label: 'التخطيط',
+  companion_layout_floating: 'عائم',
+  companion_layout_sidebar: 'الشريط الجانبي',
+  companion_layout_fullscreen: 'ملء الشاشة',
+  companion_close: 'إغلاق',
 };

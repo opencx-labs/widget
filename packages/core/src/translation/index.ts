@@ -93,7 +93,11 @@ export function getTranslation(
   lang: Language,
   overrides: WidgetConfig['translationOverrides'],
 ): string {
-  return overrides?.[lang]?.[key] || languages[lang][key] || '';
+  // Optional keys fall back to English so adding a key does not require
+  // retranslating every language file at once.
+  return (
+    overrides?.[lang]?.[key] || languages[lang][key] || languages.en[key] || ''
+  );
 }
 
 export type TranslationInterface = {
@@ -115,5 +119,13 @@ export type TranslationInterface = {
   csat_title: string;
   csat_submitted_title: string;
   csat_feedback_placeholder: string;
+  /** Companion/sidebar modes. Optional: missing values fall back to English. */
+  follow_up_placeholder?: string;
+  ask_button?: string;
+  companion_layout_label?: string;
+  companion_layout_floating?: string;
+  companion_layout_sidebar?: string;
+  companion_layout_fullscreen?: string;
+  companion_close?: string;
 };
 export type TranslationKeyU = keyof TranslationInterface;

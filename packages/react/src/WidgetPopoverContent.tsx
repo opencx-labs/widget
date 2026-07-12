@@ -2,45 +2,22 @@ import * as PopoverPrimitive from '@radix-ui/react-popover';
 import IFrame from '@uiw/react-iframe';
 import { motion } from 'framer-motion';
 import React from 'react';
-import styles from '../index.css?inline.css';
 import {
   useConfig,
   useWidget,
   useWidgetTrigger,
 } from '@opencx/widget-react-headless';
-import { TooltipProvider } from './components/lib/tooltip';
-import { cn } from './components/lib/utils/cn';
+import { buildFrameHtml, FrameDocument } from './components/FrameDocument';
 import { useTheme } from './hooks/useTheme';
 import { RootScreen } from './screens';
-import { useTranslation } from './hooks/useTranslation';
-import { version } from '../package.json';
-import { DialogerProvider } from './components/Dialoger';
 
-const initialContent = `<!DOCTYPE html>
-<html>
-<head>
-<style>
-${styles}
-html, body {
-    height: 100%;
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    font-size: 16px;
-}
-</style>
-<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
-</head>
-<body>
-</body>
-</html>`;
+const initialContent = buildFrameHtml();
 
 export function WidgetContent() {
   const { isOpen } = useWidgetTrigger();
   const { contentIframeRef } = useWidget();
-  const { cssOverrides, inline } = useConfig();
-  const { theme, cssVars, computed } = useTheme();
-  const { dir } = useTranslation();
+  const { inline } = useConfig();
+  const { theme, computed } = useTheme();
 
   return (
     <motion.div
@@ -95,28 +72,9 @@ export function WidgetContent() {
           borderWidth: '0px',
         }}
       >
-        {cssOverrides && <style>{cssOverrides}</style>}
-        <div
-          style={{
-            ...cssVars,
-            zIndex: theme.widgetContentContainer.zIndex,
-          }}
-          data-version={version}
-          className={cn(
-            'antialiased font-sans size-full overflow-hidden relative text-secondary-foreground isolate',
-          )}
-          dir={dir}
-        >
-          <TooltipProvider
-            delayDuration={200}
-            // this is important, because without it, the tooltip remains even after moving the mouse away from trigger
-            disableHoverableContent
-          >
-            <DialogerProvider>
-              <RootScreen />
-            </DialogerProvider>
-          </TooltipProvider>
-        </div>
+        <FrameDocument style={{ zIndex: theme.widgetContentContainer.zIndex }}>
+          <RootScreen />
+        </FrameDocument>
       </IFrame>
     </motion.div>
   );

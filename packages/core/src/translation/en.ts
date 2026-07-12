@@ -20,4 +20,11 @@ export const EnglishLanguage: TranslationInterface = {
   csat_title: 'How was your conversation?',
   csat_submitted_title: 'You rated the conversation as',
   csat_feedback_placeholder: 'Tell us more... (optional)',
+  follow_up_placeholder: 'Follow up…',
+  ask_button: 'Ask',
+  companion_layout_label: 'Layout',
+  companion_layout_floating: 'Floating',
+  companion_layout_sidebar: 'Sidebar',
+  companion_layout_fullscreen: 'Fullscreen',
+  companion_close: 'Close',
 };

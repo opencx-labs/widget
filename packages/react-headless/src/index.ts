@@ -18,5 +18,9 @@ export {
   useWidgetTrigger,
   WidgetTriggerProvider,
 } from './hooks/useWidgetTrigger';
+export {
+  useWidgetLayout,
+  WidgetLayoutProvider,
+} from './hooks/useWidgetLayout';
 export { useModes } from './hooks/useModes';
 export { useCsat } from './hooks/useCsat';

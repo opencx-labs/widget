@@ -224,6 +224,47 @@ export type CustomComponent = (
   props: CustomComponentProps,
 ) => ReturnType<typeof React.createElement> | null;
 
+export const WIDGET_DISPLAY_MODES = [
+  'popover',
+  'companion',
+  'sidebar',
+] as const;
+
+/**
+ * How the widget presents itself on the host page.
+ * - `popover` – the classic corner trigger button that opens a chat popover.
+ * - `companion` – a bottom-centered floating pill that morphs into a
+ *   frosted-glass chat panel.
+ * - `sidebar` – an app-frame sidebar: the host page shrinks into a rounded
+ *   inset "child window" and the chat lives on the exposed canvas beside it.
+ */
+export type WidgetDisplayModeU = (typeof WIDGET_DISPLAY_MODES)[number];
+
+export const WIDGET_COMPANION_LAYOUTS = [
+  'compact',
+  'fullscreen',
+  'sidebar',
+] as const;
+
+/**
+ * Runtime presentation of the companion widget: a bottom-centered compact
+ * panel, an expanded fullscreen modal, or a docked sidebar. Switchable at
+ * runtime via the widget ref / header controls.
+ */
+export type WidgetCompanionLayoutU = (typeof WIDGET_COMPANION_LAYOUTS)[number];
+
+export const WIDGET_COMPANION_DEFAULT_LAYOUTS = ['compact', 'sidebar'] as const;
+
+/**
+ * Layouts the companion can REST in, i.e. the valid `defaultLayout` values.
+ * `fullscreen` is deliberately absent: it is a transient expansion of the
+ * OPEN chat (header toggle / `setLayout`), and the companion relaxes it back
+ * to `compact` whenever the chat closes — so it can never persist as a
+ * default.
+ */
+export type WidgetCompanionDefaultLayoutU =
+  (typeof WIDGET_COMPANION_DEFAULT_LAYOUTS)[number];
+
 export interface WidgetConfig {
   /**
    * Your organization's widget token.
@@ -608,6 +649,145 @@ export interface WidgetConfig {
    * @default false
    */
   inline?: boolean;
+
+  /**
+   * How the widget presents itself on the host page.
+   * - `popover` – the classic corner trigger button that opens a chat popover.
+   * - `companion` – a bottom-centered floating pill that morphs into a
+   *   frosted-glass chat panel.
+   *
+   * Ignored when `inline` is `true`.
+   * @default 'popover'
+   */
+  displayMode?: WidgetDisplayModeU;
+
+  /**
+   * Options for the `companion` and `sidebar` display modes.
+   */
+  companion?: {
+    /**
+     * Layout the companion rests in: a compact panel or a docked sidebar.
+     * Fullscreen is NOT a valid default — it is a runtime expansion of the
+     * open chat (header toggle / widget ref `setLayout`) and relaxes back to
+     * compact when the chat closes.
+     * @default 'compact'
+     */
+    defaultLayout?: WidgetCompanionDefaultLayoutU;
+
+    /**
+     * Which layouts the corner layout picker offers, and in what order. The
+     * current layout is highlighted; picking one switches to it. Provide fewer
+     * than two to hide the picker entirely (there is nothing to switch
+     * between) — e.g. `['sidebar']` locks the companion to the sidebar with no
+     * switcher. Defaults to all three: compact ("Floating"), sidebar,
+     * fullscreen.
+     * @default ['compact', 'sidebar', 'fullscreen']
+     */
+    layouts?: WidgetCompanionLayoutU[];
+
+    /**
+     * Render messages as chat bubbles (agent + user bubbles, avatars in the
+     * gutter). Set `false` for a flat, document-style layout instead: agent
+     * replies flow as unbubbled text and user messages become quiet chips
+     * (Linear/Claude-style). Applies to the `companion` and `sidebar` modes;
+     * the `popover` mode is always bubbles.
+     * @default true
+     */
+    bubbles?: boolean;
+
+    /**
+     * Scope the companion to a region of the page instead of the browser
+     * viewport — e.g. your main content area, excluding your own app
+     * sidebar/nav. Pass a CSS selector or an element. The pill anchors to
+     * the region's bottom center and fullscreen covers the region only.
+     * @default the browser viewport
+     */
+    container?: string | HTMLElement;
+
+    /**
+     * URL of an icon that replaces the built-in animated face, on the
+     * floating pill and in the quick-ask input bar.
+     */
+    icon?: string;
+
+    /**
+     * Background color of the resting pill. The built-in animated face
+     * adopts this color for its head so the two blend seamlessly.
+     * @default 'rgb(23, 23, 23)'
+     */
+    pillBackground?: string;
+
+    /**
+     * Placeholder text for the quick-ask input bar.
+     * Defaults to the localized "Write a message...".
+     */
+    placeholder?: string;
+
+    /**
+     * Text shown beside the icon while the companion rests at the bottom
+     * of the page, turning the small round pill into a wider docked bar
+     * (e.g. "Ask Companion…").
+     * Defaults to `placeholder` (localized "Write a message...").
+     */
+    pillLabel?: string;
+
+    /**
+     * Fullscreen-layout behavior. Both options touch the embedder's page,
+     * so both can be turned off.
+     */
+    fullscreen?: {
+      /**
+       * Lightly blur the host page behind the fullscreen panel.
+       * No darkening/tint is ever applied to the host page.
+       * @default true
+       */
+      backdropBlur?: boolean;
+
+      /**
+       * Prevent the host page from scrolling while fullscreen is open.
+       * @default true
+       */
+      lockScroll?: boolean;
+    };
+
+    /**
+     * Sidebar-layout behavior. By default the sidebar "frames" the host
+     * page: the page shrinks into a rounded child-window card and the chat
+     * lives on the exposed canvas beside it. Framing restyles the page
+     * root (width/margins/border-radius plus a containing transform), so
+     * it can be disabled — the sidebar then overlays the page edge
+     * instead, touching nothing.
+     */
+    sidebar?: {
+      /**
+       * Frame the host page while the sidebar is open.
+       * @default true
+       */
+      framePage?: boolean;
+
+      /**
+       * Sidebar width in pixels.
+       * @default 400
+       */
+      width?: number;
+
+      /**
+       * Canvas color revealed behind the framed page.
+       * @default '#f4f4f5'
+       */
+      canvasColor?: string;
+    };
+
+    /**
+     * How the resting pill label shows:
+     * - `always` – the resting state is the labeled bar.
+     * - `hover` – rests as the icon-only pill and expands to the labeled
+     *   bar on hover. Falls back to the icon-only pill on touch devices.
+     * - `never` – icon-only pill.
+     * @default 'always'
+     */
+    pillLabelDisplay?: 'always' | 'hover' | 'never';
+  };
 
   /**
    * This shows when the AI's response might have solved the user's issue.

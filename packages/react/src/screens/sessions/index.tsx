@@ -117,7 +117,10 @@ function SessionsList() {
   } = useSessions();
 
   return (
-    <div className="flex-1 flex flex-col overflow-scroll py-2 px-2">
+    <div
+      {...dc('sessions/list')}
+      className="flex-1 flex flex-col overflow-scroll py-2 px-2"
+    >
       <AnimatePresence mode="wait">
         {isLoading ? (
           <MotionDiv

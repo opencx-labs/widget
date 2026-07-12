@@ -1,14 +1,17 @@
 import React from 'react';
+import type { WidgetCompanionLayoutU } from '@opencx/widget-core';
 import {
   useContact,
   useMessages,
   useWidget,
+  useWidgetLayout,
   useWidgetRouter,
   useWidgetTrigger,
 } from '@opencx/widget-react-headless';
 
 export type WidgetRef = {
   newChat: (options?: { message?: string }) => Promise<void>;
+  setLayout: (layout: WidgetCompanionLayoutU) => void;
 };
 
 export function WidgetImperativeHandler({
@@ -19,6 +22,7 @@ export function WidgetImperativeHandler({
   const { widgetCtx } = useWidget();
   const { contactState } = useContact();
   const { setIsOpen, isOpen } = useWidgetTrigger();
+  const { setLayout } = useWidgetLayout();
   const {
     toChatScreen,
     routerState: { screen },
@@ -42,6 +46,7 @@ export function WidgetImperativeHandler({
         toChatScreen();
         if (options?.message) sendMessage({ content: options.message });
       },
+      setLayout: (layout) => setLayout(layout),
     }),
     [
       widgetCtx,
@@ -51,6 +56,7 @@ export function WidgetImperativeHandler({
       screen,
       toChatScreen,
       sendMessage,
+      setLayout,
     ],
   );
 

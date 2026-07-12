@@ -24,8 +24,16 @@ export type {
   ActionCallDto,
   ModeDto,
 } from './types/dtos';
+export {
+  WIDGET_DISPLAY_MODES,
+  WIDGET_COMPANION_LAYOUTS,
+  WIDGET_COMPANION_DEFAULT_LAYOUTS,
+} from './types/widget-config';
 export type {
   WidgetConfig,
+  WidgetDisplayModeU,
+  WidgetCompanionLayoutU,
+  WidgetCompanionDefaultLayoutU,
   HeaderButtonU,
   ComponentContext,
   ModeComponent,

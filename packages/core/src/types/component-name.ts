@@ -13,6 +13,7 @@ export type OpenCxComponentNameU =
   /* ------------------------------------------------------ */
   | 'sessions/root'
   | 'sessions/header'
+  | 'sessions/list'
   | 'sessions/new_conversation_btn'
 
   /* ------------------------------------------------------ */
@@ -47,4 +48,14 @@ export type OpenCxComponentNameU =
   | 'chat/bot_loading/root'
   | 'chat/bot_loading/bouncing_dots_container'
   | 'chat/suggested_reply_btn'
-  | 'chat/might_solve_user_issue_suggested_replies_container';
+  | 'chat/might_solve_user_issue_suggested_replies_container'
+
+  /* ------------------------------------------------------ */
+  /*                        Companion                       */
+  /* ------------------------------------------------------ */
+  /* Corner chrome shared by the companion panel + the sidebar. */
+  | 'companion/controls/root'
+  | 'companion/layout_picker/trigger'
+  | 'companion/layout_picker/menu'
+  | 'companion/layout_picker/option'
+  | 'companion/close_btn';

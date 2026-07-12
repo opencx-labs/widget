@@ -143,7 +143,39 @@ function FileDisplay({
   );
 }
 
-function ChatInput() {
+/**
+ * The stock composer — white card, multi-line textarea, attach + send.
+ * Exported so companion's quick-ask state renders the exact same composer
+ * (not a bespoke bar), inheriting every customization automatically.
+ * `onMessageSent` fires the instant a message is dispatched, letting the
+ * companion shell morph from the quick-ask card into the full chat panel.
+ */
+export function ChatInput({
+  onMessageSent,
+  trailingActions,
+  disableTooltips,
+  placeholder,
+}: {
+  onMessageSent?: () => void;
+  /**
+   * Extra controls rendered in the composer's action row, just before the
+   * send button. Companion uses it to slot a conversation-history button into
+   * the quick-ask bar; popover mode passes nothing.
+   */
+  trailingActions?: React.ReactNode;
+  /**
+   * Suppress the attach/send button tooltips for this composer instance.
+   * Companion's quick-ask bar sets it: the shell clips that composer to a thin
+   * strip, so a `side="top"` tooltip bleeds above the bar as a dark sliver.
+   */
+  disableTooltips?: boolean;
+  /**
+   * Override the composer placeholder. Companion's quick-ask bar uses it to
+   * read "Follow up…" while continuing an open conversation. Defaults to the
+   * localized "Write a message…".
+   */
+  placeholder?: string;
+} = {}) {
   const { isSmallScreen } = useIsSmallScreen();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { sendMessage } = useMessages();
@@ -202,6 +234,8 @@ function ChatInput() {
       ),
     });
 
+    onMessageSent?.();
+
     setInputText('');
     emptyTheFiles();
   };
@@ -254,7 +288,7 @@ function ChatInput() {
       <div
         {...dc('chat/input_box/inner_root')}
         className={cn(
-          'transition-all',
+          'transition-colors',
           'bg-white',
           // 'border',
           'relative rounded-3xl flex flex-col gap-2 p-2',
@@ -308,13 +342,14 @@ function ChatInput() {
                 handleSubmit();
               }
             }}
-            placeholder={t('write_a_message_placeholder')}
+            placeholder={placeholder ?? t('write_a_message_placeholder')}
           />
         </div>
         <div className="gap-2 flex justify-between">
           <Tooltippy
             side="top"
             align="start"
+            disabled={disableTooltips}
             content="attach images, PDFs, or spreadsheets (maximum size 5mb)"
           >
             <Button
@@ -339,7 +374,14 @@ function ChatInput() {
             </Button>
           </Tooltippy>
 
-          <Tooltippy content="send message" side="top" align="end">
+          {trailingActions}
+
+          <Tooltippy
+            content="send message"
+            side="top"
+            align="end"
+            disabled={disableTooltips}
+          >
             <Button
               size="fit"
               onClick={handleSubmit}
