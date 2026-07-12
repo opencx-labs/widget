@@ -17,10 +17,8 @@ type WidgetLayoutCtx = {
 const context = createContext<WidgetLayoutCtx | null>(null);
 
 export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
-  const { companion, displayMode } = useConfig();
-  const defaultLayout =
-    companion?.defaultLayout ??
-    (displayMode === 'sidebar' ? 'sidebar' : 'compact');
+  const { companion } = useConfig();
+  const defaultLayout = companion?.defaultLayout ?? 'compact';
 
   return (
     <WidgetLayoutStateProvider defaultLayout={defaultLayout}>

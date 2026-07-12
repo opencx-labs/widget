@@ -109,8 +109,7 @@ const Widget = React.forwardRef<
           <WidgetImperativeHandler widgetRef={ref} />
           {options.inline ? (
             <WidgetContent />
-          ) : options.displayMode === 'companion' ||
-            options.displayMode === 'sidebar' ? (
+          ) : options.displayMode === 'companion' ? (
             <WidgetCompanionRoot />
           ) : (
             <WidgetPopoverTriggerAndContent />

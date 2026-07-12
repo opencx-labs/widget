@@ -224,19 +224,15 @@ export type CustomComponent = (
   props: CustomComponentProps,
 ) => ReturnType<typeof React.createElement> | null;
 
-export const WIDGET_DISPLAY_MODES = [
-  'popover',
-  'companion',
-  'sidebar',
-] as const;
+export const WIDGET_DISPLAY_MODES = ['popover', 'companion'] as const;
 
 /**
  * How the widget presents itself on the host page.
  * - `popover` – the classic corner trigger button that opens a chat popover.
  * - `companion` – a bottom-centered floating pill that morphs into a
- *   frosted-glass chat panel.
- * - `sidebar` – an app-frame sidebar: the host page shrinks into a rounded
- *   inset "child window" and the chat lives on the exposed canvas beside it.
+ *   frosted-glass chat panel. The docked "app-frame sidebar" presentation is
+ *   NOT a separate mode — it is the companion's `sidebar` layout; set it as the
+ *   resting default via `companion.defaultLayout: 'sidebar'`.
  */
 export type WidgetDisplayModeU = (typeof WIDGET_DISPLAY_MODES)[number];
 
