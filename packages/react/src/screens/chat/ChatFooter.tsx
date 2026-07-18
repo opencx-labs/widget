@@ -351,7 +351,8 @@ function ChatInput() {
               className={cn(
                 'rounded-full size-8 flex items-center justify-center p-0',
                 shouldBlockSending &&
-                  'opacity-50 cursor-not-allowed active:scale-100 hover:active:scale-100',
+                  // translate-x-0 makes Wobble bail out, so the blocked button doesn't hover-scale or slide
+                  'opacity-50 cursor-not-allowed active:scale-100 hover:active:scale-100 translate-x-0',
               )}
             >
               <AnimatePresence mode="wait">
