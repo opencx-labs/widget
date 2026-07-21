@@ -1,5 +1,25 @@
 # @opencx/widget
 
+## 5.0.0
+
+### Major Changes
+
+- Widget v5 — the agents-platform release. New `agentId` init option binds an
+  embed to a specific AI agent: the config fetch resolves the agent's branding
+  (header + bot bubbles adopt it via the new `useBot()` hook), every session is
+  created bound to the agent, and conversations are served by the agent's
+  published v3 configuration. Agent-bound embeds default to the companion shell
+  (`useDisplayMode()`) — the new UI ships together with agent v3 — while an
+  explicit `displayMode` still wins. Agent-bound turns STREAM over the AI SDK
+  UI-message protocol (`POST /chat/stream`): text blocks, reasoning, and tool
+  activity render live (steps trace + flat messages) instead of a silent wait,
+  with the poll transport as fallback and reconciliation source. AI replies default to the flat,
+  document-style layout (no bubbles); `companion.bubbles: true` restores
+  classic chat bubbles. Unservable agents (unknown, disabled,
+  unpublished) fail initialization loudly with the backend's reason. Agent v3 embeds work
+  only with widget v5 — older widgets ignore `agentId` and fall back to the
+  organization's default agent.
+
 ## 4.0.55
 
 ### Patch Changes

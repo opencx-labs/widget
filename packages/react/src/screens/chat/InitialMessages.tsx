@@ -1,6 +1,6 @@
 import React from 'react';
 import type { WidgetAiMessage } from '@opencx/widget-core';
-import { useMessages, useConfig } from '@opencx/widget-react-headless';
+import { useBot, useMessages, useConfig } from '@opencx/widget-react-headless';
 import { AgentMessageGroup } from '../../components/AgentMessageGroup';
 
 export function InitialMessages() {
@@ -8,6 +8,7 @@ export function InitialMessages() {
     messagesState: { messages },
   } = useMessages();
   const config = useConfig();
+  const bot = useBot();
   const {
     advancedInitialMessages = [],
     initialQuestions,
@@ -42,7 +43,7 @@ export function InitialMessages() {
               : undefined
           }
           agent={
-            config.bot ? { ...config.bot, isAi: true, id: null } : undefined
+            bot ? { ...bot, isAi: true, id: null } : undefined
           }
         />
       )}

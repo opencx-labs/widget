@@ -33,10 +33,35 @@ const FRAME_ATTR = 'data-opencx-app-frame';
 const STYLE_ATTR = 'data-opencx-app-frame-style';
 const OPEN_ATTR = 'data-opencx-sidebar-open';
 const NO_ANIM_ATTR = 'data-opencx-frame-no-anim';
+const FIT_ATTR = 'data-opencx-fixed-fit';
 const WIDTH_VAR = '--opencx-sidebar-w';
 const EASE = 'cubic-bezier(0.32, 0.72, 0.24, 1)';
 
 let styleEl: HTMLStyleElement | null = null;
+let fitObserver: MutationObserver | null = null;
+
+/**
+ * Viewport-unit shells (`position: fixed; width: 100vw` — Tailwind
+ * `w-screen`/`w-svw`) don't shrink with the frame, so the framed page grows
+ * a horizontal scrollbar instead of narrowing. `contain: strict` already
+ * makes body the containing block for every fixed descendant, so a
+ * `max-width/max-height: 100%` clamp resolves against the frame — stamped
+ * fixed elements shrink with it. Fixed elements only: in-flow wide
+ * scrollers (tables, code blocks) must keep their own overflow, and
+ * absolute elements resolve % against their positioned ancestor, where the
+ * clamp would shrink legitimate popovers. CSS can't select by computed
+ * position, hence the attribute stamp.
+ */
+function stampFixedElements(root: Element): void {
+  if (getComputedStyle(root).position === 'fixed') {
+    root.setAttribute(FIT_ATTR, '');
+  }
+  for (const el of Array.from(root.querySelectorAll('*'))) {
+    if (getComputedStyle(el).position === 'fixed') {
+      el.setAttribute(FIT_ATTR, '');
+    }
+  }
+}
 
 function buildCss(canvas: string, dir: string, pageBackground: string): string {
   // The panel sits at the widget's inline-end, which may differ from the
@@ -74,6 +99,10 @@ html[${FRAME_ATTR}] body {
   }
 }
 html[${NO_ANIM_ATTR}] body { transition: none !important; }
+html[${FRAME_ATTR}] body [${FIT_ATTR}] {
+  max-width: 100% !important;
+  max-height: 100% !important;
+}
 html[${OPEN_ATTR}] body {
   top: 16px !important;
   bottom: 16px !important;
@@ -114,6 +143,18 @@ export function mountAppFrame({
   html.setAttribute(FRAME_ATTR, '');
   document.body.scrollTop = prevScrollY;
 
+  // Fit-clamp every fixed element now, and keep stamping ones the host adds
+  // while framed (SPA route changes remount shells; menus/toasts portal in).
+  stampFixedElements(document.body);
+  fitObserver = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const node of Array.from(mutation.addedNodes)) {
+        if (node instanceof Element) stampFixedElements(node);
+      }
+    }
+  });
+  fitObserver.observe(document.body, { childList: true, subtree: true });
+
   styleEl = style;
 }
 
@@ -125,6 +166,11 @@ export function unmountAppFrame(): void {
   html.removeAttribute(OPEN_ATTR);
   html.removeAttribute(NO_ANIM_ATTR);
   html.style.removeProperty(WIDTH_VAR);
+  fitObserver?.disconnect();
+  fitObserver = null;
+  for (const el of Array.from(document.querySelectorAll(`[${FIT_ATTR}]`))) {
+    el.removeAttribute(FIT_ATTR);
+  }
   styleEl.remove();
   styleEl = null;
   window.scrollTo({ top: prevScrollTop });

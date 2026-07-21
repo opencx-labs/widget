@@ -1,6 +1,6 @@
 import React from 'react';
 import type { WidgetAiMessage } from '@opencx/widget-core';
-import { useMessages, useConfig } from '@opencx/widget-react-headless';
+import { useBot, useMessages, useConfig } from '@opencx/widget-react-headless';
 import { AgentMessageGroup } from '../../components/AgentMessageGroup';
 
 export function AdvancedInitialMessages() {
@@ -12,8 +12,9 @@ export function AdvancedInitialMessages() {
     advancedInitialMessages = [],
     initialQuestionsPosition,
     initialQuestions,
-    bot,
   } = useConfig();
+  // Server-resolved agent branding wins over the local `bot` option.
+  const bot = useBot();
 
   return (
     <>

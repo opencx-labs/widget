@@ -60,12 +60,12 @@ function SidebarContent() {
   const { t } = useTranslation();
   const { setLayout } = useWidgetLayout();
   const { setIsOpen } = useWidgetTrigger();
-  // Bubbles are the default; `companion.bubbles: false` swaps in the flat,
-  // document-style rendering.
+  // v5 default: flat, document-style AI replies (no bubbles).
+  // `companion.bubbles: true` opts back into chat bubbles.
   const overrides =
-    companion?.bubbles === false
-      ? sidebarCanvasOverrides + flatMessageCss('[data-opencx-sidebar-content]')
-      : sidebarCanvasOverrides;
+    companion?.bubbles === true
+      ? sidebarCanvasOverrides
+      : sidebarCanvasOverrides + flatMessageCss('[data-opencx-sidebar-content]');
   return (
     <FrameDocument overrides={overrides}>
       <div

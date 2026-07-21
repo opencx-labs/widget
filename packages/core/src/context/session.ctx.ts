@@ -134,6 +134,10 @@ export class SessionCtx {
     };
     const { data: session, error } = await this.api.createSession({
       customData: Object.keys(customData).length > 0 ? customData : undefined,
+      // Agents-platform binding: the backend validates the agent (enabled +
+      // published + this org) and stamps it on the session; the session is then
+      // served by that agent's v3 runtime.
+      agentId: this.config.agentId,
     });
     if (session) {
       this.sessionState.setPartial({ session, isCreatingSession: false });

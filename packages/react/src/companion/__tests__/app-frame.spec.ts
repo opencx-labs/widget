@@ -139,6 +139,62 @@ describe('app-frame', () => {
     expect(html.hasAttribute(NO_ANIM_ATTR)).toBe(false);
   });
 
+  it('clamps fixed host shells to the frame (vw shells shrink instead of x-overflow)', () => {
+    // A dashboard-style viewport shell: fixed + w-screen/h-screen. Inside the
+    // inset body its 100vw width used to force a horizontal scrollbar.
+    const shell = document.createElement('main');
+    shell.style.position = 'fixed';
+    shell.style.width = '100vw';
+    const inFlow = document.createElement('div');
+    document.body.append(shell, inFlow);
+
+    mountAppFrame({ canvas: '#f4f4f5', dir: 'ltr', pageBackground: '#fff' });
+
+    expect(shell.hasAttribute('data-opencx-fixed-fit')).toBe(true);
+    // In-flow content keeps its own overflow behavior (wide tables, code
+    // blocks) — never stamped.
+    expect(inFlow.hasAttribute('data-opencx-fixed-fit')).toBe(false);
+    const css = frameStyles()[0]?.textContent ?? '';
+    expect(css).toContain('[data-opencx-fixed-fit]');
+    expect(css).toContain('max-width: 100% !important');
+    expect(css).toContain('max-height: 100% !important');
+  });
+
+  it('stamps fixed elements the host adds while framed (SPA route change, portaled menus)', async () => {
+    mountAppFrame({ canvas: '#f4f4f5', dir: 'ltr', pageBackground: '#fff' });
+
+    // Directly-added fixed element, and one nested in a static wrapper.
+    const toast = document.createElement('div');
+    toast.style.position = 'fixed';
+    const wrapper = document.createElement('div');
+    const nestedShell = document.createElement('main');
+    nestedShell.style.position = 'fixed';
+    wrapper.appendChild(nestedShell);
+    document.body.append(toast, wrapper);
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(toast.hasAttribute('data-opencx-fixed-fit')).toBe(true);
+    expect(nestedShell.hasAttribute('data-opencx-fixed-fit')).toBe(true);
+    expect(wrapper.hasAttribute('data-opencx-fixed-fit')).toBe(false);
+  });
+
+  it('unmount removes every fit stamp and stops observing', async () => {
+    const shell = document.createElement('main');
+    shell.style.position = 'fixed';
+    document.body.appendChild(shell);
+    mountAppFrame({ canvas: '#f4f4f5', dir: 'ltr', pageBackground: '#fff' });
+    expect(shell.hasAttribute('data-opencx-fixed-fit')).toBe(true);
+
+    unmountAppFrame();
+
+    expect(shell.hasAttribute('data-opencx-fixed-fit')).toBe(false);
+    const late = document.createElement('div');
+    late.style.position = 'fixed';
+    document.body.appendChild(late);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(late.hasAttribute('data-opencx-fixed-fit')).toBe(false);
+  });
+
   it('resolves the panel side from the widget dir, not the host dir', () => {
     mountAppFrame({ canvas: '#f4f4f5', dir: 'rtl', pageBackground: '#fff' });
     const rtlCss = frameStyles()[0]?.textContent ?? '';

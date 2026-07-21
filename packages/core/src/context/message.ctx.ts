@@ -15,6 +15,27 @@ import { genUuid } from '../utils/uuid';
 import { SessionCtx } from './session.ctx';
 import type { ContactCtx } from './contact.ctx';
 
+/** The shape a caller passes to `sendMessage` (and `beginAgentTurn`). */
+export type SendMessageInput = {
+  content: SendMessageDto['content'];
+  attachments?: SendMessageDto['attachments'];
+  customData?: SendMessageDto['custom_data'];
+  exitModePrompt?: string;
+};
+
+/**
+ * The seam the v5 (agent-bound) surface registers so the shared `sendMessage` /
+ * `stopStreaming` entry points — called from the composer, suggested replies,
+ * the imperative handle, and the canvas — all route to the `useChat`-based
+ * engine. The streaming state now lives entirely in that react hook (single
+ * `status` source of truth); this context only owns v1/v2 and the shared
+ * message list.
+ */
+export type AgentChatHandlers = {
+  send: (input: SendMessageInput) => Promise<void> | void;
+  stop: () => void;
+};
+
 type MessageCtxState = {
   messages: WidgetMessageU[];
   /** Regardless of assignee */
@@ -37,6 +58,23 @@ export class MessageCtx {
     lastAIResMightSolveUserIssue: false,
     isInitialFetchLoading: false,
   });
+
+  /**
+   * v5: the embed is bound to an agents-platform agent — turns stream over the
+   * AI SDK `useChat` surface instead of the blocking send. Set by WidgetCtx once
+   * the config resolves; a widget is agent-bound for its whole lifetime.
+   */
+  public agentBound = false;
+
+  /**
+   * Ingest the canonical rows after a streamed turn (wired by
+   * ActiveSessionPollingCtx — it owns history mapping/dedupe). Called by the v5
+   * surface when a turn finishes.
+   */
+  public reconcileAfterStream: ((sessionId: string) => Promise<void>) | null = null;
+
+  /** Registered by the v5 `useAgentChat` hook while its surface is mounted. */
+  private agentHandlers: AgentChatHandlers | null = null;
 
   private sendMessageAbortController = new AbortController();
 
@@ -66,6 +104,29 @@ export class MessageCtx {
   };
 
   /**
+   * Wiring for the v5 surface: the `useAgentChat` hook registers its useChat
+   * `send`/`stop` here on mount and clears them on unmount, so the shared
+   * `sendMessage`/`stopStreaming` API delegates to it for agent-bound embeds.
+   */
+  registerAgentHandlers = (handlers: AgentChatHandlers): void => {
+    this.agentHandlers = handlers;
+  };
+
+  unregisterAgentHandlers = (handlers: AgentChatHandlers): void => {
+    // Only clear if we still own them — guards a late unmount racing a remount.
+    if (this.agentHandlers === handlers) this.agentHandlers = null;
+  };
+
+  /**
+   * Stop a live turn. v1/v2 has no stoppable stream (blocking send), so this is
+   * a no-op there; for agent-bound embeds it delegates to the v5 surface, which
+   * aborts the client stream AND tells the backend to cancel generation.
+   */
+  stopStreaming = () => {
+    this.agentHandlers?.stop();
+  };
+
+  /**
    * Fires `config.hooks.onMessageReceived` for AI or human-agent messages exactly
    * once per id. Safe to call from any path that ingests messages from the server
    * (send-message response, polling, initial history fetch).
@@ -91,12 +152,135 @@ export class MessageCtx {
     );
   };
 
-  sendMessage = async (input: {
-    content: SendMessageDto['content'];
-    attachments?: SendMessageDto['attachments'];
-    customData?: SendMessageDto['custom_data'];
-    exitModePrompt?: string;
-  }): Promise<void> => {
+  /**
+   * Front-half of a v5 (agent-bound) send, shared by the composer and every
+   * other send caller via the registered handler: validate, optimistically
+   * render the user message (plus any persistent initial messages on the first
+   * turn), and ensure a session exists. The `useAgentChat` hook then streams the
+   * reply through useChat. Returns `null` when there is nothing to send.
+   */
+  beginAgentTurn = async (
+    input: SendMessageInput,
+  ): Promise<{ sessionId: string; userMessage: WidgetUserMessage } | null> => {
+    const userMessage = this.prepareAgentUserMessage(input);
+    if (!userMessage) return null;
+
+    const currentMessages = this.state.get().messages;
+    const shouldInsertInitialMessages =
+      !this.sessionCtx.sessionState.get().session?.id &&
+      currentMessages.length === 0 &&
+      this.config.advancedInitialMessages?.some((m) => m.persistent);
+    const insertableInitialMessages = shouldInsertInitialMessages
+      ? (this.config.advancedInitialMessages || [])
+          .filter((m) => m.persistent)
+          .map(
+            (m) =>
+              ({
+                id: genUuid(),
+                component: 'bot_message',
+                type: 'AI',
+                timestamp: new Date().toISOString(),
+                data: { message: m.message },
+                agent: this.config.bot
+                  ? { ...this.config.bot, isAi: true, id: null }
+                  : undefined,
+              }) satisfies WidgetAiMessage,
+          )
+      : [];
+    this.state.setPartial({
+      messages: [...insertableInitialMessages, ...currentMessages, userMessage],
+    });
+
+    if (!this.sessionCtx.sessionState.get().session?.id) {
+      const createdSession = await this.sessionCtx.createSession();
+      if (!createdSession) {
+        console.error('Failed to create session');
+        return null;
+      }
+      void this.sessionCtx.refreshSessions();
+    }
+    const sessionId = this.sessionCtx.sessionState.get().session?.id;
+    if (!sessionId) return null;
+
+    return { sessionId, userMessage };
+  };
+
+  /**
+   * Build the user message for a QUEUED (multi-send) v5 turn WITHOUT rendering
+   * it into the transcript. A queued message must not appear above the still-
+   * streaming response of the active turn — the surface renders it below the
+   * live overlay (dimmed via `pending`) and only `appendUserMessageIfAbsent`s
+   * it into `messages` when its own turn actually starts (see `useAgentChat`).
+   * A session already exists here (a turn is in flight), so this never creates
+   * one.
+   */
+  buildQueuedUserMessage = (
+    input: SendMessageInput,
+  ): { sessionId: string; userMessage: WidgetUserMessage } | null => {
+    const userMessage = this.prepareAgentUserMessage(input);
+    if (!userMessage) return null;
+    const sessionId = this.sessionCtx.sessionState.get().session?.id;
+    if (!sessionId) return null;
+    return { sessionId, userMessage };
+  };
+
+  /**
+   * Shared front-half of both v5 send paths: validate the input and build the
+   * user message, `pending` until the turn's answer starts streaming (the UI
+   * dims the bubble; the engine clears the flag via
+   * `markUserMessagesDelivered`). Returns `null` when there is nothing to send.
+   */
+  private prepareAgentUserMessage = (
+    input: SendMessageInput,
+  ): WidgetUserMessage | null => {
+    if (
+      !input.content.trim() &&
+      (!input.attachments || input.attachments.length === 0)
+    ) {
+      console.warn('Cannot send an empty message of no content or attachments');
+      return null;
+    }
+    return {
+      ...this.toUserMessage(input.content.trim(), input.attachments || undefined),
+      pending: true,
+    };
+  };
+
+  /** Append a user message to the transcript once, ignoring a duplicate id. */
+  appendUserMessageIfAbsent = (userMessage: WidgetUserMessage): void => {
+    const messages = this.state.get().messages;
+    if (messages.some((m) => m.id === userMessage.id)) return;
+    this.state.setPartial({ messages: [...messages, userMessage] });
+  };
+
+  /**
+   * Clear the `pending` flag on every user message. Called by the v5 engine
+   * when a turn starts streaming (sends are serialized, so the server has by
+   * then received every message posted before it) and on turn end (safety —
+   * a bubble must never stay dimmed forever).
+   */
+  markUserMessagesDelivered = (): void => {
+    const messages = this.state.get().messages;
+    if (!messages.some((m) => m.type === 'USER' && m.pending)) return;
+    this.state.setPartial({
+      messages: messages.map((m) =>
+        m.type === 'USER' && m.pending ? { ...m, pending: false } : m,
+      ),
+    });
+  };
+
+  sendMessage = async (input: SendMessageInput): Promise<void> => {
+    // Agent-bound (v5): the useChat surface owns the whole turn lifecycle
+    // (optimistic render, streaming, interrupt-send, stop). Delegate and return.
+    if (this.agentBound) {
+      if (!this.agentHandlers) {
+        console.warn('Agent chat surface not mounted; dropping send');
+        return;
+      }
+      await this.agentHandlers.send(input);
+      return;
+    }
+
     let localAbortController: AbortController | undefined;
     try {
       /* ------------------------------------------------------ */
@@ -121,6 +305,7 @@ export class MessageCtx {
       const lastMessage = this.state.get().messages.at(-1);
       const blockWhileAwaitingAI =
         this.config.disableSendingWhenAwaitingAIReply !== false;
+
       if (
         blockWhileAwaitingAI &&
         (isSendingToAI ||

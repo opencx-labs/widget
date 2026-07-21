@@ -23,6 +23,7 @@ import {
   FileVideo2Icon,
   Loader2,
   PaperclipIcon,
+  SquareIcon,
   XIcon,
 } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
@@ -42,6 +43,8 @@ import {
   SPREADSHEET_ACCEPT,
 } from '../../utils/attachment-kind';
 import { dc } from '../../utils/data-component';
+import { useAgentChatUi } from './agent/AgentChatContext';
+import { QueuedSendsPill } from './agent/QueuedSendsPill';
 import { ChatFooterItems } from './ChatFooterItems';
 
 function FileDisplay({
@@ -179,6 +182,8 @@ export function ChatInput({
   const { isSmallScreen } = useIsSmallScreen();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { sendMessage } = useMessages();
+  // Agent-v3 (v5) streaming state — no-op defaults for v1/v2 embeds.
+  const { isStreaming, onStop, isAgentSurface } = useAgentChatUi();
   const { sessionState } = useSessions();
   const { disableSendingWhenAwaitingAIReply } = useConfig();
   const { t } = useTranslation();
@@ -196,8 +201,14 @@ export function ChatInput({
   const isHandedOff = !!sessionState.session?.isHandedOff;
 
   const { isAwaitingBotReply } = useIsAwaitingBotReply();
+  // The awaiting-AI gate is a v1/v2 (blocking) concept — it keys off session
+  // assignee + "last message is a user message", which is TRUE for the whole v5
+  // turn and after a stop (the reply never got persisted). The v5 surface must
+  // ignore it: it queues instead of blocking and shows busy state via `status`.
   const shouldBlockSending =
-    disableSendingWhenAwaitingAIReply !== false && isAwaitingBotReply;
+    !isAgentSurface &&
+    disableSendingWhenAwaitingAIReply !== false &&
+    isAwaitingBotReply;
 
   const handleFileDrop = (acceptedFiles: File[]) => {
     appendFiles(acceptedFiles);
@@ -206,13 +217,18 @@ export function ChatInput({
   const cannotSend = !inputText.trim() && successFiles.length === 0;
 
   const handleSubmit = async () => {
-    if (shouldBlockSending) return;
+    // While a v5 turn streams, the engine QUEUES the send (multi-send), so the
+    // awaiting-AI gate must not block it. Non-streaming sends still gate.
+    if (shouldBlockSending && !isStreaming) return;
     if (cannotSend) return;
 
     if (isUploading) {
       // TODO use something other than toast
       const message = 'please wait for the file(s) to upload';
       console.info(message);
+      // Sending now would silently drop the still-uploading files (only
+      // `successFiles` ride the payload).
+      return;
     }
     const trimmed = inputText.trim();
 
@@ -285,6 +301,9 @@ export function ChatInput({
       {...dropzone__getRootProps()}
     >
       <input {...dropzone__getInputProps()} />
+      {/* Agent-v3 multi-send queue: messages waiting for their turn, docked
+          above the input (Cursor-style). Empty (renders nothing) on v1/v2. */}
+      <QueuedSendsPill />
       <div
         {...dc('chat/input_box/inner_root')}
         className={cn(
@@ -362,11 +381,11 @@ export function ChatInput({
             >
               <AnimatePresence mode="wait">
                 {!shouldBlockSending ? (
-                  <MotionDiv key="paper-clip">
+                  <MotionDiv key="paper-clip" distance={0}>
                     <PaperclipIcon className="size-4" />
                   </MotionDiv>
                 ) : (
-                  <MotionDiv key="paper-clip-disabled">
+                  <MotionDiv key="paper-clip-disabled" distance={0}>
                     <PaperclipIcon className="size-4 opacity-50" />
                   </MotionDiv>
                 )}
@@ -377,24 +396,37 @@ export function ChatInput({
           {trailingActions}
 
           <Tooltippy
-            content="send message"
+            // While streaming: typing a new message queues it (send); an empty
+            // box stops the current response — the next queued message (if
+            // any) then starts its own turn immediately.
+            content={isStreaming && cannotSend ? 'stop' : 'send message'}
             side="top"
             align="end"
             disabled={disableTooltips}
           >
             <Button
               size="fit"
-              onClick={handleSubmit}
-              disabled={shouldBlockSending || isUploading || cannotSend}
+              onClick={isStreaming && cannotSend ? onStop : handleSubmit}
+              disabled={
+                isStreaming
+                  ? // Stop (empty box) is always available; a queue-send must
+                    // still wait for attachments to finish uploading.
+                    !cannotSend && isUploading
+                  : shouldBlockSending || isUploading || cannotSend
+              }
               className="rounded-full size-8 flex items-center justify-center p-0"
             >
               <AnimatePresence mode="wait">
-                {shouldBlockSending || isUploading ? (
-                  <MotionDiv key="loading" snapExit>
+                {isStreaming && cannotSend ? (
+                  <MotionDiv key="stop" snapExit distance={0}>
+                    <SquareIcon className="size-3 fill-current" />
+                  </MotionDiv>
+                ) : !isStreaming && (shouldBlockSending || isUploading) ? (
+                  <MotionDiv key="loading" snapExit distance={0}>
                     <CircleDashed className="size-4 animate-spin animate-iteration-infinite" />
                   </MotionDiv>
                 ) : (
-                  <MotionDiv key="send" snapExit>
+                  <MotionDiv key="send" snapExit distance={0}>
                     <ArrowUpIcon className="size-4" />
                   </MotionDiv>
                 )}

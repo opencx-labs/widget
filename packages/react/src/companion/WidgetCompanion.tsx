@@ -36,10 +36,14 @@ import {
 import type { PanelLayout, PanelState } from './types';
 import { useHostPortal } from './useHostPortal';
 
+// Near-critically damped (ratio ≈ 1.0 at stiffness 500 / mass 1): the morph
+// stays snappy but never overshoots. An underdamped spring (damping 40 → ratio
+// 0.89) made the input bar's height bounce every time it settled — reads as
+// jitter on a text composer, which should feel crisp, not springy.
 const SPRING = {
   type: 'spring',
   stiffness: 500,
-  damping: 40,
+  damping: 45,
   mass: 1,
 } as const;
 /** Gentler-not-zero: keep the fades, collapse the travel (reduced motion),

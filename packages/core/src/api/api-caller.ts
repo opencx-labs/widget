@@ -58,9 +58,74 @@ export class ApiCaller {
     this.client = this.createOpenAPIClient({ baseUrl, headers });
   };
 
+  /**
+   * AUTH headers only (X-Bot-Token / Authorization), stripped of
+   * content-type/accept. The transport sets its own Content-Type, and a second
+   * (case-differing) copy gets COMBINED by the Headers init into
+   * "application/json, application/json" — which the server rejects (415). Also
+   * reused for the reconnect/stop control calls (empty-body POST/GET).
+   */
+  private getStreamAuthContext = (): {
+    baseUrl: string;
+    headers: Record<string, string>;
+  } => {
+    const { baseUrl, headers } = this.constructClientOptions(this.userToken);
+    const definedHeaders: Record<string, string> = {};
+    for (const [key, value] of Object.entries(headers)) {
+      if (typeof value !== 'string') continue;
+      if (['content-type', 'accept'].includes(key.toLowerCase())) continue;
+      definedHeaders[key] = value;
+    }
+    return { baseUrl, headers: definedHeaders };
+  };
+
+  /**
+   * Wiring for the v5 streaming transport (AI SDK `DefaultChatTransport`): the
+   * send endpoint, the reconnect endpoint (a session-scoped GET the transport
+   * hits via `prepareReconnectToStreamRequest`), and the shared auth headers.
+   * Computed lazily so a later `setAuthToken` is always reflected.
+   */
+  getStreamTransportOptions = (): {
+    api: string;
+    reconnectApi: (sessionId: string) => string;
+    headers: Record<string, string>;
+  } => {
+    const { baseUrl, headers } = this.getStreamAuthContext();
+    return {
+      api: `${baseUrl}/backend/widget/v5/chat/stream`,
+      reconnectApi: (sessionId: string) =>
+        `${baseUrl}/backend/widget/v5/chat/${sessionId}/stream`,
+      headers,
+    };
+  };
+
+  /**
+   * Stop / interrupt the session's in-flight v5 turn. With resumable streams
+   * on, a client abort is treated as a disconnect (the stream survives), so a
+   * real "stop" is this explicit call — the backend cancels generation and
+   * clears the resume pointer. Throws on failure — the caller (the v5 stop
+   * path) decides how to react, so a failed cancel is never mistaken for an
+   * ACKed one.
+   */
+  stopStream = async (sessionId: string): Promise<void> => {
+    const { baseUrl, headers } = this.getStreamAuthContext();
+    const res = await fetch(`${baseUrl}/backend/widget/v5/chat/${sessionId}/stop`, {
+      method: 'POST',
+      headers,
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to stop stream: ${res.status}`);
+    }
+  };
+
   getExternalWidgetConfig = async () => {
     return await this.client.GET('/backend/widget/v2/config', {
-      params: { header: { 'x-bot-token': this.config.token } },
+      params: {
+        header: { 'x-bot-token': this.config.token },
+        // Agents-platform binding: the backend resolves the agent's branding
+        // into the config response (and 400s with a reason when unservable).
+        query: this.config.agentId ? { agentId: this.config.agentId } : {},
+      },
     });
   };
 

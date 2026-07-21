@@ -1,4 +1,5 @@
 import * as PopoverPrimitive from '@radix-ui/react-popover';
+import { MotionConfig } from 'framer-motion';
 import React from 'react';
 import type {
   ExternalStorage,
@@ -6,6 +7,7 @@ import type {
   WidgetConfig,
 } from '@opencx/widget-core';
 import {
+  useDisplayMode,
   useWidgetLayout,
   useWidgetTrigger,
   WidgetLayoutProvider,
@@ -58,6 +60,21 @@ function WidgetCompanionRoot() {
   );
 }
 
+/**
+ * Shell picker. Must render INSIDE WidgetProvider: the effective display mode
+ * comes from `useDisplayMode`, which needs the resolved config — agent-bound
+ * embeds (agent v3) default to the companion shell, explicit `displayMode`
+ * always wins.
+ */
+function WidgetDisplayRoot() {
+  const displayMode = useDisplayMode();
+  return displayMode === 'companion' ? (
+    <WidgetCompanionRoot />
+  ) : (
+    <WidgetPopoverTriggerAndContent />
+  );
+}
+
 const defaultComponents: WidgetComponentType[] = [
   {
     key: 'loading' satisfies LiteralWidgetComponentKey,
@@ -98,25 +115,26 @@ const Widget = React.forwardRef<
   }
 >(function Widget({ options, components = [], loadingComponent }, ref) {
   return (
-    <WidgetProvider
-      components={[...defaultComponents, ...components]}
-      options={options}
-      storage={storage}
-      loadingComponent={loadingComponent}
-    >
-      <WidgetTriggerProvider>
-        <WidgetLayoutProvider>
-          <WidgetImperativeHandler widgetRef={ref} />
-          {options.inline ? (
-            <WidgetContent />
-          ) : options.displayMode === 'companion' ? (
-            <WidgetCompanionRoot />
-          ) : (
-            <WidgetPopoverTriggerAndContent />
-          )}
-        </WidgetLayoutProvider>
-      </WidgetTriggerProvider>
-    </WidgetProvider>
+    // reducedMotion="user" makes every descendant motion.* snap its
+    // transform/x/y/scale/layout animations when the visitor's OS asks for less
+    // motion, while keeping opacity fades. Non-transform values (the companion
+    // shell's width/height/borderRadius morph) are untouched, so its own
+    // shouldReduceMotion branch still applies — this is purely additive.
+    <MotionConfig reducedMotion="user">
+      <WidgetProvider
+        components={[...defaultComponents, ...components]}
+        options={options}
+        storage={storage}
+        loadingComponent={loadingComponent}
+      >
+        <WidgetTriggerProvider>
+          <WidgetLayoutProvider>
+            <WidgetImperativeHandler widgetRef={ref} />
+            {options.inline ? <WidgetContent /> : <WidgetDisplayRoot />}
+          </WidgetLayoutProvider>
+        </WidgetTriggerProvider>
+      </WidgetProvider>
+    </MotionConfig>
   );
 });
 Widget.displayName = 'Widget';

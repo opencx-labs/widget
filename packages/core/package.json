@@ -1,7 +1,7 @@
 {
   "name": "@opencx/widget-core",
   "private": false,
-  "version": "4.0.55",
+  "version": "5.0.0",
   "type": "module",
   "repository": {
     "type": "git",
@@ -28,6 +28,7 @@
     }
   },
   "dependencies": {
+    "ai": "^7.0.31",
     "lodash.isequal": "^4.5.0",
     "openapi-fetch": "^0.13.4",
     "uuid": "^11.0.4"

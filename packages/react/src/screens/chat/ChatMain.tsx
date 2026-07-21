@@ -3,6 +3,7 @@ import {
   type SafeExtract,
 } from '@opencx/widget-core';
 import {
+  useBot,
   useConfig,
   useIsAwaitingBotReply,
   useMessages,
@@ -30,7 +31,9 @@ export function ChatMain() {
   } = useMessages();
   const { isAwaitingBotReply } = useIsAwaitingBotReply();
   const { componentStore } = useWidget();
-  const { bot, humanAgent } = useConfig();
+  const { humanAgent } = useConfig();
+  // Server-resolved agent branding wins over the local `bot` option.
+  const bot = useBot();
 
   const groupedMessages = useMemo(
     () => groupMessagesByType(messages),
@@ -121,9 +124,8 @@ export function ChatMain() {
 
         return null;
       })}
-      {isAwaitingBotReply && LoadingComponent && (
-        <LoadingComponent agent={bot} />
-      )}
+      {/* Typing indicator while awaiting the (blocking) bot reply. */}
+      {isAwaitingBotReply && LoadingComponent && <LoadingComponent agent={bot} />}
 
       <ChatBottomComponents />
       <SessionResolvedComponent />

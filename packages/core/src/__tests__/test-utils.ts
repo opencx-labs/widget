@@ -83,6 +83,21 @@ export const TestUtils = {
       setAuthToken(target, _returnValue) {
         target.prototype.setAuthToken = vi.fn();
       },
+      getStreamTransportOptions(target, _returnValue) {
+        target.prototype.getStreamTransportOptions = vi
+          .fn(target.prototype.getStreamTransportOptions)
+          .mockReturnValue({
+            api: 'http://localhost:8080/backend/widget/v5/chat/stream',
+            reconnectApi: (sessionId: string) =>
+              `http://localhost:8080/backend/widget/v5/chat/${sessionId}/stream`,
+            headers: {},
+          });
+      },
+      stopStream(target, _returnValue) {
+        target.prototype.stopStream = vi
+          .fn(target.prototype.stopStream)
+          .mockResolvedValue(undefined);
+      },
       uploadFile(target, _returnValue) {
         target.prototype.uploadFile = vi
           .fn(target.prototype.uploadFile)

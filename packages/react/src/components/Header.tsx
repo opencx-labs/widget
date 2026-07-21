@@ -36,7 +36,7 @@ import { HeaderTitleComponent } from './custom-components/HeaderTitleComponent';
 
 function useGetHeaderTitle() {
   const {
-    widgetCtx: { org },
+    widgetCtx: { org, agent },
   } = useWidget();
   const {
     routerState: { screen },
@@ -57,7 +57,8 @@ function useGetHeaderTitle() {
     }
   })();
 
-  return override ?? org.name ?? 'Chat';
+  // Agent-bound embeds title the widget with the agent's name.
+  return override ?? agent?.name ?? org.name ?? 'Chat';
 }
 
 function useGetHeaderDataComponentProp(

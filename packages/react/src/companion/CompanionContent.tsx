@@ -1,6 +1,6 @@
 import { useConfig } from '@opencx/widget-react-headless';
 import { HistoryIcon } from 'lucide-react';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { FrameDocument } from '../components/FrameDocument';
 import { Button } from '../components/lib/button';
 import { RootScreen } from '../screens';
@@ -33,6 +33,12 @@ const companionLayoutOverrides = `
      sibling is the hidden dropzone input); with the outer padding gone that
      margin shows as a strip of shell background above the bar. */
   margin-top: 0 !important;
+  /* The stock card is rounded-3xl (24px), but the companion shell that frames
+     it clips at 16px in the resting-input state (WidgetCompanion currentDims).
+     The 8px difference left the shell's background token peeking out as a
+     two-tone crescent at each corner. Match the card to the shell radius so
+     the white card covers it edge-to-edge — one clean rounded bar. */
+  border-radius: 16px !important;
 }
 [data-companion-input] [data-component="chat/input_box/textarea_and_attachments_container"] {
   flex: 1 1 auto !important;
@@ -102,12 +108,12 @@ export function CompanionContent({
   const rootRef = useRef<HTMLDivElement>(null);
   const inputPaneRef = useRef<HTMLDivElement>(null);
 
-  // Bubbles are the default; `companion.bubbles: false` swaps in the flat,
-  // document-style rendering for every companion layout.
+  // v5 default: flat, document-style AI replies (no bubbles) for every
+  // companion layout. `companion.bubbles: true` opts back into chat bubbles.
   const overrides =
-    companion?.bubbles === false
-      ? companionLayoutOverrides + flatMessageCss('[data-companion-root]')
-      : companionLayoutOverrides;
+    companion?.bubbles === true
+      ? companionLayoutOverrides
+      : companionLayoutOverrides + flatMessageCss('[data-companion-root]');
 
   // Escape pressed anywhere inside the iframe (message list, chat composer,
   // ...) walks the close stages, matching the host-document handler.
@@ -124,7 +130,11 @@ export function CompanionContent({
   // Measure the real composer (it grows as the user types) and drive the
   // shell card height from it. The composer lives in the iframe document, so
   // observe with THAT document's ResizeObserver, not the host window's.
-  useEffect(() => {
+  // Layout effect (not passive): report the true height BEFORE the first
+  // paint so the shell morphs straight to it. A passive effect paints one
+  // frame at the fallback height first, so the bar opened tall then shrank
+  // to fit — a visible wobble on every open.
+  useLayoutEffect(() => {
     if (state !== 'input') return;
     const node = inputPaneRef.current;
     const RO = node?.ownerDocument.defaultView?.ResizeObserver;

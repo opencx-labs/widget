@@ -67,6 +67,7 @@ export function useHostPanelTitle(): string {
   return (
     sessionState.session?.title ??
     textContent?.chatScreen?.headerTitle ??
+    widgetCtx.agent?.name ??
     widgetCtx.org?.name ??
     t('new_conversation')
   );

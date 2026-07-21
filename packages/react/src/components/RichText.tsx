@@ -5,6 +5,7 @@ import rehypeRaw from 'rehype-raw';
 import { useConfig } from '@opencx/widget-react-headless';
 import { Dialoger, DialogerContent } from './Dialoger';
 import { ZoomableImage } from './ZoomableImage';
+import { stripCitationRefs } from '../utils/strip-citation-refs';
 
 export function RichText({
   children,
@@ -56,7 +57,7 @@ export function RichText({
       }}
       // Do not pass className directly to ReactMarkdown component because that will create a container div wrapping the rich text
     >
-      {children}
+      {stripCitationRefs(children)}
     </MemoizedReactMarkdown>
   );
 }

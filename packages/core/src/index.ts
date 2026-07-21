@@ -48,7 +48,25 @@ export type { IconNameU } from './types/icons';
 export { WidgetCtx } from './context/widget.ctx';
 export type { ContactCtx } from './context/contact.ctx';
 export type { SessionCtx } from './context/session.ctx';
-export type { MessageCtx } from './context/message.ctx';
+export type {
+  MessageCtx,
+  SendMessageInput,
+  AgentChatHandlers,
+} from './context/message.ctx';
+// v5 agent-chat engine — the useChat-based streaming surface's building blocks.
+export { AgentChatQueue } from './context/agent-chat/agent-chat-queue';
+export { mapUiMessageToItems } from './context/agent-chat/agent-chat-stream';
+export type {
+  StreamingStep,
+  StreamingTurnItem,
+  StreamingTurnState,
+} from './context/agent-chat/agent-chat-stream';
+export {
+  agentChatReconnectPreparer,
+  buildAgentChatTransport,
+  stopAgentChatTurn,
+} from './context/agent-chat/agent-chat-transport';
+export type { AgentChatTransportOptions } from './context/agent-chat/agent-chat-transport';
 export type { RouterCtx, ScreenU } from './context/router.ctx';
 export type { CsatCtx } from './context/csat.ctx';
 

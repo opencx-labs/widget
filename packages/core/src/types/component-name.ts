@@ -24,6 +24,8 @@ export type OpenCxComponentNameU =
   | 'chat/main/root'
   | 'chat/canvas/root'
   | 'chat/msgs/root'
+  | 'chat/streaming_turn/root'
+  | 'chat/streaming_turn/steps'
   /* -------------------- Agent Message ------------------- */
   | 'chat/agent_msg_group/root'
   | 'chat/agent_msg_group/avatar_and_msgs/root'
@@ -44,6 +46,12 @@ export type OpenCxComponentNameU =
   | 'chat/input_box/textarea_and_attachments_container'
   | 'chat/input_box/textarea'
   | 'chat/input_box/attachments_container'
+  /* Agent-v3 multi-send queue pill, docked above the composer. */
+  | 'chat/queued_sends/root'
+  | 'chat/queued_sends/header'
+  | 'chat/queued_sends/list'
+  | 'chat/queued_sends/item'
+  | 'chat/queued_sends/remove'
   /* --------------------- Chat Utils --------------------- */
   | 'chat/bot_loading/root'
   | 'chat/bot_loading/bouncing_dots_container'

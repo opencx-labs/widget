@@ -5,7 +5,9 @@ export type {
 
 export { WidgetProvider, useWidget } from './WidgetProvider';
 
+export { useBot } from './hooks/useBot';
 export { useConfig } from './hooks/useConfig';
+export { useDisplayMode } from './hooks/useDisplayMode';
 export { useContact } from './hooks/useContact';
 export { useDocumentDir } from './hooks/useDocumentDir';
 export { useIsAwaitingBotReply } from './hooks/useIsAwaitingBotReply';

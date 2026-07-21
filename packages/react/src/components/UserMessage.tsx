@@ -34,10 +34,13 @@ export function UserMessage({
           data-first={isFirstInGroup}
           data-last={isLastInGroup}
           data-alone={isAloneInGroup}
+          data-pending={message.pending === true}
           className={cn(
             'transition-all',
             'w-fit py-3 px-4 rounded-3xl text-sm',
             'bg-primary text-primary-foreground',
+            // v5 pending: sent but its answer hasn't started streaming yet.
+            message.pending && 'opacity-60',
             'break-words [word-break:break-word]', // `[word-break:break-word]` is deprecated but works in the browser, while `break-words` which is `[overflow-wrap: break-word]` does not work
             'whitespace-pre-wrap',
 

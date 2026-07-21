@@ -127,5 +127,9 @@ export type TranslationInterface = {
   companion_layout_sidebar?: string;
   companion_layout_fullscreen?: string;
   companion_close?: string;
+  /** Header of the multi-send queue pill above the composer (agent v3). */
+  queued_label?: string;
+  /** Accessible label of the per-message remove button in the queue pill. */
+  remove_queued_message?: string;
 };
 export type TranslationKeyU = keyof TranslationInterface;

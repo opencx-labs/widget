@@ -40,6 +40,15 @@ export class ActiveSessionPollingCtx {
     this.messageCtx = messageCtx;
     this.sessionPollingIntervalSeconds = sessionPollingIntervalSeconds;
 
+    // v5 streamed turns end with one immediate ingest of the canonical rows
+    // the backend persisted — this ctx owns history mapping/dedupe, so the
+    // hook lives here rather than duplicating that logic in MessageCtx.
+    this.messageCtx.reconcileAfterStream = (sessionId) =>
+      this.fetchSessionAndHistory({
+        sessionId,
+        abortSignal: new AbortController().signal,
+      });
+
     this.registerPolling();
   }
 
@@ -137,6 +146,11 @@ export class ActiveSessionPollingCtx {
     if (this.messageCtx.state.get().isInitialFetchLoading) {
       this.messageCtx.state.setPartial({ isInitialFetchLoading: false });
     }
+
+    // Reopening an existing session mid-stream (reload, tab switch): reattaching
+    // to a still-live v5 turn is now owned by the agent-chat surface's
+    // `useChat({ resume: true })`, which probes the reconnect endpoint on mount.
+    // Nothing to do here.
   };
 
   mapHistoryToMessage = (history: MessageDto): WidgetMessageU | null => {
@@ -202,6 +216,10 @@ export class ActiveSessionPollingCtx {
               }
             : undefined,
         },
+        stepsBefore:
+          history.stepsBefore && history.stepsBefore.length > 0
+            ? history.stepsBefore
+            : undefined,
       };
     }
 

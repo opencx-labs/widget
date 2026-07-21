@@ -1,7 +1,7 @@
 {
   "name": "@opencx/widget-react",
   "private": false,
-  "version": "4.0.55",
+  "version": "5.0.0",
   "type": "module",
   "repository": {
     "type": "git",
@@ -28,6 +28,9 @@
     }
   },
   "dependencies": {
+    "@ai-sdk/react": "4.0.34",
+    "@json-render/core": "0.19.0",
+    "@json-render/react": "0.19.0",
     "@opencx/widget-core": "workspace:*",
     "@opencx/widget-react-headless": "workspace:*",
     "@radix-ui/react-avatar": "^1.1.0",
@@ -44,11 +47,12 @@
     "react-dropzone": "^14.3.5",
     "react-markdown": "^9.0.1",
     "react-use": "^17.5.1",
+    "recharts": "2.12.7",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.0",
     "tailwind-merge": "^2.4.0",
     "tinycolor2": "^1.6.0",
-    "zod": "^3.23.8"
+    "zod": "^3.25.76"
   },
   "peerDependencies": {
     "@types/react": ">=18 <20",

@@ -269,6 +269,19 @@ export interface WidgetConfig {
   token: string;
 
   /**
+   * Binds this embed to a specific AI agent from your organization's agents
+   * platform (dashboard → AI Training → Agents → Embed). Every session the
+   * widget creates is served by that agent's published configuration, and the
+   * widget adopts the agent's name/avatar for the header and bot bubbles
+   * (your `bot` option fills any gaps).
+   *
+   * Omit to use your organization's default agent. The agent must be enabled
+   * and have a published version — otherwise initialization fails with the
+   * backend's reason.
+   */
+  agentId?: string;
+
+  /**
    * The language of the widget.
    * Translations are available in the default non-headless widget.
    * @default en
@@ -683,11 +696,12 @@ export interface WidgetConfig {
 
     /**
      * Render messages as chat bubbles (agent + user bubbles, avatars in the
-     * gutter). Set `false` for a flat, document-style layout instead: agent
+     * gutter). The v5 DEFAULT is the flat, document-style layout: agent
      * replies flow as unbubbled text and user messages become quiet chips
-     * (Linear/Claude-style). Applies to the `companion` and `sidebar` modes;
-     * the `popover` mode is always bubbles.
-     * @default true
+     * (Linear/Claude-style). Set `true` to opt back into classic chat
+     * bubbles. Applies to the `companion` and `sidebar` modes; the `popover`
+     * mode is always bubbles.
+     * @default false
      */
     bubbles?: boolean;
 

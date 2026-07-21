@@ -1,5 +1,6 @@
 import { type SessionDto } from '@opencx/widget-core';
 import {
+  useBot,
   useConfig,
   useSessions,
   useWidgetRouter,
@@ -42,7 +43,9 @@ function SessionCard({
   session: SessionDto;
   className?: string;
 }) {
-  const { bot, humanAgent } = useConfig();
+  const { humanAgent } = useConfig();
+  // Server-resolved agent branding wins over the local `bot` option.
+  const bot = useBot();
   const { toChatScreen } = useWidgetRouter();
 
   const assigneeName =

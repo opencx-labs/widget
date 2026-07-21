@@ -27,4 +27,6 @@ export const EnglishLanguage: TranslationInterface = {
   companion_layout_sidebar: 'Sidebar',
   companion_layout_fullscreen: 'Fullscreen',
   companion_close: 'Close',
+  queued_label: 'Queued',
+  remove_queued_message: 'Remove queued message',
 };
