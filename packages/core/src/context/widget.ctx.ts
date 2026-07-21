@@ -9,6 +9,8 @@ import { MessageCtx } from './message.ctx';
 import { RouterCtx } from './router.ctx';
 import { SessionCtx } from './session.ctx';
 import { StorageCtx } from './storage.ctx';
+import { PrimitiveState } from '../utils/PrimitiveState';
+import type { CtaOverride } from '../cta/cta-visibility';
 
 export class WidgetCtx {
   public config: WidgetConfig;
@@ -21,6 +23,29 @@ export class WidgetCtx {
   public routerCtx: RouterCtx;
   public storageCtx?: StorageCtx;
   public modes: ModeDto[] = [];
+
+  /**
+   * The chat composer's draft text. Lifted out of the input component so it can
+   * be set programmatically (host-facing `prefill` trigger) and read/written by
+   * `ChatInput`. Cleared on `resetChat()` to preserve the prior "draft clears on
+   * new chat" behaviour.
+   */
+  public composerDraft = new PrimitiveState<string>('');
+
+  /**
+   * Host/API-driven override of the CTA card's visibility (`showCta()` /
+   * `hideCta()`). `null` = the config rules decide. Deliberately NOT cleared
+   * by `resetChat()` — the CTA is launcher state, not chat state.
+   */
+  public ctaOverride = new PrimitiveState<CtaOverride>(null);
+
+  /**
+   * The CTA card's CURRENT resolved visibility, published by the card
+   * container (single source of truth: `resolveCtaVisible`). Read by the
+   * launcher so `cta.mode: 'transform'` can swap the bubble for the card
+   * without re-deriving the rules.
+   */
+  public ctaVisible = new PrimitiveState<boolean>(false);
 
   public org: {
     id: string;
@@ -133,8 +158,21 @@ export class WidgetCtx {
     });
   };
 
+  setComposerDraft = (text: string) => {
+    this.composerDraft.set(text);
+  };
+
+  setCtaOverride = (value: CtaOverride) => {
+    this.ctaOverride.set(value);
+  };
+
+  setCtaVisible = (value: boolean) => {
+    this.ctaVisible.set(value);
+  };
+
   resetChat = () => {
     this.sessionCtx.reset();
     this.messageCtx.reset();
+    this.composerDraft.reset();
   };
 }

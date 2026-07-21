@@ -230,6 +230,61 @@ export type CustomComponent = (
   props: CustomComponentProps,
 ) => ReturnType<typeof React.createElement> | null;
 
+export type CtaButton =
+  | { text: string; action: 'open-chat'; variant?: 'primary' | 'secondary' }
+  | {
+      text: string;
+      /** `ask` sends `message` immediately in a fresh chat; `prefill` only drafts it. */
+      action: 'ask' | 'prefill';
+      message: string;
+      variant?: 'primary' | 'secondary';
+    }
+  | {
+      text: string;
+      action: 'url';
+      url: string;
+      /** @default true */
+      openInNewTab?: boolean;
+      variant?: 'primary' | 'secondary';
+    };
+
+export type CtaConfig = {
+  /**
+   * How the card relates to the launcher bubble.
+   * - `'coexist'` (default): the card floats above the launcher.
+   * - `'transform'`: the card REPLACES the launcher — opening the widget swaps
+   *   the card for the panel, closing swaps back (card state preserved), and
+   *   dismissing the card falls back to the launcher bubble.
+   * @default 'coexist'
+   */
+  mode?: 'coexist' | 'transform';
+
+  /** Card headline. */
+  title: string;
+  /** Optional supporting copy under the title. */
+  body?: string;
+  /** Optional image rendered at the top of the card. */
+  imageUrl?: string;
+  /** Optional row of small round avatars (e.g. the support team). */
+  avatarUrls?: string[];
+  /** Action buttons, rendered in order. */
+  buttons?: CtaButton[];
+  /**
+   * Renders a message input directly in the card; submitting starts a fresh
+   * chat with the typed text (same behavior as an `ask` button).
+   */
+  composer?: { placeholder?: string };
+  /**
+   * Re-show the card this many days after the visitor dismisses it.
+   * Omit = once dismissed, never shown again (per browser).
+   */
+  dismissForDays?: number;
+  /** Delay before the card appears. @default 0 */
+  showAfterSeconds?: number;
+  /** Only show when `location.href` contains this substring. Omit = all pages. */
+  urlMatch?: string;
+};
+
 export interface WidgetConfig {
   /**
    * Your organization's widget token.
@@ -276,6 +331,13 @@ export interface WidgetConfig {
    * @default undefined
    */
   openAfterNSeconds?: number;
+
+  /**
+   * A proactive CTA/teaser card shown near the launcher while the widget is
+   * closed. Drive it programmatically with `showCta()` / `hideCta()`.
+   * @default undefined
+   */
+  cta?: CtaConfig;
 
   /**
    * A custom vanilla stylesheet to override the default styles. See {@link OpenCxComponentNameU} for available component names.
@@ -542,6 +604,19 @@ export interface WidgetConfig {
       message: WidgetMessageU;
       session: SessionDto;
     }) => void;
+
+    /** Fires the first time the CTA card becomes visible on this page load. */
+    onCtaDisplayed?: () => void;
+
+    /** Fires when a CTA button or its composer is used. */
+    onCtaClicked?: (ctx: {
+      action: 'open-chat' | 'ask' | 'prefill' | 'url' | 'composer';
+      /** Button index; `undefined` for the composer. */
+      index?: number;
+    }) => void;
+
+    /** Fires when the visitor dismisses the card with the X button. */
+    onCtaDismissed?: () => void;
   };
 
   /**

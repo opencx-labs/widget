@@ -14,6 +14,7 @@ import {
 import { AgentMessageDefaultComponent } from './components/custom-components/AgentMessageDefaultComponent';
 import { FallbackDefaultComponent } from './components/custom-components/FallbackDefaultComponent';
 import { LoadingDefaultComponent } from './components/custom-components/LoadingDefaultComponent';
+import { CtaContainer } from './CtaContainer';
 import { WidgetContent, WidgetPopoverContent } from './WidgetPopoverContent';
 import { WidgetPopoverTrigger } from './WidgetPopoverTrigger';
 import { WidgetPopoverAnchor } from './WidgetPopoverAnchor';
@@ -26,11 +27,14 @@ function WidgetPopoverTriggerAndContent() {
   const { isOpen, setIsOpen } = useWidgetTrigger();
 
   return (
-    <PopoverPrimitive.Root open={isOpen} onOpenChange={setIsOpen}>
-      <WidgetPopoverAnchor />
-      <WidgetPopoverTrigger />
-      <WidgetPopoverContent />
-    </PopoverPrimitive.Root>
+    <>
+      <CtaContainer />
+      <PopoverPrimitive.Root open={isOpen} onOpenChange={setIsOpen}>
+        <WidgetPopoverAnchor />
+        <WidgetPopoverTrigger />
+        <WidgetPopoverContent />
+      </PopoverPrimitive.Root>
+    </>
   );
 }
 

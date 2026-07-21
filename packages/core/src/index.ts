@@ -32,6 +32,8 @@ export type {
   ModeComponentProps,
   CustomComponent,
   CustomComponentProps,
+  CtaButton,
+  CtaConfig,
 } from './types/widget-config';
 export type { ExternalStorage } from './types/external-storage';
 export type { OpenCxComponentNameU } from './types/component-name';
@@ -46,6 +48,14 @@ export type { CsatCtx } from './context/csat.ctx';
 
 export { PrimitiveState } from './utils/PrimitiveState';
 export { isExhaustive } from './utils/is-exhaustive';
+
+export {
+  ctaUrlMatches,
+  isCtaDismissed,
+  parseCtaDismissalRecord,
+  resolveCtaVisible,
+} from './cta/cta-visibility';
+export type { CtaDismissalRecord, CtaOverride } from './cta/cta-visibility';
 
 export {
   type Language,

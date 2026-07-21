@@ -4,7 +4,12 @@ import { AnimatePresence } from 'framer-motion';
 import { ChevronDownIcon } from 'lucide-react';
 import React from 'react';
 import styles from '../index.css?inline.css';
-import { useConfig, useWidgetTrigger } from '@opencx/widget-react-headless';
+import {
+  useConfig,
+  usePrimitiveState,
+  useWidget,
+  useWidgetTrigger,
+} from '@opencx/widget-react-headless';
 import { MotionDiv } from './components/lib/MotionDiv';
 import { cn } from './components/lib/utils/cn';
 import { Wobble, WOBBLE_MAX_MOVEMENT_PIXELS } from './components/lib/wobble';
@@ -32,7 +37,10 @@ html, body {
 
 function WidgetPopoverTrigger() {
   const { isOpen, setIsOpen } = useWidgetTrigger();
-  const { cssOverrides, assets, customComponents, accessibility } = useConfig();
+  const config = useConfig();
+  const { cssOverrides, assets, customComponents, accessibility } = config;
+  const { widgetCtx } = useWidget();
+  const ctaVisible = usePrimitiveState(widgetCtx.ctaVisible);
   const { theme, cssVars } = useTheme();
 
   const triggerLabel =
@@ -45,6 +53,11 @@ function WidgetPopoverTrigger() {
       setIsOpen: (open: boolean) => setIsOpen(open),
     });
   }
+
+  // `cta.mode: 'transform'` — the CTA card IS the launcher while visible.
+  // When the card goes away (dismissed, URL mismatch, delay pending) the
+  // bubble returns so the visitor always has an entry point.
+  if (config.cta?.mode === 'transform' && ctaVisible) return null;
 
   return (
     <IFrame
