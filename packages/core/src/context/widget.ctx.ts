@@ -9,6 +9,7 @@ import { MessageCtx } from './message.ctx';
 import { RouterCtx } from './router.ctx';
 import { SessionCtx } from './session.ctx';
 import { StorageCtx } from './storage.ctx';
+import { PrimitiveState } from '../utils/PrimitiveState';
 
 export class WidgetCtx {
   public config: WidgetConfig;
@@ -21,6 +22,14 @@ export class WidgetCtx {
   public routerCtx: RouterCtx;
   public storageCtx?: StorageCtx;
   public modes: ModeDto[] = [];
+
+  /**
+   * The chat composer's draft text. Lifted out of the input component so it can
+   * be set programmatically (host-facing `prefill` trigger) and read/written by
+   * `ChatInput`. Cleared on `resetChat()` to preserve the prior "draft clears on
+   * new chat" behaviour.
+   */
+  public composerDraft = new PrimitiveState<string>('');
 
   public org: {
     id: string;
@@ -133,8 +142,13 @@ export class WidgetCtx {
     });
   };
 
+  setComposerDraft = (text: string) => {
+    this.composerDraft.set(text);
+  };
+
   resetChat = () => {
     this.sessionCtx.reset();
     this.messageCtx.reset();
+    this.composerDraft.reset();
   };
 }
