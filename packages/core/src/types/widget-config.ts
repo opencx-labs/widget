@@ -133,6 +133,12 @@ type HeaderButtonBase = {
   // tooltipContent?: string;
   hideOnSmallScreen?: boolean;
   hideOnLargeScreen?: boolean;
+
+  /**
+   * Fires after the button is clicked and its default behavior has run.
+   * It does not replace the button's default behavior.
+   */
+  onClicked?: (ctx: ComponentContext) => void;
 };
 
 export type HeaderButtonU =

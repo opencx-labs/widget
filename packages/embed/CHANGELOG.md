@@ -1,5 +1,11 @@
 # @opencx/widget
 
+## 4.0.56
+
+### Patch Changes
+
+- add onClicked option for header buttons
+
 ## 4.0.55
 
 ### Patch Changes

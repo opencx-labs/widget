@@ -14,6 +14,7 @@ import {
 import { AnimatePresence } from 'framer-motion';
 import { ChevronLeftIcon } from 'lucide-react';
 import React, { useState } from 'react';
+import { useComponentContext } from '../hooks/useComponentContext';
 import { useIsSmallScreen } from '../hooks/useIsSmallScreen';
 import { useSetWidgetSizeFn } from '../hooks/useSetWidgetSize';
 import { useTheme } from '../hooks/useTheme';
@@ -105,13 +106,18 @@ function Header__Buttons__Item__CloseWidget({
 }) {
   const { setIsOpen } = useWidgetTrigger();
   const { isSmallScreen } = useIsSmallScreen();
+  const componentCtx = useComponentContext();
 
   if (isSmallScreen && button.hideOnSmallScreen) return null;
   if (!isSmallScreen && button.hideOnLargeScreen) return null;
 
   const handleClick = () => {
-    if (button.handleClick) return button.handleClick();
-    setIsOpen(false);
+    if (button.handleClick) {
+      button.handleClick();
+    } else {
+      setIsOpen(false);
+    }
+    button.onClicked?.(componentCtx);
   };
 
   return (
@@ -139,6 +145,7 @@ function Header__Buttons__Item__ExpandShrink({
   const { isSmallScreen } = useIsSmallScreen();
   const { theme } = useTheme();
   const { setWidth, setHeight } = useSetWidgetSizeFn();
+  const componentCtx = useComponentContext();
 
   if (screen !== 'chat' && screen !== 'sessions') return null;
 
@@ -173,6 +180,7 @@ function Header__Buttons__Item__ExpandShrink({
 
       return isExpanded;
     });
+    button.onClicked?.(componentCtx);
   };
 
   if (isSmallScreen && button.hideOnSmallScreen) return null;
@@ -202,6 +210,7 @@ function Header__Buttons__Item__ResolveSession({
   const { setIsOpen } = useWidgetTrigger();
   const { resolveSession, sessionState } = useSessions();
   const { isSmallScreen } = useIsSmallScreen();
+  const componentCtx = useComponentContext();
 
   const isNoSession = !sessionState.session;
   const isResolved = sessionState.session?.isOpened === false;
@@ -300,6 +309,7 @@ function Header__Buttons__Item__ResolveSession({
             size="fit"
             className="rounded-full"
             disabled={isDisabled}
+            onClick={() => button.onClicked?.(componentCtx)}
           >
             <DynamicIcon name={button.icon} />
           </Button>
@@ -343,9 +353,14 @@ function Header__Buttons__Item__ResolveSession({
       variant="ghost"
       size="fit"
       className="rounded-full"
-      onClick={
-        isResolved || isNoSession ? handleResolveAlternative : handleResolve
-      }
+      onClick={() => {
+        if (isResolved || isNoSession) {
+          handleResolveAlternative();
+        } else {
+          void handleResolve();
+        }
+        button.onClicked?.(componentCtx);
+      }}
       disabled={isDisabled}
     >
       <DynamicIcon name={button.icon} />

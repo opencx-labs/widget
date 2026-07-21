@@ -1,5 +1,13 @@
 # @opencx/widget-react-headless
 
+## 4.0.56
+
+### Patch Changes
+
+- add onClicked option for header buttons
+- Updated dependencies
+  - @opencx/widget-core@4.0.56
+
 ## 4.0.55
 
 ### Patch Changes
