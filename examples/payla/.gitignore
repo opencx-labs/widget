@@ -1,6 +1,7 @@
 node_modules
 dist
 .wrangler
+public/opencx-widget/
 .dev.vars
 *.local
 .DS_Store

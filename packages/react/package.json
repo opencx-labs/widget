@@ -41,6 +41,7 @@
     "@radix-ui/react-switch": "^1.1.0",
     "@radix-ui/react-tooltip": "^1.1.2",
     "@uiw/react-iframe": "^1.0.3",
+    "ai": "^7.0.31",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "framer-motion": "^11.3.30",

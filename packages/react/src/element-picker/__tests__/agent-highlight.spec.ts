@@ -89,48 +89,52 @@ describe('highlightElementOnHostPage', () => {
     expect(overlay()).toBeNull();
   });
 
-  it('lifts the real element above the veil while active, ringed', () => {
+  it('never mutates the host element — the ring is its own overlay', () => {
     const btn = mountTarget();
-    highlightElementOnHostPage({ selector: '#create-key' });
-    // Promoted above the veil (2147483000) with its own stacking context so the
-    // backdrop-filter blurs the page but not this element.
-    expect(btn.style.isolation).toBe('isolate');
-    expect(btn.style.zIndex).toBe('2147483001');
-    expect(btn.style.boxShadow).not.toBe('');
-  });
-
-  it('restores the element untouched on dismiss, preserving pre-existing inline styles', () => {
-    const btn = mountTarget();
-    // Pre-existing inline styles the effect must hand back exactly.
+    // Pre-existing inline styles that must survive completely untouched.
     btn.style.zIndex = '5';
     btn.style.boxShadow = '0 0 1px red';
     highlightElementOnHostPage({ selector: '#create-key' });
-    expect(btn.style.zIndex).toBe('2147483001'); // taken over while active
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-    // Synchronous restore (the 300ms fade only removes the overlay nodes).
+
+    // No promotion: nothing is written to the element, so a host ancestor that
+    // forms a stacking context can never trap it behind the dim.
+    expect(btn.style.isolation).toBe('');
+    expect(btn.style.position).toBe('');
     expect(btn.style.zIndex).toBe('5');
     expect(btn.style.boxShadow).toBe('0 0 1px red');
-    expect(btn.style.isolation).toBe('');
+    // The ring is drawn as a separate top-level layer instead.
+    expect(overlay()?.querySelector('[data-cx-role="ring"]')).not.toBeNull();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(btn.style.zIndex).toBe('5');
+    expect(btn.style.boxShadow).toBe('0 0 1px red');
   });
 
-  it('renders a veil, and an arrowed callout only when a label is given', () => {
+  it('tiles exactly four panels around the element, leaving a sharp window', () => {
     mountTarget();
-    // No label → veil only (one descendant div).
     highlightElementOnHostPage({ selector: '#create-key' });
-    expect(overlay()?.querySelectorAll('div').length).toBe(1);
+    const panels = overlay()?.querySelectorAll('[data-cx-role="panel"]');
+    expect(panels?.length).toBe(4);
+    // Panels trap off-target clicks; the window over the element stays usable.
+    panels?.forEach((p) => {
+      expect(p.getAttribute('style')).toContain('pointer-events: auto');
+    });
+  });
+
+  it('renders an arrowed callout only when a label is given', () => {
+    mountTarget();
+    highlightElementOnHostPage({ selector: '#create-key' });
+    expect(overlay()?.querySelector('[data-cx-role="callout"]')).toBeNull();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     vi.advanceTimersByTime(500);
 
-    // With a label → veil + callout + arrow (three descendant divs), and the
-    // arrow is a rotated square.
     highlightElementOnHostPage({ selector: '#create-key', label: 'Create your key here' });
-    const container = overlay();
-    expect(container?.querySelectorAll('div').length).toBe(3);
-    expect(container?.textContent).toContain('Create your key here');
-    const hasArrow = Array.from(container?.querySelectorAll('div') ?? []).some((d) =>
-      d.style.transform.includes('rotate(45deg)'),
-    );
-    expect(hasArrow).toBe(true);
+    const callout = overlay()?.querySelector('[data-cx-role="callout"]');
+    expect(callout).not.toBeNull();
+    expect(callout?.textContent).toContain('Create your key here');
+    // The arrow is a rotated square child of the pill.
+    const arrow = callout?.querySelector('div');
+    expect(arrow?.getAttribute('style')).toContain('rotate(45deg)');
   });
 });
 

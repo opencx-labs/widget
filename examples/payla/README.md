@@ -1,151 +1,118 @@
-# Payla
+# Payla — local demo of the OpenCX Companion doing real actions
 
-A **fictional payments dashboard** (think Mollie) built to demo the **OpenCX
-Companion** agent doing real work: reading a merchant's data and taking actions
-(refunds, payment links) against a live backend — all from the embedded chat
-widget.
+Payla is a fictional Mollie-style payments dashboard. It embeds the **OpenCX Companion
+widget (built locally — not unpkg)**, pointed at a **local OpenCX**, whose seeded
+**companion agent** reads Payla's data and takes real actions (refunds, payment links)
+through HTTP actions.
 
-- **Frontend** — Vite + React SPA wearing Mollie's design language (warm
-  neutrals, Inter, near-black buttons, blue accent, 8/12px radii).
-- **Backend** — a Cloudflare Worker (Hono) + D1 with a real, mutable data model.
-- **Actions** — every endpoint is described in OpenAPI at `/openapi.json`, ready
-  to import into OpenCX as agent tools.
-- **Knowledge** — merchant help docs in [`kb/`](./kb) to train the agent.
-- **Widget** — the OpenCX `@opencx/widget@5` embed, wired to pass merchant +
-  page context to the agent.
+Everything runs on `localhost` — **no deploy, no tunnels.**
 
-> Payla is not a real company. The name, brand and data are invented; the design
-> is Mollie-inspired for demo fidelity only.
+- **Frontend** — Vite + React SPA wearing Mollie's design language.
+- **Backend** — a Cloudflare Worker (Hono) + D1 with real, mutable data.
+- **Widget** — `@opencx/widget` v5, copied from the local `packages/embed` build into
+  `public/opencx-widget/script.js` by `scripts/sync-widget.mjs` (runs on `predev`/`prebuild`).
 
-## Architecture
-
-One Cloudflare Worker serves both the SPA and the API. `run_worker_first` routes
-`/api/*`, `/openapi.json` and `/health` to the Worker; everything else is served
-as the single-page app.
+## How it fits together
 
 ```
-Browser ──> Worker (Hono)
-             ├── /api/*        → D1 (payments, refunds, customers, …)
-             ├── /openapi.json → agent action spec (dynamic origin)
-             └── else          → SPA assets (dist/client)
-Widget  ──> OpenCX agent ──(actions)──> same /api/* endpoints
+Browser  ──  localhost:5173  (Payla app)
+  │  loads the widget from  /opencx-widget/script.js     (local build, no unpkg)
+  │  widget apiUrl = http://localhost:8080               (browser → local OpenCX)
+  ▼
+OpenCX backend  ──  localhost:8080   ← companion agent "Payla Assistant" (seeded)
+  │  the agent's actions call  http://localhost:5173/api/...   (backend → local Payla)
+  ▼
+Payla Worker + D1  ──  localhost:5173   ← the mock data (payments, refunds, settlements…)
 ```
 
-## Project structure
+**Baked ids — nothing to copy.** The seed pins the widget token `payla-companion-demo-token`
+and agent id `0a71a000-0000-4000-8000-0000000000a2`; the app defaults to exactly these
+(`src/lib/widgetConfig.ts`). Fresh seed + fresh app → the widget just works.
 
-```
-worker/        Hono API, D1 access layer, OpenAPI builder, Worker entry
-shared/        Zod schemas + types shared by the API and the app
-src/           React SPA (design system, pages, query hooks, widget loader)
-migrations/    0001 schema + 0002 seed (deterministic demo data)
-kb/            Help-center articles to train the agent
-scripts/       Seed generator
-```
+## Prerequisites
 
-## Local development
+- Docker, Node ≥ 20, pnpm, [`bun`](https://bun.sh) (for the seed script)
+- An `OPENROUTER_API_KEY` with access to `openai/gpt-5.6-luna` (the v3 agent model)
+
+## Run it (all local)
+
+### 1) OpenCX backend — repo `opencx`, branch `osama/feat/agent-v5-platform`
 
 ```bash
+cd opencx/backend
+docker compose up -d
 pnpm install
-pnpm exec wrangler d1 migrations apply payla --local   # schema + seed into local D1
-pnpm dev                                               # http://localhost:5173
+cp .env.example .env                    # set OPENROUTER_API_KEY
+pnpm dev:prepare                        # migrate + codegen
+NODE_ENV=test bun scripts/seed-payla-demo.ts   # seed the org + companion agent + actions + KB
+pnpm ddev                               # → http://localhost:8080
 ```
 
-Smoke-test the API / actions:
+The seed prints the org token + agent id (they match the app's baked defaults).
+
+### 2) Widget — repo `widget`, branch `osama/feat/widget-companion-mode`
 
 ```bash
-curl localhost:5173/api/balance
-curl "localhost:5173/api/payments?status=paid&limit=3"
-curl -X POST localhost:5173/api/payments/<id>/refunds -d '{"amount":5,"reason":"test"}'
+cd widget
+pnpm install
+pnpm build                              # builds @opencx/widget → packages/embed/dist-embed/script.js
 ```
 
-Regenerate demo data after editing `scripts/gen-seed.mjs`:
+### 3) Payla mock — `widget/examples/payla`
 
 ```bash
-node scripts/gen-seed.mjs
+cd widget/examples/payla
+pnpm install --ignore-workspace         # standalone (not a workspace member)
+pnpm exec wrangler d1 migrations apply payla --local   # seed the mock's own data
+pnpm dev                                # → http://localhost:5173  (predev copies the local widget)
 ```
 
-## Deploy to Cloudflare
-
-```bash
-pnpm exec wrangler login
-pnpm exec wrangler d1 create payla         # copy the printed database_id …
-#   … into wrangler.jsonc → d1_databases[0].database_id
-pnpm exec wrangler d1 migrations apply payla --remote   # schema + seed on the remote DB
-pnpm deploy                                # typecheck + vite build + wrangler deploy
-```
-
-Your app is now live at `https://payla.<subdomain>.workers.dev`, with the actions
-spec at `https://payla.<subdomain>.workers.dev/openapi.json`.
-
-To require an API key for write actions:
-
-```bash
-pnpm exec wrangler secret put PAYLA_API_KEY   # then send it as `Authorization: Bearer <key>`
-```
-
-## Wire the OpenCX Companion agent
-
-### 1. Embed the widget
-
-Create `.env` (values from OpenCX → Channels → Configure → Widget → *Embed for =
-your agent* → Snippet):
-
-```
-VITE_OPENCX_WIDGET_TOKEN=<widget token>
-VITE_OPENCX_AGENT_ID=<agent-v3 agent id>
-VITE_OPENCX_BOT_NAME=Payla Assistant
-```
-
-Rebuild/redeploy. The loader ([`src/components/CompanionWidget.tsx`](./src/components/CompanionWidget.tsx))
-injects `@opencx/widget@5` and calls `initOpenScript({ token, agentId, bot,
-context })`, passing `{ merchant, page }` as **context** — forwarded to the agent
-as `clientContext` on every message.
-
-### 2. Give the agent its actions
-
-In OpenCX → Agents → your agent → **Actions**, import from OpenAPI using your
-deployed spec URL:
-
-```
-https://payla.<subdomain>.workers.dev/openapi.json
-```
-
-Each `operationId` becomes a tool: `get_balance`, `list_payments`, `get_payment`,
-`refund_payment`, `create_payment_link`, `list_settlements`, `list_disputes`, and
-more. If you set `PAYLA_API_KEY`, add it as the action auth (bearer).
-
-### 3. Train it on the knowledge base
-
-Upload the articles in [`kb/`](./kb) as a knowledge source / datasource for the
-agent (refunds, statuses, payouts, disputes, methods, links, verification, fees).
-They're written to match exactly how the API behaves, so the agent's answers and
-its actions stay consistent.
-
-### 4. Try it
-
-Open the dashboard and ask the assistant:
+Open **http://localhost:5173**. The Companion bubble (bottom-right) is the seeded agent.
+Try:
 
 - "What's my available balance?"
 - "Show me failed payments this week."
-- "Refund €5 on payment `tr_…`."
-- "Create a payment link for €49.99 for a wholesale order."
+- "Refund €5 on payment `tr_…`." (it'll confirm, then actually do it)
 - "Do I have any open disputes?"
 
-## Actions reference
+## Change the wiring without a rebuild
 
-| Action (operationId) | Method + path | Writes? |
+**Settings → AI assistant** has fields for the widget token, agent id, OpenCX backend URL,
+assistant name and widget script URL. Saved to `localStorage` (overrides the baked defaults);
+**Save & reload** remounts the widget. Useful to point at a different OpenCX or a deployed
+Payla.
+
+## Notes / troubleshooting
+
+- The browser (`:5173`) calls the OpenCX backend (`:8080`) cross-origin — the widget v5
+  endpoints are built to be called from any customer origin, so this works. If the bubble
+  can't connect, confirm the backend is on `:8080` and the agent id/token match the seed.
+- Actions execute **server-side** in the backend and call `:5173` on the same machine —
+  no tunnel needed.
+- The v3 agent model is `openai/gpt-5.6-luna` via OpenRouter; without `OPENROUTER_API_KEY`
+  the widget loads but the agent won't answer.
+
+## Deployed mode (optional)
+
+The app is also a standalone Cloudflare app: `pnpm run deploy` (after `wrangler d1 create`
++ pasting the id into `wrangler.jsonc`). Then set a real token/agent id (and the OpenCX
+`apiUrl`) on the Settings page. The mock API + `/openapi.json` are served by the same Worker.
+
+## The mock API / agent actions
+
+Every endpoint doubles as an agent action (spec at `/openapi.json`, imported by the seed):
+
+| Action | Method + path | Writes? |
 | --- | --- | --- |
 | `get_balance` | `GET /api/balance` | |
 | `get_business_metrics` | `GET /api/metrics` | |
 | `list_payments` | `GET /api/payments` | |
 | `get_payment` | `GET /api/payments/:id` | |
 | `refund_payment` | `POST /api/payments/:id/refunds` | ✅ |
-| `list_refunds` | `GET /api/refunds` | |
-| `list_customers` | `GET /api/customers` | |
-| `get_customer` | `GET /api/customers/:id` | |
-| `list_payment_links` | `GET /api/payment-links` | |
+| `list_customers` / `get_customer` | `GET /api/customers[/:id]` | |
 | `create_payment_link` | `POST /api/payment-links` | ✅ |
 | `list_settlements` | `GET /api/settlements` | |
-| `get_settlement` | `GET /api/settlements/:id` | |
 | `list_disputes` | `GET /api/disputes` | |
-| `get_settings` | `GET /api/settings` | |
+
+Regenerate the mock data anytime: `pnpm exec wrangler d1 migrations apply payla --local`
+(schema + seed live in `migrations/`). KB articles for the agent are in `kb/`.

@@ -10,12 +10,38 @@ import {
   LineChart,
   Pie,
   PieChart,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
 import type { ChartProps } from './props';
+
+/**
+ * Measure the wrapper width ourselves instead of relying on recharts'
+ * `ResponsiveContainer`. On recharts 2.12 that container renders an empty,
+ * svg-less box whenever it mounts measuring 0 — which is exactly this case: the
+ * chart is a `React.lazy` chunk that mounts after the widget popover has laid
+ * out, and it never re-measures on its own. Feeding recharts an explicit numeric
+ * width sidesteps the trap; the `ResizeObserver` keeps it in sync when the embed
+ * is resized.
+ */
+function useContainerWidth(): {
+  ref: React.RefObject<HTMLDivElement | null>;
+  width: number;
+} {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const [width, setWidth] = React.useState(0);
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => setWidth(el.clientWidth);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return { ref, width };
+}
 
 /**
  * The actual chart renderer. Loaded lazily (see `Chart.tsx`) so recharts — the
@@ -44,16 +70,17 @@ const TOOLTIP_STYLE: React.CSSProperties = {
 
 export default function ChartImpl({ type, data, height, centerLabel }: ChartProps) {
   const h = height ?? 220;
+  const { ref, width } = useContainerWidth();
 
   if (data.length === 0) {
     return <ChartEmpty height={h} />;
   }
 
   return (
-    <div className="w-full text-foreground" style={{ height: h }}>
-      <ResponsiveContainer width="100%" height="100%">
-        {type === 'pie' ? (
-          <PieChart>
+    <div ref={ref} className="w-full text-foreground" style={{ height: h }}>
+      {width > 0 &&
+        (type === 'pie' ? (
+          <PieChart width={width} height={h}>
             <Tooltip contentStyle={TOOLTIP_STYLE} />
             <Legend
               verticalAlign="bottom"
@@ -88,7 +115,12 @@ export default function ChartImpl({ type, data, height, centerLabel }: ChartProp
             </Pie>
           </PieChart>
         ) : type === 'line' ? (
-          <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+          <LineChart
+            width={width}
+            height={h}
+            data={data}
+            margin={{ top: 8, right: 8, bottom: 0, left: -16 }}
+          >
             <CartesianGrid strokeOpacity={0.15} vertical={false} />
             <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={10} fontSize={11} />
             <YAxis tickLine={false} axisLine={false} fontSize={11} width={32} />
@@ -102,15 +134,19 @@ export default function ChartImpl({ type, data, height, centerLabel }: ChartProp
             />
           </LineChart>
         ) : (
-          <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+          <BarChart
+            width={width}
+            height={h}
+            data={data}
+            margin={{ top: 8, right: 8, bottom: 0, left: -16 }}
+          >
             <CartesianGrid strokeOpacity={0.15} vertical={false} />
             <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={10} fontSize={11} />
             <YAxis tickLine={false} axisLine={false} fontSize={11} width={32} />
             <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fillOpacity: 0.06 }} />
             <Bar dataKey="value" fill={rampColor(0)} radius={[4, 4, 0, 0]} />
           </BarChart>
-        )}
-      </ResponsiveContainer>
+        ))}
     </div>
   );
 }

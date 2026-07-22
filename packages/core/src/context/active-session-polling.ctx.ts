@@ -126,19 +126,28 @@ export class ActiveSessionPollingCtx {
           (newMsg) =>
             !prevMessages.some((existingMsg) => existingMsg.id === newMsg.id),
         );
-      this.messageCtx.state.setPartial({
-        messages: [...prevMessages, ...newMessages],
-      });
-      if (isInitialFetch) {
-        // Opening an existing session: history flows in as one batch. The user
-        // is loading context, not receiving new messages — suppress the hook
-        // but seed the dedup set so later polls don't re-fire these ids.
-        this.messageCtx.markAsDispatchedToOnMessageReceivedHook(
-          newMessages.map((m) => m.id),
-        );
-      } else {
-        for (const newMessage of newMessages) {
-          this.messageCtx.dispatchToOnMessageReceivedHook(newMessage);
+      // Only commit when the poll actually surfaced NEW rows. A poll that
+      // returns only already-known messages must NOT replace the array with a
+      // fresh reference — that re-renders the whole transcript on every tick
+      // (visible flicker during a stream, and it remounts the lazy recharts
+      // chart into an empty 0-measured ResponsiveContainer). The steady state
+      // of an idle/streaming session is "poll returns the same rows", so this
+      // guard is what keeps the surface still between real updates.
+      if (newMessages.length > 0) {
+        this.messageCtx.state.setPartial({
+          messages: [...prevMessages, ...newMessages],
+        });
+        if (isInitialFetch) {
+          // Opening an existing session: history flows in as one batch. The user
+          // is loading context, not receiving new messages — suppress the hook
+          // but seed the dedup set so later polls don't re-fire these ids.
+          this.messageCtx.markAsDispatchedToOnMessageReceivedHook(
+            newMessages.map((m) => m.id),
+          );
+        } else {
+          for (const newMessage of newMessages) {
+            this.messageCtx.dispatchToOnMessageReceivedHook(newMessage);
+          }
         }
       }
     }
