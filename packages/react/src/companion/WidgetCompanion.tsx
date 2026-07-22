@@ -22,8 +22,16 @@ import {
 import { buildFrameHtml } from '../components/FrameDocument';
 import { useTheme } from '../hooks/useTheme';
 import { useTranslation } from '../hooks/useTranslation';
+import {
+  mountAppFrame,
+  setFrameAnimated,
+  setFrameOpen,
+  setFrameWidth,
+  unmountAppFrame,
+} from './app-frame';
 import { CompanionContent } from './CompanionContent';
 import { CompanionFrame } from './CompanionFrame';
+import { CompanionGeometryUtils } from './companion-geometry.utils';
 import { RestingPill } from './RestingOverlays';
 import {
   CHAT_SHADOW,
@@ -67,12 +75,40 @@ const CHAT_MAX_HEIGHT = 640;
  * popover trigger via theme.widgetTrigger.offset.bottom keep their offset. */
 const DEFAULT_BOTTOM_OFFSET = 24;
 const TOP_MARGIN = 48;
-// Fullscreen floats as a modal window: this margin on all four sides.
-const FULLSCREEN_MARGIN = 16;
 /** Quick-ask card seed height until the composer measures itself. */
 const COMPANION_INPUT_FALLBACK_HEIGHT = 96;
 const VIEWPORT_EDGE_PADDING = 12;
 const PILL_OFFSET_STORAGE_KEY = 'opencx_companion_pill_offset';
+
+// Sidebar layout: a docked, drag-resizable panel at the inline-end edge that
+// pushes the host page aside (app-frame). Same width bounds as the aside it
+// replaces; its margins + rects live in CompanionGeometryUtils.
+const DEFAULT_SIDEBAR_WIDTH = 400;
+const MIN_SIDEBAR_WIDTH = 320;
+const MAX_SIDEBAR_WIDTH = 560;
+const SIDEBAR_CANVAS = '#f4f4f5';
+const SIDEBAR_WIDTH_STORAGE_KEY = 'opencx_companion_sidebar_width';
+
+function loadSidebarWidth(): number | null {
+  try {
+    const raw = localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Read a CSS custom property (e.g. `--opencx-background`) off the theme's
+ * cssVars without an unchecked cast. The app-frame needs the concrete color
+ * value because it styles `body`, which sits outside the widget's var scope. */
+function readCssVar(vars: React.CSSProperties, name: string): string {
+  for (const [key, value] of Object.entries(vars)) {
+    if (key === name && typeof value === 'string') return value;
+  }
+  return '';
+}
 
 const initialContent = buildFrameHtml({ transparent: true });
 
@@ -127,6 +163,17 @@ export function WidgetCompanion() {
     COMPANION_INPUT_FALLBACK_HEIGHT,
   );
 
+  // Sidebar layout: a resizable width (persisted) and a resize-in-progress
+  // flag that pauses the app-frame transition mid-drag.
+  const [sidebarWidth, setSidebarWidth] = useState(() =>
+    clamp(
+      companion?.sidebar?.width ?? loadSidebarWidth() ?? DEFAULT_SIDEBAR_WIDTH,
+      MIN_SIDEBAR_WIDTH,
+      MAX_SIDEBAR_WIDTH,
+    ),
+  );
+  const [sidebarResizing, setSidebarResizing] = useState(false);
+
   const shouldReduceMotion = useReducedMotion();
   // Keyboard-driven transitions (Escape, ...) skip the spring + fade
   // delay — keyboard users are on the fast path, and the morph only earns
@@ -134,8 +181,13 @@ export function WidgetCompanion() {
   // modality: set by keyboard handlers, cleared by pointer handlers, so a
   // keyboard flow stays snappy end-to-end and a click restores the spring.
   const [keyboardDriven, setKeyboardDriven] = useState(false);
-  const morphTransition =
-    shouldReduceMotion || keyboardDriven ? SNAPPY : SPRING;
+  const morphTransition = sidebarResizing
+    ? // Drag-resize is a direct manipulation: the shell must track the pointer
+      // 1:1, not spring after it. Restored to SPRING on pointer-up.
+      { duration: 0 }
+    : shouldReduceMotion || keyboardDriven
+      ? SNAPPY
+      : SPRING;
   // Hover motion is gated off coarse pointers — tap-to-hover on touch reads
   // as a phantom wiggle before every open.
   const [canHover] = useState(
@@ -246,9 +298,7 @@ export function WidgetCompanion() {
   // Quick-ask composer placeholder: continuing an open conversation reads
   // "Follow up…"; a fresh ask uses the embedder's placeholder or the default.
   const quickAskPlaceholder =
-    continueLabel ??
-    companion?.placeholder ??
-    t('write_a_message_placeholder');
+    continueLabel ?? companion?.placeholder ?? t('write_a_message_placeholder');
   const [pillHovered, setPillHovered] = useState(false);
   const [dockContentWidth, setDockContentWidth] = useState<number | null>(null);
   const dockContentRef = useCallback((node: HTMLDivElement | null) => {
@@ -274,16 +324,18 @@ export function WidgetCompanion() {
     CHAT_MIN_HEIGHT,
     Math.min(CHAT_MAX_HEIGHT, region.height - bottomOffset - TOP_MARGIN),
   );
-  const isFullscreen = panelLayout === 'fullscreen';
-  // Fullscreen: a floating modal window — even margin on all four sides and
-  // rounded corners all around (Linear/Claude-style), not a flush sheet.
-  const chatDims = isFullscreen
-    ? {
-        width: region.width - FULLSCREEN_MARGIN * 2,
-        height: region.height - FULLSCREEN_MARGIN * 2,
-        borderRadius: 16,
-      }
-    : { width: compactWidth, height: chatHeight, borderRadius: 20 };
+  const isSidebar = panelLayout === 'sidebar';
+  const effectiveSidebarWidth = CompanionGeometryUtils.effectiveSidebarWidth(
+    region,
+    sidebarWidth,
+  );
+  const chatDims = CompanionGeometryUtils.chatDims({
+    layout: panelLayout,
+    region,
+    compactWidth,
+    chatHeight,
+    sidebarWidth,
+  });
 
   // The content iframe keeps a constant chat-sized footprint for BOTH open
   // states — the input bar is just the bottom strip of it, and the shell
@@ -298,6 +350,25 @@ export function WidgetCompanion() {
   // The column owns its full height in every layout — the stock chat header
   // (with PanelControls) lives inside it, so no top strip is reserved.
   const contentHeight = chatDims.height;
+
+  // Container anchor, ANIMATED (px) so every layout morphs its position, not
+  // just the inner shell's size: compact/fullscreen center horizontally and
+  // grow from the bottom baseline; the sidebar pins to the inline-end edge and
+  // spans the full height. Animating left/bottom (vs. a static style) is what
+  // lets sidebar↔fullscreen↔compact spring between rects instead of jumping.
+  const regionOffsetBottom = containerEl
+    ? viewportSize.height - (region.top + region.height)
+    : 0;
+  const { centerX: shellCenterX, bottom: shellBottom } =
+    CompanionGeometryUtils.shellAnchor({
+      isChatOpen: state === 'chat',
+      layout: panelLayout,
+      region,
+      sidebarWidth,
+      dir,
+      bottomOffset,
+      regionOffsetBottom,
+    });
 
   const dockWidth = Math.min(
     dockContentWidth ?? DOCK_FALLBACK_WIDTH,
@@ -365,7 +436,13 @@ export function WidgetCompanion() {
           VIEWPORT_EDGE_PADDING,
       );
       animate(dragX, clamp(pillOffset.x, -bound, bound), settle);
-    } else if (state === 'chat' && panelLayout === 'fullscreen') {
+    } else if (
+      state === 'chat' &&
+      (panelLayout === 'fullscreen' || panelLayout === 'sidebar')
+    ) {
+      // Fullscreen and the docked sidebar are viewport/edge-anchored, not
+      // bottom-center — they must NOT carry the pill's drag offset, or the
+      // panel lands shifted off-screen by however far the pill was dragged.
       animate(dragX, 0, settle);
     } else {
       const maxOffset =
@@ -400,7 +477,9 @@ export function WidgetCompanion() {
   // resting width (dockWidth when labeled) or the dock slides half off-edge.
   const restingBound = Math.max(
     0,
-    region.width / 2 - (docked ? dockWidth : PILL_SIZE) / 2 - VIEWPORT_EDGE_PADDING,
+    region.width / 2 -
+      (docked ? dockWidth : PILL_SIZE) / 2 -
+      VIEWPORT_EDGE_PADDING,
   );
   const dragConstraints = useMemo(
     () => ({ left: -restingBound, right: restingBound, top: 0, bottom: 0 }),
@@ -422,8 +501,14 @@ export function WidgetCompanion() {
     // input bar → pill. Jumping from a large panel straight to the icon
     // reads as the widget vanishing; each stage keeps the user oriented
     // and one step from returning.
-    if (panelLayout !== 'compact') {
+    if (panelLayout === 'fullscreen') {
       setPanelLayout('compact');
+      return;
+    }
+    // The docked sidebar has no compact intermediate — it collapses straight
+    // to the launcher pill (the app-frame un-insets as the shell shrinks).
+    if (panelLayout === 'sidebar') {
+      setState('pill');
       return;
     }
     setState((prev) => {
@@ -459,11 +544,18 @@ export function WidgetCompanion() {
 
   // Layouts are a chat-panel concept only. Guard on hasBeenChatRef so this
   // only relaxes to compact when the panel LEAVES chat — never on a fresh
-  // mount (e.g. a sidebar→companion swap, which starts in 'pill' with a
-  // fullscreen layout to honor).
+  // mount. The sidebar is exempt: it's a persistent docked layout, so closing
+  // it must keep the layout as 'sidebar' (reopen returns to the sidebar, not
+  // a compact card) — only fullscreen relaxes back down on close.
   useEffect(() => {
-    if (state !== 'chat' && hasBeenChatRef.current) setPanelLayout('compact');
-  }, [state]);
+    if (
+      state !== 'chat' &&
+      hasBeenChatRef.current &&
+      panelLayout !== 'sidebar'
+    ) {
+      setPanelLayout('compact');
+    }
+  }, [state, panelLayout]);
 
   const isFullscreenModal = state === 'chat' && panelLayout === 'fullscreen';
   // Page-touching effects are the embedder's call, not ours
@@ -520,7 +612,9 @@ export function WidgetCompanion() {
   // see e.target retargeted to the shadow HOST — contains() would report
   // every in-panel click as outside and instantly close the panel.
   useEffect(() => {
-    if (state === 'pill') return;
+    // The docked sidebar is meant to coexist with the page (the whole point of
+    // the app-frame), so page clicks must NOT close it — only its X / Escape do.
+    if (state === 'pill' || isSidebar) return;
     function handleClick(e: MouseEvent) {
       const container = containerRef.current;
       if (!container) return;
@@ -531,7 +625,7 @@ export function WidgetCompanion() {
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [closePanel, state]);
+  }, [closePanel, state, isSidebar]);
 
   // The quick-ask composer IS the stock composer — it already dispatched the
   // message into the CURRENT session context (creating the session if needed).
@@ -561,9 +655,9 @@ export function WidgetCompanion() {
     setState('chat');
   }, [widgetCtx]);
 
-  // The corner layout picker switches between all arrangements. Docking to
-  // 'sidebar' makes WidgetCompanionRoot swap to WidgetSidebar (the layout
-  // crosses the sidebar boundary); the rest re-render this panel in place.
+  // The corner layout picker switches between all arrangements. Every target —
+  // compact, fullscreen, sidebar — re-renders THIS shell in place, so the panel
+  // morphs from the current rect to the next (no component swap).
   const handleSelectLayout = useCallback(
     (target: PanelLayout) => {
       setKeyboardDriven(false);
@@ -581,6 +675,58 @@ export function WidgetCompanion() {
     },
     [widgetCtx, setPanelLayout],
   );
+
+  // Drag-resize the sidebar: a host-DOM handle on the panel's inline-start
+  // edge maps clientX to width. The app-frame transition pauses mid-drag so
+  // the page tracks the panel 1:1 instead of lagging behind a spring.
+  const onSidebarResizeDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      setSidebarResizing(true);
+      setFrameAnimated(false);
+    },
+    [],
+  );
+  const onSidebarResizeMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
+      const next = dir === 'rtl' ? e.clientX : window.innerWidth - e.clientX;
+      setSidebarWidth(clamp(next, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH));
+    },
+    [dir],
+  );
+  const onSidebarResizeUp = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+      setSidebarResizing(false);
+      setFrameAnimated(true);
+      try {
+        localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(sidebarWidth));
+      } catch {
+        // Storage full or unavailable — ignore
+      }
+    },
+    [sidebarWidth],
+  );
+
+  // Sidebar app-frame: while the sidebar layout is active, body itself becomes
+  // a framed child window that insets to make room for the panel (app-frame.ts).
+  // Mounted for the layout's lifetime; the open inset toggles with the panel
+  // state; width tracks the resizable panel.
+  const sidebarCanvas = companion?.sidebar?.canvasColor ?? SIDEBAR_CANVAS;
+  const sidebarFramePage = companion?.sidebar?.framePage !== false;
+  const pageBackground = `hsl(${readCssVar(cssVars, '--opencx-background')})`;
+  useEffect(() => {
+    if (!isSidebar || !sidebarFramePage) return;
+    mountAppFrame({ canvas: sidebarCanvas, dir, pageBackground });
+    return () => unmountAppFrame();
+  }, [isSidebar, sidebarFramePage, sidebarCanvas, dir, pageBackground]);
+  useEffect(() => {
+    if (isSidebar && sidebarFramePage) setFrameWidth(effectiveSidebarWidth);
+  }, [isSidebar, sidebarFramePage, effectiveSidebarWidth]);
+  useEffect(() => {
+    if (isSidebar && sidebarFramePage) setFrameOpen(state !== 'pill');
+  }, [isSidebar, sidebarFramePage, state]);
 
   // History = the stock sessions screen, rendered inside the same panel
   const handleHistory = useCallback(() => {
@@ -647,21 +793,17 @@ export function WidgetCompanion() {
         style={{
           ...cssVars,
           position: 'fixed',
-          left: containerEl ? region.left + region.width / 2 : '50%',
-          bottom:
-            // Fullscreen floats with an even margin; other states keep the
-            // shared bottom offset.
-            (isFullscreen ? FULLSCREEN_MARGIN : bottomOffset) +
-            (containerEl
-              ? viewportSize.height - (region.top + region.height)
-              : 0),
           x: dragX,
           translateX: '-50%',
           zIndex: theme.widgetContentContainer.zIndex,
           // With a custom trigger the shell has no resting look of its own
           visibility: hasCustomTrigger && isPill ? 'hidden' : undefined,
         }}
+        // Anchor animates with the morph spring: the shell's center-x and
+        // bottom spring between the compact/fullscreen center and the sidebar
+        // edge, so a layout switch expands FROM the current rect in place.
         initial={false}
+        animate={{ left: shellCenterX, bottom: shellBottom }}
         drag={isPill && !hasCustomTrigger ? 'x' : false}
         dragMomentum={false}
         dragElastic={0.15}
@@ -686,11 +828,11 @@ export function WidgetCompanion() {
                   if (wasDraggingRef.current) return;
                   setKeyboardDriven(false);
                   // The companion pill is the single launcher for every layout.
-                  // In the sidebar layout, just flip isOpen — the root swaps to
-                  // WidgetSidebar and this component unmounts, so we skip the
-                  // companion open-morph entirely (no compact-panel flash).
+                  // Sidebar opens straight into the full docked panel (no
+                  // quick-ask bar): the shell morphs the pill up into the
+                  // sidebar rect in place — one shell, no component swap.
                   if (panelLayout === 'sidebar') {
-                    setIsOpen(true);
+                    setState('chat');
                     return;
                   }
                   openPanel();
@@ -819,6 +961,29 @@ export function WidgetCompanion() {
                 />
               </CompanionFrame>
             </motion.div>
+          )}
+
+          {/* Drag-resize handle — the sidebar's inline-start edge. Host-DOM
+              (not in the iframe) so the pointer capture spans the whole drag. */}
+          {isSidebar && state === 'chat' && (
+            <div
+              data-opencx-sidebar-resize
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize chat"
+              onPointerDown={onSidebarResizeDown}
+              onPointerMove={onSidebarResizeMove}
+              onPointerUp={onSidebarResizeUp}
+              style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                insetInlineStart: 0,
+                width: 8,
+                cursor: 'ew-resize',
+                zIndex: 2,
+              }}
+            />
           )}
         </motion.div>
       </motion.div>

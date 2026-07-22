@@ -23,7 +23,9 @@ export type OpenCxComponentNameU =
   | 'chat/header'
   | 'chat/main/root'
   | 'chat/canvas/root'
+  | 'chat/msgs/wrapper'
   | 'chat/msgs/root'
+  | 'chat/msgs/scroll-to-bottom'
   | 'chat/streaming_turn/root'
   | 'chat/streaming_turn/steps'
   /* -------------------- Agent Message ------------------- */
@@ -40,12 +42,17 @@ export type OpenCxComponentNameU =
   | 'chat/user_msg_group/avatar/root'
   | 'chat/user_msg/root'
   | 'chat/user_msg/msg'
+  | 'chat/user_msg/picked_elements'
   /* --------------------- Chat Input --------------------- */
   | 'chat/input_box/root'
   | 'chat/input_box/inner_root'
   | 'chat/input_box/textarea_and_attachments_container'
   | 'chat/input_box/textarea'
   | 'chat/input_box/attachments_container'
+  /* Element picker (attach a host-page element as context) */
+  | 'chat/input_box/element_picker_btn'
+  | 'chat/input_box/picked_elements_container'
+  | 'chat/input_box/picked_element_pill'
   /* Agent-v3 multi-send queue pill, docked above the composer. */
   | 'chat/queued_sends/root'
   | 'chat/queued_sends/header'

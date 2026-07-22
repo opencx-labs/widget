@@ -4,6 +4,8 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Label,
+  Legend,
   Line,
   LineChart,
   Pie,
@@ -18,15 +20,29 @@ import type { ChartProps } from './props';
 /**
  * The actual chart renderer. Loaded lazily (see `Chart.tsx`) so recharts — the
  * one heavy dependency in the registry — is a separate chunk that only downloads
- * when the agent actually emits a Chart. Kept intentionally minimal (bar / line
- * / pie over `{ label, value }[]`); richer charts can grow behind the same seam.
+ * when the agent actually emits a Chart.
+ *
+ * Styled to match the companion/Impact-Dashboard charts: a monochrome ramp of
+ * the theme foreground (90/70/50/30% alpha), donut pie with an optional center
+ * label + legend, and clean axes (no tick/axis lines). The ramp reads the
+ * widget's `--opencx-foreground` token so charts follow the embed theme, with
+ * a neutral fallback for any context where the token is missing.
  */
 
-// Fixed, theme-neutral palette (readable on light and dark bubbles). Deliberately
-// not tied to widget tokens so a chunk with no CSS context still renders in color.
-const PALETTE = ['#6366f1', '#22c55e', '#f59e0b', '#ec4899', '#06b6d4', '#8b5cf6'];
+const FOREGROUND = 'hsl(var(--opencx-foreground, 240 10% 20%))';
+// Same ramp as the dashboard's REPORTS_COLOR (surface-foreground at 90/70/50/30%).
+const RAMP = [90, 70, 50, 30].map(
+  (pct) => `color-mix(in oklch, ${FOREGROUND} ${pct}%, transparent)`,
+);
+const rampColor = (i: number): string => RAMP[i % RAMP.length] ?? FOREGROUND;
 
-export default function ChartImpl({ type, data, height }: ChartProps) {
+const TOOLTIP_STYLE: React.CSSProperties = {
+  borderRadius: 8,
+  border: '1px solid color-mix(in oklch, currentColor 15%, transparent)',
+  fontSize: 12,
+};
+
+export default function ChartImpl({ type, data, height, centerLabel }: ChartProps) {
   const h = height ?? 220;
 
   if (data.length === 0) {
@@ -34,36 +50,64 @@ export default function ChartImpl({ type, data, height }: ChartProps) {
   }
 
   return (
-    <div className="w-full" style={{ height: h }}>
+    <div className="w-full text-foreground" style={{ height: h }}>
       <ResponsiveContainer width="100%" height="100%">
         {type === 'pie' ? (
           <PieChart>
-            <Tooltip />
-            <Pie data={data} dataKey="value" nameKey="label" outerRadius="80%" innerRadius="45%">
+            <Tooltip contentStyle={TOOLTIP_STYLE} />
+            <Legend
+              verticalAlign="bottom"
+              iconType="circle"
+              iconSize={8}
+              wrapperStyle={{ fontSize: 12 }}
+            />
+            <Pie data={data} dataKey="value" nameKey="label" outerRadius="85%" innerRadius="60%">
               {data.map((_, i) => (
-                <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+                <Cell key={i} fill={rampColor(i)} />
               ))}
+              {centerLabel && (
+                <Label
+                  position="center"
+                  content={({ viewBox }) => {
+                    if (viewBox && 'cx' in viewBox && 'cy' in viewBox) {
+                      return (
+                        <text
+                          x={viewBox.cx}
+                          y={viewBox.cy}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          className="fill-foreground text-2xl font-medium"
+                        >
+                          {centerLabel}
+                        </text>
+                      );
+                    }
+                  }}
+                />
+              )}
             </Pie>
           </PieChart>
         ) : type === 'line' ? (
           <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
-            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} vertical={false} />
-            <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} />
+            <CartesianGrid strokeOpacity={0.15} vertical={false} />
+            <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={10} fontSize={11} />
             <YAxis tickLine={false} axisLine={false} fontSize={11} width={32} />
-            <Tooltip />
-            <Line type="monotone" dataKey="value" stroke={PALETTE[0]} strokeWidth={2} dot={false} />
+            <Tooltip contentStyle={TOOLTIP_STYLE} />
+            <Line
+              type="monotone"
+              dataKey="value"
+              stroke={rampColor(0)}
+              strokeWidth={2}
+              dot={false}
+            />
           </LineChart>
         ) : (
           <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
-            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} vertical={false} />
-            <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} />
+            <CartesianGrid strokeOpacity={0.15} vertical={false} />
+            <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={10} fontSize={11} />
             <YAxis tickLine={false} axisLine={false} fontSize={11} width={32} />
-            <Tooltip />
-            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-              {data.map((_, i) => (
-                <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
-              ))}
-            </Bar>
+            <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fillOpacity: 0.06 }} />
+            <Bar dataKey="value" fill={rampColor(0)} radius={[4, 4, 0, 0]} />
           </BarChart>
         )}
       </ResponsiveContainer>

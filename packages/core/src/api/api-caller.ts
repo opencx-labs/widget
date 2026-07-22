@@ -175,7 +175,15 @@ export class ApiCaller {
     abortSignal?: AbortSignal;
   }) => {
     return await this.client.GET('/backend/widget/v2/sessions', {
-      params: { query: { cursor, filters: JSON.stringify(filters) } },
+      params: {
+        query: {
+          cursor,
+          filters: JSON.stringify(filters),
+          // Agents-platform binding: scope the list to this agent's sessions.
+          // The backend ignores it when absent (widget not agent-bound).
+          ...(this.config.agentId ? { agentId: this.config.agentId } : {}),
+        },
+      },
       signal: abortSignal,
     });
   };

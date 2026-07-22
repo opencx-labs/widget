@@ -1,4 +1,5 @@
 import type { WidgetUserMessage } from '@opencx/widget-core';
+import { MousePointerClickIcon } from 'lucide-react';
 import React from 'react';
 import { dc } from '../utils/data-component';
 import { AttachmentPreview } from './AttachmentPreview';
@@ -20,6 +21,28 @@ export function UserMessage({
       {...dc('chat/user_msg/root')}
       className="w-5/6 flex flex-col items-end gap-1"
     >
+      {message.pickedElements && message.pickedElements.length > 0 && (
+        <div
+          {...dc('chat/user_msg/picked_elements')}
+          className="w-full flex gap-1 flex-wrap justify-end"
+        >
+          {message.pickedElements.map((el, i) => (
+            <span
+              key={`${el.name}-${i}`}
+              className={cn(
+                'inline-flex items-center gap-1.5 max-w-48',
+                'rounded-full py-1 ps-2 pe-2.5',
+                'bg-white ring-1 ring-black/10',
+                'text-xs text-foreground',
+              )}
+              title={el.name}
+            >
+              <MousePointerClickIcon className="size-3 shrink-0 text-primary" />
+              <span className="truncate">{el.name}</span>
+            </span>
+          ))}
+        </div>
+      )}
       {message.attachments && message.attachments.length > 0 && (
         <div className="w-full flex gap-1 flex-wrap justify-end">
           {message.attachments?.map((attachment) => (

@@ -67,7 +67,7 @@ function SessionCard({
       )}
       onClick={() => toChatScreen(session.id)}
     >
-      <div className="flex-1 flex gap-2 items-center">
+      <div className="flex-1 flex gap-2 items-center min-w-0">
         <AnimatePresence mode="wait">
           <MotionDiv snapExit>
             <Avatar className="size-10">
@@ -78,7 +78,7 @@ function SessionCard({
             </Avatar>
           </MotionDiv>
         </AnimatePresence>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <AnimatePresence mode="wait">
             <MotionDiv key={assigneeName} snapExit>
               {assigneeName}

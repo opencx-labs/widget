@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+/*
+  Payla design tokens — a fictional payments brand wearing Mollie's design language.
+  Palette + type extracted from the live Mollie dashboard: warm neutrals (not cool grays),
+  InterVariable, near-black primary buttons, blue accent, 8/12px radii, borders over shadows.
+*/
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, -apple-system, "system-ui", "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+
+  /* Warm neutrals */
+  --color-ink: #121110; /* primary text */
+  --color-ink-2: #595653; /* secondary text */
+  --color-ink-3: #7d7975; /* muted text */
+  --color-ink-4: #a8a29c; /* faint / placeholder */
+  --color-bg: #ffffff; /* page background */
+  --color-surface: #ffffff; /* cards */
+  --color-surface-2: #fcfbfa; /* subtle panel / table header */
+  --color-surface-3: #f5f2f0; /* hover / active nav / well */
+  --color-surface-4: #edeae8; /* deeper fill */
+  --color-border: #eae7e4;
+  --color-border-strong: #ddd8d3;
+
+  /* Primary (near-black warm ink, like Mollie's buttons) */
+  --color-primary: #1c1714;
+  --color-primary-hover: #2c2521;
+  --color-primary-fg: #ffffff;
+
+  /* Accent (Payla blue) */
+  --color-accent: #2e50ff;
+  --color-accent-hover: #1f3ae0;
+  --color-accent-fg: #ffffff;
+  --color-accent-soft: #e9edff;
+  --color-link: #2440e6;
+
+  /* Semantic */
+  --color-success: #1e7a3d;
+  --color-success-soft: #ebf7ea;
+  --color-success-dot: #2fa84f;
+  --color-warning: #8a5a00;
+  --color-warning-soft: #fff4e0;
+  --color-warning-dot: #e8961e;
+  --color-danger: #b0122f;
+  --color-danger-soft: #ffe9ec;
+  --color-danger-dot: #e11d48;
+  --color-info: #1f5fbf;
+  --color-info-soft: #e6f0ff;
+  --color-purple: #7a3cc9;
+  --color-purple-soft: #f6e4ff;
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  * {
+    border-color: var(--color-border);
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--color-accent) 22%, transparent);
+  }
+  /* Quiet, warm scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-surface-4) transparent;
+  }
+}
+
+@layer components {
+  .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+  }
+  .focusable:focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--color-accent) 55%, transparent);
+    outline-offset: 1px;
+  }
+}

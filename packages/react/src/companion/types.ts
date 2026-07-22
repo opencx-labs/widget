@@ -2,9 +2,10 @@
 export type PanelState = 'pill' | 'input' | 'chat';
 
 /**
- * Chat-panel layouts: bottom-center card or Linear-style fullscreen
- * (container transform — the same surface grows to fill the viewport).
- * The app-frame sidebar is its own display mode (WidgetSidebar), not a
- * companion layout.
+ * Chat-panel layouts, all rendered by the one companion shell (WidgetCompanion)
+ * so switching morphs the rect in place: the bottom-center `compact` card,
+ * Linear-style `fullscreen` (grows to fill the viewport), and the app-frame
+ * `sidebar` (a docked, resizable panel at the inline-end edge that insets the
+ * host page).
  */
 export type PanelLayout = 'compact' | 'fullscreen' | 'sidebar';

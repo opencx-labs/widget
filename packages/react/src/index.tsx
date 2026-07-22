@@ -8,7 +8,6 @@ import type {
 } from '@opencx/widget-core';
 import {
   useDisplayMode,
-  useWidgetLayout,
   useWidgetTrigger,
   WidgetLayoutProvider,
   WidgetProvider,
@@ -22,7 +21,6 @@ import { WidgetContent, WidgetPopoverContent } from './WidgetPopoverContent';
 import { WidgetPopoverTrigger } from './WidgetPopoverTrigger';
 import { WidgetPopoverAnchor } from './WidgetPopoverAnchor';
 import { WidgetCompanion } from './companion/WidgetCompanion';
-import { WidgetSidebar } from './companion/WidgetSidebar';
 import {
   WidgetImperativeHandler,
   type WidgetRef,
@@ -41,35 +39,17 @@ function WidgetPopoverTriggerAndContent() {
 }
 
 /**
- * Companion + sidebar are one display mode with two runtime layouts: the
- * floating companion and the docked sidebar swap by mount/unmount as the
- * layout crosses the sidebar boundary. Session/message/isOpen state live in
- * shared providers, so the conversation persists across the swap.
- */
-function WidgetCompanionRoot() {
-  const { layout } = useWidgetLayout();
-  const { isOpen } = useWidgetTrigger();
-  // The sidebar is only the OPEN presentation of the sidebar layout. The
-  // resting trigger is ALWAYS the companion pill (one consistent launcher), so
-  // a closed sidebar falls back to the companion pill — not the sidebar's own
-  // corner trigger.
-  return layout === 'sidebar' && isOpen ? (
-    <WidgetSidebar />
-  ) : (
-    <WidgetCompanion />
-  );
-}
-
-/**
  * Shell picker. Must render INSIDE WidgetProvider: the effective display mode
  * comes from `useDisplayMode`, which needs the resolved config — agent-bound
  * embeds (agent v3) default to the companion shell, explicit `displayMode`
- * always wins.
+ * always wins. The companion is one shell across every layout (compact,
+ * fullscreen, sidebar): it morphs between them in place — no mount/unmount
+ * swap — so switching layouts expands FROM the current rect.
  */
 function WidgetDisplayRoot() {
   const displayMode = useDisplayMode();
   return displayMode === 'companion' ? (
-    <WidgetCompanionRoot />
+    <WidgetCompanion />
   ) : (
     <WidgetPopoverTriggerAndContent />
   );

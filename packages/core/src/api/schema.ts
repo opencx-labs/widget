@@ -116,6 +116,12 @@ export interface paths {
         query: {
           filters: string;
           offset?: string;
+          /**
+           * Agents-platform binding: when the widget is bound to an agent, the
+           * backend narrows the list to sessions stamped with this agent
+           * (`ai_agent_id`). Omitted when the widget isn't agent-bound.
+           */
+          agentId?: string;
         };
         header?: never;
         path?: never;
@@ -953,6 +959,10 @@ export interface components {
         /** @enum {string} */
         kind: 'reasoning' | 'tool';
         label: string;
+      }[];
+      /** @description User messages only: display names of page elements the visitor attached with the element picker. */
+      pickedElements?: {
+        name: string;
       }[];
     };
     WidgetSessionDto: {

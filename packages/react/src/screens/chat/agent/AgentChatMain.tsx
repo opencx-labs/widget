@@ -2,8 +2,15 @@ import {
   type LiteralWidgetComponentKey,
   type SafeExtract,
 } from '@opencx/widget-core';
-import { useBot, useConfig, useMessages, useWidget } from '@opencx/widget-react-headless';
-import React, { useEffect, useMemo, useRef } from 'react';
+import {
+  useBot,
+  useConfig,
+  useMessages,
+  useWidget,
+} from '@opencx/widget-react-headless';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ArrowDown } from 'lucide-react';
+import React, { useMemo } from 'react';
 import { AgentMessageGroup } from '../../../components/AgentMessageGroup';
 import { StreamingTurn } from '../../../components/StreamingTurn';
 import { SessionResolvedComponent } from '../../../components/custom-components/SessionResolvedComponent';
@@ -20,6 +27,7 @@ import { AdvancedInitialMessages } from '../AdvancedInitialMessages';
 import { ChatBannerItems } from '../ChatBannerItems';
 import { InitialMessages } from '../InitialMessages';
 import { useAgentChatUi } from './AgentChatContext';
+import { useStreamFollow } from './use-stream-follow';
 
 /**
  * The agent-v3 (v5) message list. Renders the persisted transcript (history +
@@ -38,93 +46,138 @@ export function AgentChatMain() {
   // Server-resolved agent branding wins over the local `bot` option.
   const bot = useBot();
 
-  const groupedMessages = useMemo(() => groupMessagesByType(messages), [messages]);
+  const groupedMessages = useMemo(
+    () => groupMessagesByType(messages),
+    [messages],
+  );
+
+  // While a turn is streaming, `StreamingTurn` (below) is the SOLE renderer of
+  // the in-flight assistant turn. But the persisted store polls the canonical
+  // rows continuously ("history + polling"), so the turn's first narration row
+  // can land in `messages` mid-stream and render a SECOND copy above the live
+  // overlay — the duplicate only collapses when the stream ends and
+  // `StreamingTurn` unmounts. Hide the trailing assistant-side groups
+  // (everything after the last user message — i.e. the in-flight turn) while
+  // streaming so the live overlay owns that region alone.
+  const visibleGroups = useMemo(() => {
+    if (!isStreaming) return groupedMessages;
+    let end = groupedMessages.length;
+    while (end > 0) {
+      const group = groupedMessages[end - 1];
+      if (group && isUserMessageGroup(group)) break;
+      end -= 1;
+    }
+    return groupedMessages.slice(0, end);
+  }, [groupedMessages, isStreaming]);
 
   const LoadingComponent = componentStore.getComponent(
     'loading' satisfies SafeExtract<LiteralWidgetComponentKey, 'loading'>,
   );
 
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    setTimeout(() => {
-      const container = messagesContainerRef.current;
-      if (container) container.scrollTop = container.scrollHeight;
-    }, 0);
-  }, [messages, liveItems]);
+  // Companion-parity streaming scroll: follow the bottom only while pinned;
+  // once the user scrolls up, release and surface the scroll-to-bottom button.
+  const { containerRef, handleScroll, showScrollDown, scrollToBottom } =
+    useStreamFollow([messages, liveItems]);
 
   return (
     <div
-      {...dc('chat/msgs/root')}
-      ref={messagesContainerRef}
-      className="max-h-full scroll-smooth relative flex-1 py-2 px-4 flex flex-col gap-2 overflow-auto"
+      {...dc('chat/msgs/wrapper')}
+      className="relative flex flex-1 flex-col min-h-0"
     >
-      <ChatBannerItems />
-      <AdvancedInitialMessages />
-      <InitialMessages />
+      <div
+        {...dc('chat/msgs/root')}
+        ref={containerRef}
+        onScroll={handleScroll}
+        className="max-h-full relative flex-1 py-2 px-4 flex flex-col gap-2 overflow-auto"
+      >
+        <ChatBannerItems />
+        <AdvancedInitialMessages />
+        <InitialMessages />
 
-      {groupedMessages.map((group) => {
-        const type = group?.[0]?.type;
-        const firstIdInGroup = group[0]?.id;
-        if (!type || !firstIdInGroup) return null;
+        {visibleGroups.map((group) => {
+          const type = group?.[0]?.type;
+          const firstIdInGroup = group[0]?.id;
+          if (!type || !firstIdInGroup) return null;
 
-        if (isUserMessageGroup(group)) {
-          return <UserMessageGroup key={firstIdInGroup} messages={group} />;
-        }
+          if (isUserMessageGroup(group)) {
+            return <UserMessageGroup key={firstIdInGroup} messages={group} />;
+          }
 
-        if (isBotMessageGroup(group)) {
-          return (
-            <AgentMessageGroup
-              key={firstIdInGroup}
-              messages={group}
-              agent={bot ? { ...bot, isAi: true, id: null } : undefined}
-            />
-          );
-        }
+          if (isBotMessageGroup(group)) {
+            return (
+              <AgentMessageGroup
+                key={firstIdInGroup}
+                messages={group}
+                agent={bot ? { ...bot, isAi: true, id: null } : undefined}
+              />
+            );
+          }
 
-        if (isAgentMessageGroup(group)) {
-          const agent = group[0]?.agent;
-          return (
-            <AgentMessageGroup
-              key={firstIdInGroup}
-              messages={group}
-              agent={
-                agent
-                  ? {
-                      ...agent,
-                      name: humanAgent?.name || agent.name || '',
-                      avatarUrl: humanAgent?.avatarUrl || agent.avatarUrl || null,
-                    }
-                  : humanAgent
+          if (isAgentMessageGroup(group)) {
+            const agent = group[0]?.agent;
+            return (
+              <AgentMessageGroup
+                key={firstIdInGroup}
+                messages={group}
+                agent={
+                  agent
                     ? {
-                        isAi: false,
-                        id: null,
-                        name: humanAgent.name || '',
-                        avatarUrl: humanAgent.avatarUrl || null,
+                        ...agent,
+                        name: humanAgent?.name || agent.name || '',
+                        avatarUrl:
+                          humanAgent?.avatarUrl || agent.avatarUrl || null,
                       }
-                    : undefined
-              }
-            />
-          );
-        }
+                    : humanAgent
+                      ? {
+                          isAi: false,
+                          id: null,
+                          name: humanAgent.name || '',
+                          avatarUrl: humanAgent.avatarUrl || null,
+                        }
+                      : undefined
+                }
+              />
+            );
+          }
 
-        return null;
-      })}
+          return null;
+        })}
 
-      {/* The live in-flight turn, streamed from useChat. */}
-      {isStreaming && liveItems.length > 0 && (
-        <StreamingTurn
-          turn={{ active: true, items: liveItems }}
-          agent={bot ? { ...bot, isAi: true, id: null } : undefined}
-        />
-      )}
-      {/* Typing indicator until the stream's FIRST visible item arrives — a
+        {/* The live in-flight turn, streamed from useChat. */}
+        {isStreaming && liveItems.length > 0 && (
+          <StreamingTurn
+            turn={{ active: true, items: liveItems }}
+            agent={bot ? { ...bot, isAi: true, id: null } : undefined}
+          />
+        )}
+        {/* Typing indicator until the stream's FIRST visible item arrives — a
           silent early stream must never look like a dead widget. */}
-      {isStreaming && liveItems.length === 0 && LoadingComponent && (
-        <LoadingComponent agent={bot} />
-      )}
+        {isStreaming && liveItems.length === 0 && LoadingComponent && (
+          <LoadingComponent agent={bot} />
+        )}
 
-      <ChatBottomComponents />
-      <SessionResolvedComponent />
+        <ChatBottomComponents />
+        <SessionResolvedComponent />
+      </div>
+
+      <AnimatePresence>
+        {showScrollDown && (
+          <motion.button
+            {...dc('chat/msgs/scroll-to-bottom')}
+            key="scroll-to-bottom"
+            type="button"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.15 }}
+            onClick={scrollToBottom}
+            aria-label="Scroll to bottom"
+            className="absolute bottom-3 left-1/2 z-20 flex size-8 -translate-x-1/2 items-center justify-center rounded-full border border-black/10 bg-background text-muted-foreground shadow-lg transition-colors hover:text-foreground dark:border-white/10"
+          >
+            <ArrowDown className="size-4" />
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -27,6 +27,12 @@ export type WidgetUserMessage = {
    */
   pending?: boolean;
   attachments?: MessageAttachmentType[] | null;
+  /**
+   * Display names of page elements the visitor attached with the composer's
+   * element picker — rendered as context chips on the user bubble. Set
+   * optimistically from the send input and re-hydrated from history.
+   */
+  pickedElements?: Array<{ name: string }>;
   timestamp: string | null;
   user?: {
     name?: string;

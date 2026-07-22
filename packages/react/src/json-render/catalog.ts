@@ -84,8 +84,14 @@ export const widgetCatalog = defineCatalog(schema, {
     Metric: {
       props: metricPropsSchema,
       description:
-        'A single key figure (KPI / insight) with a label, big value, optional detail and trend arrow.',
-      example: { label: 'Total spent', value: '$1,240', detail: 'Last 30 days', trend: 'up' },
+        'A single key figure (KPI / insight card) with a label, big value, optional description, trend arrow, and an optional period-over-period delta ({ value, direction, label }).',
+      example: {
+        label: 'Total spent',
+        value: '$1,240',
+        description: 'Last 30 days',
+        trend: 'up',
+        delta: { value: '+8%', direction: 'up', label: 'vs previous 30d' },
+      },
     },
     Callout: {
       props: calloutPropsSchema,
@@ -96,7 +102,7 @@ export const widgetCatalog = defineCatalog(schema, {
     Chart: {
       props: chartPropsSchema,
       description:
-        'A bar, line, or pie chart. `data` is an array of { label, value } points. Use for trends or distributions, not for a handful of numbers (use Metric for those).',
+        'A bar, line, or pie (donut) chart. `data` is an array of { label, value } points. Choose by the question: line = trend over time, bar = comparison across categories, pie = share of a total (optional `centerLabel` shows a big number in the donut hole). Use for trends or distributions, not for a handful of numbers (use Metric for those). Colours, axes, legend, and tooltips are handled for you.',
       example: {
         type: 'bar',
         title: 'Orders per month',
@@ -109,3 +115,64 @@ export const widgetCatalog = defineCatalog(schema, {
   },
   actions: {},
 });
+
+/**
+ * The AVAILABLE COMPONENTS section of the auto-generated catalog prompt —
+ * extracted so the slim widget prompt below stays in sync with the catalog
+ * (props + descriptions) without shipping the full generated contract.
+ */
+function extractComponentsSection(): string {
+  const fullPrompt = widgetCatalog.prompt({ mode: 'inline' });
+  // Match the section heading ("AVAILABLE COMPONENTS (11):"), not the prose
+  // mention "the AVAILABLE COMPONENTS list below" that appears earlier.
+  const start = fullPrompt.search(/^AVAILABLE COMPONENTS \(/m);
+  const end = fullPrompt.indexOf('AVAILABLE ACTIONS');
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error(
+      'widgetUiPrompt: could not locate the AVAILABLE COMPONENTS section in the generated catalog prompt — the @json-render/core prompt layout changed',
+    );
+  }
+  return fullPrompt.slice(start, end).trimEnd();
+}
+
+/**
+ * The inline-mode UI prompt for the widget catalog. The agent-v3 model needs
+ * this server-side so it emits ` ```spec ` JSONL the v5 stream can transform;
+ * the catalog lives HERE because the renderer that consumes the spec is this
+ * React registry. To avoid duplicating the catalog server-side, the resolved
+ * prompt is materialized into the opencx backend as a frozen string — run
+ * `pnpm -F @opencx/widget-react gen:ui-prompt` after changing the catalog and
+ * commit the regenerated `backend/src/agent-v3/ui-prompt.generated.ts`.
+ * (Same codegen split as the dashboard companion's
+ * `generate-companion-ui-prompt.ts`.)
+ *
+ * DELIBERATELY SLIM — display-only contract, all data inline in props.
+ * The full `catalog.prompt({ mode: 'inline' })` output (~19KB: state model,
+ * repeat, events, watchers, visibility, dynamic props) made the chat model
+ * reason for 85s+ before its first token, blowing through the 180s agent-v3
+ * turn ceiling (`ai_decided_to_not_reply`). None of that machinery applies to
+ * the widget's static components, so the prompt documents only: the patch
+ * format, the component catalog (extracted from the generated prompt so props
+ * and descriptions never drift), and the usage rules. Measured: ~2x faster
+ * turns, identical spec quality.
+ */
+export const widgetUiPrompt: string = `When your answer contains structured data (item collections, tabular data, KPIs, comparisons, charts), render it as an inline UI spec instead of markdown. Write one short lead-in sentence, then a \`\`\`spec fence containing JSONL patch lines (RFC 6902), one JSON object per line:
+
+\`\`\`spec
+{"op":"add","path":"/root","value":"main"}
+{"op":"add","path":"/elements/main","value":{"type":"Stack","props":{},"children":["chart-1"]}}
+{"op":"add","path":"/elements/chart-1","value":{"type":"Chart","props":{"type":"bar","title":"Orders","data":[{"label":"Jan","value":12},{"label":"Feb","value":18}]},"children":[]}}
+\`\`\`
+
+Structure: the first patch sets /root to the root element key; each following patch adds /elements/<key> with {type, props, children} (children = array of child element keys; every referenced key must exist as its own /elements patch). ALL data goes inline in props — there is no state model.
+
+${extractComponentsSection()}
+
+RULES:
+- Only Card, Stack, and Grid accept children; every other component is a leaf (children: []) that renders its own props data.
+- Put ALL rows/items/points inline in the leaf's props: a List of N items is ONE List element with N objects in props.items; a Table is ONE Table element with all rows in props.rows.
+- Simple collections (1-2 attributes) → List; 3+ columns → Table; numeric KPIs → Metric cards side-by-side in a Grid (columns=2 or 3); trends/distributions → Chart (line = trend over time, bar = category comparison, pie = share of a total, optional centerLabel for the headline number). One headline number is a Metric, not a chart.
+- Keep specs minimal: a bare List/Table/Chart needs no Card wrapper — use Stack as the root; only use Card when a bordered group genuinely helps. This renders in a compact chat widget: Grid columns max 3, use List maxVisible for long collections.
+- Only emit a spec when structured data genuinely benefits from it. Plain conversational answers stay text-only — never over-render prose.
+- When data is rendered in spec components, do not restate it in prose. One short lead-in sentence before the spec, at most one actionable next step after.
+- NEVER use emojis in component props.`;

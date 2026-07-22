@@ -52,15 +52,17 @@ export const badgePropsSchema = z.object({
 // ── Data display ────────────────────────────────────────────────────────────
 
 export const listItemSchema = z.object({
+  id: z.string().nullish(),
   label: z.string(),
   secondary: z.string().nullish(),
   badge: z.string().nullish(),
-  status: z.enum(['success', 'warning', 'error', 'neutral']).nullish(),
+  status: z.enum(['success', 'warning', 'error', 'info', 'neutral']).nullish(),
   href: z.string().nullish(),
 });
 
 export const listPropsSchema = z.object({
   items: z.array(listItemSchema),
+  /** Show first N items with a "See X more" expand control. Default 10. */
   maxVisible: z.number().int().positive().nullish(),
 });
 
@@ -70,11 +72,22 @@ export const tablePropsSchema = z.object({
   caption: z.string().nullish(),
 });
 
+/** Period-over-period change on a Metric (KPI delta), companion-identical. */
+export const metricDeltaSchema = z.object({
+  /** Formatted change, e.g. "+4.2 pts" or "-8%". */
+  value: z.string(),
+  /** Change direction — colours the delta (up=green, down=red, flat=muted). */
+  direction: z.enum(['up', 'down', 'flat']),
+  /** Comparison context, e.g. "vs previous 30d". */
+  label: z.string().nullish(),
+});
+
 export const metricPropsSchema = z.object({
   label: z.string(),
   value: z.string(),
-  detail: z.string().nullish(),
+  description: z.string().nullish(),
   trend: z.enum(['up', 'down', 'neutral']).nullish(),
+  delta: metricDeltaSchema.nullish(),
 });
 
 export const calloutPropsSchema = z.object({
@@ -93,6 +106,8 @@ export const chartPropsSchema = z.object({
   data: z.array(chartDatumSchema),
   title: z.string().nullish(),
   height: z.number().int().positive().nullish(),
+  /** Pie only: big number/text shown in the donut hole (e.g. the total). */
+  centerLabel: z.string().nullish(),
 });
 
 export type CardProps = z.infer<typeof cardPropsSchema>;
@@ -102,8 +117,10 @@ export type HeadingProps = z.infer<typeof headingPropsSchema>;
 export type TextProps = z.infer<typeof textPropsSchema>;
 export type BadgeProps = z.infer<typeof badgePropsSchema>;
 export type ListProps = z.infer<typeof listPropsSchema>;
+export type ListItem = z.infer<typeof listItemSchema>;
 export type TableProps = z.infer<typeof tablePropsSchema>;
 export type MetricProps = z.infer<typeof metricPropsSchema>;
+export type MetricDelta = z.infer<typeof metricDeltaSchema>;
 export type CalloutProps = z.infer<typeof calloutPropsSchema>;
 export type ChartProps = z.infer<typeof chartPropsSchema>;
 

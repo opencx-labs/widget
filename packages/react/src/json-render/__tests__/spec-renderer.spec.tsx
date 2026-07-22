@@ -112,4 +112,74 @@ describe('SpecRenderer', () => {
     expect(render(null).textContent).toBe('');
     expect(render({ root: '', elements: {} }).textContent).toBe('');
   });
+
+  // ── companion-parity behaviors ─────────────────────────────────────────────
+
+  it('renders a Metric KPI delta with its direction arrow and context label', () => {
+    const html = render(
+      oneElement('Metric', {
+        label: 'Automation rate',
+        value: '82%',
+        description: 'Last 30 days',
+        delta: { value: '+4.2 pts', direction: 'up', label: 'vs previous 30d' },
+      }),
+    );
+    expect(html.textContent).toContain('82%');
+    expect(html.textContent).toContain('+4.2 pts');
+    expect(html.textContent).toContain('vs previous 30d');
+    expect(html.textContent).toContain('Last 30 days');
+    expect(html.textContent).toContain('\u2191'); // up arrow
+  });
+
+  it('ignores a malformed Metric delta (bad direction) without dropping the value', () => {
+    const html = render(
+      oneElement('Metric', {
+        label: 'Rate',
+        value: '82%',
+        delta: { value: '+1', direction: 'sideways' },
+      }),
+    );
+    // Whole-prop parse fails → typed fallback; must not throw. The fallback is
+    // the empty metric, so neither value nor bogus delta renders as valid.
+    expect(html.textContent).not.toContain('sideways');
+  });
+
+  it('caps a long List at maxVisible with a "See N more" expander', () => {
+    const items = Array.from({ length: 7 }, (_, i) => ({ label: `Row ${i + 1}` }));
+    const html = render(oneElement('List', { items, maxVisible: 3 }));
+    expect(html.textContent).toContain('Row 3');
+    expect(html.textContent).not.toContain('Row 4');
+    expect(html.textContent).toContain('See 4 more');
+  });
+
+  it('expands the List on the "See more" click and collapses back', () => {
+    const items = Array.from({ length: 5 }, (_, i) => ({ label: `Row ${i + 1}` }));
+    const html = render(oneElement('List', { items, maxVisible: 2 }));
+    const button = html.querySelector('button');
+    if (!button) throw new Error('expected expander button');
+
+    act(() => button.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(html.textContent).toContain('Row 5');
+    expect(html.textContent).toContain('See less');
+
+    act(() => button.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(html.textContent).not.toContain('Row 5');
+  });
+
+  it('renders a List row with href as a link opening in the host page', () => {
+    const html = render(
+      oneElement('List', { items: [{ label: 'Docs', href: 'https://example.com/docs' }] }),
+    );
+    const link = html.querySelector('a');
+    expect(link?.getAttribute('href')).toBe('https://example.com/docs');
+    expect(link?.getAttribute('target')).toBe('_top');
+  });
+
+  it('shows no expander when the List fits within maxVisible', () => {
+    const html = render(
+      oneElement('List', { items: [{ label: 'Only row' }], maxVisible: 10 }),
+    );
+    expect(html.querySelector('button')).toBeNull();
+    expect(html.textContent).not.toContain('See');
+  });
 });

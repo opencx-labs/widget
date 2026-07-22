@@ -634,6 +634,15 @@ export interface WidgetConfig {
   context?: Record<string, unknown>;
 
   /**
+   * Show an element-picker button in the composer: the visitor clicks an
+   * element on the host page and it is attached to their message as context
+   * (name, selector, text) the AI can reason about — and point back at via
+   * the `highlight_element` tool. Meant for product/dashboard-style embeds.
+   * @default false
+   */
+  enableElementPicker?: boolean;
+
+  /**
    * Dynamic custom data to be sent with each contact message.
    * This custom data is intended for human use only; the AI will not see it and it will not affect the AI's response.
    * @default undefined

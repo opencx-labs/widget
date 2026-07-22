@@ -9,7 +9,13 @@ import {
   type WidgetUserMessage,
 } from '@opencx/widget-core';
 import { useConfig, useSessions, useWidget } from '@opencx/widget-react-headless';
+import { getToolName, isToolUIPart } from 'ai';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  HIGHLIGHT_ELEMENT_TOOL_NAME,
+  highlightElementInputSchema,
+  highlightElementOnHostPage,
+} from '../../../element-picker/agent-highlight';
 
 /** Bounded drop-oldest multi-send backlog. */
 const MAX_QUEUED_SENDS = 20;
@@ -123,8 +129,15 @@ export function useAgentChat() {
         ...config.messageCustomData,
         ...next.input.customData,
       },
+      // Per-message AI-visible context (picked page elements) merged over the
+      // config-level context. Only set when present — the transport's
+      // `buildBody` already sends `config.context` as the default, and an
+      // explicit `undefined` here would override it away.
+      ...(next.input.clientContext
+        ? { clientContext: { ...config.context, ...next.input.clientContext } }
+        : {}),
     }),
-    [config.messageCustomData],
+    [config.messageCustomData, config.context],
   );
 
   // Single turn-boundary + drain effect.
@@ -272,6 +285,39 @@ export function useAgentChat() {
     messageCtx.registerAgentHandlers(handlers);
     return () => messageCtx.unregisterAgentHandlers(handlers);
   }, [messageCtx, send, stopTurn]);
+
+  // Browser-effect tool calls: the backend's `highlight_element` tool is an
+  // instant server-side ack — the REAL work (spotlighting an element on the
+  // host page) happens here, watching the turn's streamed tool parts. Dedupe
+  // per toolCallId so a re-render (or a resumed stream replaying parts) never
+  // double-fires the same call.
+  const handledHighlightToolCallsRef = useRef(new Set<string>());
+  useEffect(() => {
+    const last = messages.at(-1);
+    if (!last || last.role !== 'assistant') return;
+    for (const part of last.parts) {
+      if (!isToolUIPart(part)) continue;
+      if (getToolName(part) !== HIGHLIGHT_ELEMENT_TOOL_NAME) continue;
+      if (part.state !== 'input-available' && part.state !== 'output-available') {
+        continue;
+      }
+      if (handledHighlightToolCallsRef.current.has(part.toolCallId)) continue;
+      handledHighlightToolCallsRef.current.add(part.toolCallId);
+      const parsed = highlightElementInputSchema.safeParse(part.input);
+      if (!parsed.success) {
+        console.warn('highlight_element: invalid tool input', {
+          issues: parsed.error.issues,
+        });
+        continue;
+      }
+      const found = highlightElementOnHostPage(parsed.data, {
+        accentColor: config.theme?.primaryColor,
+      });
+      if (!found) {
+        console.warn('highlight_element: element not found on page', parsed.data);
+      }
+    }
+  }, [messages, config.theme?.primaryColor]);
 
   const isStreaming = status === 'submitted' || status === 'streaming';
 

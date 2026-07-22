@@ -13,6 +13,18 @@ import { RootScreen } from './screens';
 
 const initialContent = buildFrameHtml();
 
+// Mirrors the companion shell's morph curve (companion/WidgetCompanion.tsx
+// `SPRING`): near-critically damped (ratio ≈ 1.0 at stiffness 500 / damping 45)
+// so the panel settles snappy without overshoot. The popover keeps its
+// opacity + y fade path — this only swaps the easing so open/close rides the
+// same curve as the companion morph instead of a flat 150ms tween.
+const OPEN_SPRING = {
+  type: 'spring',
+  stiffness: 500,
+  damping: 45,
+  mass: 1,
+} as const;
+
 export function WidgetContent() {
   const { isOpen } = useWidgetTrigger();
   const { contentIframeRef } = useWidget();
@@ -23,18 +35,30 @@ export function WidgetContent() {
     <motion.div
       animate={isOpen ? 'visible' : 'hidden'}
       initial="hidden"
+      // Grow out of the FAB corner (bottom-right, where the trigger sits) so
+      // the panel reads as emerging from the button — the companion morph
+      // feel. Inline mode keeps its origin (no floating trigger to grow from).
+      style={{ transformOrigin: inline ? undefined : 'bottom right' }}
       variants={{
         hidden: {
           opacity: 0,
+          // The visible travel: scale up from the corner. Curve-only (opacity
+          // + 8px) was imperceptible — the spring needs real distance to feel.
+          scale: inline ? 1 : 0.9,
           y: 8,
           transitionEnd: { display: 'none' },
-          transition: { duration: 0.15 },
+          transition: OPEN_SPRING,
         },
         visible: {
           opacity: 1,
+          scale: 1,
           y: 0,
           display: 'block',
           height: inline ? '100%' : undefined,
+          // Spring the morph (opacity + scale + y); snap the inline
+          // `height: 100%` — a percentage height has no numeric baseline to
+          // spring from and would warn / jump. Matches prior height behavior.
+          transition: { ...OPEN_SPRING, height: { duration: 0 } },
         },
       }}
     >

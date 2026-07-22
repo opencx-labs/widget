@@ -20,6 +20,11 @@ export type SendMessageInput = {
   content: SendMessageDto['content'];
   attachments?: SendMessageDto['attachments'];
   customData?: SendMessageDto['custom_data'];
+  /**
+   * Per-message AI-visible context (e.g. the composer's picked page elements),
+   * merged over the config-level `context` on the wire.
+   */
+  clientContext?: Record<string, unknown>;
   exitModePrompt?: string;
 };
 
@@ -76,6 +81,16 @@ export class MessageCtx {
   /** Registered by the v5 `useAgentChat` hook while its surface is mounted. */
   private agentHandlers: AgentChatHandlers | null = null;
 
+  /**
+   * Sends dispatched while NO agent surface is mounted. The companion
+   * quick-ask bar renders ONLY the composer (the chat pane — and with it
+   * `useAgentChat` — mounts right after, on `onMessageSent`), so the first
+   * message of a conversation arrives before the handlers exist. Dropping it
+   * opened a fresh empty chat; instead it is held here and flushed the moment
+   * the surface registers.
+   */
+  private pendingAgentSends: SendMessageInput[] = [];
+
   private sendMessageAbortController = new AbortController();
 
   private messageIdsDispatchedToOnMessageReceivedHook = new Set<string>();
@@ -101,6 +116,9 @@ export class MessageCtx {
     this.sendMessageAbortController.abort('Resetting chat');
     this.state.reset();
     this.messageIdsDispatchedToOnMessageReceivedHook.clear();
+    // A reset discards conversation state — a held quick-ask send must not
+    // resurface into the NEXT conversation when the surface mounts.
+    this.pendingAgentSends = [];
   };
 
   /**
@@ -110,6 +128,11 @@ export class MessageCtx {
    */
   registerAgentHandlers = (handlers: AgentChatHandlers): void => {
     this.agentHandlers = handlers;
+    // Flush sends that raced the surface mount (quick-ask first message), in
+    // order — the v5 engine's own queue serializes the actual turns.
+    const pending = this.pendingAgentSends;
+    this.pendingAgentSends = [];
+    for (const input of pending) void handlers.send(input);
   };
 
   unregisterAgentHandlers = (handlers: AgentChatHandlers): void => {
@@ -241,10 +264,31 @@ export class MessageCtx {
       return null;
     }
     return {
-      ...this.toUserMessage(input.content.trim(), input.attachments || undefined),
+      ...this.toUserMessage(
+        input.content.trim(),
+        input.attachments || undefined,
+        MessageCtx.pickedElementNames(input.clientContext),
+      ),
       pending: true,
     };
   };
+
+  /**
+   * Defensive read of `clientContext.picked_elements` → display names for the
+   * user bubble's context chips. Entries without a usable name are dropped.
+   */
+  private static pickedElementNames(
+    clientContext: Record<string, unknown> | undefined,
+  ): Array<{ name: string }> | undefined {
+    const raw = clientContext?.['picked_elements'];
+    if (!Array.isArray(raw)) return undefined;
+    const names = raw.flatMap((item: unknown): Array<{ name: string }> => {
+      if (typeof item !== 'object' || item === null || !('name' in item)) return [];
+      const name: unknown = item.name;
+      return typeof name === 'string' && name.length > 0 ? [{ name }] : [];
+    });
+    return names.length > 0 ? names : undefined;
+  }
 
   /** Append a user message to the transcript once, ignoring a duplicate id. */
   appendUserMessageIfAbsent = (userMessage: WidgetUserMessage): void => {
@@ -274,7 +318,9 @@ export class MessageCtx {
     // (optimistic render, streaming, interrupt-send, stop). Delegate and return.
     if (this.agentBound) {
       if (!this.agentHandlers) {
-        console.warn('Agent chat surface not mounted; dropping send');
+        // Surface not mounted yet (companion quick-ask bar) — hold the send;
+        // `registerAgentHandlers` flushes it as soon as the chat pane mounts.
+        this.pendingAgentSends.push(input);
         return;
       }
       await this.agentHandlers.send(input);
@@ -358,6 +404,7 @@ export class MessageCtx {
       const userMessage = this.toUserMessage(
         input.content.trim(),
         input.attachments || undefined,
+        MessageCtx.pickedElementNames(input.clientContext),
       );
       this.state.setPartial({
         messages: [
@@ -397,7 +444,9 @@ export class MessageCtx {
           session_id: sessionId,
           content: userMessage.content,
           attachments: input.attachments,
-          clientContext: this.config.context,
+          clientContext: input.clientContext
+            ? { ...this.config.context, ...input.clientContext }
+            : this.config.context,
           custom_data: {
             ...(this.config.messageCustomData || {}),
             ...(input.customData || {}),
@@ -471,6 +520,7 @@ export class MessageCtx {
   private toUserMessage = (
     content: string,
     attachments?: MessageAttachmentType[],
+    pickedElements?: Array<{ name: string }>,
   ): WidgetUserMessage => {
     const messageContent = (() => {
       const extraCollectedData = this.contactCtx.state.get().extraCollectedData;
@@ -496,6 +546,7 @@ export class MessageCtx {
       content: messageContent,
       deliveredAt: new Date().toISOString(),
       attachments,
+      pickedElements,
       timestamp: new Date().toISOString(),
     };
   };

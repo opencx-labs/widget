@@ -166,6 +166,7 @@ export class ActiveSessionPollingCtx {
         type: 'USER',
         content: history.content.text || '',
         deliveredAt: history.sentAt || '',
+        pickedElements: history.pickedElements,
       };
     }
 

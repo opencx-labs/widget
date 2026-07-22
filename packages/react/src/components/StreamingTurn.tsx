@@ -2,7 +2,8 @@ import type {
   StreamingTurnState,
   WidgetAiMessage,
 } from '@opencx/widget-core';
-import React from 'react';
+import React, { useMemo } from 'react';
+import { buildSpec, SpecRenderer } from '../json-render';
 import { dc } from '../utils/data-component';
 import { AgentMessageGroup } from './AgentMessageGroup';
 import { StepsGroup } from './StepsGroup';
@@ -11,9 +12,11 @@ import { StepsGroup } from './StepsGroup';
  * The live v5 streamed turn (agent-bound embeds): rendered in STREAM ORDER —
  * top-to-bottom is time. Narration text renders through the STOCK
  * AgentMessageGroup (identical to persisted messages) at its true position,
- * and each run of consecutive activity (reasoning/tools) renders as a
- * collapsible steps group right where it happened. Unmounts when the stream
- * ends and the canonical rows take over.
+ * each run of consecutive activity (reasoning/tools) renders as a collapsible
+ * steps group right where it happened, and the turn's streamed json-render
+ * spec (`data-spec` patches) renders progressively through `SpecRenderer` at
+ * its true position. Unmounts when the stream ends and the canonical rows
+ * take over.
  */
 export function StreamingTurn({
   turn,
@@ -40,10 +43,31 @@ export function StreamingTurn({
             ]}
             agent={agent}
           />
+        ) : item.kind === 'spec' ? (
+          <StreamingSpec key={`spec-${index}`} parts={item.parts} loading={turn.active} />
         ) : (
           <StepsGroup key={`steps-${index}`} steps={item.steps} />
         ),
       )}
     </div>
   );
+}
+
+/**
+ * Assembles the accumulating spec from the turn's `data-spec` patches and
+ * renders it through the shared `SpecRenderer` seam (same defenses as the
+ * persisted-history path). `loading` keeps shimmer states on while the turn
+ * is still streaming.
+ */
+function StreamingSpec({
+  parts,
+  loading,
+}: {
+  parts: Array<{ type: string; data: unknown }>;
+  loading: boolean;
+}) {
+  // `mapUiMessageToItems` produces a fresh parts array on every stream
+  // snapshot, so the reference itself is the change signal.
+  const spec = useMemo(() => buildSpec(parts), [parts]);
+  return <SpecRenderer spec={spec} loading={loading} />;
 }

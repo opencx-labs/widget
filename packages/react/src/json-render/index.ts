@@ -16,6 +16,7 @@ export { SpecRenderer } from './SpecRenderer';
 export { registry, JsonRenderFallback } from './registry';
 export { widgetCatalog } from './catalog';
 export { inlineRepeatLeaves } from './normalize-spec';
+export { segmentContent, type ContentSegment } from './segment-content';
 
 /**
  * Assemble the accumulated element-tree spec from a message's `data-spec` parts

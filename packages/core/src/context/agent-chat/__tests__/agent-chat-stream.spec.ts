@@ -74,4 +74,58 @@ describe('mapUiMessageToItems', () => {
     const message: UIMessage = { id: 'm4', role: 'assistant', parts: [] };
     expect(mapUiMessageToItems(message)).toEqual([]);
   });
+
+  it('folds all data-spec parts into ONE spec item anchored at the first patch', () => {
+    const patch1 = { type: 'patch', patch: { op: 'add', path: '/root', value: 'main' } };
+    const patch2 = {
+      type: 'patch',
+      patch: {
+        op: 'add',
+        path: '/elements/main',
+        value: { type: 'Card', props: {}, children: [] },
+      },
+    };
+    const message: UIMessage = {
+      id: 'm5',
+      role: 'assistant',
+      parts: [
+        { type: 'text', text: 'Here is your summary:', state: 'done' },
+        { type: 'data-spec', data: patch1 },
+        { type: 'text', text: 'And a note after.', state: 'done' },
+        { type: 'data-spec', data: patch2 },
+      ],
+    };
+
+    const items = mapUiMessageToItems(message);
+
+    expect(items).toHaveLength(3);
+    expect(items[0]).toEqual({ kind: 'text', text: 'Here is your summary:' });
+    // The spec item sits where the FIRST patch appeared…
+    expect(items[1]).toEqual({
+      kind: 'spec',
+      parts: [
+        { type: 'data-spec', data: patch1 },
+        { type: 'data-spec', data: patch2 },
+      ],
+    });
+    // …and later patches grew it in place instead of adding a second item.
+    expect(items[2]).toEqual({ kind: 'text', text: 'And a note after.' });
+    expect(items.filter((i) => i.kind === 'spec')).toHaveLength(1);
+  });
+
+  it('spec parts do not break steps folding around them', () => {
+    const message: UIMessage = {
+      id: 'm6',
+      role: 'assistant',
+      parts: [
+        { type: 'reasoning', text: 'planning', state: 'done' },
+        { type: 'data-spec', data: { type: 'patch', patch: { op: 'add', path: '/root', value: 'r' } } },
+        { type: 'reasoning', text: 'rendering', state: 'done' },
+      ],
+    };
+    const items = mapUiMessageToItems(message);
+    // reasoning | spec | reasoning — the spec splits the steps groups (true
+    // chronological position), each group keeps its own steps.
+    expect(items.map((i) => i.kind)).toEqual(['steps', 'spec', 'steps']);
+  });
 });

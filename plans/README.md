@@ -6,18 +6,22 @@ Kowalski's animation philosophy. Plans are self-contained specs for an executor
 
 ## Plans
 
-| #   | Title                                              | Severity | Status |
-| --- | -------------------------------------------------- | -------- | ------ |
-| 001 | Respect `prefers-reduced-motion` across the widget | HIGH     | TODO   |
-| 002 | Composer icon swaps: opacity-only crossfade        | MEDIUM   | TODO   |
+| #   | Title                                                                | Severity | Status |
+| --- | -------------------------------------------------------------------- | -------- | ------ |
+| 001 | Respect `prefers-reduced-motion` across the widget                   | HIGH     | TODO   |
+| 002 | Composer icon swaps: opacity-only crossfade                          | MEDIUM   | TODO   |
+| 003 | `highlight_element` spotlight: focus-lock entrance, echo pulse, label rise | MEDIUM   | TODO   |
 
 ### Recommended execution order
 
 1. **001** first — highest leverage, one line, and it changes the *baseline*
    every other motion inherits (with reduced-motion on, later tweaks are moot).
 2. **002** — independent of 001; can be done in either order. No shared files.
+3. **003** — independent of both (host-page DOM outside Framer Motion's scope;
+   001's `MotionConfig` does not cover it, so it carries its own
+   `matchMedia` reduced-motion gate). No shared files.
 
-No dependencies between the two plans.
+No dependencies between the three plans.
 
 ## Audited but not yet planned
 

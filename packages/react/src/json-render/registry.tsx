@@ -2,13 +2,12 @@ import { defineRegistry, type ComponentRenderer } from '@json-render/react';
 import {
   AlertCircle,
   AlertTriangle,
+  ChevronDown,
+  ChevronUp,
   Info,
   Lightbulb,
-  Minus,
-  TrendingDown,
-  TrendingUp,
 } from 'lucide-react';
-import React from 'react';
+import React, { useState } from 'react';
 import { cn } from '../components/lib/utils/cn';
 import { Chart as ChartView } from './Chart';
 import { widgetCatalog } from './catalog';
@@ -25,6 +24,8 @@ import {
   stackPropsSchema,
   tablePropsSchema,
   textPropsSchema,
+  type ListItem,
+  type MetricDelta,
 } from './props';
 
 /**
@@ -153,36 +154,8 @@ export const { registry } = defineRegistry(widgetCatalog, {
 
     List: ({ props }) => {
       const p = parseProps(listPropsSchema, props, { items: [] });
-      const items = p.maxVisible ? p.items.slice(0, p.maxVisible) : p.items;
-      if (items.length === 0) return <EmptyState label="No items" />;
-      return (
-        <ul className="flex flex-col divide-y divide-muted-foreground/10 rounded-lg border border-muted-foreground/15">
-          {items.map((item, i) => (
-            <li key={i} className="flex items-center gap-2 px-3 py-2">
-              {item.status && <StatusDot status={item.status} />}
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm text-foreground">
-                  {item.href ? (
-                    <a href={item.href} target="_top" className="underline decoration-primary">
-                      {item.label}
-                    </a>
-                  ) : (
-                    item.label
-                  )}
-                </div>
-                {item.secondary && (
-                  <div className="truncate text-xs text-muted-foreground">{item.secondary}</div>
-                )}
-              </div>
-              {item.badge && (
-                <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[11px] text-secondary-foreground">
-                  {item.badge}
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-      );
+      if (p.items.length === 0) return <EmptyState label="No items" />;
+      return <CompactList items={p.items} maxVisible={p.maxVisible} />;
     },
 
     Table: ({ props }) => {
@@ -221,18 +194,14 @@ export const { registry } = defineRegistry(widgetCatalog, {
 
     Metric: ({ props }) => {
       const p = parseProps(metricPropsSchema, props, { label: '', value: '' });
-      const TrendIcon = p.trend === 'up' ? TrendingUp : p.trend === 'down' ? TrendingDown : Minus;
-      const trendColor =
-        p.trend === 'up' ? 'text-emerald-500' : p.trend === 'down' ? 'text-red-500' : 'text-muted-foreground';
       return (
-        <div className="flex flex-col gap-0.5 rounded-lg border border-muted-foreground/15 p-3">
-          <span className="text-xs text-muted-foreground">{p.label}</span>
-          <span className="flex items-center gap-1.5">
-            <span className="text-2xl font-bold text-foreground">{p.value}</span>
-            {p.trend && <TrendIcon className={cn('size-4', trendColor)} />}
-          </span>
-          {p.detail && <span className="text-xs text-muted-foreground">{p.detail}</span>}
-        </div>
+        <MetricCard
+          label={p.label}
+          value={p.value}
+          description={p.description}
+          trend={p.trend}
+          delta={p.delta}
+        />
       );
     },
 
@@ -277,20 +246,222 @@ const CALLOUT_STYLES = {
   important: { Icon: AlertCircle, cls: 'border-l-red-500 bg-red-500/5 text-foreground' },
 } as const;
 
-function StatusDot({ status }: { status: 'success' | 'warning' | 'error' | 'neutral' }) {
-  const color = {
-    success: 'bg-emerald-500',
-    warning: 'bg-amber-500',
-    error: 'bg-red-500',
-    neutral: 'bg-muted-foreground',
-  }[status];
-  return <span className={cn('size-2 shrink-0 rounded-full', color)} aria-hidden />;
-}
-
 function EmptyState({ label }: { label: string }) {
   return (
     <div className="rounded-lg border border-muted-foreground/15 px-3 py-2 text-xs text-muted-foreground">
       {label}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Metric — KPI / insight card, companion-identical markup (text arrows + delta)
+// ---------------------------------------------------------------------------
+
+const TREND_ICONS = { up: '\u2191', down: '\u2193', neutral: '\u2192' } as const;
+const TREND_COLORS = {
+  up: 'text-emerald-600 dark:text-emerald-400',
+  down: 'text-red-600 dark:text-red-400',
+  neutral: 'text-muted-foreground',
+} as const;
+// KPI delta: direction is the change direction (not good/bad). flat = no change.
+const DELTA_ICONS = { up: '\u2191', down: '\u2193', flat: '\u2192' } as const;
+const DELTA_COLORS = {
+  up: 'text-emerald-600 dark:text-emerald-400',
+  down: 'text-red-600 dark:text-red-400',
+  flat: 'text-muted-foreground',
+} as const;
+
+/** Mirrors the companion's MetricCard (dashboard json-render registry). */
+function MetricCard({
+  label,
+  value,
+  description,
+  trend,
+  delta,
+}: {
+  label: string;
+  value: string;
+  description?: string | null;
+  trend?: 'up' | 'down' | 'neutral' | null;
+  delta?: MetricDelta | null;
+}) {
+  return (
+    <div className="min-w-[140px] space-y-1 rounded-xl border border-muted-foreground/15 p-3">
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      <div className="flex items-baseline gap-2">
+        <span className="text-2xl font-medium tracking-tight text-foreground">{value}</span>
+        {trend ? (
+          <span className={cn('text-sm font-medium', TREND_COLORS[trend])}>
+            {TREND_ICONS[trend]}
+          </span>
+        ) : null}
+      </div>
+      {delta ? (
+        <div className="flex items-baseline gap-1 text-xs">
+          <span className={cn('font-medium', DELTA_COLORS[delta.direction])}>
+            {DELTA_ICONS[delta.direction]} {delta.value}
+          </span>
+          {delta.label ? <span className="text-muted-foreground">{delta.label}</span> : null}
+        </div>
+      ) : null}
+      {description ? (
+        <span className="block text-xs text-muted-foreground">{description}</span>
+      ) : null}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// List — compact item list, companion-identical layout (aligned subgrid
+// columns: badge | label | secondary | status, with a "See X more" expander)
+// ---------------------------------------------------------------------------
+
+const STATUS_COLORS = {
+  success: 'bg-emerald-500',
+  warning: 'bg-amber-500',
+  error: 'bg-red-500',
+  info: 'bg-blue-500',
+  neutral: 'bg-muted-foreground/40',
+} as const;
+
+function ListItemContent({
+  item,
+  showBadge,
+  showSecondary,
+  showStatus,
+}: {
+  item: ListItem;
+  showBadge: boolean;
+  showSecondary: boolean;
+  showStatus: boolean;
+}) {
+  return (
+    <>
+      {showBadge &&
+        (item.badge ? (
+          <span className="block min-w-0 truncate text-xs font-medium" title={item.badge}>
+            {item.badge}
+          </span>
+        ) : (
+          <span />
+        ))}
+      <span className="block min-w-0 truncate" title={item.label}>
+        {item.label}
+      </span>
+      {showSecondary &&
+        (item.secondary ? (
+          <span
+            className="block min-w-0 truncate text-xs text-muted-foreground"
+            title={item.secondary}
+          >
+            {item.secondary}
+          </span>
+        ) : (
+          <span />
+        ))}
+      {showStatus &&
+        (item.status ? (
+          <span className={cn('size-2 rounded-full', STATUS_COLORS[item.status])} aria-hidden />
+        ) : (
+          <span />
+        ))}
+    </>
+  );
+}
+
+/**
+ * The companion's CompactList ported onto widget primitives: one CSS grid so
+ * badge/label/secondary/status columns align across rows (subgrid rows),
+ * link rows for `href`, and a "See X more" expander past `maxVisible`
+ * (default 10). Companion-only affordances (audio preview, send-message
+ * actions) are dashboard plumbing and intentionally not carried over.
+ */
+function CompactList({
+  items,
+  maxVisible,
+}: {
+  items: ListItem[];
+  maxVisible?: number | null;
+}) {
+  const limit = maxVisible ?? 10;
+  const [expanded, setExpanded] = useState(false);
+  const showExpand = items.length > limit;
+  const visible = expanded ? items : items.slice(0, limit);
+
+  const hasBadge = visible.some((it) => Boolean(it.badge));
+  const hasSecondary = visible.some((it) => Boolean(it.secondary));
+  const hasStatus = visible.some((it) => Boolean(it.status));
+
+  const gridCols = [
+    hasBadge && 'auto',
+    'minmax(0,1fr)',
+    hasSecondary && 'minmax(0,2fr)',
+    hasStatus && 'auto',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const rowClass =
+    'grid min-w-0 grid-cols-[subgrid] col-span-full items-center gap-x-2.5 px-3 py-2 text-sm text-foreground';
+
+  return (
+    <div
+      className="grid overflow-hidden rounded-lg border border-muted-foreground/15"
+      style={{ gridTemplateColumns: gridCols }}
+    >
+      {visible.map((item, i) => {
+        const rowKey = item.id ?? `row-${i}`;
+        const content = (
+          <ListItemContent
+            item={item}
+            showBadge={hasBadge}
+            showSecondary={hasSecondary}
+            showStatus={hasStatus}
+          />
+        );
+        return item.href ? (
+          <a
+            key={rowKey}
+            href={item.href}
+            target="_top"
+            rel="noopener noreferrer"
+            className={cn(
+              rowClass,
+              'transition-colors hover:bg-muted/50',
+              i > 0 && 'border-t border-muted-foreground/10',
+            )}
+          >
+            {content}
+          </a>
+        ) : (
+          <div
+            key={rowKey}
+            className={cn(rowClass, i > 0 && 'border-t border-muted-foreground/10')}
+          >
+            {content}
+          </div>
+        );
+      })}
+      {showExpand && (
+        <button
+          type="button"
+          className="col-span-full flex w-full items-center justify-center gap-1 border-t border-muted-foreground/10 py-2 text-xs text-muted-foreground transition-colors hover:bg-muted/50"
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? (
+            <>
+              <ChevronUp className="size-3" />
+              See less
+            </>
+          ) : (
+            <>
+              <ChevronDown className="size-3" />
+              See {items.length - limit} more
+            </>
+          )}
+        </button>
+      )}
     </div>
   );
 }
