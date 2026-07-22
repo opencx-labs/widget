@@ -58,10 +58,10 @@ pnpm install
 pnpm build                              # builds @opencx/widget → packages/embed/dist-embed/script.js
 ```
 
-### 3) Payla mock — `widget/examples/payla`
+### 3) Payla mock — `widget/playground/payla`
 
 ```bash
-cd widget/examples/payla
+cd widget/playground/payla
 pnpm install --ignore-workspace         # standalone (not a workspace member)
 pnpm exec wrangler d1 migrations apply payla --local   # seed the mock's own data
 pnpm dev                                # → http://localhost:5173  (predev copies the local widget)

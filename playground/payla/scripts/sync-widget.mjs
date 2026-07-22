@@ -6,7 +6,7 @@ import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const here = dirname(fileURLToPath(import.meta.url)); // examples/payla/scripts
+const here = dirname(fileURLToPath(import.meta.url)); // playground/payla/scripts
 const src =
   process.env.OPENCX_WIDGET_DIST ??
   resolve(here, "../../../packages/embed/dist-embed/script.js");
