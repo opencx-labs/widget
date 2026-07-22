@@ -1,5 +1,13 @@
 # @opencx/widget-react-headless
 
+## 4.0.57
+
+### Patch Changes
+
+- add onConfirmed option for header button confirmation modal
+- Updated dependencies
+  - @opencx/widget-core@4.0.57
+
 ## 4.0.56
 
 ### Patch Changes

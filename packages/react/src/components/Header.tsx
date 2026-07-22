@@ -337,7 +337,10 @@ function Header__Buttons__Item__ResolveSession({
             </Button>
             <Button
               variant="destructive"
-              onClick={handleResolve}
+              onClick={() => {
+                void handleResolve();
+                button.confirmation?.onConfirmed?.(componentCtx);
+              }}
               disabled={sessionState.isResolvingSession}
             >
               {button.confirmation.confirmButtonText || 'Yes'}

@@ -1,5 +1,11 @@
 # @opencx/widget
 
+## 4.0.57
+
+### Patch Changes
+
+- add onConfirmed option for header button confirmation modal
+
 ## 4.0.56
 
 ### Patch Changes

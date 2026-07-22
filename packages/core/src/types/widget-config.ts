@@ -183,6 +183,12 @@ export type HeaderButtonU =
         description?: string;
         confirmButtonText?: string;
         cancelButtonText?: string;
+
+        /**
+         * Fires after the confirmation modal's confirm button is clicked and its default behavior has run.
+         * It does not replace the confirm button's default behavior.
+         */
+        onConfirmed?: (ctx: ComponentContext) => void;
       };
 
       /**
