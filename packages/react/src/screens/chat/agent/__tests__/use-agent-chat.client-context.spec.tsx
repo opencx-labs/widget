@@ -64,6 +64,7 @@ vi.mock('@opencx/widget-react-headless', () => ({
     context: { page: 'from-config', tenant: 'acme' },
     messageCustomData: { seat: 'pro' },
   }),
+  useMessages: () => ({ messagesState: { messages: [] } }),
   useSessions: () => ({ sessionState: { session: { id: 'sess-1' } } }),
   useWidget: () => ({
     widgetCtx: {

@@ -81,6 +81,7 @@ const fakeMessageCtx = {
 
 vi.mock('@opencx/widget-react-headless', () => ({
   useConfig: () => ({ token: 't' }),
+  useMessages: () => ({ messagesState: { messages: [] } }),
   useSessions: () => ({ sessionState: { session: { id: 'sess-1' } } }),
   useWidget: () => ({
     widgetCtx: {

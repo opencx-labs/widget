@@ -8,7 +8,12 @@ import {
   type StreamingTurnItem,
   type WidgetUserMessage,
 } from '@opencx/widget-core';
-import { useConfig, useSessions, useWidget } from '@opencx/widget-react-headless';
+import {
+  useConfig,
+  useMessages,
+  useSessions,
+  useWidget,
+} from '@opencx/widget-react-headless';
 import { getToolName, isToolUIPart } from 'ai';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -19,6 +24,13 @@ import {
 
 /** Bounded drop-oldest multi-send backlog. */
 const MAX_QUEUED_SENDS = 20;
+
+/**
+ * Cap on the per-session set of already-actioned `highlight_element` tool call
+ * ids. Only the recent ones can still arrive again (a re-render or a resumed
+ * stream replaying parts), so dropping the oldest cannot cause a double-fire.
+ */
+const MAX_HANDLED_HIGHLIGHT_CALLS = 200;
 
 type QueuedSend = {
   sessionId: string;
@@ -51,6 +63,11 @@ export function useAgentChat() {
     sessionState: { session },
   } = useSessions();
   const sessionId = session?.id ?? null;
+  // The persisted transcript — watched so the overlay can stand down the moment
+  // a real replacement for it exists (see `settling`).
+  const {
+    messagesState: { messages: persistedMessages },
+  } = useMessages();
 
   // Per-send fields (uuid / session_id / content / attachments / custom_data)
   // ride the send options `body`; the transport merges them over the config
@@ -117,7 +134,7 @@ export function useAgentChat() {
   // moment the stream closes, but the canonical rows that replace the overlay
   // are still a fetch away, so tearing it down at 'ready' leaves the reply
   // missing for that whole window — it blanks out and flashes back in. This
-  // stays true across the gap and is cleared only once the rows are ingested.
+  // stays true across the gap and is cleared only once a replacement exists.
   // Raised while streaming (never at the boundary) so the hold is already up on
   // the frame the stream ends, and so a RESUMED turn is covered too.
   const [settling, setSettling] = useState(false);
@@ -190,9 +207,10 @@ export function useAgentChat() {
           })
           .finally(() => {
             reconcilingRef.current = false;
-            // The rows are in — hand the turn back to the persisted transcript.
-            setSettling(false);
             // Re-run this effect now that the rows are in — drain the queue.
+            // The OVERLAY is not released here: this promise resolving only
+            // means the fetch finished, which is not the same as the reply
+            // having arrived (see the handoff effect below).
             setQueueVersion((v) => v + 1);
           });
       } else {
@@ -318,8 +336,16 @@ export function useAgentChat() {
       if (part.state !== 'input-available' && part.state !== 'output-available') {
         continue;
       }
-      if (handledHighlightToolCallsRef.current.has(part.toolCallId)) continue;
-      handledHighlightToolCallsRef.current.add(part.toolCallId);
+      const handled = handledHighlightToolCallsRef.current;
+      if (handled.has(part.toolCallId)) continue;
+      handled.add(part.toolCallId);
+      // Bounded: Sets iterate in insertion order, so evicting from the front
+      // drops the oldest call — the ones that can no longer be replayed.
+      while (handled.size > MAX_HANDLED_HIGHLIGHT_CALLS) {
+        const oldest = handled.values().next().value;
+        if (oldest === undefined) break;
+        handled.delete(oldest);
+      }
       const parsed = highlightElementInputSchema.safeParse(part.input);
       if (!parsed.success) {
         console.warn('highlight_element: invalid tool input', {
@@ -337,6 +363,32 @@ export function useAgentChat() {
   }, [messages, config.theme?.primaryColor]);
 
   const isStreaming = status === 'submitted' || status === 'streaming';
+
+  // Stand the overlay down only once the persisted transcript actually carries
+  // a replacement for it — an assistant-side row after the last user message.
+  //
+  // Releasing when the reconcile FETCH resolves is not the same thing: if the
+  // backend hadn't committed the row when that fetch ran, it comes back empty
+  // and the reply would blank out until the next poll tick. Waiting for the row
+  // itself makes the handoff correct no matter who wins that race, and it
+  // self-heals — a later poll (or a human agent's reply) releases it just the
+  // same. Never runs mid-stream: a row polled in while tokens are still
+  // arriving must not release the overlay that is still being written to.
+  useEffect(() => {
+    if (isStreaming || !settling) return;
+    for (let i = persistedMessages.length - 1; i >= 0; i -= 1) {
+      const row = persistedMessages[i];
+      if (!row) continue;
+      // Walking back from the end, the first row that settles the question
+      // wins. Reaching a user row means this turn has no persisted reply yet,
+      // so there is still nothing to hand off to.
+      if (row.type === 'USER') return;
+      if (row.type === 'AI' || row.type === 'AGENT') {
+        setSettling(false);
+        return;
+      }
+    }
+  }, [isStreaming, settling, persistedMessages]);
 
   // The live overlay: the in-flight assistant message's ordered items. Held
   // through `settling` as well as the stream itself — see above.

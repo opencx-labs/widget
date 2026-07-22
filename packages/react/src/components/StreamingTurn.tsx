@@ -2,7 +2,7 @@ import type {
   StreamingTurnState,
   WidgetAiMessage,
 } from '@opencx/widget-core';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { buildSpec, SpecRenderer } from '../json-render';
 import { dc } from '../utils/data-component';
 import { AgentMessageGroup } from './AgentMessageGroup';
@@ -25,6 +25,11 @@ export function StreamingTurn({
   turn: StreamingTurnState;
   agent: WidgetAiMessage['agent'];
 }) {
+  // Fixed for the life of the turn. A fresh `new Date()` per render would make
+  // the group timestamp tick with every streamed token and then jump when the
+  // persisted row (stamped once, server-side) takes over at the handoff.
+  const [startedAt] = useState(() => new Date().toISOString());
+
   return (
     <div {...dc('chat/streaming_turn/root')} className="flex flex-col gap-2">
       {turn.items.map((item, index) =>
@@ -36,7 +41,7 @@ export function StreamingTurn({
                 id: `streaming-${index}`,
                 type: 'AI',
                 component: 'bot_message',
-                timestamp: new Date().toISOString(),
+                timestamp: startedAt,
                 data: { message: item.text },
                 agent,
               },
@@ -46,7 +51,20 @@ export function StreamingTurn({
         ) : item.kind === 'spec' ? (
           <StreamingSpec key={`spec-${index}`} parts={item.parts} loading={turn.active} />
         ) : (
-          <StepsGroup key={`steps-${index}`} steps={item.steps} />
+          <StepsGroup
+            key={`steps-${index}`}
+            // `StepsGroup` reads "still running" off its steps' own `done`
+            // flags. A turn that ended with a step unfinished — a stopped turn
+            // leaves its last tool call at `input-available` — would otherwise
+            // shimmer "running..." forever. Once the turn is over nothing is
+            // running, so settle them, exactly as the persisted `stepsBefore`
+            // path does.
+            steps={
+              turn.active
+                ? item.steps
+                : item.steps.map((step) => ({ ...step, done: true }))
+            }
+          />
         ),
       )}
     </div>
