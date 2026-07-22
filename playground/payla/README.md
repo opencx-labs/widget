@@ -75,12 +75,11 @@ Try:
 - "Refund €5 on payment `tr_…`." (it'll confirm, then actually do it)
 - "Do I have any open disputes?"
 
-## Change the wiring without a rebuild
+## Configuration
 
-**Settings → AI assistant** has fields for the widget token, agent id, OpenCX backend URL,
-assistant name and widget script URL. Saved to `localStorage` (overrides the baked defaults);
-**Save & reload** remounts the widget. Useful to point at a different OpenCX or a deployed
-Payla.
+The widget's token, agent id and backend URL are **baked in code** (`src/lib/widgetConfig.ts`)
+and match the seed, so there's nothing to configure. To point at a different OpenCX, set
+`VITE_OPENCX_WIDGET_TOKEN` / `VITE_OPENCX_AGENT_ID` / `VITE_OPENCX_API_URL` in `.env`.
 
 ## Notes / troubleshooting
 
@@ -91,12 +90,8 @@ Payla.
   no tunnel needed.
 - The v3 agent model is `openai/gpt-5.6-luna` via OpenRouter; without `OPENROUTER_API_KEY`
   the widget loads but the agent won't answer.
-
-## Deployed mode (optional)
-
-The app is also a standalone Cloudflare app: `pnpm run deploy` (after `wrangler d1 create`
-+ pasting the id into `wrangler.jsonc`). Then set a real token/agent id (and the OpenCX
-`apiUrl`) on the Settings page. The mock API + `/openapi.json` are served by the same Worker.
+- If you wiped the DB and the bubble shows a 401, clear `localhost:5173` site data (or use
+  an incognito window) — the widget cached a visitor token for a contact that no longer exists.
 
 ## The mock API / agent actions
 

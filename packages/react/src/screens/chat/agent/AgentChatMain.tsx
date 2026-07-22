@@ -51,16 +51,20 @@ export function AgentChatMain() {
     [messages],
   );
 
-  // While a turn is streaming, `StreamingTurn` (below) is the SOLE renderer of
-  // the in-flight assistant turn. But the persisted store polls the canonical
-  // rows continuously ("history + polling"), so the turn's first narration row
-  // can land in `messages` mid-stream and render a SECOND copy above the live
-  // overlay — the duplicate only collapses when the stream ends and
-  // `StreamingTurn` unmounts. Hide the trailing assistant-side groups
-  // (everything after the last user message — i.e. the in-flight turn) while
-  // streaming so the live overlay owns that region alone.
+  // Whenever the overlay has content, `StreamingTurn` (below) is the SOLE
+  // renderer of the current assistant turn. The persisted store polls the
+  // canonical rows continuously ("history + polling"), so the turn's rows can
+  // land in `messages` while the overlay is still up and render a SECOND copy
+  // above it. Hide the trailing assistant-side groups (everything after the
+  // last user message — i.e. the current turn) for as long as the overlay owns
+  // that region.
+  //
+  // This tracks `liveItems`, NOT `isStreaming`: the overlay outlives the stream
+  // by the post-turn handoff (see `settling` in `useAgentChat`), and both sides
+  // must switch on the same signal so the swap is a single commit — one owner
+  // at all times, never zero (a blank flash) and never two (a duplicate).
   const visibleGroups = useMemo(() => {
-    if (!isStreaming) return groupedMessages;
+    if (liveItems.length === 0) return groupedMessages;
     let end = groupedMessages.length;
     while (end > 0) {
       const group = groupedMessages[end - 1];
@@ -68,7 +72,7 @@ export function AgentChatMain() {
       end -= 1;
     }
     return groupedMessages.slice(0, end);
-  }, [groupedMessages, isStreaming]);
+  }, [groupedMessages, liveItems]);
 
   const LoadingComponent = componentStore.getComponent(
     'loading' satisfies SafeExtract<LiteralWidgetComponentKey, 'loading'>,
@@ -143,10 +147,13 @@ export function AgentChatMain() {
           return null;
         })}
 
-        {/* The live in-flight turn, streamed from useChat. */}
-        {isStreaming && liveItems.length > 0 && (
+        {/* The live turn, streamed from useChat. Stays mounted through the
+          post-stream handoff so the reply never blinks out while its canonical
+          rows are fetched. `active` follows the real stream, so shimmers and
+          in-progress steps settle the moment it ends. */}
+        {liveItems.length > 0 && (
           <StreamingTurn
-            turn={{ active: true, items: liveItems }}
+            turn={{ active: isStreaming, items: liveItems }}
             agent={bot ? { ...bot, isAi: true, id: null } : undefined}
           />
         )}

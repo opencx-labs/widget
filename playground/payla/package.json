@@ -6,17 +6,14 @@
   "description": "Payla — fictional payments dashboard (Mollie-style) with a Cloudflare Worker + D1 mock backend, built to demo the OpenCX Companion agent doing real actions.",
   "scripts": {
     "dev": "vite",
-    "predev": "node scripts/sync-widget.mjs",
+    "predev": "node scripts/sync-widget.mjs && wrangler d1 migrations apply payla --local",
     "build": "pnpm typecheck && vite build",
     "prebuild": "node scripts/sync-widget.mjs",
     "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.worker.json --noEmit",
     "sync:widget": "node scripts/sync-widget.mjs",
     "preview": "vite preview",
-    "deploy": "pnpm build && wrangler deploy",
     "db:migrate:local": "wrangler d1 migrations apply payla --local",
-    "db:migrate:remote": "wrangler d1 migrations apply payla --remote",
     "db:seed:local": "wrangler d1 execute payla --local --file=./migrations/0002_seed.sql",
-    "db:seed:remote": "wrangler d1 execute payla --remote --file=./migrations/0002_seed.sql",
     "db:reset:local": "wrangler d1 execute payla --local --command \"DELETE FROM refunds; DELETE FROM payments; DELETE FROM payment_links; DELETE FROM disputes; DELETE FROM settlements; DELETE FROM customers; DELETE FROM settings; DELETE FROM balance;\" && pnpm db:seed:local"
   },
   "dependencies": {

@@ -18,14 +18,15 @@ declare global {
 }
 
 export function CompanionWidget() {
-  const { data: settings } = useSettings();
+  const { data: settings, isLoading: settingsLoading } = useSettings();
   const location = useLocation();
   const started = useRef(false);
 
   useEffect(() => {
     const cfg = getWidgetConfig();
-    // Wait until settings resolve so the merchant context is populated, then init once.
-    if (!cfg.token || started.current || settings === undefined) return;
+    // Mount once the settings query SETTLES (success OR error) — never block the widget
+    // on the DB. If settings failed (e.g. empty DB), just skip the merchant context.
+    if (!cfg.token || started.current || settingsLoading) return;
     started.current = true;
 
     const boot = () =>
@@ -41,7 +42,7 @@ export function CompanionWidget() {
         context: {
           app: "Payla merchant dashboard",
           page: { url: window.location.href, path: location.pathname },
-          merchant: { id: settings.merchantId, name: settings.merchantName },
+          ...(settings ? { merchant: { id: settings.merchantId, name: settings.merchantName } } : {}),
         },
       });
 
@@ -55,7 +56,7 @@ export function CompanionWidget() {
     script.defer = true;
     script.addEventListener("load", boot);
     document.body.appendChild(script);
-  }, [settings, location.pathname]);
+  }, [settings, settingsLoading, location.pathname]);
 
   return null;
 }

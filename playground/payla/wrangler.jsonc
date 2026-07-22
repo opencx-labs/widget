@@ -13,11 +13,13 @@
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api", "/api/*", "/openapi.json", "/health"]
   },
+  // Local-only demo: served by the Vite Cloudflare plugin with a local (miniflare) D1.
+  // The database_id is only used for a remote deploy, which this demo does not do.
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "payla",
-      "database_id": "ebeafea0-9a03-444e-b4d7-69df9750de9d",
+      "database_id": "local",
       "migrations_dir": "migrations"
     }
   ],
@@ -26,7 +28,7 @@
     "MERCHANT_NAME": "Mo's Coffee Roasters",
     "MERCHANT_ID": "org_payla_demo",
     // When set, write actions (refunds, payment links) require this bearer token.
-    // Leave empty to keep the demo open. Set via `wrangler secret put PAYLA_API_KEY` in prod.
+    // Left empty to keep the local demo open.
     "PAYLA_API_KEY": ""
   }
 }

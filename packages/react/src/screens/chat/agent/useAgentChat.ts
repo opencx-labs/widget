@@ -113,6 +113,14 @@ export function useAgentChat() {
   // Bumped on every enqueue / stop-completion so the drain effect re-evaluates
   // (the queue itself is a ref, so mutating it wouldn't trigger a render).
   const [queueVersion, setQueueVersion] = useState(0);
+  // The live overlay must outlive the stream. `useChat` reports 'ready' the
+  // moment the stream closes, but the canonical rows that replace the overlay
+  // are still a fetch away, so tearing it down at 'ready' leaves the reply
+  // missing for that whole window — it blanks out and flashes back in. This
+  // stays true across the gap and is cleared only once the rows are ingested.
+  // Raised while streaming (never at the boundary) so the hold is already up on
+  // the frame the stream ends, and so a RESUMED turn is covered too.
+  const [settling, setSettling] = useState(false);
   const prevStatusRef = useRef(status);
   // Latest status, readable synchronously from the `send` callback (which needs
   // to decide current-turn vs queued before the next render).
@@ -154,6 +162,9 @@ export function useAgentChat() {
     const prev = prevStatusRef.current;
     prevStatusRef.current = status;
 
+    if (status === 'submitted' || status === 'streaming') {
+      setSettling(true);
+    }
     if (status === 'streaming') {
       // First chunk arrived — every message posted before it was delivered.
       messageCtx.markUserMessagesDelivered();
@@ -179,9 +190,15 @@ export function useAgentChat() {
           })
           .finally(() => {
             reconcilingRef.current = false;
+            // The rows are in — hand the turn back to the persisted transcript.
+            setSettling(false);
             // Re-run this effect now that the rows are in — drain the queue.
             setQueueVersion((v) => v + 1);
           });
+      } else {
+        // Nothing will ever ingest the rows (no polling ctx / no session):
+        // don't strand the overlay waiting for a handoff that can't happen.
+        setSettling(false);
       }
     }
 
@@ -321,14 +338,14 @@ export function useAgentChat() {
 
   const isStreaming = status === 'submitted' || status === 'streaming';
 
-  // The live overlay: the in-flight assistant message's ordered items. Only
-  // while streaming — once ready, the polled canonical row takes over.
+  // The live overlay: the in-flight assistant message's ordered items. Held
+  // through `settling` as well as the stream itself — see above.
   const liveItems: StreamingTurnItem[] = useMemo(() => {
-    if (!isStreaming) return [];
+    if (!isStreaming && !settling) return [];
     const last = messages.at(-1);
     if (!last || last.role !== 'assistant') return [];
     return mapUiMessageToItems(last);
-  }, [messages, isStreaming]);
+  }, [messages, isStreaming, settling]);
 
   // Messages the user queued mid-turn — surfaced so the composer can render
   // them as a queue pill. Recomputed on every enqueue/drain (`queueVersion`).
