@@ -192,7 +192,16 @@ export function useAgentChat() {
     const justFinished = prev === 'streaming' || prev === 'submitted';
     if (justFinished) {
       inFlightRef.current = false;
-      messageCtx.markUserMessagesDelivered();
+      // Only a turn that actually COMPLETED proves delivery. On `status ===
+      // 'error'` the send may never have reached the server, so marking here
+      // un-dims the user's bubble and renders a failed turn as delivered — the
+      // customer sees a normally-sent message and simply never gets a reply,
+      // with nothing anywhere indicating failure. A turn that errored MID-stream
+      // is already covered: the `streaming` branch above marks delivery on the
+      // first chunk, which is the point the server demonstrably had the message.
+      if (status === 'ready') {
+        messageCtx.markUserMessagesDelivered();
+      }
       // Ingest the finished turn's canonical rows BEFORE draining the next
       // queued message — transcript order is append-order, so the reply must
       // enter it before the next user bubble does.
