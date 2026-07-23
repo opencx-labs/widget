@@ -51,13 +51,45 @@ export const badgePropsSchema = z.object({
 
 // ── Data display ────────────────────────────────────────────────────────────
 
+/**
+ * Web-linkable protocols. Everything else — `javascript:`, `data:`, `blob:`,
+ * `file:`, custom app schemes — is dropped.
+ */
+const SAFE_LINK_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
+
+/**
+ * A link the MODEL authored, so it is untrusted input: a poisoned knowledge-base
+ * article or a crafted customer message can put any string here, and the anchor
+ * renders inside the host page's realm. An unsafe value degrades to `null` (the
+ * item renders as plain text) rather than failing the parse, matching this
+ * file's "one bad prop never tears down the spec" contract.
+ *
+ * `javascript:` is the sharp edge: React 19 refuses it, but this package's peer
+ * range still admits React 18, which does not — there it would be script
+ * execution in the embedder's origin. Relative URLs are dropped too; they would
+ * resolve against whatever page the widget happens to be embedded on, which the
+ * model cannot know.
+ */
+const modelAuthoredHrefSchema = z
+  .string()
+  .nullish()
+  .transform((value) => {
+    if (!value) return null;
+    try {
+      return SAFE_LINK_PROTOCOLS.has(new URL(value).protocol) ? value : null;
+    } catch {
+      // Not an absolute URL — includes every relative form.
+      return null;
+    }
+  });
+
 export const listItemSchema = z.object({
   id: z.string().nullish(),
   label: z.string(),
   secondary: z.string().nullish(),
   badge: z.string().nullish(),
   status: z.enum(['success', 'warning', 'error', 'info', 'neutral']).nullish(),
-  href: z.string().nullish(),
+  href: modelAuthoredHrefSchema,
 });
 
 export const listPropsSchema = z.object({
