@@ -6,8 +6,8 @@ import { Button } from '../components/lib/button';
 import { RootScreen } from '../screens';
 import { ChatInput } from '../screens/chat/ChatFooter';
 import { flatMessageCss } from './message-styles';
+import type { WidgetCompanionLayoutU } from '@opencx/widget-core';
 import { PanelControls } from './PanelControls';
-import type { PanelLayout } from './types';
 
 /**
  * Companion-only restyle of the stock screens — layout rules only, never
@@ -81,20 +81,24 @@ export function CompanionContent({
   onExpand,
   canExpand,
   placeholder,
+  hideAttachTools,
   onInputHeightChange,
 }: {
   state: 'input' | 'chat';
-  layout: PanelLayout;
+  layout: WidgetCompanionLayoutU;
   /** The user sent from the quick-ask composer — morph into the chat panel */
   onMessageSent: () => void;
   /** Quick-ask composer placeholder (e.g. "Follow up…" while continuing) */
   placeholder: string;
+  /** Hide attach + element-picker on the quick-ask composer (default UX:
+   *  history-only until the panel expands). */
+  hideAttachTools: boolean;
   /** Pointer-initiated staged close (× button) */
   onClose: () => void;
   /** Keyboard-initiated staged close (Escape) */
   onEscape: () => void;
   /** Switch layout from the corner picker (compact / sidebar / fullscreen) */
-  onSelectLayout: (layout: PanelLayout) => void;
+  onSelectLayout: (layout: WidgetCompanionLayoutU) => void;
   /** Open the conversation history (sessions list) in the compact panel */
   onHistory: () => void;
   /** Expand the follow-up bar back up into the open chat panel */
@@ -146,6 +150,20 @@ export function CompanionContent({
     return () => observer.disconnect();
   }, [state, onInputHeightChange]);
 
+  // Focus the composer the moment the quick-ask pane mounts: the user's very
+  // next keystrokes must land in the textarea, not the host page. Without
+  // this, typing that races the expand animation is silently lost — the pill
+  // only transferred focus on an explicit click into the input. (Generic
+  // querySelector typing, no cast: the iframe's elements belong to another
+  // realm, so an instanceof check against the host's HTMLTextAreaElement
+  // would be wrong.)
+  useLayoutEffect(() => {
+    if (state !== 'input' || canExpand) return;
+    inputPaneRef.current
+      ?.querySelector<HTMLTextAreaElement>('textarea')
+      ?.focus({ preventScroll: true });
+  }, [state, canExpand]);
+
   return (
     <FrameDocument overrides={overrides} rootRef={rootRef}>
       {/* Exactly ONE pane is mounted at a time. A hidden-but-mounted
@@ -168,6 +186,7 @@ export function CompanionContent({
           <ChatInput
             onMessageSent={onMessageSent}
             disableTooltips
+            hideAttachTools={hideAttachTools}
             placeholder={placeholder}
             trailingActions={
               <Button

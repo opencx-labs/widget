@@ -1,4 +1,4 @@
-import { Link, Route, Routes } from "react-router-dom";
+import { Link, Route, Routes, useLocation } from "react-router-dom";
 import { AppShell } from "./components/AppShell.tsx";
 import { CompanionWidget } from "./components/CompanionWidget.tsx";
 import { Overview } from "./pages/Overview.tsx";
@@ -12,6 +12,7 @@ import { Settlements } from "./pages/Settlements.tsx";
 import { SettlementDetail } from "./pages/SettlementDetail.tsx";
 import { Disputes } from "./pages/Disputes.tsx";
 import { Settings } from "./pages/Settings.tsx";
+import { SupportLanding } from "./pages/SupportLanding.tsx";
 
 function NotFound() {
   return (
@@ -25,9 +26,15 @@ function NotFound() {
 }
 
 export function App() {
+  // /support is the customer-facing SUPPORT-agent surface (widget unbound →
+  // org default v3 agent); everything else is the merchant dashboard with the
+  // COMPANION agent. The widget boots once per page load, so cross-surface
+  // links are hard <a> navigations.
+  const isSupport = useLocation().pathname.startsWith("/support");
   return (
     <>
       <Routes>
+        <Route path="/support" element={<SupportLanding />} />
         <Route element={<AppShell />}>
           <Route path="/" element={<Overview />} />
           <Route path="/payments" element={<Payments />} />
@@ -43,7 +50,7 @@ export function App() {
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
-      <CompanionWidget />
+      <CompanionWidget variant={isSupport ? "support" : "companion"} />
     </>
   );
 }

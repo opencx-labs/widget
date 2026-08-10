@@ -55,18 +55,13 @@ export type {
 } from './context/message.ctx';
 // v5 agent-chat engine — the useChat-based streaming surface's building blocks.
 export { AgentChatQueue } from './context/agent-chat/agent-chat-queue';
-export {
-  mapUiMessageToItems,
-  SPEC_DATA_PART_TYPE,
-} from './context/agent-chat/agent-chat-stream';
+export { mapUiMessageToItems } from './context/agent-chat/agent-chat-stream';
 export type {
-  SpecDataPart,
   StreamingStep,
   StreamingTurnItem,
   StreamingTurnState,
 } from './context/agent-chat/agent-chat-stream';
 export {
-  agentChatReconnectPreparer,
   buildAgentChatTransport,
   stopAgentChatTurn,
 } from './context/agent-chat/agent-chat-transport';

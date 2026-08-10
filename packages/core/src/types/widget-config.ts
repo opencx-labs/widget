@@ -680,7 +680,7 @@ export interface WidgetConfig {
   displayMode?: WidgetDisplayModeU;
 
   /**
-   * Options for the `companion` and `sidebar` display modes.
+   * Options for the `companion` display mode.
    */
   companion?: {
     /**
@@ -708,8 +708,8 @@ export interface WidgetConfig {
      * gutter). The v5 DEFAULT is the flat, document-style layout: agent
      * replies flow as unbubbled text and user messages become quiet chips
      * (Linear/Claude-style). Set `true` to opt back into classic chat
-     * bubbles. Applies to the `companion` and `sidebar` modes; the `popover`
-     * mode is always bubbles.
+     * bubbles. Applies to the `companion` display mode; the `popover` mode is
+     * always bubbles.
      * @default false
      */
     bubbles?: boolean;
@@ -728,6 +728,16 @@ export interface WidgetConfig {
      * floating pill and in the quick-ask input bar.
      */
     icon?: string;
+
+    /**
+     * Which composer tools the docked quick-ask bar shows. The expanded chat
+     * panel always shows the full tool row regardless.
+     * - 'history-only' (default): just the conversation-history control —
+     *   the resting bar stays quiet.
+     * - 'all': attach + element-picker buttons too.
+     * @default 'history-only'
+     */
+    quickAskTools?: 'history-only' | 'all';
 
     /**
      * Background color of the resting pill. The built-in animated face
@@ -751,17 +761,10 @@ export interface WidgetConfig {
     pillLabel?: string;
 
     /**
-     * Fullscreen-layout behavior. Both options touch the embedder's page,
-     * so both can be turned off.
+     * Fullscreen-layout behavior. The option touches the embedder's page,
+     * so it can be turned off.
      */
     fullscreen?: {
-      /**
-       * Lightly blur the host page behind the fullscreen panel.
-       * No darkening/tint is ever applied to the host page.
-       * @default true
-       */
-      backdropBlur?: boolean;
-
       /**
        * Prevent the host page from scrolling while fullscreen is open.
        * @default true

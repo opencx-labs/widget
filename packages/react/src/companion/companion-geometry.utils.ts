@@ -1,4 +1,4 @@
-import type { PanelLayout } from './types';
+import type { WidgetCompanionLayoutU } from '@opencx/widget-core';
 
 /** Even margin on all four sides for the fullscreen modal window. */
 export const FULLSCREEN_MARGIN = 16;
@@ -31,7 +31,7 @@ export class CompanionGeometryUtils {
 
   /** The open chat panel's box per layout. */
   static chatDims(opts: {
-    layout: PanelLayout;
+    layout: WidgetCompanionLayoutU;
     region: Region;
     compactWidth: number;
     chatHeight: number;
@@ -69,7 +69,7 @@ export class CompanionGeometryUtils {
    */
   static shellAnchor(opts: {
     isChatOpen: boolean;
-    layout: PanelLayout;
+    layout: WidgetCompanionLayoutU;
     region: Region;
     sidebarWidth: number;
     dir: string;

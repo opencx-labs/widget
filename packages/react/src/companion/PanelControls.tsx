@@ -1,12 +1,11 @@
 import { XIcon } from 'lucide-react';
 import React from 'react';
-import { cn } from '../components/lib/utils/cn';
+import type { WidgetCompanionLayoutU } from '@opencx/widget-core';
 import { Tooltippy } from '../components/lib/tooltip';
 import { dc } from '../utils/data-component';
 import { useTranslation } from '../hooks/useTranslation';
 import { FrameIconButton } from './FrameIconButton';
 import { LayoutPicker } from './LayoutPicker';
-import type { PanelLayout } from './types';
 
 /**
  * Chat-panel corner controls: a single macOS-style layout picker + Close.
@@ -19,18 +18,16 @@ export function PanelControls({
   layout,
   onSelectLayout,
   onClose,
-  className,
 }: {
-  layout: PanelLayout;
-  onSelectLayout: (layout: PanelLayout) => void;
+  layout: WidgetCompanionLayoutU;
+  onSelectLayout: (layout: WidgetCompanionLayoutU) => void;
   onClose: () => void;
-  className?: string;
 }) {
   const { t } = useTranslation();
   return (
     <div
       {...dc('companion/controls/root')}
-      className={cn('absolute top-2 z-10 flex items-center gap-1', className)}
+      className="absolute top-2 z-10 flex items-center gap-1"
       style={{ insetInlineEnd: 8 }}
     >
       <LayoutPicker current={layout} onSelect={onSelectLayout} />

@@ -2,9 +2,9 @@
  * The companion's visual material system. Surfaces are theme tokens
  * (palette / primaryColor via cssVars on the host shell) so embedder
  * customizations apply to companion chrome exactly like popover; only the
- * shadows live here. Frosted glass is currently disabled — if it returns,
- * it returns as a host-DOM backdrop-filter (a filter inside the iframe can
- * only sample the iframe's own document, never the host page).
+ * shadows live here. There is no frosted glass — if it ever returns, it
+ * returns as a host-DOM backdrop-filter (a filter inside the iframe can only
+ * sample the iframe's own document, never the host page).
  *
  * Rings and rim highlights stay whisper-faint: bright white edges read as
  * "weird white borders" on dark host pages.
@@ -32,11 +32,3 @@ export const INPUT_SHADOW =
 
 export const CHAT_SHADOW =
   '0 24px 48px -16px rgba(0,0,0,0.18), 0 4px 16px 0 rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.05), inset 0 1px 0 0 rgba(255,255,255,0.5)';
-
-/**
- * Fullscreen is a MODAL, not a bigger card: veil below, opaque surface
- * above, host scroll locked. The veil must never tint or darken the
- * customer's page; both page-touching effects (veil, scroll lock) are
- * embedder-configurable (companion.fullscreen).
- */
-export const SCRIM_BACKDROP_FILTER = 'none';

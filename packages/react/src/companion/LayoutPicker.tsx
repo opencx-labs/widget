@@ -1,13 +1,15 @@
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import React from 'react';
 import { useConfig } from '@opencx/widget-react-headless';
-import type { TranslationKeyU } from '@opencx/widget-core';
+import type {
+  TranslationKeyU,
+  WidgetCompanionLayoutU,
+} from '@opencx/widget-core';
 import { cn } from '../components/lib/utils/cn';
 import { Tooltippy } from '../components/lib/tooltip';
 import { dc } from '../utils/data-component';
 import { useTranslation } from '../hooks/useTranslation';
 import { FrameIconButton } from './FrameIconButton';
-import type { PanelLayout } from './types';
 
 /**
  * One control for all three arrangements — a macOS-style layout menu. A single
@@ -24,7 +26,7 @@ import type { PanelLayout } from './types';
  */
 
 /** A tiny window diagram per layout, in the macOS tiling-menu idiom. */
-function LayoutGlyph({ layout }: { layout: PanelLayout }) {
+function LayoutGlyph({ layout }: { layout: WidgetCompanionLayoutU }) {
   const common = {
     width: 18,
     height: 18,
@@ -76,7 +78,10 @@ function LayoutGlyph({ layout }: { layout: PanelLayout }) {
 // ("Floating panel") stretch their tile tall and pad the others out to match.
 // The array's ORDER and identity are the source of truth for which tiles
 // exist; each `label` is a translation key resolved at render via `t()`.
-const LAYOUT_META: { layout: PanelLayout; label: TranslationKeyU }[] = [
+const LAYOUT_META: {
+  layout: WidgetCompanionLayoutU;
+  label: TranslationKeyU;
+}[] = [
   { layout: 'compact', label: 'companion_layout_floating' },
   { layout: 'sidebar', label: 'companion_layout_sidebar' },
   { layout: 'fullscreen', label: 'companion_layout_fullscreen' },
@@ -85,11 +90,9 @@ const LAYOUT_META: { layout: PanelLayout; label: TranslationKeyU }[] = [
 export function LayoutPicker({
   current,
   onSelect,
-  className,
 }: {
-  current: PanelLayout;
-  onSelect: (layout: PanelLayout) => void;
-  className?: string;
+  current: WidgetCompanionLayoutU;
+  onSelect: (layout: WidgetCompanionLayoutU) => void;
 }) {
   const { t } = useTranslation();
   const { companion } = useConfig();
@@ -108,7 +111,7 @@ export function LayoutPicker({
             {...dc('companion/layout_picker/trigger')}
             label={t('companion_layout_label')}
             title=""
-            className={cn('size-7', className)}
+            className="size-7"
           >
             <LayoutGlyph layout={current} />
           </FrameIconButton>

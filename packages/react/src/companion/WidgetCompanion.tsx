@@ -19,6 +19,7 @@ import {
   useWidgetLayout,
   useWidgetTrigger,
 } from '@opencx/widget-react-headless';
+import type { WidgetCompanionLayoutU } from '@opencx/widget-core';
 import { buildFrameHtml } from '../components/FrameDocument';
 import { useTheme } from '../hooks/useTheme';
 import { useTranslation } from '../hooks/useTranslation';
@@ -39,9 +40,8 @@ import {
   EASE_OUT,
   INPUT_SHADOW,
   PILL_SHADOW,
-  SCRIM_BACKDROP_FILTER,
 } from './materials';
-import type { PanelLayout, PanelState } from './types';
+import type { PanelState } from './types';
 import { useHostPortal } from './useHostPortal';
 
 // Near-critically damped (ratio ≈ 1.0 at stiffness 500 / mass 1): the morph
@@ -134,7 +134,15 @@ function loadPillOffset(): { x: number; y: number } | null {
       typeof (parsed as { x?: unknown }).x === 'number' &&
       typeof (parsed as { y?: unknown }).y === 'number'
     ) {
-      return parsed as { x: number; y: number };
+      // Clamp to the CURRENT viewport at restore time. An offset saved from a
+      // wider window otherwise parks the pill beyond the edge — the widget
+      // looks like it never mounted — and the in-layout clamp effect can't be
+      // relied on this early (its bound reads the dock width before it has
+      // been measured).
+      const { width } = getViewportSize();
+      const bound = Math.max(0, width / 2 - PILL_SIZE / 2 - VIEWPORT_EDGE_PADDING);
+      const x = (parsed as { x: number }).x;
+      return { x: Number.isFinite(x) ? clamp(x, -bound, bound) : 0, y: 0 };
     }
     return null;
   } catch {
@@ -559,7 +567,6 @@ export function WidgetCompanion() {
 
   const isFullscreenModal = state === 'chat' && panelLayout === 'fullscreen';
   // Page-touching effects are the embedder's call, not ours
-  const fullscreenBackdropBlur = companion?.fullscreen?.backdropBlur !== false;
   const fullscreenLockScroll = companion?.fullscreen?.lockScroll !== false;
 
   // Modal behavior: the host page must not scroll behind the fullscreen
@@ -659,7 +666,7 @@ export function WidgetCompanion() {
   // compact, fullscreen, sidebar — re-renders THIS shell in place, so the panel
   // morphs from the current rect to the next (no component swap).
   const handleSelectLayout = useCallback(
-    (target: PanelLayout) => {
+    (target: WidgetCompanionLayoutU) => {
       setKeyboardDriven(false);
       // Fullscreen is a conversation stage — the sessions list stays in the
       // compact card (it strands badly in a huge column), so leave it first.
@@ -758,36 +765,33 @@ export function WidgetCompanion() {
         setIsOpen: (open: boolean) => setIsOpen(open),
       })}
 
-      {/* Blur veil — softly defocuses the host page while fullscreen; no
-          tint or darkening, ever. Lives OUTSIDE the container:
-          position:fixed breaks inside a transformed ancestor. Always
-          mounted (opacity 0 + no pointer events at rest) so there's no
-          exit-animation zombie in hidden tabs. Clicking it hits the
-          existing outside-mousedown handler → staged close. */}
-      {fullscreenBackdropBlur && (
-        <motion.div
-          aria-hidden
-          style={{
-            position: 'fixed',
-            ...(containerEl
-              ? {
-                  left: region.left,
-                  top: region.top,
-                  width: region.width,
-                  height: region.height,
-                }
-              : { inset: 0 }),
-            background: 'transparent',
-            backdropFilter: SCRIM_BACKDROP_FILTER,
-            WebkitBackdropFilter: SCRIM_BACKDROP_FILTER,
-            zIndex: theme.widgetContentContainer.zIndex,
-            pointerEvents: isFullscreenModal ? 'auto' : 'none',
-          }}
-          initial={false}
-          animate={{ opacity: isFullscreenModal ? 1 : 0 }}
-          transition={{ duration: 0.2, ease: EASE_OUT }}
-        />
-      )}
+      {/* Modal scrim — fully transparent; it never tints, darkens or blurs
+          the host page. Its only job is to swallow host-page clicks while
+          fullscreen is open (they hit the existing outside-mousedown handler
+          → staged close). Lives OUTSIDE the container: position:fixed breaks
+          inside a transformed ancestor. Always mounted (no pointer events at
+          rest) so there's no exit-animation zombie in hidden tabs. */}
+      <motion.div
+        aria-hidden
+        style={{
+          position: 'fixed',
+          ...(containerEl
+            ? {
+                left: region.left,
+                top: region.top,
+                width: region.width,
+                height: region.height,
+              }
+            : { inset: 0 }),
+          background: 'transparent',
+          zIndex: theme.widgetContentContainer.zIndex,
+          pointerEvents: isFullscreenModal ? 'auto' : 'none',
+        }}
+        initial={false}
+        animate={{ opacity: isFullscreenModal ? 1 : 0 }}
+        transition={{ duration: 0.2, ease: EASE_OUT }}
+      />
+
       <motion.div
         ref={containerRef}
         style={{
@@ -957,6 +961,7 @@ export function WidgetCompanion() {
                   onExpand={handleExpand}
                   canExpand={hasActiveSession}
                   placeholder={quickAskPlaceholder}
+                  hideAttachTools={(companion?.quickAskTools ?? 'history-only') === 'history-only'}
                   onInputHeightChange={setInputHeight}
                 />
               </CompanionFrame>

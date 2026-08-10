@@ -162,6 +162,7 @@ export function ChatInput({
   trailingActions,
   disableTooltips,
   placeholder,
+  hideAttachTools,
 }: {
   onMessageSent?: () => void;
   /**
@@ -182,6 +183,12 @@ export function ChatInput({
    * localized "Write a message…".
    */
   placeholder?: string;
+  /**
+   * Hide the attach + element-picker buttons. Companion's docked quick-ask
+   * bar sets it so the resting composer carries ONLY the history control —
+   * the full tool row lives in the expanded chat panel.
+   */
+  hideAttachTools?: boolean;
 } = {}) {
   const { isSmallScreen } = useIsSmallScreen();
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -438,8 +445,10 @@ export function ChatInput({
           />
         </div>
         <div className="gap-2 flex justify-between">
-          {/* Left group: composer inputs (attach + element picker). */}
+          {/* Left group: composer inputs (attach + element picker). Hidden
+              entirely on the docked quick-ask bar (history-only there). */}
           <div className="flex items-center gap-1">
+            {!hideAttachTools && (
             <Tooltippy
               side="top"
               align="start"
@@ -467,8 +476,9 @@ export function ChatInput({
                 </AnimatePresence>
               </Button>
             </Tooltippy>
+            )}
 
-            {showElementPicker && (
+            {!hideAttachTools && showElementPicker && (
               <Tooltippy
                 side="top"
                 align="start"
