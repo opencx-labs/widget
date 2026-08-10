@@ -133,6 +133,12 @@ type HeaderButtonBase = {
   // tooltipContent?: string;
   hideOnSmallScreen?: boolean;
   hideOnLargeScreen?: boolean;
+
+  /**
+   * Fires after the button is clicked and its default behavior has run.
+   * It does not replace the button's default behavior.
+   */
+  onClicked?: (ctx: ComponentContext) => void;
 };
 
 export type HeaderButtonU =
@@ -177,6 +183,13 @@ export type HeaderButtonU =
         description?: string;
         confirmButtonText?: string;
         cancelButtonText?: string;
+
+        /**
+         * Fires after the confirmation modal's confirm button is clicked and the session is successfully resolved.
+         * It does not fire if resolving the session fails.
+         * It does not replace the confirm button's default behavior.
+         */
+        onResolved?: (ctx: ComponentContext) => void;
       };
 
       /**

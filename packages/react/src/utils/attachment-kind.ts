@@ -36,6 +36,13 @@ export const SPREADSHEET_ACCEPT: Record<string, string[]> = Object.fromEntries(
   ),
 );
 
+// react-dropzone accept map for videos (screen recordings and the like).
+export const VIDEO_ACCEPT: Record<string, string[]> = {
+  'video/mp4': ['.mp4'],
+  'video/webm': ['.webm'],
+  'video/quicktime': ['.mov'],
+};
+
 export function getSpreadsheet({
   type,
   name,

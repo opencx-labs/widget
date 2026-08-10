@@ -19,6 +19,29 @@
   unpublished) fail initialization loudly with the backend's reason. Agent v3 embeds work
   only with widget v5 — older widgets ignore `agentId` and fall back to the
   organization's default agent.
+## 4.0.59
+
+### Patch Changes
+
+- enable video attachment
+
+## 4.0.58
+
+### Patch Changes
+
+- replace header button confirmation modal's onConfirmed with onResolved, which fires only after the session is successfully resolved (fixes a race where onConfirmed fired before the resolve request completed)
+
+## 4.0.57
+
+### Patch Changes
+
+- add onConfirmed option for header button confirmation modal
+
+## 4.0.56
+
+### Patch Changes
+
+- add onClicked option for header buttons
 
 ## 4.0.55
 

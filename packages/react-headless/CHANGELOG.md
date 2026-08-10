@@ -24,6 +24,37 @@
 
 - Updated dependencies
   - @opencx/widget-core@5.0.0
+## 4.0.59
+
+### Patch Changes
+
+- enable video attachment
+- Updated dependencies
+  - @opencx/widget-core@4.0.59
+
+## 4.0.58
+
+### Patch Changes
+
+- replace header button confirmation modal's onConfirmed with onResolved, which fires only after the session is successfully resolved (fixes a race where onConfirmed fired before the resolve request completed)
+- Updated dependencies
+  - @opencx/widget-core@4.0.58
+
+## 4.0.57
+
+### Patch Changes
+
+- add onConfirmed option for header button confirmation modal
+- Updated dependencies
+  - @opencx/widget-core@4.0.57
+
+## 4.0.56
+
+### Patch Changes
+
+- add onClicked option for header buttons
+- Updated dependencies
+  - @opencx/widget-core@4.0.56
 
 ## 4.0.55
 

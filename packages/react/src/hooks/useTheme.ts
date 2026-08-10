@@ -3,6 +3,7 @@ import tc from 'tinycolor2';
 import { isExhaustive, type WidgetConfig } from '@opencx/widget-core';
 import { useConfig, useDocumentDir } from '@opencx/widget-react-headless';
 import { WOBBLE_MAX_MOVEMENT_PIXELS } from '../components/lib/wobble';
+import { resolveTriggerSide } from '../utils/resolve-trigger-side';
 import { useIsSmallScreen } from './useIsSmallScreen';
 
 type DeepRequired<T> = {
@@ -34,14 +35,18 @@ export function useTheme() {
     return withInlineDefault(withSmallScreenDefault(target, v));
   };
 
+  const triggerSide = resolveTriggerSide(theme?.widgetTrigger?.offset, dir);
+
   const widgetTrigger = {
     zIndex: theme?.widgetTrigger?.zIndex ?? 10_000_000,
     offset: {
       bottom: theme?.widgetTrigger?.offset?.bottom ?? 20,
       right:
-        theme?.widgetTrigger?.offset?.right ?? (dir === 'ltr' ? 20 : 'initial'),
+        theme?.widgetTrigger?.offset?.right ??
+        (triggerSide === 'right' ? 20 : 'initial'),
       left:
-        theme?.widgetTrigger?.offset?.left ?? (dir === 'rtl' ? 20 : 'initial'),
+        theme?.widgetTrigger?.offset?.left ??
+        (triggerSide === 'left' ? 20 : 'initial'),
     },
     size: {
       button: theme?.widgetTrigger?.size?.button ?? 48,
@@ -51,7 +56,9 @@ export function useTheme() {
 
   const triggerOffset = (() => {
     const v =
-      dir === 'ltr' ? widgetTrigger.offset.right : widgetTrigger.offset.left;
+      triggerSide === 'right'
+        ? widgetTrigger.offset.right
+        : widgetTrigger.offset.left;
     if (typeof v !== 'number') return 0;
     return v;
   })();
@@ -169,6 +176,7 @@ export function useTheme() {
 
   return {
     theme: themeWithFallbacks,
+    triggerSide,
     computed,
     cssVars: cssVars({
       palette: themeWithFallbacks.palette,

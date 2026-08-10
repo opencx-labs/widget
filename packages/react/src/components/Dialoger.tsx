@@ -200,11 +200,14 @@ export function Dialoger({
   trigger,
 }: {
   children: React.ReactNode;
-  trigger: React.ReactElement<{ onClick: () => void }>;
+  trigger: React.ReactElement<{ onClick?: () => void }>;
 }) {
   const { open } = useDialoger();
   const clonedTrigger = cloneElement(trigger, {
-    onClick: () => open(children),
+    onClick: () => {
+      open(children);
+      trigger.props.onClick?.();
+    },
   });
 
   return clonedTrigger;
