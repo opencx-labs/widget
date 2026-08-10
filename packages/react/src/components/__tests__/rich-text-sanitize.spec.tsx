@@ -55,10 +55,15 @@ describe('RichText sanitization (untrusted model/agent output)', () => {
     expect(img?.getAttribute('onerror')).toBeNull();
   });
 
-  it('strips javascript: hrefs from authored anchors', () => {
-    const el = render('<a href="javascript:window.__pwned=1">click me</a>');
-    const href = el.querySelector('a')?.getAttribute('href');
-    expect(href?.startsWith('javascript:')).not.toBe(true);
+  it.each([
+    ['javascript:', 'javascript:window.__pwned=1'],
+    ['data:', 'data:text/html;base64,PHNjcmlwdD53aW5kb3cuX19wd25lZD0xPC9zY3JpcHQ+'],
+    ['vbscript:', 'vbscript:msgbox(1)'],
+  ])('strips %s hrefs from authored anchors', (_scheme, href) => {
+    const el = render(`<a href="${href}">click me</a>`);
+    // The sanitizer removes the attribute outright — the anchor may survive,
+    // but it must carry no href at all.
+    expect(el.querySelector('a')?.getAttribute('href') ?? null).toBeNull();
   });
 
   it('strips <iframe> so a reply cannot embed a foreign origin', () => {
