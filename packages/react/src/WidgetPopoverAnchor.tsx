@@ -1,17 +1,17 @@
 import React from 'react';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
-import { useDocumentDir } from '@opencx/widget-react-headless';
+import { useTheme } from './hooks/useTheme';
 
 export function WidgetPopoverAnchor() {
-  const { dir } = useDocumentDir();
+  const { triggerSide } = useTheme();
 
   return (
     <PopoverPrimitive.Anchor
       style={{
         position: 'fixed',
         bottom: 0,
-        right: dir === 'ltr' ? 0 : undefined,
-        left: dir === 'rtl' ? 0 : undefined,
+        right: triggerSide === 'right' ? 0 : undefined,
+        left: triggerSide === 'left' ? 0 : undefined,
       }}
     />
   );

@@ -5,6 +5,7 @@ import React from 'react';
 import styles from '../index.css?inline.css';
 import {
   useConfig,
+  useDocumentDir,
   useWidget,
   useWidgetTrigger,
 } from '@opencx/widget-react-headless';
@@ -123,7 +124,17 @@ export function WidgetContent() {
 }
 
 export function WidgetPopoverContent() {
-  const { theme } = useTheme();
+  const { theme, triggerSide } = useTheme();
+  const { dir: hostDocumentDir } = useDocumentDir();
+
+  // Radix/floating-ui resolves `align` logically against the floating element's
+  // computed direction (inherited from the host page via the portal): on an RTL
+  // host, 'end' means the physical LEFT edge. Map the resolved physical side
+  // back to the logical align so the box always opens on the trigger's side.
+  const align =
+    (hostDocumentDir === 'rtl' ? triggerSide === 'left' : triggerSide === 'right')
+      ? 'end'
+      : 'start';
 
   return (
     <PopoverPrimitive.Content
@@ -134,7 +145,7 @@ export function WidgetPopoverContent() {
         fontSize: '16px',
       }}
       side="top"
-      align="end"
+      align={align}
       aria-modal="false"
       aria-label="Support chat"
       sideOffset={theme.widgetContentContainer.offset.side}
