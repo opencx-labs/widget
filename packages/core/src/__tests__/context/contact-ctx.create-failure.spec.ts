@@ -5,7 +5,15 @@
 // → the widget's fire-and-forget `void sendMessage(...)` and became an unhandled
 // promise rejection in the EMBEDDER's page, while `isErrorCreatingUnverifiedContact`
 // stayed false so nothing in the UI ever reported the failure.
-import { afterEach, beforeEach, expect, suite, test, vi } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  expect,
+  suite,
+  test,
+  vi,
+  type MockInstance,
+} from 'vitest';
 import { ApiCaller } from '../../api/api-caller';
 import { ContactCtx } from '../../context/contact.ctx';
 import type { WidgetConfig } from '../../types/widget-config';
@@ -19,7 +27,7 @@ function buildContactCtx(): ContactCtx {
   return new ContactCtx({ api: new ApiCaller({ config }), config });
 }
 
-let fetchSpy: ReturnType<typeof vi.spyOn>;
+let fetchSpy: MockInstance<typeof fetch>;
 
 beforeEach(() => {
   fetchSpy = vi.spyOn(globalThis, 'fetch');

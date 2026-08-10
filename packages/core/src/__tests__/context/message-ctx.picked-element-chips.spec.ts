@@ -152,20 +152,20 @@ suite('picked-element chips on the user bubble', () => {
 
     const userRow: MessageDto = {
       publicId: 'b1b1b1b1-0000-4000-8000-000000000001',
-      type: 'MESSAGE',
+      type: 'message',
       content: { text: 'what is this?' },
       sender: { kind: 'user' },
       sentAt: new Date().toISOString(),
-      systemMessagePayload: null,
+      systemMessagePayload: { type: 'none' },
       pickedElements: [{ name: 'button "Save"' }],
     };
     const agentRow: MessageDto = {
       publicId: 'b1b1b1b1-0000-4000-8000-000000000002',
-      type: 'MESSAGE',
+      type: 'message',
       content: { text: 'that is the save button' },
       sender: { kind: 'agent', name: 'Open' },
       sentAt: new Date().toISOString(),
-      systemMessagePayload: null,
+      systemMessagePayload: { type: 'none' },
     };
 
     const mappedUser = polling.mapHistoryToMessage(userRow);
@@ -193,11 +193,11 @@ suite('picked-element chips on the user bubble', () => {
 
     const row: MessageDto = {
       publicId: 'b1b1b1b1-0000-4000-8000-000000000003',
-      type: 'MESSAGE',
+      type: 'message',
       content: { text: 'plain message' },
       sender: { kind: 'user' },
       sentAt: new Date().toISOString(),
-      systemMessagePayload: null,
+      systemMessagePayload: { type: 'none' },
     };
 
     const mapped = polling.mapHistoryToMessage(row);

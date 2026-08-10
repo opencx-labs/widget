@@ -4,11 +4,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 // `RichText` only reads `anchorTarget` off the widget config. Stubbing it keeps
 // these tests about the SANITIZER rather than about provider plumbing.
+// (`vi.mock` is hoisted above imports, so the static import sees the stub.)
 vi.mock('@opencx/widget-react-headless', () => ({
   useConfig: () => ({ anchorTarget: '_top' }),
 }));
 
-const { RichText } = await import('../RichText');
+import { RichText } from '../RichText';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 

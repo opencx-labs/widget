@@ -164,7 +164,11 @@ export type ChartProps = z.infer<typeof chartPropsSchema>;
  * the fallback and let the next patch re-render. This is the widget's first line
  * of defense: one bad prop can never crash the whole spec render.
  */
-export function parseProps<T>(schema: z.ZodType<T>, raw: unknown, fallback: T): T {
+export function parseProps<T>(
+  schema: z.ZodType<T, z.ZodTypeDef, unknown>,
+  raw: unknown,
+  fallback: T,
+): T {
   const result = schema.safeParse(raw);
   return result.success ? result.data : fallback;
 }
