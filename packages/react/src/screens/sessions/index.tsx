@@ -1,5 +1,6 @@
 import { type SessionDto } from '@opencx/widget-core';
 import {
+  useBot,
   useConfig,
   useSessions,
   useWidgetRouter,
@@ -42,7 +43,9 @@ function SessionCard({
   session: SessionDto;
   className?: string;
 }) {
-  const { bot, humanAgent } = useConfig();
+  const { humanAgent } = useConfig();
+  // Server-resolved agent branding wins over the local `bot` option.
+  const bot = useBot();
   const { toChatScreen } = useWidgetRouter();
 
   const assigneeName =
@@ -64,7 +67,7 @@ function SessionCard({
       )}
       onClick={() => toChatScreen(session.id)}
     >
-      <div className="flex-1 flex gap-2 items-center">
+      <div className="flex-1 flex gap-2 items-center min-w-0">
         <AnimatePresence mode="wait">
           <MotionDiv snapExit>
             <Avatar className="size-10">
@@ -75,7 +78,7 @@ function SessionCard({
             </Avatar>
           </MotionDiv>
         </AnimatePresence>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <AnimatePresence mode="wait">
             <MotionDiv key={assigneeName} snapExit>
               {assigneeName}
@@ -117,7 +120,10 @@ function SessionsList() {
   } = useSessions();
 
   return (
-    <div className="flex-1 flex flex-col overflow-scroll py-2 px-2">
+    <div
+      {...dc('sessions/list')}
+      className="flex-1 flex flex-col overflow-scroll py-2 px-2"
+    >
       <AnimatePresence mode="wait">
         {isLoading ? (
           <MotionDiv

@@ -123,7 +123,7 @@ export class SessionCtx {
     );
   };
 
-  createSession = async () => {
+  createSession = async (opts?: { isTokenRetry?: boolean }): Promise<SessionDto | null> => {
     this.sessionState.setPartial({ session: null, isCreatingSession: true });
 
     const externalId = this.contactCtx.state.get().contact?.externalId;
@@ -132,13 +132,23 @@ export class SessionCtx {
       ...this.getParsedCustomData(),
       ...(externalId ? { external_id: externalId } : {}),
     };
-    const { data: session, error } = await this.api.createSession({
+    const { data: session, error, response } = await this.api.createSession({
       customData: Object.keys(customData).length > 0 ? customData : undefined,
+      // Agents-platform binding: the backend validates the agent (enabled +
+      // published + this org) and stamps it on the session; the session is then
+      // served by that agent's v3 runtime.
+      agentId: this.config.agentId,
     });
     if (session) {
       this.sessionState.setPartial({ session, isCreatingSession: false });
       this.config.hooks?.onSessionCreated?.({ session });
       return session;
+    }
+
+    // Self-heal a stale contact token (401): drop it, mint a fresh contact, retry once.
+    if (!opts?.isTokenRetry && response?.status === 401) {
+      const recovered = await this.contactCtx.recoverFromStaleToken();
+      if (recovered) return this.createSession({ isTokenRetry: true });
     }
 
     this.sessionState.setPartial({ isCreatingSession: false });

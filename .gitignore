@@ -34,3 +34,5 @@ dev
 tsconfig.tsbuildinfo
 
 .npmrc
+# local package tarballs for offline consumer testing
+local-pack/

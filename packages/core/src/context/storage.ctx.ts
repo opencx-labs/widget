@@ -29,6 +29,9 @@ export class StorageCtx {
   getContactToken = async () => {
     return this.storage.get(this.KEYS.contactToken(this.config.token));
   };
+  clearContactToken = async () => {
+    await this.storage.remove(this.KEYS.contactToken(this.config.token));
+  };
 
   setExternalContactId = async (id: string) => {
     await this.storage.set(this.KEYS.externalContactId(this.config.token), id);

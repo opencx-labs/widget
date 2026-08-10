@@ -13,6 +13,7 @@ export type OpenCxComponentNameU =
   /* ------------------------------------------------------ */
   | 'sessions/root'
   | 'sessions/header'
+  | 'sessions/list'
   | 'sessions/new_conversation_btn'
 
   /* ------------------------------------------------------ */
@@ -22,7 +23,11 @@ export type OpenCxComponentNameU =
   | 'chat/header'
   | 'chat/main/root'
   | 'chat/canvas/root'
+  | 'chat/msgs/wrapper'
   | 'chat/msgs/root'
+  | 'chat/msgs/scroll-to-bottom'
+  | 'chat/streaming_turn/root'
+  | 'chat/streaming_turn/steps'
   /* -------------------- Agent Message ------------------- */
   | 'chat/agent_msg_group/root'
   | 'chat/agent_msg_group/avatar_and_msgs/root'
@@ -37,14 +42,35 @@ export type OpenCxComponentNameU =
   | 'chat/user_msg_group/avatar/root'
   | 'chat/user_msg/root'
   | 'chat/user_msg/msg'
+  | 'chat/user_msg/picked_elements'
   /* --------------------- Chat Input --------------------- */
   | 'chat/input_box/root'
   | 'chat/input_box/inner_root'
   | 'chat/input_box/textarea_and_attachments_container'
   | 'chat/input_box/textarea'
   | 'chat/input_box/attachments_container'
+  /* Element picker (attach a host-page element as context) */
+  | 'chat/input_box/element_picker_btn'
+  | 'chat/input_box/picked_elements_container'
+  | 'chat/input_box/picked_element_pill'
+  /* Agent-v3 multi-send queue pill, docked above the composer. */
+  | 'chat/queued_sends/root'
+  | 'chat/queued_sends/header'
+  | 'chat/queued_sends/list'
+  | 'chat/queued_sends/item'
+  | 'chat/queued_sends/remove'
   /* --------------------- Chat Utils --------------------- */
   | 'chat/bot_loading/root'
   | 'chat/bot_loading/bouncing_dots_container'
   | 'chat/suggested_reply_btn'
-  | 'chat/might_solve_user_issue_suggested_replies_container';
+  | 'chat/might_solve_user_issue_suggested_replies_container'
+
+  /* ------------------------------------------------------ */
+  /*                        Companion                       */
+  /* ------------------------------------------------------ */
+  /* Corner chrome shared by the companion panel + the sidebar. */
+  | 'companion/controls/root'
+  | 'companion/layout_picker/trigger'
+  | 'companion/layout_picker/menu'
+  | 'companion/layout_picker/option'
+  | 'companion/close_btn';

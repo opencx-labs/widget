@@ -26,6 +26,16 @@ export class WidgetCtx {
     id: string;
     name: string;
   };
+  /**
+   * Branding of the bound agents-platform agent (config `agentId`), resolved
+   * by the backend at init. Undefined when the embed is not agent-bound.
+   * Server values win over the local `bot` option at render time.
+   */
+  public agent?: {
+    id: string;
+    name: string;
+    avatarUrl: string | null;
+  };
   private static pollingIntervalsSeconds: {
     session: number;
     sessions: number;
@@ -37,6 +47,7 @@ export class WidgetCtx {
     storage,
     modes,
     org,
+    agent,
   }: {
     config: WidgetConfig;
     storage?: ExternalStorage;
@@ -44,6 +55,11 @@ export class WidgetCtx {
     org: {
       id: string;
       name: string;
+    };
+    agent?: {
+      id: string;
+      name: string;
+      avatarUrl: string | null;
     };
   }) {
     if (!WidgetCtx.pollingIntervalsSeconds) {
@@ -54,6 +70,7 @@ export class WidgetCtx {
 
     this.config = config;
     this.org = org;
+    this.agent = agent;
     this.api = new ApiCaller({ config });
     this.storageCtx = storage ? new StorageCtx({ storage, config }) : undefined;
     this.modes = modes;
@@ -78,6 +95,8 @@ export class WidgetCtx {
       sessionCtx: this.sessionCtx,
       contactCtx: this.contactCtx,
     });
+    // v5: agent-bound embeds stream their turns (AI SDK transport).
+    this.messageCtx.agentBound = this.agent !== undefined;
 
     this.csatCtx = new CsatCtx({
       config: this.config,
@@ -114,6 +133,9 @@ export class WidgetCtx {
     }).getExternalWidgetConfig();
 
     if (!externalConfig.data) {
+      // Surface the backend's reason (e.g. an unservable `agentId`:
+      // not_found / disabled / no_active_version) instead of failing mutely.
+      console.error('[opencx] widget config fetch failed', externalConfig.error);
       throw new Error('Failed to fetch widget config');
     }
 
@@ -122,6 +144,7 @@ export class WidgetCtx {
       sessions: externalConfig.data?.sessionsPollingIntervalSeconds || 60,
     };
 
+    const serverAgent = externalConfig.data.agent;
     return new WidgetCtx({
       config,
       storage,
@@ -130,6 +153,14 @@ export class WidgetCtx {
         id: externalConfig.data.org.id,
         name: externalConfig.data.org.name,
       },
+      // snake_case (backend DTO) → camelCase (widget types) at the boundary.
+      agent: serverAgent
+        ? {
+            id: serverAgent.id,
+            name: serverAgent.name,
+            avatarUrl: serverAgent.avatar_url,
+          }
+        : undefined,
     });
   };
 

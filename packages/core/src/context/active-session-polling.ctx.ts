@@ -40,6 +40,15 @@ export class ActiveSessionPollingCtx {
     this.messageCtx = messageCtx;
     this.sessionPollingIntervalSeconds = sessionPollingIntervalSeconds;
 
+    // v5 streamed turns end with one immediate ingest of the canonical rows
+    // the backend persisted — this ctx owns history mapping/dedupe, so the
+    // hook lives here rather than duplicating that logic in MessageCtx.
+    this.messageCtx.reconcileAfterStream = (sessionId) =>
+      this.fetchSessionAndHistory({
+        sessionId,
+        abortSignal: new AbortController().signal,
+      });
+
     this.registerPolling();
   }
 
@@ -117,19 +126,28 @@ export class ActiveSessionPollingCtx {
           (newMsg) =>
             !prevMessages.some((existingMsg) => existingMsg.id === newMsg.id),
         );
-      this.messageCtx.state.setPartial({
-        messages: [...prevMessages, ...newMessages],
-      });
-      if (isInitialFetch) {
-        // Opening an existing session: history flows in as one batch. The user
-        // is loading context, not receiving new messages — suppress the hook
-        // but seed the dedup set so later polls don't re-fire these ids.
-        this.messageCtx.markAsDispatchedToOnMessageReceivedHook(
-          newMessages.map((m) => m.id),
-        );
-      } else {
-        for (const newMessage of newMessages) {
-          this.messageCtx.dispatchToOnMessageReceivedHook(newMessage);
+      // Only commit when the poll actually surfaced NEW rows. A poll that
+      // returns only already-known messages must NOT replace the array with a
+      // fresh reference — that re-renders the whole transcript on every tick
+      // (visible flicker during a stream, and it remounts the lazy recharts
+      // chart into an empty 0-measured ResponsiveContainer). The steady state
+      // of an idle/streaming session is "poll returns the same rows", so this
+      // guard is what keeps the surface still between real updates.
+      if (newMessages.length > 0) {
+        this.messageCtx.state.setPartial({
+          messages: [...prevMessages, ...newMessages],
+        });
+        if (isInitialFetch) {
+          // Opening an existing session: history flows in as one batch. The user
+          // is loading context, not receiving new messages — suppress the hook
+          // but seed the dedup set so later polls don't re-fire these ids.
+          this.messageCtx.markAsDispatchedToOnMessageReceivedHook(
+            newMessages.map((m) => m.id),
+          );
+        } else {
+          for (const newMessage of newMessages) {
+            this.messageCtx.dispatchToOnMessageReceivedHook(newMessage);
+          }
         }
       }
     }
@@ -137,6 +155,11 @@ export class ActiveSessionPollingCtx {
     if (this.messageCtx.state.get().isInitialFetchLoading) {
       this.messageCtx.state.setPartial({ isInitialFetchLoading: false });
     }
+
+    // Reopening an existing session mid-stream (reload, tab switch): reattaching
+    // to a still-live v5 turn is now owned by the agent-chat surface's
+    // `useChat({ resume: true })`, which probes the reconnect endpoint on mount.
+    // Nothing to do here.
   };
 
   mapHistoryToMessage = (history: MessageDto): WidgetMessageU | null => {
@@ -152,6 +175,7 @@ export class ActiveSessionPollingCtx {
         type: 'USER',
         content: history.content.text || '',
         deliveredAt: history.sentAt || '',
+        pickedElements: history.pickedElements,
       };
     }
 
@@ -202,6 +226,10 @@ export class ActiveSessionPollingCtx {
               }
             : undefined,
         },
+        stepsBefore:
+          history.stepsBefore && history.stepsBefore.length > 0
+            ? history.stepsBefore
+            : undefined,
       };
     }
 

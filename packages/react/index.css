@@ -16,3 +16,59 @@
     @apply border-border no-scrollbar;
   }
 }
+
+@layer components {
+  /* Live "thinking" indicator: a highlight sweeps across dimmed text, painted
+     onto the glyphs via background-clip. Communicates active processing (not a
+     passive wait) — the modern replacement for bouncing dots. */
+  .opencx-shimmer-text {
+    background: linear-gradient(
+      100deg,
+      hsl(var(--opencx-muted-foreground)) 35%,
+      hsl(var(--opencx-foreground)) 50%,
+      hsl(var(--opencx-muted-foreground)) 65%
+    );
+    background-size: 220% 100%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    /* linear: a constant-motion sweep; ease-in-out makes the highlight lurch
+       mid-text and pause at the wrap point every cycle */
+    animation: opencx-text-shimmer 2.2s linear infinite;
+  }
+
+  /* Blinking caret trailing the streamed reply while it types. */
+  .opencx-stream-caret {
+    display: inline-block;
+    width: 0.5ch;
+    animation: opencx-caret-blink 1s steps(1) infinite;
+  }
+
+  @keyframes opencx-text-shimmer {
+    from {
+      background-position: 150% center;
+    }
+    to {
+      background-position: -50% center;
+    }
+  }
+
+  @keyframes opencx-caret-blink {
+    50% {
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .opencx-shimmer-text {
+      animation: none;
+      background: none;
+      color: hsl(var(--opencx-muted-foreground));
+      -webkit-text-fill-color: hsl(var(--opencx-muted-foreground));
+    }
+    .opencx-stream-caret {
+      animation: none;
+    }
+  }
+}

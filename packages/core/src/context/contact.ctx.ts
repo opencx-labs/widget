@@ -130,9 +130,44 @@ export class ContactCtx {
       } else {
         this.state.setPartial({ isErrorCreatingUnverifiedContact: true });
       }
+    } catch (e) {
+      // A THROWN failure (offline, DNS, 5xx) must land on the same state as a
+      // response that carried no token — callers read the flag, not an
+      // exception. Without this catch the rejection escapes to the widget's
+      // fire-and-forget send (`void sendMessage(...)`) and surfaces as an
+      // unhandled promise rejection in the EMBEDDER's page, while the flag
+      // stays false so nothing in the UI ever reports the failure.
+      this.state.setPartial({ isErrorCreatingUnverifiedContact: true });
+      console.error('opencx-widget: failed to create an unverified contact', {
+        _e: e instanceof Error ? e.message : String(e),
+      });
     } finally {
       this.state.setPartial({ isCreatingUnverifiedContact: false });
     }
+  };
+
+  /**
+   * A persisted contact token can go stale — e.g. the backend DB was reset, so the
+   * contact it points at no longer exists and the backend answers 401 "Invalid token".
+   * Drop the dead token, clear auth, and mint a fresh anonymous contact so the widget
+   * self-heals instead of getting stuck on create-session. No-op for a config-provided
+   * verified token (authoritative — re-minting it is not ours to do).
+   * Returns true if a fresh contact token was obtained.
+   */
+  recoverFromStaleToken = async (): Promise<boolean> => {
+    if (this.config.user?.token) return false;
+    await this.storageCtx?.clearContactToken();
+    this.api.setAuthToken('');
+    // `null`, not `undefined` — `ContactState.contact` declares `| null` as its
+    // one "no contact" sentinel, and a second representation eventually
+    // disagrees with a `=== null` check somewhere downstream.
+    this.state.setPartial({ contact: null });
+    await this.createUnverifiedContact({
+      email: this.config.user?.data?.email,
+      non_verified_name: this.config.user?.data?.name,
+      non_verified_custom_data: this.config.user?.data?.customData,
+    });
+    return Boolean(this.state.get().contact?.token);
   };
 
   setUnverifiedContact = async (token: string) => {

@@ -20,7 +20,19 @@ export type WidgetUserMessage = {
   type: 'USER';
   content: string;
   deliveredAt: string | null;
+  /**
+   * v5 (agent-bound) only: the message was rendered optimistically and its
+   * turn's answer has not started streaming yet — the UI dims the bubble.
+   * Cleared by the engine once the turn produces its first chunk (or ends).
+   */
+  pending?: boolean;
   attachments?: MessageAttachmentType[] | null;
+  /**
+   * Display names of page elements the visitor attached with the composer's
+   * element picker — rendered as context chips on the user bubble. Set
+   * optimistically from the send input and re-hydrated from history.
+   */
+  pickedElements?: Array<{ name: string }>;
   timestamp: string | null;
   user?: {
     name?: string;
@@ -49,6 +61,12 @@ export type WidgetAiMessage<TActionData = unknown> = {
   timestamp: string | null;
   agent?: Agent;
   attachments?: MessageAttachmentType[];
+  /**
+   * Agent-v3 (v5 embeds): activity (reasoning/tool calls) that happened
+   * before this message within its turn — rendered as a collapsible steps
+   * trace above the message, identical for live and historical messages.
+   */
+  stepsBefore?: Array<{ kind: 'reasoning' | 'tool'; label: string }>;
 };
 
 export type WidgetAgentMessage = {

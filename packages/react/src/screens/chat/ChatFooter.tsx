@@ -22,11 +22,16 @@ import {
   FileText,
   FileVideo2Icon,
   Loader2,
+  MousePointerClickIcon,
   PaperclipIcon,
+  SquareIcon,
   XIcon,
 } from 'lucide-react';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
+import type { PickedElement } from '../../element-picker/element-info';
+import { ElementPickerOverlay } from '../../element-picker/ElementPickerOverlay';
+import { useElementPicker } from '../../element-picker/useElementPicker';
 import { CsatSurvey } from '../../components/CsatSurvey';
 import { MightSolveUserIssueSuggestedReplies } from '../../components/MightSolveUserIssueSuggestedReplies';
 import { SuggestedReplyButton } from '../../components/SuggestedReplyButton';
@@ -43,6 +48,8 @@ import {
   VIDEO_ACCEPT,
 } from '../../utils/attachment-kind';
 import { dc } from '../../utils/data-component';
+import { useAgentChatUi } from './agent/AgentChatContext';
+import { QueuedSendsPill } from './agent/QueuedSendsPill';
 import { ChatFooterItems } from './ChatFooterItems';
 
 function FileDisplay({
@@ -147,14 +154,65 @@ function FileDisplay({
 // Mirrors the server-side MAX_WIDGET_UPLOAD_BYTES cap on /widget/v2/upload.
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 
-function ChatInput() {
+/**
+ * The stock composer — white card, multi-line textarea, attach + send.
+ * Exported so companion's quick-ask state renders the exact same composer
+ * (not a bespoke bar), inheriting every customization automatically.
+ * `onMessageSent` fires the instant a message is dispatched, letting the
+ * companion shell morph from the quick-ask card into the full chat panel.
+ */
+export function ChatInput({
+  onMessageSent,
+  trailingActions,
+  disableTooltips,
+  placeholder,
+  hideAttachTools,
+}: {
+  onMessageSent?: () => void;
+  /**
+   * Extra controls rendered in the composer's action row, just before the
+   * send button. Companion uses it to slot a conversation-history button into
+   * the quick-ask bar; popover mode passes nothing.
+   */
+  trailingActions?: React.ReactNode;
+  /**
+   * Suppress the attach/send button tooltips for this composer instance.
+   * Companion's quick-ask bar sets it: the shell clips that composer to a thin
+   * strip, so a `side="top"` tooltip bleeds above the bar as a dark sliver.
+   */
+  disableTooltips?: boolean;
+  /**
+   * Override the composer placeholder. Companion's quick-ask bar uses it to
+   * read "Follow up…" while continuing an open conversation. Defaults to the
+   * localized "Write a message…".
+   */
+  placeholder?: string;
+  /**
+   * Hide the attach + element-picker buttons. Companion's docked quick-ask
+   * bar sets it so the resting composer carries ONLY the history control —
+   * the full tool row lives in the expanded chat panel.
+   */
+  hideAttachTools?: boolean;
+} = {}) {
   const { isSmallScreen } = useIsSmallScreen();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { sendMessage } = useMessages();
+  // Agent-v3 (v5) streaming state — no-op defaults for v1/v2 embeds.
+  const { isStreaming, onStop, isAgentSurface } = useAgentChatUi();
   const { sessionState } = useSessions();
-  const { disableSendingWhenAwaitingAIReply } = useConfig();
+  const { disableSendingWhenAwaitingAIReply, enableElementPicker } = useConfig();
   const { t } = useTranslation();
   const [inputText, setInputText] = useState('');
+
+  // Element picker: attach host-page elements to the message as context pills.
+  const [pickedElements, setPickedElements] = useState<PickedElement[]>([]);
+  const onPick = useCallback((picked: PickedElement) => {
+    setPickedElements((prev) => [...prev, picked]);
+    // Bring the visitor back to their question after the pick.
+    inputRef.current?.focus();
+  }, []);
+  const picker = useElementPicker({ onPick });
+  const showElementPicker = !!enableElementPicker && !isSmallScreen;
 
   const {
     allFiles,
@@ -168,8 +226,14 @@ function ChatInput() {
   const isHandedOff = !!sessionState.session?.isHandedOff;
 
   const { isAwaitingBotReply } = useIsAwaitingBotReply();
+  // The awaiting-AI gate is a v1/v2 (blocking) concept — it keys off session
+  // assignee + "last message is a user message", which is TRUE for the whole v5
+  // turn and after a stop (the reply never got persisted). The v5 surface must
+  // ignore it: it queues instead of blocking and shows busy state via `status`.
   const shouldBlockSending =
-    disableSendingWhenAwaitingAIReply !== false && isAwaitingBotReply;
+    !isAgentSurface &&
+    disableSendingWhenAwaitingAIReply !== false &&
+    isAwaitingBotReply;
 
   const handleFileDrop = (acceptedFiles: File[]) => {
     appendFiles(acceptedFiles);
@@ -178,13 +242,18 @@ function ChatInput() {
   const cannotSend = !inputText.trim() && successFiles.length === 0;
 
   const handleSubmit = async () => {
-    if (shouldBlockSending) return;
+    // While a v5 turn streams, the engine QUEUES the send (multi-send), so the
+    // awaiting-AI gate must not block it. Non-streaming sends still gate.
+    if (shouldBlockSending && !isStreaming) return;
     if (cannotSend) return;
 
     if (isUploading) {
       // TODO use something other than toast
       const message = 'please wait for the file(s) to upload';
       console.info(message);
+      // Sending now would silently drop the still-uploading files (only
+      // `successFiles` ride the payload).
+      return;
     }
     const trimmed = inputText.trim();
 
@@ -204,10 +273,18 @@ function ChatInput() {
             ]
           : [],
       ),
+      // Picked page elements ride as AI-visible context, not message text.
+      clientContext:
+        pickedElements.length > 0
+          ? { picked_elements: pickedElements }
+          : undefined,
     });
+
+    onMessageSent?.();
 
     setInputText('');
     emptyTheFiles();
+    setPickedElements([]);
   };
 
   const {
@@ -257,10 +334,18 @@ function ChatInput() {
       {...dropzone__getRootProps()}
     >
       <input {...dropzone__getInputProps()} />
+      {/* Pick-mode visuals (hint bar + hover highlight) — portaled to the
+          HOST page, not this iframe. */}
+      {showElementPicker && (
+        <ElementPickerOverlay isActive={picker.isActive} hover={picker.hover} />
+      )}
+      {/* Agent-v3 multi-send queue: messages waiting for their turn, docked
+          above the input (Cursor-style). Empty (renders nothing) on v1/v2. */}
+      <QueuedSendsPill />
       <div
         {...dc('chat/input_box/inner_root')}
         className={cn(
-          'transition-all',
+          'transition-colors',
           'bg-white',
           // 'border',
           'relative rounded-3xl flex flex-col gap-2 p-2',
@@ -271,6 +356,49 @@ function ChatInput() {
           {...dc('chat/input_box/textarea_and_attachments_container')}
           className="flex flex-col gap-2"
         >
+          {pickedElements.length > 0 && (
+            <div
+              {...dc('chat/input_box/picked_elements_container')}
+              className="flex items-center gap-1 flex-wrap"
+            >
+              <AnimatePresence mode="popLayout">
+                {pickedElements.map((picked, index) => (
+                  <MotionDiv key={`${picked.selector}-${index}`} snapExit>
+                    <div
+                      {...dc('chat/input_box/picked_element_pill')}
+                      className={cn(
+                        'flex items-center gap-1.5 max-w-full',
+                        'rounded-full py-1 ps-2 pe-1',
+                        'bg-white ring-1 ring-black/10',
+                        'text-xs text-foreground',
+                      )}
+                    >
+                      <MousePointerClickIcon className="size-3 shrink-0 text-primary" />
+                      <span className="truncate max-w-36" title={picked.path}>
+                        {picked.name}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={`Remove ${picked.name}`}
+                        className={cn(
+                          'rounded-full p-0.5 text-muted-foreground',
+                          'hover:bg-black/5 hover:text-foreground',
+                          'transition-transform active:scale-90',
+                        )}
+                        onClick={() =>
+                          setPickedElements((prev) =>
+                            prev.filter((_, i) => i !== index),
+                          )
+                        }
+                      >
+                        <XIcon className="size-3" />
+                      </button>
+                    </div>
+                  </MotionDiv>
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
           {allFiles.length > 0 && (
             <div
               {...dc('chat/input_box/attachments_container')}
@@ -313,58 +441,123 @@ function ChatInput() {
                 event.preventDefault();
                 handleSubmit();
               }
+              // The picker's own Esc listener lives on the HOST document;
+              // keystrokes inside the chat iframe never reach it.
+              if (event.key === 'Escape' && picker.isActive) {
+                picker.cancel();
+              }
             }}
-            placeholder={t('write_a_message_placeholder')}
+            placeholder={placeholder ?? t('write_a_message_placeholder')}
           />
         </div>
         <div className="gap-2 flex justify-between">
-          <Tooltippy
-            side="top"
-            align="start"
-            content="attach images, videos, PDFs, or spreadsheets (maximum size 25mb)"
-          >
-            <Button
-              onClick={dropzone__openFileSelect}
-              size="fit"
-              variant="ghost"
-              className={cn(
-                'rounded-full size-8 flex items-center justify-center p-0 overflow-hidden',
-              )}
+          {/* Left group: composer inputs (attach + element picker). Hidden
+              entirely on the docked quick-ask bar (history-only there). */}
+          <div className="flex items-center gap-1">
+            {!hideAttachTools && (
+            <Tooltippy
+              side="top"
+              align="start"
+              disabled={disableTooltips}
+              content="attach images, videos, PDFs, or spreadsheets (maximum size 25mb)"
             >
-              <AnimatePresence mode="wait">
-                {!shouldBlockSending ? (
-                  <MotionDiv key="paper-clip">
-                    <PaperclipIcon className="size-4" />
-                  </MotionDiv>
-                ) : (
-                  <MotionDiv key="paper-clip-disabled">
-                    <PaperclipIcon className="size-4 opacity-50" />
-                  </MotionDiv>
+              <Button
+                onClick={dropzone__openFileSelect}
+                size="fit"
+                variant="ghost"
+                className={cn(
+                  'rounded-full size-8 flex items-center justify-center p-0 overflow-hidden',
                 )}
-              </AnimatePresence>
-            </Button>
-          </Tooltippy>
+              >
+                <AnimatePresence mode="wait">
+                  {!shouldBlockSending ? (
+                    <MotionDiv key="paper-clip" distance={0}>
+                      <PaperclipIcon className="size-4" />
+                    </MotionDiv>
+                  ) : (
+                    <MotionDiv key="paper-clip-disabled" distance={0}>
+                      <PaperclipIcon className="size-4 opacity-50" />
+                    </MotionDiv>
+                  )}
+                </AnimatePresence>
+              </Button>
+            </Tooltippy>
+            )}
 
-          <Tooltippy content="send message" side="top" align="end">
-            <Button
-              size="fit"
-              onClick={handleSubmit}
-              disabled={shouldBlockSending || isUploading || cannotSend}
-              className="rounded-full size-8 flex items-center justify-center p-0"
+            {!hideAttachTools && showElementPicker && (
+              <Tooltippy
+                side="top"
+                align="start"
+                disabled={disableTooltips}
+                content={
+                  picker.isActive
+                    ? 'click an element on the page — Esc to cancel'
+                    : 'pick an element on the page to ask about'
+                }
+              >
+                <Button
+                  {...dc('chat/input_box/element_picker_btn')}
+                  onClick={picker.toggle}
+                  size="fit"
+                  variant="ghost"
+                  className={cn(
+                    'rounded-full size-8 flex items-center justify-center p-0 overflow-hidden',
+                    'transition-transform active:scale-95',
+                    // Armed: filled like the send button so the mode is
+                    // unmistakable; click again (or Esc) to disarm.
+                    picker.isActive &&
+                      'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground',
+                  )}
+                >
+                  <MousePointerClickIcon className="size-4" />
+                </Button>
+              </Tooltippy>
+            )}
+          </div>
+
+          {/* Right group: extra controls (e.g. quick-ask history) + send. */}
+          <div className="flex items-center gap-1">
+            {trailingActions}
+
+            <Tooltippy
+              // While streaming: typing a new message queues it (send); an empty
+              // box stops the current response — the next queued message (if
+              // any) then starts its own turn immediately.
+              content={isStreaming && cannotSend ? 'stop' : 'send message'}
+              side="top"
+              align="end"
+              disabled={disableTooltips}
             >
-              <AnimatePresence mode="wait">
-                {shouldBlockSending || isUploading ? (
-                  <MotionDiv key="loading" snapExit>
-                    <CircleDashed className="size-4 animate-spin animate-iteration-infinite" />
-                  </MotionDiv>
-                ) : (
-                  <MotionDiv key="send" snapExit>
-                    <ArrowUpIcon className="size-4" />
-                  </MotionDiv>
-                )}
-              </AnimatePresence>
-            </Button>
-          </Tooltippy>
+              <Button
+                size="fit"
+                onClick={isStreaming && cannotSend ? onStop : handleSubmit}
+                disabled={
+                  isStreaming
+                    ? // Stop (empty box) is always available; a queue-send must
+                      // still wait for attachments to finish uploading.
+                      !cannotSend && isUploading
+                    : shouldBlockSending || isUploading || cannotSend
+                }
+                className="rounded-full size-8 flex items-center justify-center p-0"
+              >
+                <AnimatePresence mode="wait">
+                  {isStreaming && cannotSend ? (
+                    <MotionDiv key="stop" snapExit distance={0}>
+                      <SquareIcon className="size-3 fill-current" />
+                    </MotionDiv>
+                  ) : !isStreaming && (shouldBlockSending || isUploading) ? (
+                    <MotionDiv key="loading" snapExit distance={0}>
+                      <CircleDashed className="size-4 animate-spin animate-iteration-infinite" />
+                    </MotionDiv>
+                  ) : (
+                    <MotionDiv key="send" snapExit distance={0}>
+                      <ArrowUpIcon className="size-4" />
+                    </MotionDiv>
+                  )}
+                </AnimatePresence>
+              </Button>
+            </Tooltippy>
+          </div>
         </div>
       </div>
     </div>
