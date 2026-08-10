@@ -18,7 +18,7 @@ function useElementWidth<T extends HTMLElement>() {
   return { ref, width };
 }
 
-export function AreaChart({ data, height = 200, currency = "EUR" }: { data: MetricsPoint[]; height?: number; currency?: string }) {
+export function AreaChart({ data, height = 200, currency = "USD" }: { data: MetricsPoint[]; height?: number; currency?: string }) {
   const { ref, width } = useElementWidth<HTMLDivElement>();
   const [hover, setHover] = useState<number | null>(null);
   useEffect(() => setHover(null), [data]);

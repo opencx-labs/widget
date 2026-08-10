@@ -1,11 +1,11 @@
 // Shared domain types + Zod schemas for Payla.
 // Used by the Worker API (worker/*) and the React app (src/*).
-// Amounts follow Mollie's convention: an { value, currency } object where value is a
-// decimal string. Internally the DB stores integer minor units (cents).
+// Amounts are { value, currency } objects where value is a decimal string.
+// Internally the DB stores integer minor units (cents).
 
 import { z } from "zod";
 
-export const CURRENCY = "EUR" as const;
+export const CURRENCY = "USD" as const;
 
 export const PAYMENT_STATUSES = [
   "open",
@@ -22,14 +22,11 @@ export const PAYMENT_STATUSES = [
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
 export const PAYMENT_METHODS = [
-  "ideal",
   "creditcard",
   "paypal",
   "banktransfer",
-  "bancontact",
   "applepay",
   "klarna",
-  "sofort",
   "giftcard",
 ] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
@@ -57,7 +54,7 @@ export type DisputeReason = (typeof DISPUTE_REASONS)[number];
 
 export const Money = z.object({
   value: z.string(), // decimal string, e.g. "35.50"
-  currency: z.string(), // ISO 4217, e.g. "EUR"
+  currency: z.string(), // ISO 4217, e.g. "USD"
 });
 export type Money = z.infer<typeof Money>;
 

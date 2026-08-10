@@ -8,7 +8,7 @@ const money = {
   type: "object",
   properties: {
     value: { type: "string", description: "Decimal amount as a string, e.g. \"35.50\"." },
-    currency: { type: "string", example: "EUR" },
+    currency: { type: "string", example: "USD" },
   },
   required: ["value", "currency"],
 } as const;
@@ -26,7 +26,7 @@ const payment = {
     },
     amount: { $ref: "#/components/schemas/Money" },
     amountRefunded: { $ref: "#/components/schemas/Money" },
-    method: { type: ["string", "null"], example: "ideal" },
+    method: { type: ["string", "null"], example: "creditcard" },
     description: { type: "string" },
     customerId: { type: ["string", "null"] },
     customerName: { type: ["string", "null"] },
@@ -198,7 +198,7 @@ export function buildOpenApi(origin: string) {
           description: "Use to find a customer's recent orders, review failed/expired payments, or list refunded ones. Filter by customer to answer 'where is my order' type questions.",
           parameters: [
             { name: "status", in: "query", required: false, schema: { $ref: "#/components/schemas/Payment/properties/status" }, description: "Filter by payment status." },
-            { name: "method", in: "query", required: false, schema: { type: "string" }, description: "Filter by payment method (ideal, creditcard, paypal, ...)." },
+            { name: "method", in: "query", required: false, schema: { type: "string" }, description: "Filter by payment method (creditcard, paypal, applepay, ...)." },
             { name: "customer", in: "query", required: false, schema: { type: "string" }, description: "Filter by customer id (cst_...)." },
             limitParam,
           ],

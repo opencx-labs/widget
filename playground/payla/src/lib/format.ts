@@ -3,16 +3,16 @@ import type { Money } from "../../shared/types.ts";
 export function formatMoney(m: Money | undefined | null, opts?: { sign?: boolean }): string {
   if (!m) return "—";
   const n = Number(m.value);
-  const formatted = new Intl.NumberFormat("en-IE", {
+  const formatted = new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: m.currency || "EUR",
+    currency: m.currency || "USD",
   }).format(Math.abs(n));
   if (opts?.sign && n !== 0) return `${n < 0 ? "−" : "+"}${formatted}`;
   return n < 0 ? `−${formatted}` : formatted;
 }
 
 export function formatNumber(n: number): string {
-  return new Intl.NumberFormat("en-IE").format(n);
+  return new Intl.NumberFormat("en-US").format(n);
 }
 
 export function formatPercent(fraction: number, digits = 1): string {
@@ -54,14 +54,11 @@ export function formatRelative(iso: string | null | undefined): string {
 }
 
 const TITLE_CASE: Record<string, string> = {
-  ideal: "iDEAL",
   creditcard: "Card",
   paypal: "PayPal",
   banktransfer: "Bank transfer",
-  bancontact: "Bancontact",
   applepay: "Apple Pay",
   klarna: "Klarna",
-  sofort: "SOFORT",
   giftcard: "Gift card",
 };
 

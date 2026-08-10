@@ -16,7 +16,7 @@ import {
   type Money,
 } from "../shared/types.ts";
 
-export const centsToMoney = (cents: number, currency = "EUR"): Money => ({
+export const centsToMoney = (cents: number, currency = "USD"): Money => ({
   value: (cents / 100).toFixed(2),
   currency,
 });
@@ -244,7 +244,7 @@ export class PaylaDb {
       .prepare(
         `INSERT INTO payments (id, status, amount_cents, amount_refunded_cents, currency, method,
            description, customer_id, settlement_id, created_at, paid_at)
-         VALUES (?, 'open', ?, 0, 'EUR', ?, ?, ?, NULL, ?, NULL)`,
+         VALUES (?, 'open', ?, 0, 'USD', ?, ?, ?, NULL, ?, NULL)`,
       )
       .bind(id, amountCents, input.method ?? null, input.description, input.customerId ?? null, createdAt)
       .run();
@@ -298,7 +298,7 @@ export class PaylaDb {
     await this.db
       .prepare(
         `INSERT INTO payment_links (id, description, amount_cents, currency, status, url, created_at)
-         VALUES (?, ?, ?, 'EUR', 'active', ?, ?)`,
+         VALUES (?, ?, ?, 'USD', 'active', ?, ?)`,
       )
       .bind(id, description, amountCents, url, createdAt)
       .run();
@@ -345,7 +345,7 @@ export class PaylaDb {
     return res.results.map(mapDispute);
   }
 
-  async getBalance(currency = "EUR"): Promise<Balance> {
+  async getBalance(currency = "USD"): Promise<Balance> {
     const row = await this.db
       .prepare(`SELECT available_cents, pending_cents, currency FROM balance WHERE id = 1`)
       .first<{ available_cents: number; pending_cents: number; currency: string }>();

@@ -34,16 +34,16 @@ const stmt = (table, cols, values) =>
 
 // --- customers ---
 const CUSTOMERS = [
-  ["Lotte de Vries", "lotte.devries@example.com", "nl_NL"],
+  ["Olivia Bennett", "olivia.bennett@example.com", "en_US"],
   ["James Okafor", "james.okafor@example.co.uk", "en_GB"],
-  ["Sofia Marchetti", "sofia.marchetti@example.it", "it_IT"],
-  ["Daniel Kremer", "daniel.kremer@example.de", "de_DE"],
+  ["Grace Sullivan", "grace.sullivan@example.com", "en_US"],
+  ["Daniel Carter", "daniel.carter@example.com", "en_US"],
   ["Amara Nwosu", "amara.nwosu@example.com", "en_US"],
-  ["Pieter Bakker", "pieter.bakker@example.nl", "nl_NL"],
-  ["Chloé Dubois", "chloe.dubois@example.fr", "fr_FR"],
+  ["Peter Baker", "peter.baker@example.co.uk", "en_GB"],
+  ["Chloe Douglas", "chloe.douglas@example.co.uk", "en_GB"],
   ["Yuki Tanaka", "yuki.tanaka@example.com", "en_US"],
-  ["Emma Johansson", "emma.johansson@example.se", "sv_SE"],
-  ["Marco Silva", "marco.silva@example.pt", "pt_PT"],
+  ["Emma Johnson", "emma.johnson@example.com", "en_US"],
+  ["Marcus Reid", "marcus.reid@example.com", "en_US"],
 ];
 const customerIds = [];
 CUSTOMERS.forEach(([name, email, locale], i) => {
@@ -63,7 +63,7 @@ for (let i = 0; i < 6; i++) {
   settlements.push({ id, status });
   stmt("settlements",
     ["id", "reference", "amount_cents", "currency", "status", "created_at", "settled_at"],
-    [sql(id), sql(`1180.${String(1000 + i).slice(1)}.${2026}`), 0, sql("EUR"), sql(status),
+    [sql(id), sql(`1180.${String(1000 + i).slice(1)}.${2026}`), 0, sql("USD"), sql(status),
      sql(iso(now - daysAgo * DAY)), sql(settledAt)]);
 }
 const settlementCents = Object.fromEntries(settlements.map((s) => [s.id, 0]));
@@ -85,8 +85,8 @@ const PRODUCTS = [
 
 // --- payments ---
 const methodWeights = [
-  ["ideal", 45], ["creditcard", 24], ["paypal", 12], ["bancontact", 8],
-  ["applepay", 5], ["klarna", 3], ["banktransfer", 2], ["sofort", 1],
+  ["creditcard", 48], ["paypal", 18], ["applepay", 15],
+  ["banktransfer", 8], ["klarna", 6], ["giftcard", 5],
 ];
 const paidPayments = [];
 const N = 78;
@@ -122,7 +122,7 @@ for (let i = 0; i < N; i++) {
   stmt("payments",
     ["id", "status", "amount_cents", "amount_refunded_cents", "currency", "method",
      "description", "customer_id", "settlement_id", "created_at", "paid_at"],
-    [sql(id), sql(status), amount, refunded, sql("EUR"), sql(method),
+    [sql(id), sql(status), amount, refunded, sql("USD"), sql(method),
      sql(desc), sql(custId), sql(settlementId), sql(iso(createdMs)), sql(paidAt)]);
 
   if (status === "paid" || status === "partially_refunded") paidPayments.push({ id, amount, createdMs, custId });
@@ -132,7 +132,7 @@ for (let i = 0; i < N; i++) {
     const rid = `re_${String(30000 + i).padStart(8, "0")}`;
     stmt("refunds",
       ["id", "payment_id", "amount_cents", "currency", "status", "reason", "created_at"],
-      [sql(rid), sql(id), refunded, sql("EUR"), sql("refunded"),
+      [sql(rid), sql(id), refunded, sql("USD"), sql("refunded"),
        sql(pick(["Customer request", "Item out of stock", "Damaged in transit", "Duplicate order", null])),
        sql(iso(createdMs + int(1, 6) * DAY))]);
   }
@@ -145,7 +145,7 @@ for (const s of settlements) {
 
 // --- payment links ---
 const LINKS = [
-  ["Wholesale invoice — Café Nero", 24000, "paid"],
+  ["Wholesale invoice — Harbor Lane Cafe", 24000, "paid"],
   ["Event catering deposit", 15000, "active"],
   ["Roastery tour — 4 tickets", 8000, "paid"],
   ["Custom blend consultation", 6500, "active"],
@@ -158,7 +158,7 @@ LINKS.forEach(([desc, cents, status], i) => {
   const paidAt = status === "paid" ? iso(createdMs + int(1, 4) * DAY) : null;
   stmt("payment_links",
     ["id", "description", "amount_cents", "currency", "status", "url", "created_at", "paid_at"],
-    [sql(id), sql(desc), cents, sql("EUR"), sql(status),
+    [sql(id), sql(desc), cents, sql("USD"), sql(status),
      sql(`https://pay.payla.dev/${id.slice(3)}`), sql(iso(createdMs)), sql(paidAt)]);
 });
 
@@ -172,7 +172,7 @@ for (let i = 0; i < 4 && i < paidPayments.length; i++) {
   const createdMs = p.createdMs + int(3, 15) * DAY;
   stmt("disputes",
     ["id", "payment_id", "amount_cents", "currency", "reason", "status", "created_at", "due_at"],
-    [sql(id), sql(p.id), p.amount, sql("EUR"), sql(disputeReasons[i % disputeReasons.length]),
+    [sql(id), sql(p.id), p.amount, sql("USD"), sql(disputeReasons[i % disputeReasons.length]),
      sql(status), sql(iso(createdMs)),
      sql(status === "open" || status === "under_review" ? iso(createdMs + 14 * DAY) : null)]);
 }
@@ -181,13 +181,13 @@ for (let i = 0; i < 4 && i < paidPayments.length; i++) {
 const openTotal = settlementCents[settlements[0].id] + settlementCents[settlements[1].id];
 const available = Math.round(openTotal * 0.35) + int(120_00, 480_00);
 stmt("balance", ["id", "available_cents", "pending_cents", "currency"],
-  [1, available, openTotal, sql("EUR")]);
+  [1, available, openTotal, sql("USD")]);
 
 // --- settings ---
 stmt("settings",
   ["id", "merchant_name", "merchant_id", "email", "country", "payout_schedule", "statement_descriptor", "test_mode"],
   [1, sql("Mo's Coffee Roasters"), sql("org_payla_demo"), sql("owner@moscoffee.example"),
-   sql("NL"), sql("daily"), sql("MOS COFFEE"), 0]);
+   sql("US"), sql("daily"), sql("MOS COFFEE"), 0]);
 
 const header = `-- AUTO-GENERATED by scripts/gen-seed.mjs — do not edit by hand.\n-- Deterministic demo data for "Mo's Coffee Roasters".\n\n`;
 writeFileSync(OUT, header + rows.join("\n") + "\n");

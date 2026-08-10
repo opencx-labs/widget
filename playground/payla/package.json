@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Payla — fictional payments dashboard (Mollie-style) with a Cloudflare Worker + D1 mock backend, built to demo the OpenCX Companion agent doing real actions.",
+  "description": "Payla — fictional payments dashboard with a Cloudflare Worker + D1 mock backend, built to demo the OpenCX Companion agent doing real actions.",
   "scripts": {
     "dev": "vite",
     "predev": "node scripts/sync-widget.mjs && wrangler d1 migrations apply payla --local",

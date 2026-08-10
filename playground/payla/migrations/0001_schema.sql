@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS settlements (
   id            TEXT PRIMARY KEY,
   reference     TEXT NOT NULL,
   amount_cents  INTEGER NOT NULL DEFAULT 0,
-  currency      TEXT NOT NULL DEFAULT 'EUR',
+  currency      TEXT NOT NULL DEFAULT 'USD',
   status        TEXT NOT NULL DEFAULT 'open',
   created_at    TEXT NOT NULL,
   settled_at    TEXT
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS payments (
   status                TEXT NOT NULL DEFAULT 'open',
   amount_cents          INTEGER NOT NULL,
   amount_refunded_cents INTEGER NOT NULL DEFAULT 0,
-  currency              TEXT NOT NULL DEFAULT 'EUR',
+  currency              TEXT NOT NULL DEFAULT 'USD',
   method                TEXT,
   description           TEXT NOT NULL DEFAULT '',
   customer_id           TEXT REFERENCES customers(id),
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS refunds (
   id            TEXT PRIMARY KEY,
   payment_id    TEXT NOT NULL REFERENCES payments(id),
   amount_cents  INTEGER NOT NULL,
-  currency      TEXT NOT NULL DEFAULT 'EUR',
+  currency      TEXT NOT NULL DEFAULT 'USD',
   status        TEXT NOT NULL DEFAULT 'pending',
   reason        TEXT,
   created_at    TEXT NOT NULL
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS payment_links (
   id            TEXT PRIMARY KEY,
   description   TEXT NOT NULL,
   amount_cents  INTEGER NOT NULL,
-  currency      TEXT NOT NULL DEFAULT 'EUR',
+  currency      TEXT NOT NULL DEFAULT 'USD',
   status        TEXT NOT NULL DEFAULT 'active',
   url           TEXT NOT NULL,
   created_at    TEXT NOT NULL,
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS disputes (
   id            TEXT PRIMARY KEY,
   payment_id    TEXT NOT NULL REFERENCES payments(id),
   amount_cents  INTEGER NOT NULL,
-  currency      TEXT NOT NULL DEFAULT 'EUR',
+  currency      TEXT NOT NULL DEFAULT 'USD',
   reason        TEXT NOT NULL DEFAULT 'general',
   status        TEXT NOT NULL DEFAULT 'open',
   created_at    TEXT NOT NULL,
@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS balance (
   id                INTEGER PRIMARY KEY CHECK (id = 1),
   available_cents   INTEGER NOT NULL DEFAULT 0,
   pending_cents     INTEGER NOT NULL DEFAULT 0,
-  currency          TEXT NOT NULL DEFAULT 'EUR'
+  currency          TEXT NOT NULL DEFAULT 'USD'
 );
 
 CREATE TABLE IF NOT EXISTS settings (

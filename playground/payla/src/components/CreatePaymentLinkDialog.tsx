@@ -69,7 +69,7 @@ export function CreatePaymentLinkDialog({ open, onClose }: { open: boolean; onCl
           </Field>
           <Field label="Amount">
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3">€</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3">$</span>
               <Input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" placeholder="0.00" className="pl-7" />
             </div>
           </Field>

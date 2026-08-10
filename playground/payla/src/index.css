@@ -1,8 +1,7 @@
 @import "tailwindcss";
 
 /*
-  Payla design tokens — a fictional payments brand wearing Mollie's design language.
-  Palette + type extracted from the live Mollie dashboard: warm neutrals (not cool grays),
+  Payla design tokens — a fictional payments brand: warm neutrals (not cool grays),
   InterVariable, near-black primary buttons, blue accent, 8/12px radii, borders over shadows.
 */
 @theme {
@@ -22,7 +21,7 @@
   --color-border: #eae7e4;
   --color-border-strong: #ddd8d3;
 
-  /* Primary (near-black warm ink, like Mollie's buttons) */
+  /* Primary (near-black warm ink) */
   --color-primary: #1c1714;
   --color-primary-hover: #2c2521;
   --color-primary-fg: #ffffff;

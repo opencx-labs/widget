@@ -1,13 +1,13 @@
 # Payla — local demo of the OpenCX Companion doing real actions
 
-Payla is a fictional Mollie-style payments dashboard. It embeds the **OpenCX Companion
+Payla is a fictional payments dashboard. It embeds the **OpenCX Companion
 widget (built locally — not unpkg)**, pointed at a **local OpenCX**, whose seeded
 **companion agent** reads Payla's data and takes real actions (refunds, payment links)
 through HTTP actions.
 
 Everything runs on `localhost` — **no deploy, no tunnels.**
 
-- **Frontend** — Vite + React SPA wearing Mollie's design language.
+- **Frontend** — Vite + React SPA with a clean warm-neutral payments-dashboard design.
 - **Backend** — a Cloudflare Worker (Hono) + D1 with real, mutable data.
 - **Widget** — `@opencx/widget` v5, copied from the local `packages/embed` build into
   `public/opencx-widget/script.js` by `scripts/sync-widget.mjs` (runs on `predev`/`prebuild`).

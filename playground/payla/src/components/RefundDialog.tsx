@@ -44,7 +44,7 @@ export function RefundDialog({ payment, open, onClose }: { payment: Payment; ope
 
         <Field label="Amount" hint="Refunds go back to the customer's original payment method.">
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3">€</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3">$</span>
             <Input
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
