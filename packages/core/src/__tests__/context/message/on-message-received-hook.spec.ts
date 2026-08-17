@@ -31,6 +31,7 @@ const makeSessionDto = (overrides: Partial<SessionDto> = {}): SessionDto => ({
   modeId: null,
   latestStateCheckpointPayload: null,
   sessionAttributes: {},
+  customStatus: null,
   ...overrides,
 });
 

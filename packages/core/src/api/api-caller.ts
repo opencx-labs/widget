@@ -105,12 +105,13 @@ export class ApiCaller {
     filters,
     abortSignal,
   }: {
+    /** Opaque pagination token: the `next` value from the previous page (the backend paginates by `offset`). */
     cursor: string | undefined;
     filters: Record<string, string>;
     abortSignal?: AbortSignal;
   }) => {
     return await this.client.GET('/backend/widget/v2/sessions', {
-      params: { query: { cursor, filters: JSON.stringify(filters) } },
+      params: { query: { offset: cursor, filters: JSON.stringify(filters) } },
       signal: abortSignal,
     });
   };

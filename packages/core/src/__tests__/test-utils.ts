@@ -26,6 +26,7 @@ export const TestUtils = {
               latestStateCheckpointPayload: null,
               modeId: null,
               sessionAttributes: {},
+              customStatus: null,
               ...returnValue?.data,
             },
           });
@@ -139,6 +140,7 @@ export const TestUtils = {
                 modeId: null,
                 latestStateCheckpointPayload: null,
                 sessionAttributes: {},
+                customStatus: null,
                 ...returnValue?.data?.session,
               },
               history: [...(returnValue?.data?.history || [])],
@@ -165,6 +167,7 @@ export const TestUtils = {
               modeId: null,
               latestStateCheckpointPayload: null,
               sessionAttributes: {},
+              customStatus: null,
               ...returnValue?.data,
             },
           });

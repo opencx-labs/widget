@@ -643,10 +643,7 @@ export interface components {
       openai_file_id?: string;
     };
     FileUploadDto: {
-      /**
-       * Format: binary
-       * @description The file to upload. 5MB max.
-       */
+      /** Format: binary */
       file: string;
     } | null;
     CreateWidgetSessionDto: {
@@ -818,7 +815,9 @@ export interface components {
       | 'integration_reopened_session'
       | 'message'
       | 'prohibited_topic_detected'
+      | 'salesforce_fields_updated'
       | 'sequence_message'
+      | 'session_forwarded'
       | 'skills_added_by_system'
       | 'sla_applied_by_agent'
       | 'sla_applied_by_system'
@@ -846,6 +845,15 @@ export interface components {
       | 'sla_resumed_snooze_cancelled'
       | 'sla_resumed_snooze_expired'
       | 'state_checkpoint'
+      | 'sub_session_created'
+      | 'sub_session_linked_by_agent'
+      | 'sub_session_linked_by_api'
+      | 'sub_session_linked_by_integration'
+      | 'sub_session_linked_by_system'
+      | 'sub_session_unlinked_by_agent'
+      | 'sub_session_unlinked_by_api'
+      | 'sub_session_unlinked_by_integration'
+      | 'sub_session_unlinked_by_system'
       | 'sub_status_removed_by_agent'
       | 'sub_status_removed_by_api'
       | 'sub_status_removed_by_integration'
@@ -863,8 +871,10 @@ export interface components {
       | 'tag_removed_by_api'
       | 'tag_removed_by_integration'
       | 'tag_removed_by_system'
+      | 'team_assigned_by_integration'
       | 'team_assigned_by_system'
       | 'team_assigned_by_user'
+      | 'team_unassigned_by_integration'
       | 'team_unassigned_by_system'
       | 'team_unassigned_by_user'
       | 'user_confirmed_the_session_resolved'
@@ -964,6 +974,14 @@ export interface components {
       sessionAttributes: {
         [key: string]: string | number | boolean;
       };
+      customStatus: {
+        /** Format: uuid */
+        id: string;
+        name: string;
+        description: string | null;
+        color: string | null;
+        icon: string | null;
+      } | null;
     };
     PaginatedWidgetSessionsDto: {
       items: components['schemas']['WidgetSessionDto'][];
@@ -978,7 +996,9 @@ export interface components {
             | 'session_assigned_to_human_agent'
             | 'response_cancelled'
             | 'skipping_unuseful_response'
-            | 'duplicate_message_ignored';
+            | 'duplicate_message_ignored'
+            | 'ai_response_skipped_by_workflow'
+            | 'ai_skipped_spam';
           autopilotResponse?: {
             /** @constant */
             type: 'text';
@@ -1035,6 +1055,11 @@ export interface components {
         };
     WidgetSubmitCsatOutputDto: {
       success: boolean;
+      /**
+       * @description Why the submit was refused. rescore_locked = the org rescore window has closed, so the recorded score can no longer be changed by the customer
+       * @enum {string}
+       */
+      reason?: 'rescore_locked';
     };
     WidgetSessionAndHistoryDto: {
       /** @description WidgetSession */
