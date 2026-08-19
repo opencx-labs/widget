@@ -1,5 +1,11 @@
 # @opencx/widget-core
 
+## 4.0.60
+
+### Patch Changes
+
+- add custom status badges
+
 ## 4.0.59
 
 ### Patch Changes

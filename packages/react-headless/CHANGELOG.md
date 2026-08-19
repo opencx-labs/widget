@@ -1,5 +1,13 @@
 # @opencx/widget-react-headless
 
+## 4.0.60
+
+### Patch Changes
+
+- add custom status badges
+- Updated dependencies
+  - @opencx/widget-core@4.0.60
+
 ## 4.0.59
 
 ### Patch Changes

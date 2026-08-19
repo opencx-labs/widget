@@ -1,5 +1,12 @@
 # @opencx/widget
 
+## 4.0.60
+
+### Patch Changes
+
+- add custom status badges
+- addb7c4: fix: open the chat box on the same side as the trigger button when `theme.widgetTrigger.offset` explicitly pins a side (e.g. `{ right: 20 }` on an RTL page). Previously the trigger honored the explicit offset while the popover anchor and alignment followed the host document direction, so the box opened on the opposite side.
+
 ## 4.0.59
 
 ### Patch Changes

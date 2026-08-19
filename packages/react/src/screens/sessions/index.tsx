@@ -16,6 +16,7 @@ import {
   AvatarImage,
 } from '../../components/lib/avatar';
 import { Button } from '../../components/lib/button';
+import { CustomStatusBadge } from '../../components/CustomStatus';
 import { LoadingSpinner } from '../../components/lib/LoadingSpinner';
 import { MotionDiv } from '../../components/lib/MotionDiv';
 import { Skeleton } from '../../components/lib/skeleton';
@@ -96,6 +97,17 @@ function SessionCard({
             ) : (
               <MotionDiv key="skeleton" className="w-1/2" snapExit>
                 <Skeleton className="h-4 w-full" />
+              </MotionDiv>
+            )}
+          </AnimatePresence>
+          <AnimatePresence mode="wait">
+            {session.customStatus && (
+              <MotionDiv
+                key={session.customStatus.id}
+                className="mt-1"
+                snapExit
+              >
+                <CustomStatusBadge customStatus={session.customStatus} />
               </MotionDiv>
             )}
           </AnimatePresence>

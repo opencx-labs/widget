@@ -21,6 +21,7 @@ import {
 } from '../../utils/group-messages-by-type';
 import { AdvancedInitialMessages } from './AdvancedInitialMessages';
 import { ChatBannerItems } from './ChatBannerItems';
+import { ChatCustomStatus } from './ChatCustomStatus';
 import { InitialMessages } from './InitialMessages';
 import { ChatBottomComponents } from '../../components/custom-components/ChatBottomComponents';
 
@@ -64,6 +65,7 @@ export function ChatMain() {
       ref={messagesContainerRef}
       className="max-h-full scroll-smooth relative flex-1 py-2 px-4 flex flex-col gap-2 overflow-auto"
     >
+      <ChatCustomStatus />
       <ChatBannerItems />
       <AdvancedInitialMessages />
       <InitialMessages />
