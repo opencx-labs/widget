@@ -1,5 +1,11 @@
 # @opencx/widget
 
+## 4.0.61
+
+### Patch Changes
+
+- Republish the custom status badges feature. The 4.0.60 release of these two packages was skipped by `changeset publish` because 4.0.60 had already been published on Aug 10 (RTL popover fix) without committing the version bump, so the npm 4.0.60 build predates the feature. This release actually ships the custom status badges in the chat screen and sessions list.
+
 ## 4.0.60
 
 ### Patch Changes
