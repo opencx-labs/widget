@@ -2,6 +2,14 @@
   "$schema": "https://unpkg.com/@changesets/config@2.0.0/schema.json",
   "changelog": "@changesets/cli/changelog",
   "commit": false,
+  "fixed": [
+    [
+      "@opencx/widget-core",
+      "@opencx/widget-react-headless",
+      "@opencx/widget-react",
+      "@opencx/widget"
+    ]
+  ],
   "baseBranch": "main",
   "access": "public",
   "updateInternalDependencies": "patch"

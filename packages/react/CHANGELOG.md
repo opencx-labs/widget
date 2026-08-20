@@ -1,5 +1,14 @@
 # @opencx/widget-react
 
+## 4.0.62
+
+### Patch Changes
+
+- Align all widget packages on a single shared version. Packages are now version-locked via a changesets fixed group and will always be published together with the same version.
+- Updated dependencies
+  - @opencx/widget-core@4.0.62
+  - @opencx/widget-react-headless@4.0.62
+
 ## 4.0.61
 
 ### Patch Changes
