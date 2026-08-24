@@ -87,6 +87,9 @@ function SessionCard({
                 <MemoizedReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   rehypePlugins={[rehypeRaw]}
+                  // A one-line text preview: an agent reply carrying inline
+                  // images (macro inline images) must not render them here.
+                  components={{ img: () => null }}
                   // Do not add `prose` styling for last message preview
                   className="line-clamp-1 overflow-hidden text-ellipsis text-xs text-muted-foreground"
                 >
