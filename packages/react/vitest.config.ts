@@ -10,6 +10,7 @@ export default defineConfig({
     },
     printConsoleTrace: true,
     environment: 'jsdom',
+    setupFiles: ['./vitest.setup.ts'],
     globals: true,
     passWithNoTests: true,
   },

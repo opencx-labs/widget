@@ -1,4 +1,3 @@
-import type { CSSProperties } from 'react';
 import tc from 'tinycolor2';
 import { isExhaustive, type WidgetConfig } from '@opencx/widget-core';
 import { useConfig, useDocumentDir } from '@opencx/widget-react-headless';
@@ -13,6 +12,10 @@ type DeepRequired<T> = {
 const DEFAULTS = {
   transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
   transitionDuration: '1000ms',
+};
+
+type WidgetCssVariables = {
+  [name: `--opencx-${string}`]: string;
 };
 
 /**
@@ -225,7 +228,7 @@ function cssVars({
     '--opencx-input': palette['300'],
     '--opencx-border': palette['300'],
     '--opencx-ring': 'var(--opencx-foreground)',
-  } as CSSProperties;
+  } satisfies WidgetCssVariables;
 }
 
 type PaletteValues = {

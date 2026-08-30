@@ -1,4 +1,5 @@
 import type { WidgetUserMessage } from '@opencx/widget-core';
+import { MousePointerClickIcon } from 'lucide-react';
 import React from 'react';
 import { dc } from '../utils/data-component';
 import { AttachmentPreview } from './AttachmentPreview';
@@ -20,6 +21,28 @@ export function UserMessage({
       {...dc('chat/user_msg/root')}
       className="w-5/6 flex flex-col items-end gap-1"
     >
+      {message.markedElements && message.markedElements.length > 0 && (
+        <div
+          {...dc('chat/user_msg/marked_elements')}
+          className="w-full flex gap-1 flex-wrap justify-end"
+        >
+          {message.markedElements.map((el, i) => (
+            <span
+              key={`${el.name}-${i}`}
+              className={cn(
+                'inline-flex items-center gap-1.5 max-w-48',
+                'rounded-full py-1 ps-2 pe-2.5',
+                'bg-background ring-1 ring-border',
+                'text-xs text-foreground',
+              )}
+              title={el.name}
+            >
+              <MousePointerClickIcon className="size-3 shrink-0 text-primary" />
+              <span className="truncate">{el.name}</span>
+            </span>
+          ))}
+        </div>
+      )}
       {message.attachments && message.attachments.length > 0 && (
         <div className="w-full flex gap-1 flex-wrap justify-end">
           {message.attachments?.map((attachment) => (
@@ -34,10 +57,13 @@ export function UserMessage({
           data-first={isFirstInGroup}
           data-last={isLastInGroup}
           data-alone={isAloneInGroup}
+          data-pending={message.pending === true}
           className={cn(
             'transition-all',
             'w-fit py-3 px-4 rounded-3xl text-sm',
             'bg-primary text-primary-foreground',
+            // Pending: sent but its answer hasn't started streaming yet.
+            message.pending && 'opacity-60',
             'break-words [word-break:break-word]', // `[word-break:break-word]` is deprecated but works in the browser, while `break-words` which is `[overflow-wrap: break-word]` does not work
             'whitespace-pre-wrap',
 

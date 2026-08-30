@@ -3,47 +3,32 @@ import IFrame from '@uiw/react-iframe';
 import { AnimatePresence } from 'framer-motion';
 import { ChevronDownIcon } from 'lucide-react';
 import React from 'react';
-import styles from '../index.css?inline.css';
 import { useConfig, useWidgetTrigger } from '@opencx/widget-react-headless';
+import { buildFrameHtml, FrameDocument } from './components/FrameDocument';
 import { MotionDiv } from './components/lib/MotionDiv';
 import { cn } from './components/lib/utils/cn';
 import { Wobble, WOBBLE_MAX_MOVEMENT_PIXELS } from './components/lib/wobble';
 import { ChatBubbleSvg } from './components/svg/ChatBubbleSvg';
 import { useTheme } from './hooks/useTheme';
+import { useTriggerLabel } from './hooks/useTriggerLabel';
 import { dc } from './utils/data-component';
+import { renderCustomTrigger } from './utils/render-custom-trigger';
 
-const initialContent = `<!DOCTYPE html>
-<html>
-<head>
-<style>
-${styles}
-html, body {
-    height: 100%;
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    font-size: 16px;
-}
-</style>
-</head>
-<body>
-</body>
-</html>`;
+const initialContent = buildFrameHtml();
 
 function WidgetPopoverTrigger() {
   const { isOpen, setIsOpen } = useWidgetTrigger();
-  const { cssOverrides, assets, customComponents, accessibility } = useConfig();
-  const { theme, cssVars } = useTheme();
+  const { assets, customComponents } = useConfig();
+  const { theme } = useTheme();
 
-  const triggerLabel =
-    accessibility?.widgetTriggerButton?.label ?? 'Chat with us';
+  const triggerLabel = useTriggerLabel();
 
   if (customComponents?.widgetTrigger) {
-    return customComponents.widgetTrigger({
-      react: React,
+    return renderCustomTrigger(
+      customComponents.widgetTrigger,
       isOpen,
-      setIsOpen: (open: boolean) => setIsOpen(open),
-    });
+      setIsOpen,
+    );
   }
 
   return (
@@ -68,12 +53,8 @@ function WidgetPopoverTrigger() {
         borderRadius: '100%',
       }}
     >
-      {cssOverrides && <style>{cssOverrides}</style>}
-      <div
+      <FrameDocument
         style={{
-          ...cssVars,
-          width: '100%',
-          height: '100%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -164,7 +145,7 @@ function WidgetPopoverTrigger() {
             </div>
           </Wobble>
         </PopoverPrimitive.PopoverTrigger>
-      </div>
+      </FrameDocument>
     </IFrame>
   );
 }

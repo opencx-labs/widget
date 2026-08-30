@@ -1,4 +1,8 @@
-import { useMessages, useSessions } from '@opencx/widget-react-headless';
+import {
+  useMessages,
+  useSessions,
+  useWidget,
+} from '@opencx/widget-react-headless';
 import { AnimatePresence } from 'framer-motion';
 import React, { useRef } from 'react';
 import { Header } from '../../components/Header';
@@ -9,6 +13,7 @@ import { useCanvas } from '../../hooks/useCanvas';
 import { useSetWidgetSize } from '../../hooks/useSetWidgetSize';
 import { useTheme } from '../../hooks/useTheme';
 import { dc } from '../../utils/data-component';
+import { AgentChatMain } from './agent/AgentChatMain';
 import { ChatCanvas } from './ChatCanvas';
 import { ChatFooter } from './ChatFooter';
 import { ChatMain } from './ChatMain';
@@ -17,6 +22,11 @@ export function ChatScreen() {
   const {
     messagesState: { isInitialFetchLoading },
   } = useMessages();
+  // Agent-bound embeds get the useChat-based streaming surface; others keep
+  // the blocking bot-chat engine. Agent binding is a per-instance constant,
+  // resolved before the chat renders.
+  const { widgetCtx } = useWidget();
+  const isAgentBound = widgetCtx.isAgentBound;
   const {
     sessionState: { session },
   } = useSessions();
@@ -76,7 +86,7 @@ export function ChatScreen() {
                     theme.screens.chat.withCanvas.transitionDuration,
                 }}
               >
-                <ChatMain />
+                {isAgentBound ? <AgentChatMain /> : <ChatMain />}
                 <ChatFooter />
               </div>
               <div

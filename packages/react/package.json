@@ -12,6 +12,7 @@
     "clean:dist": "rm -rf dist .turbo",
     "dev": "vite --host",
     "build": "vite build -c vite.config.ts",
+    "gen:ui-prompt": "tsx scripts/generate-ui-prompt.ts",
     "test": "vitest run",
     "type-check": "tsc --noEmit",
     "lint": "eslint .",
@@ -31,24 +32,26 @@
     "@opencx/widget-core": "workspace:*",
     "@opencx/widget-react-headless": "workspace:*",
     "@radix-ui/react-avatar": "^1.1.0",
-    "@radix-ui/react-dropdown-menu": "^2.1.4",
     "@radix-ui/react-popover": "^1.1.2",
     "@radix-ui/react-slot": "^1.1.0",
-    "@radix-ui/react-switch": "^1.1.0",
     "@radix-ui/react-tooltip": "^1.1.2",
+    "@shardsui/notation": "^0.1.0",
     "@uiw/react-iframe": "^1.0.3",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "framer-motion": "^11.3.30",
+    "html-to-image": "^1.11.13",
     "lucide-react": "^0.436.0",
     "react-dropzone": "^14.3.5",
     "react-markdown": "^9.0.1",
     "react-use": "^17.5.1",
+    "recharts": "2.15.4",
     "rehype-raw": "^7.0.0",
+    "rehype-sanitize": "^6.0.0",
     "remark-gfm": "^4.0.0",
     "tailwind-merge": "^2.4.0",
     "tinycolor2": "^1.6.0",
-    "zod": "^3.23.8"
+    "zod": "^4.3.6"
   },
   "peerDependencies": {
     "@types/react": ">=18 <20",
@@ -57,13 +60,20 @@
     "react-dom": ">=18 <20"
   },
   "devDependencies": {
+    "@json-render/core": "0.19.0",
+    "@json-render/react": "0.19.0",
     "@opencx/eslint-config": "workspace:*",
     "@opencx/tsconfig": "workspace:*",
     "@tailwindcss/typography": "^0.5.15",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
     "@types/tinycolor2": "^1.4.6",
     "postcss": "^8.4.41",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "tailwindcss": "^3.4.6",
     "tailwindcss-animate": "^1.0.7",
+    "tsx": "^4.19.2",
     "vite-plugin-qrcode": "^0.3.0"
   }
 }

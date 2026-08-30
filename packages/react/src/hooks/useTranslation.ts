@@ -16,10 +16,11 @@ export function useTranslation() {
       ? config.language
       : 'en';
     return {
-      t: (key: TranslationKeyU) => getTranslation(key, language, config.translationOverrides),
+      t: (key: TranslationKeyU) =>
+        getTranslation(key, language, config.translationOverrides),
       language: language,
-      dir: language === 'ar' ? 'rtl' : 'ltr',
+      dir: language === 'ar' || language === 'ur' ? 'rtl' : 'ltr',
       hostDocumentDir,
     };
-  }, [config.language, hostDocumentDir]);
+  }, [config.language, config.translationOverrides, hostDocumentDir]);
 }

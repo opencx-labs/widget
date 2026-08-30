@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
-import { useMessages, useModes, useSessions } from '@opencx/widget-react-headless';
+import {
+  useMessages,
+  useModes,
+  useSessions,
+} from '@opencx/widget-react-headless';
 import { useComponentContext } from '../../hooks/useComponentContext';
 
 export function ChatCanvas() {

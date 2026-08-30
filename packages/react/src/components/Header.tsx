@@ -11,7 +11,6 @@ import {
   useWidgetRouter,
   useWidgetTrigger,
 } from '@opencx/widget-react-headless';
-import { AnimatePresence } from 'framer-motion';
 import { ChevronLeftIcon } from 'lucide-react';
 import React, { useState } from 'react';
 import { useComponentContext } from '../hooks/useComponentContext';
@@ -37,7 +36,7 @@ import { HeaderTitleComponent } from './custom-components/HeaderTitleComponent';
 
 function useGetHeaderTitle() {
   const {
-    widgetCtx: { org },
+    widgetCtx: { org, agent },
   } = useWidget();
   const {
     routerState: { screen },
@@ -58,7 +57,8 @@ function useGetHeaderTitle() {
     }
   })();
 
-  return override ?? org.name ?? 'Chat';
+  // Agent-bound embeds title the widget with the agent's name.
+  return override ?? agent?.name ?? org.name ?? 'Chat';
 }
 
 function useGetHeaderDataComponentProp(

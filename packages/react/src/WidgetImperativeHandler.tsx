@@ -34,7 +34,6 @@ export function WidgetImperativeHandler({
           return;
         }
 
-        console.log({ isOpen });
         if (!isOpen) setIsOpen(true);
 
         if (screen === 'chat') widgetCtx.resetChat();

@@ -22,10 +22,7 @@ function clampTranslate(
   const imgH = image.offsetHeight;
 
   const maxX = Math.max(0, (imgW * scale - containerRect.width) / (2 * scale));
-  const maxY = Math.max(
-    0,
-    (imgH * scale - containerRect.height) / (2 * scale),
-  );
+  const maxY = Math.max(0, (imgH * scale - containerRect.height) / (2 * scale));
 
   return {
     x: Math.min(maxX, Math.max(-maxX, translate.x)),
@@ -33,13 +30,7 @@ function clampTranslate(
   };
 }
 
-export function ZoomableImage({
-  src,
-  alt,
-}: {
-  src: string;
-  alt?: string;
-}) {
+export function ZoomableImage({ src, alt }: { src: string; alt?: string }) {
   const [scale, setScale] = useState(1);
   const [translate, setTranslate] = useState<Point>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -49,8 +40,7 @@ export function ZoomableImage({
   const imgRef = useRef<HTMLImageElement>(null);
   const pointerMovedRef = useRef(false);
 
-  const clampScale = (s: number) =>
-    Math.min(MAX_SCALE, Math.max(MIN_SCALE, s));
+  const clampScale = (s: number) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, s));
 
   const reset = useCallback(() => {
     setScale(1);
@@ -64,17 +54,6 @@ export function ZoomableImage({
   const zoomOut = useCallback(() => {
     setScale((prev) => {
       const next = clampScale(prev - ZOOM_STEP);
-      if (next <= 1) setTranslate({ x: 0, y: 0 });
-      return next;
-    });
-  }, []);
-
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
-    setScale((prev) => {
-      const next = clampScale(prev + delta);
       if (next <= 1) setTranslate({ x: 0, y: 0 });
       return next;
     });
@@ -139,7 +118,6 @@ export function ZoomableImage({
           'overflow-hidden max-h-full max-w-full rounded-2xl flex items-center justify-center',
           isZoomed && 'size-full',
         )}
-        // onWheel={handleWheel}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -165,13 +143,21 @@ export function ZoomableImage({
       </div>
 
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-black/60 backdrop-blur-sm rounded-full px-1.5 py-1 transition opacity-50 hover:opacity-100">
-        <ControlButton onClick={zoomOut} label="Zoom out" disabled={scale <= MIN_SCALE}>
+        <ControlButton
+          onClick={zoomOut}
+          label="Zoom out"
+          disabled={scale <= MIN_SCALE}
+        >
           <ZoomOut className="size-3.5" />
         </ControlButton>
         <span className="text-white text-xs font-medium min-w-[3ch] text-center tabular-nums">
           {Math.round(scale * 100)}%
         </span>
-        <ControlButton onClick={zoomIn} label="Zoom in" disabled={scale >= MAX_SCALE}>
+        <ControlButton
+          onClick={zoomIn}
+          label="Zoom in"
+          disabled={scale >= MAX_SCALE}
+        >
           <ZoomIn className="size-3.5" />
         </ControlButton>
         {isZoomed && (
