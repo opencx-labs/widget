@@ -1,7 +1,7 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
 import typescriptEslintEslintPlugin from '@typescript-eslint/eslint-plugin';
 import unusedImportsPlugin from 'eslint-plugin-unused-imports';
-import vitestPlugin from 'eslint-plugin-vitest';
+import vitestPlugin from '@vitest/eslint-plugin';
 import globals from 'globals';
 import tsParser from '@typescript-eslint/parser';
 import path from 'node:path';
@@ -21,7 +21,13 @@ const compat = new FlatCompat({
 });
 
 export default defineConfig([
-  globalIgnores(['**/dist', '**/node_modules']),
+  globalIgnores([
+    '**/.turbo',
+    '**/coverage',
+    '**/dist',
+    '**/dist-embed',
+    '**/node_modules',
+  ]),
   {
     plugins: {
       '@typescript-eslint': typescriptEslintEslintPlugin,
@@ -51,8 +57,7 @@ export default defineConfig([
       sourceType: 'module',
 
       parserOptions: {
-        project: 'tsconfig.json',
-        tsconfigRootDir: __dirname,
+        project: true,
         ecmaFeatures: {
           jsx: true,
         },
@@ -92,6 +97,16 @@ export default defineConfig([
           argsIgnorePattern: '^_',
         },
       ],
+    },
+  },
+  {
+    // JavaScript build/config files are not part of the packages' TypeScript
+    // projects, but they should still be linted by the shared rules.
+    files: ['**/*.{cjs,js,mjs}'],
+    languageOptions: {
+      parserOptions: {
+        project: false,
+      },
     },
   },
 ]);

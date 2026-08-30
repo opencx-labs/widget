@@ -34,3 +34,8 @@ dev
 tsconfig.tsbuildinfo
 
 .npmrc
+# local package tarballs for offline consumer testing
+local-pack/
+
+# Local code-review artifacts
+.claude/reviews
