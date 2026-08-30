@@ -4,8 +4,17 @@ export type {
 } from './types/components';
 
 export { WidgetProvider, useWidget } from './WidgetProvider';
+export { useAgentChatUi } from './agent-chat/AgentChatContext';
+export type {
+  SpecDataPart,
+  StreamingStep,
+  StreamingTurnState,
+} from './agent-chat/agent-chat-stream';
+export type { TurnRenderSource } from './agent-chat/agent-turn-sources';
 
+export { useBot } from './hooks/useBot';
 export { useConfig } from './hooks/useConfig';
+export { useDisplayMode } from './hooks/useDisplayMode';
 export { useContact } from './hooks/useContact';
 export { useDocumentDir } from './hooks/useDocumentDir';
 export { useIsAwaitingBotReply } from './hooks/useIsAwaitingBotReply';
@@ -18,5 +27,6 @@ export {
   useWidgetTrigger,
   WidgetTriggerProvider,
 } from './hooks/useWidgetTrigger';
+export { useWidgetLayout, WidgetLayoutProvider } from './hooks/useWidgetLayout';
 export { useModes } from './hooks/useModes';
 export { useCsat } from './hooks/useCsat';

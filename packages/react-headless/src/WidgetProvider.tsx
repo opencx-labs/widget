@@ -13,6 +13,7 @@ import {
   WidgetCtx,
 } from '@opencx/widget-core';
 import { ComponentRegistry } from './ComponentRegistry';
+import { AgentChatProvider } from './agent-chat/AgentChatContext';
 import type { WidgetComponentType } from './types/components';
 
 interface WidgetProviderValue {
@@ -32,6 +33,7 @@ export function WidgetProvider({
   components,
   storage,
   loadingComponent,
+  errorComponent,
 }: {
   options: WidgetConfig;
   children: React.ReactNode;
@@ -42,11 +44,20 @@ export function WidgetProvider({
    * Not to be confused with the `loading` custom component which renders when the bot's reply is pending
    */
   loadingComponent?: React.ReactNode;
-}) {
+  /**
+   * Render initialization failures (invalid token, unavailable agent, network
+   * failure). When omitted the error is thrown to the nearest React error
+   * boundary instead of leaving the loading state mounted forever.
+   */
+  errorComponent?: (error: Error) => React.ReactNode;
+}): React.ReactElement | null {
   const contentIframeRef = useRef<HTMLIFrameElement | null>(null);
-
-  const didInitialize = useRef(false);
-  const [widgetCtx, setWidgetCtx] = useState<WidgetCtx | null>(null);
+  const initializationRef = useRef<Promise<WidgetCtx> | null>(null);
+  const [initialization, setInitialization] = useState<
+    | { status: 'loading' }
+    | { status: 'ready'; widgetCtx: WidgetCtx }
+    | { status: 'error'; error: Error }
+  >({ status: 'loading' });
 
   const componentStore = useMemo(
     () =>
@@ -57,18 +68,38 @@ export function WidgetProvider({
   );
 
   useEffect(() => {
-    if (didInitialize.current) return;
-    didInitialize.current = true;
-
-    WidgetCtx.initialize({ config, storage })
-      .then(setWidgetCtx)
-      .catch(console.error);
+    const request =
+      initializationRef.current ??
+      (initializationRef.current = WidgetCtx.initialize({ config, storage }));
+    let active = true;
+    void request.then(
+      (widgetCtx) => {
+        if (active) setInitialization({ status: 'ready', widgetCtx });
+      },
+      (reason: unknown) => {
+        const error =
+          reason instanceof Error
+            ? reason
+            : new Error('Widget initialization failed', { cause: reason });
+        console.error('[opencx] widget initialization failed', error);
+        if (active) setInitialization({ status: 'error', error });
+      },
+    );
+    return () => {
+      active = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!widgetCtx) {
-    return loadingComponent || null;
+  if (initialization.status === 'loading') {
+    return loadingComponent ? <>{loadingComponent}</> : null;
   }
+  if (initialization.status === 'error') {
+    if (errorComponent) return <>{errorComponent(initialization.error)}</>;
+    throw initialization.error;
+  }
+
+  const { widgetCtx } = initialization;
 
   return (
     <context.Provider
@@ -81,7 +112,9 @@ export function WidgetProvider({
         contentIframeRef,
       }}
     >
-      {children}
+      <AgentChatProvider widgetCtx={widgetCtx} config={config}>
+        {children}
+      </AgentChatProvider>
     </context.Provider>
   );
 }
