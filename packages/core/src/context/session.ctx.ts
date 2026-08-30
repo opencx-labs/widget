@@ -123,27 +123,55 @@ export class SessionCtx {
     );
   };
 
-  createSession = async () => {
+  createSession = async (opts?: {
+    isTokenRetry?: boolean;
+  }): Promise<SessionDto | null> => {
     this.sessionState.setPartial({ session: null, isCreatingSession: true });
+    try {
+      const externalId = this.contactCtx.state.get().contact?.externalId;
+      const customData: CreateSessionDto['customData'] = {
+        ...this.getParsedCustomData(),
+        ...(externalId ? { external_id: externalId } : {}),
+      };
+      const {
+        data: session,
+        error,
+        response,
+      } = await this.api.createSession({
+        customData: Object.keys(customData).length > 0 ? customData : undefined,
+        // Agents-platform binding: the backend validates the agent (enabled +
+        // published + this org) and stamps it on the session; the session is
+        // then served by that agent's published runtime.
+        agentId: this.config.agentId,
+      });
+      if (session) {
+        this.sessionState.setPartial({ session });
+        try {
+          this.config.hooks?.onSessionCreated?.({ session });
+        } catch (hookError) {
+          console.error('[opencx] onSessionCreated hook failed', hookError);
+        }
+        return session;
+      }
 
-    const externalId = this.contactCtx.state.get().contact?.externalId;
+      // Self-heal a stale contact token (401): drop it, mint a fresh contact,
+      // then retry once. `return await` keeps this outer attempt's `finally`
+      // from clearing the loading flag while the retry is still in flight.
+      if (!opts?.isTokenRetry && response?.status === 401) {
+        const recovered = await this.contactCtx.recoverFromStaleToken();
+        if (recovered) {
+          return await this.createSession({ isTokenRetry: true });
+        }
+      }
 
-    const customData: CreateSessionDto['customData'] = {
-      ...this.getParsedCustomData(),
-      ...(externalId ? { external_id: externalId } : {}),
-    };
-    const { data: session, error } = await this.api.createSession({
-      customData: Object.keys(customData).length > 0 ? customData : undefined,
-    });
-    if (session) {
-      this.sessionState.setPartial({ session, isCreatingSession: false });
-      this.config.hooks?.onSessionCreated?.({ session });
-      return session;
+      console.error('Failed to create session:', error);
+      return null;
+    } catch (error) {
+      console.error('Failed to create session:', error);
+      return null;
+    } finally {
+      this.sessionState.setPartial({ isCreatingSession: false });
     }
-
-    this.sessionState.setPartial({ isCreatingSession: false });
-    console.error('Failed to create session:', error);
-    return null;
   };
 
   loadMoreSessions = async () => {
@@ -223,7 +251,7 @@ export class SessionCtx {
     const session_id = this.sessionState.get().session?.id;
     if (!session_id) return;
 
-    const { data, error } = await this.api.createStateCheckpoint({
+    const { data } = await this.api.createStateCheckpoint({
       session_id,
       payload,
     });

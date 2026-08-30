@@ -36,8 +36,11 @@
     "@opencx/eslint-config": "workspace:*",
     "@opencx/tsconfig": "workspace:*",
     "@types/lodash.isequal": "^4.5.8",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
     "lucide": "^0.525.0",
-    "openapi-typescript": "^7.5.2"
+    "openapi-typescript": "^7.5.2",
+    "react": "^19.2.8"
   },
   "peerDependencies": {
     "@types/react": ">=18 <20",

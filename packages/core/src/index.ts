@@ -26,6 +26,8 @@ export type {
 } from './types/dtos';
 export type {
   WidgetConfig,
+  WidgetDisplayModeU,
+  WidgetCompanionLayoutU,
   HeaderButtonU,
   ComponentContext,
   ModeComponent,
@@ -36,15 +38,30 @@ export type {
 export type { ExternalStorage } from './types/external-storage';
 export type { OpenCxComponentNameU } from './types/component-name';
 export type { IconNameU } from './types/icons';
+export type { AgentTurnMessages } from './api/agent-turn-messages';
 
-export { WidgetCtx } from './context/widget.ctx';
+export {
+  WidgetCtx,
+  WidgetInitializationError,
+  type WidgetInitializationErrorCode,
+} from './context/widget.ctx';
 export type { ContactCtx } from './context/contact.ctx';
 export type { SessionCtx } from './context/session.ctx';
-export type { MessageCtx } from './context/message.ctx';
+export type {
+  AgentChatSendResult,
+  MessageCtx,
+  SendMessageInput,
+} from './context/message.ctx';
+export { mergeSendContext, resolveConfigContext } from './context/message.ctx';
 export type { RouterCtx, ScreenU } from './context/router.ctx';
 export type { CsatCtx } from './context/csat.ctx';
 
 export { PrimitiveState } from './utils/PrimitiveState';
+export { genUuid } from './utils/uuid';
+export {
+  normalizeCompanionLayouts,
+  resolveCompanionDefaultLayout,
+} from './utils/companion-layout';
 export { isExhaustive } from './utils/is-exhaustive';
 
 export {

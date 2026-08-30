@@ -1,4 +1,9 @@
 import { type Dto, type Endpoint, basicClient } from './client';
+import {
+  parseAgentTurnMessages,
+  type AgentTurnMessages,
+} from './agent-turn-messages';
+import { agentChatRoutes } from './agent-chat-routes';
 import type { WidgetConfig } from '../types/widget-config';
 import type {
   ResolveSessionDto,
@@ -58,9 +63,111 @@ export class ApiCaller {
     this.client = this.createOpenAPIClient({ baseUrl, headers });
   };
 
+  /**
+   * AUTH headers only (X-Bot-Token / Authorization), stripped of
+   * content-type/accept. The transport sets its own Content-Type, and a second
+   * (case-differing) copy gets COMBINED by the Headers init into
+   * "application/json, application/json" — which the server rejects (415). Also
+   * reused for the reconnect/stop control calls (empty-body POST/GET).
+   */
+  private getStreamAuthContext = (): {
+    baseUrl: string;
+    headers: Record<string, string>;
+  } => {
+    const { baseUrl, headers } = this.constructClientOptions(this.userToken);
+    const definedHeaders: Record<string, string> = {};
+    for (const [key, value] of Object.entries(headers)) {
+      if (typeof value !== 'string') continue;
+      if (['content-type', 'accept'].includes(key.toLowerCase())) continue;
+      definedHeaders[key] = value;
+    }
+    return { baseUrl, headers: definedHeaders };
+  };
+
+  /**
+   * Wiring for the agent-chat streaming adapter: the send endpoint, the
+   * session-scoped reconnect endpoint, and the shared auth headers.
+   * Computed lazily so a later `setAuthToken` is always reflected.
+   */
+  getStreamTransportOptions = (): {
+    api: string;
+    reconnectApi: (sessionId: string) => string;
+    headers: Record<string, string>;
+  } => {
+    const { baseUrl, headers } = this.getStreamAuthContext();
+    return {
+      api: agentChatRoutes.stream(baseUrl),
+      reconnectApi: (sessionId: string) =>
+        agentChatRoutes.reconnect(baseUrl, sessionId),
+      headers,
+    };
+  };
+
+  /**
+   * Stop / interrupt the session's in-flight streamed turn. With resumable
+   * streams on, a client abort is treated as a disconnect (the stream
+   * survives), so a real "stop" is this explicit call — the backend cancels
+   * generation and clears the resume pointer. Throws on failure — the caller
+   * decides how to react, so a failed cancel is never mistaken for an ACKed
+   * one.
+   */
+  stopStream = async (sessionId: string): Promise<void> => {
+    const { baseUrl, headers } = this.getStreamAuthContext();
+    const res = await fetch(agentChatRoutes.stop(baseUrl, sessionId), {
+      method: 'POST',
+      headers,
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to stop stream: ${res.status}`);
+    }
+  };
+
+  /**
+   * The session's settled agent turns with their final UIMessage parts and
+   * the transcript rows each produced — the reload-fidelity read (widget v5).
+   * Returns null when the endpoint is absent (404 — an older backend) or on
+   * any failure/shape surprise: the caller then keeps the plain-row rendering,
+   * exactly the pre-feature behavior.
+   */
+  getAgentTurnMessages = async (
+    sessionId: string,
+  ): Promise<AgentTurnMessages | null> => {
+    const { baseUrl, headers } = this.getStreamAuthContext();
+    let res: Response;
+    try {
+      res = await fetch(agentChatRoutes.messages(baseUrl, sessionId), {
+        headers,
+      });
+    } catch {
+      return null;
+    }
+    if (res.status === 404) return null;
+    if (!res.ok) {
+      console.warn('[opencx] agent turn messages fetch failed', res.status);
+      return null;
+    }
+    try {
+      return parseAgentTurnMessages(await res.json());
+    } catch {
+      return null;
+    }
+  };
+
+  /**
+   * Agents-platform binding: scopes a request to the configured agent. The
+   * backend ignores the param when absent (widget not agent-bound).
+   */
+  private agentIdQuery = (): { agentId: string } | Record<string, never> =>
+    this.config.agentId ? { agentId: this.config.agentId } : {};
+
   getExternalWidgetConfig = async () => {
     return await this.client.GET('/backend/widget/v2/config', {
-      params: { header: { 'x-bot-token': this.config.token } },
+      params: {
+        header: { 'x-bot-token': this.config.token },
+        // The backend resolves the agent's branding into the config response
+        // (and 400s with a reason when unservable).
+        query: this.agentIdQuery(),
+      },
     });
   };
 
@@ -111,7 +218,14 @@ export class ApiCaller {
     abortSignal?: AbortSignal;
   }) => {
     return await this.client.GET('/backend/widget/v2/sessions', {
-      params: { query: { offset: cursor, filters: JSON.stringify(filters) } },
+      params: {
+        query: {
+          offset: cursor,
+          filters: JSON.stringify(filters),
+          // Scope the list to this agent's sessions.
+          ...this.agentIdQuery(),
+        },
+      },
       signal: abortSignal,
     });
   };

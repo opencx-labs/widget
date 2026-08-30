@@ -1,29 +1,23 @@
 import type { ApiCaller } from '../api/api-caller';
 import type { Dto } from '../api/client';
-import type { SafeOmit } from '../types/helpers';
-import type { WidgetConfig } from '../types/widget-config';
 import { genUuid } from '../utils/uuid';
 import type { MessageCtx } from './message.ctx';
 import type { SessionCtx } from './session.ctx';
 
 export class CsatCtx {
-  private config: WidgetConfig;
   private api: ApiCaller;
   private sessionCtx: SessionCtx;
   private messageCtx: MessageCtx;
 
   constructor({
-    config,
     api,
     sessionCtx,
     messageCtx,
   }: {
-    config: WidgetConfig;
     api: ApiCaller;
     sessionCtx: SessionCtx;
     messageCtx: MessageCtx;
   }) {
-    this.config = config;
     this.api = api;
     this.sessionCtx = sessionCtx;
     this.messageCtx = messageCtx;

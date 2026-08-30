@@ -45,10 +45,9 @@ export class Poller {
         this.state.setPartial({ isPolling: false });
       }
 
-      // Another check to stop scheduling polls in case someone removes the early return in the catch above
-      if (this.abortController.signal.aborted) {
-        console.log('Poller aborted, not scheduling anymore');
-      } else {
+      // Do not reschedule after a reset, including when the callback handles
+      // cancellation without throwing.
+      if (!this.abortController.signal.aborted) {
         timeouts.push(setTimeout(poll, intervalMs));
       }
     };

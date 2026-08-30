@@ -93,7 +93,7 @@ export function getTranslation(
   lang: Language,
   overrides: WidgetConfig['translationOverrides'],
 ): string {
-  return overrides?.[lang]?.[key] || languages[lang][key] || '';
+  return overrides?.[lang]?.[key] || languages[lang][key];
 }
 
 export type TranslationInterface = {
@@ -115,5 +115,55 @@ export type TranslationInterface = {
   csat_title: string;
   csat_submitted_title: string;
   csat_feedback_placeholder: string;
+  follow_up_placeholder: string;
+  companion_layout_label: string;
+  companion_layout_floating: string;
+  companion_layout_sidebar: string;
+  companion_layout_fullscreen: string;
+  companion_close: string;
+  companion_history: string;
+  companion_expand_chat: string;
+  companion_resize_chat: string;
+  scroll_to_bottom: string;
+  thinking: string;
+  running: string;
+  steps: string;
+  attach_files: string;
+  mark_page_active: string;
+  mark_page: string;
+  stop_response: string;
+  send_message: string;
+  upload_failed: string;
+  file_rejected: string;
+  remove_attachment: string;
+  json_no_items: string;
+  json_no_data: string;
+  json_no_chart_data: string;
+  json_unsupported: string;
+  json_see_less: string;
+  json_see_more: string;
+  page_mark_hint: string;
+  page_mark_escape: string;
+  page_mark_shape_box: string;
+  page_mark_shape_circle: string;
+  page_mark_shape_arrow: string;
+  page_mark_shape_bracket: string;
+  page_mark_shape_underline: string;
+  page_mark_shape_highlight: string;
+  page_mark_shape_strike_through: string;
+  page_mark_shape_crossed_off: string;
+  page_mark_shape_aria: string;
+  page_mark_note_placeholder: string;
+  page_mark_attach: string;
+  page_mark_remove: string;
+  page_mark_region: string;
+  /** Header of the multi-send queue pill above the composer. */
+  queued_label: string;
+  /** Accessible label of the per-message remove button in the queue pill. */
+  remove_queued_message: string;
+  /** Body of the error row shown when an agent turn failed to arrive. */
+  turn_failed_message: string;
+  /** Retry action in the failed-turn error row. */
+  turn_failed_retry: string;
 };
 export type TranslationKeyU = keyof TranslationInterface;

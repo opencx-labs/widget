@@ -13,7 +13,9 @@ export interface paths {
     };
     get: {
       parameters: {
-        query?: never;
+        query?: {
+          agentId?: string;
+        };
         header: {
           'x-bot-token': string;
         };
@@ -114,6 +116,12 @@ export interface paths {
         query: {
           filters: string;
           offset?: string;
+          /**
+           * Agents-platform binding: when the widget is bound to an agent, the
+           * backend narrows the list to sessions stamped with this agent
+           * (`ai_agent_id`). Omitted when the widget isn't agent-bound.
+           */
+          agentId?: string;
         };
         header?: never;
         path?: never;
@@ -650,6 +658,8 @@ export interface components {
       customData?: {
         [key: string]: string | number | boolean;
       };
+      /** Format: uuid */
+      agentId?: string;
     } | null;
     WidgetSendMessageInputDto: {
       /** Format: uuid */
@@ -739,6 +749,11 @@ export interface components {
       messagePublicId: string | null;
       success: boolean;
     };
+    WidgetAgentBrandingDto: {
+      id: string;
+      name: string;
+      avatar_url: string | null;
+    };
     WidgetConfigDto: {
       org: {
         id: string;
@@ -751,6 +766,7 @@ export interface components {
         name: string;
         slug?: string | null;
       }[];
+      agent?: components['schemas']['WidgetAgentBrandingDto'];
     };
     WidgetPreludeDto: {
       org: {
@@ -764,6 +780,7 @@ export interface components {
         name: string;
         slug?: string | null;
       }[];
+      agent?: components['schemas']['WidgetAgentBrandingDto'];
     };
     WidgetContactTokenResponseDto: {
       /** @description The JWT token to use for further requests */
@@ -947,6 +964,16 @@ export interface components {
         | null;
       attachments?: components['schemas']['ChatAttachmentDto'][] | null;
       systemMessagePayload: components['schemas']['SystemMessagePayload'];
+      /** @description Activity (reasoning/tool calls) that happened before this message within its turn. */
+      stepsBefore?: {
+        /** @enum {string} */
+        kind: 'reasoning' | 'tool';
+        label: string;
+      }[];
+      /** @description User messages only: display names of page elements the visitor attached with the element picker. */
+      pickedElements?: {
+        name: string;
+      }[];
     };
     WidgetSessionDto: {
       /** Format: uuid */

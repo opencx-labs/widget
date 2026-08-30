@@ -10,6 +10,29 @@ import { RouterCtx } from './router.ctx';
 import { SessionCtx } from './session.ctx';
 import { StorageCtx } from './storage.ctx';
 
+export type WidgetInitializationErrorCode =
+  | 'config-fetch-failed'
+  | 'agent-binding-missing';
+
+/** A configuration failure that prevents the widget from choosing a safe
+ * runtime. The code is stable so headless consumers can render their own
+ * recovery UI without matching error-message text. */
+export class WidgetInitializationError extends Error {
+  readonly code: WidgetInitializationErrorCode;
+  readonly details: unknown;
+
+  constructor(
+    code: WidgetInitializationErrorCode,
+    message: string,
+    details?: unknown,
+  ) {
+    super(message);
+    this.name = 'WidgetInitializationError';
+    this.code = code;
+    this.details = details;
+  }
+}
+
 export class WidgetCtx {
   public config: WidgetConfig;
   public api: ApiCaller;
@@ -26,6 +49,27 @@ export class WidgetCtx {
     id: string;
     name: string;
   };
+  /**
+   * Branding of the bound agents-platform agent (config `agentId`), resolved
+   * by the backend at init. Undefined when the embed is not agent-bound.
+   * Server values win over the local `bot` option at render time.
+   */
+  public agent?: {
+    id: string;
+    name: string;
+    avatarUrl: string | null;
+  };
+
+  /**
+   * Whether this embed is bound to an agents-platform agent (config `agentId`
+   * resolved by the backend at init). Agent-bound embeds use the streaming
+   * agent-chat engine; others use the blocking bot-chat send. The single
+   * source for every "which engine?" decision.
+   */
+  public get isAgentBound(): boolean {
+    return this.agent !== undefined;
+  }
+
   private static pollingIntervalsSeconds: {
     session: number;
     sessions: number;
@@ -37,6 +81,7 @@ export class WidgetCtx {
     storage,
     modes,
     org,
+    agent,
   }: {
     config: WidgetConfig;
     storage?: ExternalStorage;
@@ -44,6 +89,11 @@ export class WidgetCtx {
     org: {
       id: string;
       name: string;
+    };
+    agent?: {
+      id: string;
+      name: string;
+      avatarUrl: string | null;
     };
   }) {
     if (!WidgetCtx.pollingIntervalsSeconds) {
@@ -54,6 +104,7 @@ export class WidgetCtx {
 
     this.config = config;
     this.org = org;
+    this.agent = agent;
     this.api = new ApiCaller({ config });
     this.storageCtx = storage ? new StorageCtx({ storage, config }) : undefined;
     this.modes = modes;
@@ -77,10 +128,12 @@ export class WidgetCtx {
       api: this.api,
       sessionCtx: this.sessionCtx,
       contactCtx: this.contactCtx,
+      // Agent-bound embeds stream their turns (AI SDK transport) instead of
+      // using the blocking bot-chat send.
+      agentBound: this.isAgentBound,
     });
 
     this.csatCtx = new CsatCtx({
-      config: this.config,
       api: this.api,
       sessionCtx: this.sessionCtx,
       messageCtx: this.messageCtx,
@@ -114,7 +167,17 @@ export class WidgetCtx {
     }).getExternalWidgetConfig();
 
     if (!externalConfig.data) {
-      throw new Error('Failed to fetch widget config');
+      // Surface the backend's reason (e.g. an unservable `agentId`:
+      // not_found / disabled / no_active_version) instead of failing mutely.
+      console.error(
+        '[opencx] widget config fetch failed',
+        externalConfig.error,
+      );
+      throw new WidgetInitializationError(
+        'config-fetch-failed',
+        'Failed to fetch widget config',
+        externalConfig.error,
+      );
     }
 
     this.pollingIntervalsSeconds = {
@@ -122,6 +185,14 @@ export class WidgetCtx {
       sessions: externalConfig.data?.sessionsPollingIntervalSeconds || 60,
     };
 
+    const serverAgent = externalConfig.data.agent;
+    if (config.agentId && serverAgent?.id !== config.agentId) {
+      throw new WidgetInitializationError(
+        'agent-binding-missing',
+        `Widget config did not resolve the requested agent ${config.agentId}`,
+        { requestedAgentId: config.agentId, resolvedAgent: serverAgent },
+      );
+    }
     return new WidgetCtx({
       config,
       storage,
@@ -130,6 +201,14 @@ export class WidgetCtx {
         id: externalConfig.data.org.id,
         name: externalConfig.data.org.name,
       },
+      // snake_case (backend DTO) → camelCase (widget types) at the boundary.
+      agent: serverAgent
+        ? {
+            id: serverAgent.id,
+            name: serverAgent.name,
+            avatarUrl: serverAgent.avatar_url,
+          }
+        : undefined,
     });
   };
 
@@ -137,4 +216,12 @@ export class WidgetCtx {
     this.sessionCtx.reset();
     this.messageCtx.reset();
   };
+
+  /**
+   * Ingest the canonical rows the backend persisted for a streamed turn.
+   * Called by the agent-chat surface when a turn finishes; the polling
+   * context owns history mapping/dedupe, so this delegates to it.
+   */
+  reconcileAfterStream = (sessionId: string): Promise<void> =>
+    this.activeSessionPollingCtx.reconcileAfterStream(sessionId);
 }

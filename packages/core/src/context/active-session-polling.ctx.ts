@@ -20,6 +20,9 @@ export class ActiveSessionPollingCtx {
 
   private poller = new Poller();
   private fetchSessionAndFullHistoryAbortController = new AbortController();
+  private reconcileAbortController = new AbortController();
+  /** Session the in-flight post-stream reconcile belongs to, if any. */
+  private reconcilingSessionId: string | null = null;
 
   constructor({
     api,
@@ -76,6 +79,41 @@ export class ActiveSessionPollingCtx {
         this.fetchSessionAndFullHistoryAbortController.abort();
       }
     });
+
+    /**
+     * A post-stream reconcile still in flight when the active session stops
+     * being the one it was started for (new chat, session switch) must not
+     * land: its rows belong to the old conversation and would be appended to
+     * the fresh transcript.
+     */
+    this.sessionCtx.sessionState.subscribe(({ session }) => {
+      if (this.reconcilingSessionId === null) return;
+      if (session?.id === this.reconcilingSessionId) return;
+      this.reconcileAbortController.abort();
+    });
+  };
+
+  /**
+   * Ingest the canonical rows the backend persisted for a just-settled
+   * streamed turn. Owns a REAL abort controller — cancelled on the session
+   * boundary (see `registerPolling`), which is the whole point: the signal
+   * this passes must be one somebody can actually fire.
+   */
+  reconcileAfterStream = async (sessionId: string): Promise<void> => {
+    this.reconcileAbortController.abort();
+    this.reconcileAbortController = new AbortController();
+    const { signal } = this.reconcileAbortController;
+    this.reconcilingSessionId = sessionId;
+    try {
+      await this.fetchSessionAndHistory({ sessionId, abortSignal: signal });
+    } catch (error) {
+      // An abort is this method doing its job, not a failure.
+      if (!signal.aborted) throw error;
+    } finally {
+      if (this.reconcilingSessionId === sessionId) {
+        this.reconcilingSessionId = null;
+      }
+    }
   };
 
   fetchSessionAndHistory = async ({
@@ -117,19 +155,28 @@ export class ActiveSessionPollingCtx {
           (newMsg) =>
             !prevMessages.some((existingMsg) => existingMsg.id === newMsg.id),
         );
-      this.messageCtx.state.setPartial({
-        messages: [...prevMessages, ...newMessages],
-      });
-      if (isInitialFetch) {
-        // Opening an existing session: history flows in as one batch. The user
-        // is loading context, not receiving new messages — suppress the hook
-        // but seed the dedup set so later polls don't re-fire these ids.
-        this.messageCtx.markAsDispatchedToOnMessageReceivedHook(
-          newMessages.map((m) => m.id),
-        );
-      } else {
-        for (const newMessage of newMessages) {
-          this.messageCtx.dispatchToOnMessageReceivedHook(newMessage);
+      // Only commit when the poll actually surfaced NEW rows. A poll that
+      // returns only already-known messages must NOT replace the array with a
+      // fresh reference — that re-renders the whole transcript on every tick
+      // (visible flicker during a stream, and it remounts the lazy recharts
+      // chart into an empty 0-measured ResponsiveContainer). The steady state
+      // of an idle/streaming session is "poll returns the same rows", so this
+      // guard is what keeps the surface still between real updates.
+      if (newMessages.length > 0) {
+        this.messageCtx.state.setPartial({
+          messages: [...prevMessages, ...newMessages],
+        });
+        if (isInitialFetch) {
+          // Opening an existing session: history flows in as one batch. The user
+          // is loading context, not receiving new messages — suppress the hook
+          // but seed the dedup set so later polls don't re-fire these ids.
+          this.messageCtx.markAsDispatchedToOnMessageReceivedHook(
+            newMessages.map((m) => m.id),
+          );
+        } else {
+          for (const newMessage of newMessages) {
+            this.messageCtx.dispatchToOnMessageReceivedHook(newMessage);
+          }
         }
       }
     }
@@ -151,7 +198,8 @@ export class ActiveSessionPollingCtx {
         ...commonFields,
         type: 'USER',
         content: history.content.text || '',
-        deliveredAt: history.sentAt || '',
+        // Backend field name (schema.ts) → widget vocabulary.
+        markedElements: history.pickedElements,
       };
     }
 
@@ -202,6 +250,10 @@ export class ActiveSessionPollingCtx {
               }
             : undefined,
         },
+        stepsBefore:
+          history.stepsBefore && history.stepsBefore.length > 0
+            ? history.stepsBefore
+            : undefined,
       };
     }
 

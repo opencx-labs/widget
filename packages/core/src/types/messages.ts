@@ -1,4 +1,4 @@
-import type { MessageAttachmentType, MessageDto } from './dtos';
+import type { MessageAttachmentType } from './dtos';
 import type { SafeExtract, StringOrLiteral } from './helpers';
 import type { Agent } from './agent';
 
@@ -8,6 +8,8 @@ import type { Agent } from './agent';
 export type LiteralWidgetComponentKey =
   | 'bot_message'
   | 'agent_message'
+  | 'agent_chat_steps'
+  | 'agent_chat_spec'
   | 'loading'
   | 'fallback';
 export type WidgetComponentKey = StringOrLiteral<LiteralWidgetComponentKey>;
@@ -19,8 +21,19 @@ export type WidgetUserMessage = {
   id: string;
   type: 'USER';
   content: string;
-  deliveredAt: string | null;
+  /**
+   * Agent-bound embeds only: the message was rendered optimistically and its
+   * turn's answer has not started streaming yet — the UI dims the bubble.
+   * Cleared by the engine once the turn produces its first chunk (or ends).
+   */
+  pending?: boolean;
   attachments?: MessageAttachmentType[] | null;
+  /**
+   * Display names of the host-page elements the visitor marked with this
+   * message — rendered as context chips on the user bubble. Set optimistically
+   * from the send input and re-hydrated from history.
+   */
+  markedElements?: Array<{ name: string }>;
   timestamp: string | null;
   user?: {
     name?: string;
@@ -49,6 +62,12 @@ export type WidgetAiMessage<TActionData = unknown> = {
   timestamp: string | null;
   agent?: Agent;
   attachments?: MessageAttachmentType[];
+  /**
+   * Agent-bound embeds: activity (reasoning/tool calls) that happened
+   * before this message within its turn — rendered as a collapsible steps
+   * trace above the message, identical for live and historical messages.
+   */
+  stepsBefore?: Array<{ kind: 'reasoning' | 'tool'; label: string }>;
 };
 
 export type WidgetAgentMessage = {
