@@ -13,6 +13,7 @@ overrides:
   js-yaml@3: '>=3.15.1 <4'
   js-yaml@4: '>=4.3.1 <5'
   postcss@8: '>=8.5.23 <9'
+  postcss-selector-parser@6: '>=6.1.3 <7'
   nanoid@3: '>=3.3.18 <4'
 
 importers:
@@ -3049,12 +3050,8 @@ packages:
     peerDependencies:
       postcss: '>=8.5.23 <9'
 
-  postcss-selector-parser@6.0.10:
-    resolution: {integrity: sha512-IQ7TZdoaqbT+LCpShg46jnZVlhWD2w6iQYAcYXfHARZ7X1t/UGhhceQDs5X0cGqKvYlHNOuv7Oa1xmb0oQuA3w==}
-    engines: {node: '>=4'}
-
-  postcss-selector-parser@6.1.2:
-    resolution: {integrity: sha512-Q8qQfPiZ+THO/3ZrOrO0cJJKfpYCagtMUkXbnEfmgUjwXg6z/WBeOyS9APBBPCTSiDV+s4SwQGu8yFsiMRIudg==}
+  postcss-selector-parser@6.1.4:
+    resolution: {integrity: sha512-bIoJLOmjCO1S9XdY/DcnR5hJxvrDir1PbGChrzXG3vw0/FOliy/fA3dmdhQ441kah4gKv+TwckGzex6wNS5cnQ==}
     engines: {node: '>=4'}
 
   postcss-value-parser@4.2.0:
@@ -4897,7 +4894,7 @@ snapshots:
       lodash.castarray: 4.4.0
       lodash.isplainobject: 4.0.6
       lodash.merge: 4.6.2
-      postcss-selector-parser: 6.0.10
+      postcss-selector-parser: 6.1.4
       tailwindcss: 3.4.17
 
   '@types/argparse@1.0.38': {}
@@ -7122,14 +7119,9 @@ snapshots:
   postcss-nested@6.2.0(postcss@8.5.26):
     dependencies:
       postcss: 8.5.26
-      postcss-selector-parser: 6.1.2
+      postcss-selector-parser: 6.1.4
 
-  postcss-selector-parser@6.0.10:
-    dependencies:
-      cssesc: 3.0.0
-      util-deprecate: 1.0.2
-
-  postcss-selector-parser@6.1.2:
+  postcss-selector-parser@6.1.4:
     dependencies:
       cssesc: 3.0.0
       util-deprecate: 1.0.2
@@ -7682,7 +7674,7 @@ snapshots:
       postcss-js: 4.0.1(postcss@8.5.26)
       postcss-load-config: 4.0.2(postcss@8.5.26)
       postcss-nested: 6.2.0(postcss@8.5.26)
-      postcss-selector-parser: 6.1.2
+      postcss-selector-parser: 6.1.4
       resolve: 1.22.10
       sucrase: 3.35.0
     transitivePeerDependencies:
