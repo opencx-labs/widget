@@ -8,10 +8,13 @@ export type {
   WidgetAiMessage,
   WidgetSystemMessage__StateCheckpoint,
   WidgetSystemMessage__CsatRequested,
+  WidgetSystemMessage__CsatRequestCancelled,
   WidgetSystemMessage__CsatSubmitted,
   WidgetSystemMessageU,
   WidgetMessageU,
 } from './types/messages';
+export { deriveCsatState } from './utils/derive-csat-state';
+export type { CsatState } from './utils/derive-csat-state';
 export type {
   MessageAttachmentType,
   MessageDto,

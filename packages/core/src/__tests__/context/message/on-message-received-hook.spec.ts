@@ -140,6 +140,7 @@ suite('hooks.onMessageReceived', () => {
               value: { content: 'hello from AI', error: false },
               mightSolveUserIssue: false,
               completelyAndFullyCoveredUserIssue: false,
+              assistMode: false,
             },
           },
         });
@@ -185,6 +186,7 @@ suite('hooks.onMessageReceived', () => {
               value: { content: 'reply', error: false },
               mightSolveUserIssue: false,
               completelyAndFullyCoveredUserIssue: false,
+              assistMode: false,
             },
           },
         });
@@ -238,6 +240,7 @@ suite('hooks.onMessageReceived', () => {
               value: { content: 'reply', error: false },
               mightSolveUserIssue: false,
               completelyAndFullyCoveredUserIssue: false,
+              assistMode: false,
             },
           },
         });
@@ -490,6 +493,7 @@ suite('hooks.onMessageReceived', () => {
             value: { content: 'shared reply', error: false },
             mightSolveUserIssue: false,
             completelyAndFullyCoveredUserIssue: false,
+            assistMode: false,
           },
         },
       });

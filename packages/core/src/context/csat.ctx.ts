@@ -1,6 +1,9 @@
 import type { ApiCaller } from '../api/api-caller';
 import type { Dto } from '../api/client';
-import type { SafeOmit } from '../types/helpers';
+import type {
+  WidgetSystemMessage__CsatRequestCancelled,
+  WidgetSystemMessage__CsatSubmitted,
+} from '../types/messages';
 import type { WidgetConfig } from '../types/widget-config';
 import { genUuid } from '../utils/uuid';
 import type { MessageCtx } from './message.ctx';
@@ -29,6 +32,12 @@ export class CsatCtx {
     this.messageCtx = messageCtx;
   }
 
+  /**
+   * Optimistic: the `csat_submitted` event is shown before the API answers and
+   * carries the uuid the server will store, so the poll dedupes it. A refusal
+   * (or a failed call) rolls it back — the score was never recorded, so the
+   * picker must not stay locked on it.
+   */
   submitCsat = async (
     body: Pick<Dto['WidgetSubmitCsatInputDto'], 'score' | 'feedback'>,
   ) => {
@@ -37,30 +46,60 @@ export class CsatCtx {
       return { data: null, error: 'No session id found' };
     }
 
-    const uuid = genUuid();
-    this.messageCtx.state.setPartial({
-      messages: [
-        ...this.messageCtx.state.get().messages,
-        {
-          id: uuid,
-          type: 'SYSTEM',
-          subtype: 'csat_submitted',
-          timestamp: new Date().toISOString(),
-          data: {
-            payload: {
-              score: body.score,
-              feedback: body.feedback,
-            },
-          },
+    const optimistic: WidgetSystemMessage__CsatSubmitted = {
+      id: genUuid(),
+      type: 'SYSTEM',
+      subtype: 'csat_submitted',
+      timestamp: new Date().toISOString(),
+      data: {
+        payload: {
+          score: body.score,
+          feedback: body.feedback,
         },
-      ],
-    });
+      },
+    };
+    this.appendMessage(optimistic);
 
     const { data, error } = await this.api.submitCsat({
       ...body,
-      system_message_uuid: uuid,
+      system_message_uuid: optimistic.id,
       session_id: currentSessionId,
     });
+
+    if (!data?.success) {
+      this.removeMessage(optimistic.id);
+      if (data?.reason === 'request_cancelled') {
+        // Retire the picker now rather than on the next poll, which will
+        // deliver the real event (a different id, same meaning).
+        this.appendMessage(this.localCancellation());
+      }
+    }
     return { data, error };
+  };
+
+  private localCancellation = (): WidgetSystemMessage__CsatRequestCancelled => ({
+    id: genUuid(),
+    type: 'SYSTEM',
+    subtype: 'csat_request_cancelled',
+    timestamp: new Date().toISOString(),
+    data: { payload: undefined },
+  });
+
+  private appendMessage = (
+    message:
+      | WidgetSystemMessage__CsatSubmitted
+      | WidgetSystemMessage__CsatRequestCancelled,
+  ) => {
+    this.messageCtx.state.setPartial({
+      messages: [...this.messageCtx.state.get().messages, message],
+    });
+  };
+
+  private removeMessage = (id: string) => {
+    this.messageCtx.state.setPartial({
+      messages: this.messageCtx.state
+        .get()
+        .messages.filter((message) => message.id !== id),
+    });
   };
 }
