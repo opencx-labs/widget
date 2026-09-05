@@ -105,6 +105,49 @@ suite('CsatCtx.submitCsat', () => {
     });
   });
 
+  it('refused as request_cancelled, but a newer request landed mid-flight → no echo, new survey stays live', async () => {
+    let resolveSubmit: (value: {
+      response: Response;
+      data: { success: false; reason: 'request_cancelled' };
+    }) => void = () => {};
+    vi.mocked(ApiCaller.prototype.submitCsat).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveSubmit = resolve;
+        }),
+    );
+    const widgetCtx = await widgetWithLiveSurvey();
+
+    const inFlight = widgetCtx.csatCtx.submitCsat({ score: 2 });
+    // The poll delivers the old request's cancel and a brand-new request
+    // while the submit is still awaiting its (refusing) response.
+    const oldCancel: WidgetSystemMessageU = {
+      id: genUuid(),
+      type: 'SYSTEM',
+      subtype: 'csat_request_cancelled',
+      timestamp: new Date().toISOString(),
+      data: { payload: undefined },
+    };
+    widgetCtx.messageCtx.state.setPartial({
+      messages: [...widgetCtx.messageCtx.state.get().messages, oldCancel, csatRequested()],
+    });
+    resolveSubmit({
+      response: new Response(),
+      data: { success: false, reason: 'request_cancelled' },
+    });
+    await inFlight;
+
+    expect(subtypes(widgetCtx)).toEqual([
+      'csat_requested',
+      'csat_request_cancelled',
+      'csat_requested',
+    ]);
+    expect(deriveCsatState(widgetCtx.messageCtx.state.get().messages)).toMatchObject({
+      isCsatRequested: true,
+      isCsatCancelled: false,
+    });
+  });
+
   it('refused as rescore_locked → rolls the submission back, survey stays as it was', async () => {
     TestUtils.mock.ApiCaller.submitCsat(ApiCaller, {
       data: { success: false, reason: 'rescore_locked' },

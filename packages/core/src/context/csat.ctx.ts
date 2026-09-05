@@ -59,6 +59,7 @@ export class CsatCtx {
       },
     };
     this.appendMessage(optimistic);
+    const answeredRequestId = this.latestRequestId();
 
     const { data, error } = await this.api.submitCsat({
       ...body,
@@ -68,14 +69,24 @@ export class CsatCtx {
 
     if (!data?.success) {
       this.removeMessage(optimistic.id);
-      if (data?.reason === 'request_cancelled') {
-        // Retire the picker now rather than on the next poll, which will
-        // deliver the real event (a different id, same meaning).
+      // Echo the cancel only if no newer request landed while the call was in flight.
+      if (
+        data?.reason === 'request_cancelled' &&
+        this.latestRequestId() === answeredRequestId
+      ) {
         this.appendMessage(this.localCancellation());
       }
     }
     return { data, error };
   };
+
+  private latestRequestId = () =>
+    this.messageCtx.state
+      .get()
+      .messages.findLast(
+        (message) =>
+          message.type === 'SYSTEM' && message.subtype === 'csat_requested',
+      )?.id;
 
   private localCancellation = (): WidgetSystemMessage__CsatRequestCancelled => ({
     id: genUuid(),
