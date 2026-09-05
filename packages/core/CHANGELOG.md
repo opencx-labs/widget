@@ -1,5 +1,11 @@
 # @opencx/widget-core
 
+## 4.0.63
+
+### Patch Changes
+
+- 2a7e3b3: Retire a rating survey the moment it is withdrawn: the widget now reads the withdrawal event from the session, rolls back a rating the server refused instead of showing it as recorded, and exposes `isCsatCancelled` from `useCsat`.
+
 ## 4.0.62
 
 ### Patch Changes

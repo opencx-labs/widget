@@ -238,6 +238,15 @@ export class ActiveSessionPollingCtx {
           timestamp: history.sentAt || '',
           attachments: undefined,
         };
+      case 'csat_request_cancelled':
+        return {
+          id: history.publicId,
+          type: 'SYSTEM',
+          subtype: 'csat_request_cancelled',
+          data: { payload: undefined },
+          timestamp: history.sentAt || '',
+          attachments: undefined,
+        };
       case 'csat_submitted':
         return {
           id: history.publicId,

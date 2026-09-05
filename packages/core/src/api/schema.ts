@@ -739,39 +739,6 @@ export interface components {
       messagePublicId: string | null;
       success: boolean;
     };
-    WidgetConfigDto: {
-      org: {
-        id: string;
-        name: string;
-      };
-      sessionsPollingIntervalSeconds: number;
-      sessionPollingIntervalSeconds: number;
-      modes: {
-        id: string;
-        name: string;
-        slug?: string | null;
-      }[];
-    };
-    WidgetPreludeDto: {
-      org: {
-        id: string;
-        name: string;
-      };
-      sessionsPollingIntervalSeconds: number;
-      sessionPollingIntervalSeconds: number;
-      modes: {
-        id: string;
-        name: string;
-        slug?: string | null;
-      }[];
-    };
-    WidgetContactTokenResponseDto: {
-      /** @description The JWT token to use for further requests */
-      token: string;
-    };
-    WidgetCreateStateCheckpointOutputDto: {
-      success: boolean;
-    };
     /** @enum {string} */
     AssigneeKindEnum: 'human' | 'ai' | 'none';
     /** @enum {string} */
@@ -795,6 +762,7 @@ export interface components {
       | 'ai_reopened_session'
       | 'ai_response_cancelled'
       | 'ai_resumed_by_system'
+      | 'ai_suggestion'
       | 'call_history'
       | 'call_transferred'
       | 'closed_resolved_by_agent'
@@ -806,6 +774,7 @@ export interface components {
       | 'closed_unresolved_by_api'
       | 'closed_unresolved_by_system'
       | 'contact_data_updated'
+      | 'csat_request_cancelled'
       | 'csat_requested'
       | 'csat_submitted'
       | 'email_draft_message'
@@ -814,10 +783,16 @@ export interface components {
       | 'handoff_to_zendesk'
       | 'integration_reopened_session'
       | 'message'
+      | 'pii_attachment_removed'
       | 'prohibited_topic_detected'
+      | 'quoted_content_modified'
       | 'salesforce_fields_updated'
       | 'sequence_message'
       | 'session_forwarded'
+      | 'session_language_changed_by_agent'
+      | 'session_language_changed_by_api'
+      | 'session_language_changed_by_integration'
+      | 'session_language_changed_by_system'
       | 'skills_added_by_system'
       | 'sla_applied_by_agent'
       | 'sla_applied_by_system'
@@ -886,16 +861,23 @@ export interface components {
     SystemMessagePayload:
       | (
           | (
+              | (
+                  | {
+                      /** @constant */
+                      type: 'state_checkpoint';
+                      payload: {
+                        [key: string]: unknown;
+                      } | null;
+                    }
+                  | {
+                      /** @constant */
+                      type: 'csat_requested';
+                      payload?: null;
+                    }
+                )
               | {
                   /** @constant */
-                  type: 'state_checkpoint';
-                  payload: {
-                    [key: string]: unknown;
-                  } | null;
-                }
-              | {
-                  /** @constant */
-                  type: 'csat_requested';
+                  type: 'csat_request_cancelled';
                   payload?: null;
                 }
             )
@@ -913,41 +895,6 @@ export interface components {
           type: 'none';
           payload?: null;
         };
-    WidgetHistoryDto: {
-      publicId: string;
-      type: components['schemas']['MessageTypeEnum'];
-      content: {
-        text?: string | null;
-      };
-      sender: {
-        kind: components['schemas']['SenderTypeEnum'];
-        name?: string | null;
-        avatar?: string | null;
-      };
-      sentAt?: string | null;
-      actionCalls?:
-        | {
-            actionName: string;
-            args: unknown;
-            result: unknown;
-            action: {
-              name: string;
-              id: string;
-              openapi?: {
-                openapi_spec_id?: string;
-                operation_spec: unknown;
-                operation_id?: string;
-                operation_method?: string;
-              };
-              metadata: unknown;
-              required_form_submission?: boolean;
-              is_handoff_like?: boolean;
-            };
-          }[]
-        | null;
-      attachments?: components['schemas']['ChatAttachmentDto'][] | null;
-      systemMessagePayload: components['schemas']['SystemMessagePayload'];
-    };
     WidgetSessionDto: {
       /** Format: uuid */
       id: string;
@@ -987,6 +934,72 @@ export interface components {
       items: components['schemas']['WidgetSessionDto'][];
       next: string | null;
     };
+    WidgetConfigDto: {
+      org: {
+        id: string;
+        name: string;
+      };
+      sessionsPollingIntervalSeconds: number;
+      sessionPollingIntervalSeconds: number;
+      modes: {
+        id: string;
+        name: string;
+        slug?: string | null;
+      }[];
+    };
+    WidgetPreludeDto: {
+      org: {
+        id: string;
+        name: string;
+      };
+      sessionsPollingIntervalSeconds: number;
+      sessionPollingIntervalSeconds: number;
+      modes: {
+        id: string;
+        name: string;
+        slug?: string | null;
+      }[];
+    };
+    WidgetHistoryDto: {
+      publicId: string;
+      type: components['schemas']['MessageTypeEnum'];
+      content: {
+        text?: string | null;
+      };
+      sender: {
+        kind: components['schemas']['SenderTypeEnum'];
+        name?: string | null;
+        avatar?: string | null;
+      };
+      sentAt?: string | null;
+      actionCalls?:
+        | {
+            actionName: string;
+            args: unknown;
+            result: unknown;
+            action: {
+              name: string;
+              id: string;
+              openapi?: {
+                openapi_spec_id?: string;
+                operation_spec: unknown;
+                operation_id?: string;
+                operation_method?: string;
+              };
+              metadata: unknown;
+              required_form_submission?: boolean;
+              is_handoff_like?: boolean;
+            };
+          }[]
+        | null;
+      attachments?: components['schemas']['ChatAttachmentDto'][] | null;
+      systemMessagePayload: components['schemas']['SystemMessagePayload'];
+    };
+    WidgetSessionAndHistoryDto: {
+      /** @description WidgetSession */
+      session: components['schemas']['WidgetSessionDto'];
+      history: components['schemas']['WidgetHistoryDto'][];
+    };
     WidgetSendMessageOutputDto:
       | {
           /** @constant */
@@ -1009,6 +1022,7 @@ export interface components {
             id?: string;
             mightSolveUserIssue: boolean;
             completelyAndFullyCoveredUserIssue: boolean;
+            assistMode: boolean;
             mode?: {
               id: string;
               name: string;
@@ -1053,23 +1067,25 @@ export interface components {
             message?: string;
           };
         };
-    WidgetSubmitCsatOutputDto: {
+    WidgetCreateStateCheckpointOutputDto: {
       success: boolean;
-      /**
-       * @description Why the submit was refused. rescore_locked = the org rescore window has closed, so the recorded score can no longer be changed by the customer
-       * @enum {string}
-       */
-      reason?: 'rescore_locked';
-    };
-    WidgetSessionAndHistoryDto: {
-      /** @description WidgetSession */
-      session: components['schemas']['WidgetSessionDto'];
-      history: components['schemas']['WidgetHistoryDto'][];
     };
     WidgetActionFormSubmissionOutputDto: {
       action: {
         response: unknown;
       };
+    };
+    WidgetSubmitCsatOutputDto: {
+      success: boolean;
+      /**
+       * @description Why the submit was refused. rescore_locked = the org rescore window has closed, so the recorded score can no longer be changed by the customer. request_cancelled = the survey was voided before it was answered, so a rating is no longer accepted at all
+       * @enum {string}
+       */
+      reason?: 'rescore_locked' | 'request_cancelled';
+    };
+    WidgetContactTokenResponseDto: {
+      /** @description The JWT token to use for further requests */
+      token: string;
     };
     UploadWidgetFileResponseDto: {
       fileName: string;

@@ -85,6 +85,21 @@ export type WidgetSystemMessage__CsatRequested = {
     payload?: undefined;
   };
 };
+/**
+ * The survey was voided before it was answered (a newer session superseded it).
+ * The latest of `csat_requested` / `csat_request_cancelled` decides whether the
+ * picker is live — see `deriveCsatState`.
+ */
+export type WidgetSystemMessage__CsatRequestCancelled = {
+  id: string;
+  type: 'SYSTEM';
+  subtype: 'csat_request_cancelled';
+  timestamp: string | null;
+  attachments?: undefined;
+  data: {
+    payload?: undefined;
+  };
+};
 export type WidgetSystemMessage__CsatSubmitted = {
   id: string;
   type: 'SYSTEM';
@@ -101,6 +116,7 @@ export type WidgetSystemMessage__CsatSubmitted = {
 export type WidgetSystemMessageU =
   | WidgetSystemMessage__StateCheckpoint
   | WidgetSystemMessage__CsatRequested
+  | WidgetSystemMessage__CsatRequestCancelled
   | WidgetSystemMessage__CsatSubmitted;
 
 /* ------------------------------------------------------ */
