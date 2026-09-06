@@ -1,24 +1,31 @@
 # @opencx/widget-core
 
-## 5.0.0
+## 5.0.0-beta.0
 
 ### Major Changes
 
-- Widget v5 — the agents-platform release. New `agentId` init option binds an
-  embed to a specific AI agent: the config fetch resolves the agent's branding
-  (header + bot bubbles adopt it via the new `useBot()` hook), every session is
-  created bound to the agent, and conversations are served by the agent's
-  published v3 configuration. Agent-bound embeds default to the companion shell
-  (`useDisplayMode()`) — the new UI ships together with agent v3 — while an
-  explicit `displayMode` still wins. Agent-bound turns STREAM over the AI SDK
-  UI-message protocol (`POST /chat/stream`): text blocks, reasoning, and tool
-  activity render live (steps trace + flat messages) instead of a silent wait,
-  with the poll transport as fallback and reconciliation source. AI replies default to the flat,
-  document-style layout (no bubbles); `companion.bubbles: true` restores
-  classic chat bubbles. Unservable agents (unknown, disabled,
-  unpublished) fail initialization loudly with the backend's reason. Agent v3 embeds work
-  only with widget v5 — older widgets ignore `agentId` and fall back to the
-  organization's default agent.
+- Widget v5 — the streaming agent release.
+
+  **Added**
+  - `displayMode: 'companion'`: a bottom-centered pill that morphs into a floating chat panel, a docked sidebar, or a fullscreen column, with every knob under `companion.*` (layouts, resting layout, sidebar side/mode/width, compact geometry, pill label, quick-ask tools, bubbles, scroll lock).
+  - The streaming engine, selected by the backend per org: replies stream live with a steps trace and inline rendered UI, can be stopped mid-reply, queue messages sent mid-turn, steer a follow-up into the live turn, retry a failed turn, reconnect after a disconnect, and re-render settled turns faithfully after a reload.
+  - `features`: per-embed toggles (`preamble`, `inlineUi`, `dictation`, `pageContext`, `clientTools`) that can only narrow what the organization enabled.
+  - `context` accepts a function, resolved at every send, and two well-known keys — `page` and `entity` — the agent reads as "here" and "this"; the entity shows as a removable pill in the composer.
+  - `enablePageMarks` (+ `pageMarkHighlightDurationMs`): the visitor marks anything on the host page and the agent can point back at it.
+  - Voice dictation in the composer, clarification questionnaires that replace the composer while the agent waits on an answer, ↑/↓ recall of sent text.
+  - `router.restoreLastSession`, `onUiAction`, `showStepToolIO`, and an `errorComponent` prop on `Widget` / `WidgetProvider`.
+  - `components` keys `agent_chat_steps`, `agent_chat_spec`, `agent_chat_questions`; headless `useAgentChatUi`, `useBot`, `useDisplayMode`, `useDictation`, `useWidgetLayout`; React `HostedSpecRenderer` and `segmentContent` for host pages that show widget transcripts.
+  - Around 70 new translation keys in all 38 locales.
+
+  **Breaking**
+  - The embed is now two files: `dist-embed/script.js` is a tiny loader that injects `dist-embed/widget.js` (an ES module with lazy chunks). Self-hosters must publish the whole `dist-embed` directory with CORS headers.
+  - Agent and bot messages, and `chatFooterItems`, are sanitized: inline `style`, `<script>`, `<iframe>`, media tags and `data:` images are stripped.
+  - `WidgetUserMessage.deliveredAt` was removed (`timestamp` carries the same instant); `pending` and `markedElements` were added.
+  - A failed initialization renders nothing (previously the loading state stayed mounted); pass `errorComponent` to render your own failure surface.
+  - `zod` moved from v3 to v4 in `@opencx/widget-react` and `@opencx/widget-react-headless`.
+  - Streaming needs an OpenCX backend that returns the `agent` block from `/widget/v2/config`; against an older backend the widget runs the classic engine exactly as v4 did.
+
+  Unchanged: the classic popover, `inline`, `customComponents`, the `components` prop keys of v4, `cssOverrides`/`theme`, `headerButtons`, `hooks`, `ExternalStorage`, storage keys, and the `context` a host passes — it rides along with every send as before.
 
 ## 4.0.62
 
