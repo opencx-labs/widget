@@ -171,7 +171,6 @@ export type TranslationInterface = {
   stop_response: string;
   copy_reply: string;
   mentions_empty: string;
-  mention_remove: string;
   copied: string;
   dictate: string;
   stop_dictation: string;
@@ -213,6 +212,7 @@ export type TranslationInterface = {
   queued_label: string;
   /** Accessible label of the per-message remove button in the queue pill. */
   remove_queued_message: string;
+  send_queued_now: string;
   /** Body of the error row shown when an agent turn failed to arrive. */
   turn_failed_message: string;
   /** Retry action in the failed-turn error row. */

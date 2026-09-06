@@ -124,7 +124,8 @@ vi.mock('../../../page-marks/mark-thumbnail', () => ({
 
 vi.mock('react-dropzone', () => ({
   useDropzone: () => ({
-    getRootProps: () => ({}),
+    // The real hook passes a caller's `ref` through to the root element.
+    getRootProps: (props: Record<string, unknown> = {}) => props,
     getInputProps: () => ({}),
     open: vi.fn(),
   }),
@@ -250,6 +251,9 @@ describe('ChatInput send acceptance', () => {
       return Promise.resolve();
     });
     container = document.createElement('div');
+    // The themed frame root FrameDocument renders; floating layers (the
+    // mention picker) portal into it.
+    container.setAttribute('data-version', 'test');
     document.body.appendChild(container);
     root = createRoot(container);
     rootMounted = true;
@@ -502,6 +506,9 @@ describe('ChatInput send acceptance', () => {
     rootMounted = false;
     container.remove();
     container = document.createElement('div');
+    // The themed frame root FrameDocument renders; floating layers (the
+    // mention picker) portal into it.
+    container.setAttribute('data-version', 'test');
     document.body.appendChild(container);
     root = createRoot(container);
     rootMounted = true;
@@ -664,7 +671,7 @@ describe('ChatInput send acceptance', () => {
     ).not.toBeNull();
   });
 
-  it('@ opens the mention picker; a pick adds a chip and the send carries the mention', async () => {
+  it('@ opens the mention menu; a pick highlights the @Title in the text and the send carries the mention', async () => {
     vi.useFakeTimers();
     try {
       const { textarea } = await renderInput();
@@ -676,18 +683,18 @@ describe('ChatInput send acceptance', () => {
       await act(async () => {
         vi.advanceTimersByTime(200);
       });
-      const option = container.querySelector<HTMLButtonElement>(
+      // The picker is portaled to the document, above the clipping footer.
+      const option = document.querySelector<HTMLButtonElement>(
         '[data-component="chat/input_box/mention_picker/option"]',
       );
       expect(option?.textContent).toContain('PostgreSQL Backup');
 
       await act(async () => option?.click());
       expect(textarea.value).toBe('deploy @PostgreSQL Backup ');
+      // No chip in the tray: the mention is highlighted where it was typed.
       expect(
-        container.querySelector(
-          '[data-component="chat/input_box/mention_pill"]',
-        ),
-      ).not.toBeNull();
+        container.querySelector('[data-component="chat/mention"]')?.textContent,
+      ).toBe('@PostgreSQL Backup');
 
       const button = container.querySelector<HTMLButtonElement>(
         'button[aria-label="send_message"]',

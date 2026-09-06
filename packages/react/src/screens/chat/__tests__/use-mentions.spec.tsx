@@ -129,7 +129,33 @@ describe('useMentions', () => {
     expect(textarea?.value).toBe('hey @PostgreSQL Backup ');
   });
 
-  it('drops the chip when its @Title leaves the text, and the text when the chip is removed', async () => {
+  it('does not reopen when the caret lands inside a picked @Title', async () => {
+    await type('hey @Po');
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+    });
+    await act(async () => {
+      hook?.onKeyDown({ key: 'Enter', preventDefault: vi.fn() });
+    });
+    expect(textarea?.value).toBe('hey @PostgreSQL Backup ');
+
+    // A click inside the token snaps the caret to its nearer edge — here
+    // the start — and opens nothing.
+    textarea?.setSelectionRange(7, 7);
+    await act(async () => hook?.onCaretMove('nearest'));
+    expect(textarea?.selectionStart).toBe(4);
+    expect(hook?.isOpen).toBe(false);
+    // → from the start jumps over the whole token.
+    textarea?.setSelectionRange(5, 5);
+    await act(async () => hook?.onCaretMove('forward'));
+    expect(textarea?.selectionStart).toBe('hey @PostgreSQL Backup'.length);
+
+    // A new @ elsewhere still opens.
+    await type('hey @PostgreSQL Backup @S');
+    expect(hook?.isOpen).toBe(true);
+  });
+
+  it('drops a picked item when its @Title leaves the text', async () => {
     await type('@Sl');
     await act(async () => {
       vi.advanceTimersByTime(200);
@@ -141,19 +167,64 @@ describe('useMentions', () => {
 
     await type('@Sla ');
     expect(hook?.picked).toHaveLength(0);
+  });
 
-    await type('@Sl');
+  it('Backspace at the end of a mention removes the whole @Title', async () => {
+    await type('hey @Po');
     await act(async () => {
       vi.advanceTimersByTime(200);
     });
     await act(async () => {
-      hook?.pick(items[0]!);
+      hook?.onKeyDown({ key: 'Enter', preventDefault: vi.fn() });
     });
+    await type('hey @PostgreSQL Backup ');
+    // Caret right after the token (before the space the pick added).
+    textarea?.setSelectionRange(22, 22);
+    const preventDefault = vi.fn();
     await act(async () => {
-      hook?.remove(items[0]!);
+      hook?.onKeyDown({ key: 'Backspace', preventDefault });
     });
+    expect(preventDefault).toHaveBeenCalled();
+    expect(textarea?.value).toBe('hey ');
     expect(hook?.picked).toHaveLength(0);
-    expect(textarea?.value).toBe('');
+  });
+
+  it('groups results by type, previews three per group, and expands on request', async () => {
+    const many = Array.from({ length: 5 }, (_, i) => ({
+      type: 'customer',
+      id: `c${i}`,
+      title: `Customer ${i}`,
+    }));
+    search.mockImplementationOnce(async () => [
+      ...many,
+      { type: 'payment', id: 'p1', title: 'Payment 1' },
+    ]);
+    await type('@');
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(hook?.groups.map((g) => [g.type, g.items.length, g.hidden])).toEqual(
+      [
+        ['customer', 3, 2],
+        ['payment', 1, 0],
+      ],
+    );
+    // ↑/↓ walk the rows on screen: three customers, then the payment.
+    expect(hook?.visible.map((m) => m.id)).toEqual(['c0', 'c1', 'c2', 'p1']);
+    await act(async () => {
+      hook?.onKeyDown({ key: 'ArrowUp', preventDefault: () => {} });
+    });
+    expect(hook?.highlighted).toBe(3);
+
+    await act(async () => hook?.expandGroup('customer'));
+    expect(hook?.visible.map((m) => m.id)).toEqual([
+      'c0',
+      'c1',
+      'c2',
+      'c3',
+      'c4',
+      'p1',
+    ]);
   });
 
   it('Escape closes the picker and a space closes it too', async () => {

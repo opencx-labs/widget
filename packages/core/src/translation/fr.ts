@@ -48,7 +48,6 @@ export const FrenchLanguage: TranslationInterface = {
   stop_response: 'Arrêter la réponse',
   copy_reply: 'Copier la réponse',
   mentions_empty: 'Aucun résultat',
-  mention_remove: 'Retirer la mention de {label}',
   copied: 'Copié',
   send_message: 'Envoyer le message',
   upload_failed: 'Échec du téléversement : {error}',
@@ -64,6 +63,7 @@ export const FrenchLanguage: TranslationInterface = {
   json_see_more: 'Voir {count} de plus',
   queued_label: '{count} En attente',
   remove_queued_message: 'Retirer le message de la file d’attente',
+  send_queued_now: 'Envoyer les messages en attente maintenant',
   turn_failed_message:
     'Un problème est survenu et la réponse n’est pas arrivée.',
   turn_failed_retry: 'Réessayer',

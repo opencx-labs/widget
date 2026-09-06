@@ -1,6 +1,7 @@
 import { type SendMessageDto, log } from '@opencx/widget-core';
 import {
   useAgentChatUi,
+  useConfig,
   useDictation,
   useIsAwaitingBotReply,
   useMessages,
@@ -49,7 +50,7 @@ import {
 import { QueuedSendsPill } from './agent/QueuedSendsPill';
 import { DictationMicButton } from './DictationMicButton';
 import { MentionPicker } from './MentionPicker';
-import { MentionPill } from './MentionPill';
+import { MentionText } from './MentionText';
 import { useMentions } from './useMentions';
 import { usePageMarkComposer } from './usePageMarkComposer';
 import { useSentTextRecall } from './useSentTextRecall';
@@ -59,6 +60,13 @@ import { useSentTextRecall } from './useSentTextRecall';
  * Exported so companion's quick-ask state renders the exact same composer
  * (not a bespoke bar), inheriting every customization automatically.
  */
+/**
+ * The textarea's box, shared with the mirror that highlights mentions under
+ * it: both must wrap the same text at the same places, so width, padding
+ * and the growth limit are declared once.
+ */
+const TEXTAREA_BOX_CLASS = 'max-h-16 [field-sizing:content] w-full px-2';
+
 export function ChatInput({
   trailingActions,
   disableTooltips,
@@ -92,6 +100,8 @@ export function ChatInput({
 } = {}) {
   const { isSmallScreen } = useIsSmallScreen();
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const composerRootRef = useRef<HTMLDivElement>(null);
+  const mirrorRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(true);
   const { sendMessage, rememberSentText, getSentTextHistory } = useMessages();
   const { widgetCtx, componentStore } = useWidget();
@@ -103,6 +113,7 @@ export function ChatInput({
   const { isStreaming, stop, queuedUserMessages, pendingClarification } =
     useAgentChatUi();
   const { sessionState } = useSessions();
+  const { mentions: mentionsConfig } = useConfig();
   const { t } = useTranslation();
   const [inputText, setInputText] = useState('');
   // The host page's entity ("this" to the agent). Dismissing the pill drops
@@ -114,6 +125,7 @@ export function ChatInput({
     setText: setInputText,
     inputRef,
   });
+  const hasMentionsInDraft = mentions.picked.length > 0;
   const [pageEntityDismissed, setPageEntityDismissed] = useState(false);
   const [fileSelectionError, setFileSelectionError] = useState<string | null>(
     null,
@@ -191,9 +203,7 @@ export function ChatInput({
   // Something is riding along with the next message — the page the visitor is
   // on, or regions they drew on it. Drives the fused context tray below.
   const hasAttachedContext =
-    marks.length > 0 ||
-    (pageEntity !== null && !pageEntityDismissed) ||
-    mentions.picked.length > 0;
+    marks.length > 0 || (pageEntity !== null && !pageEntityDismissed);
 
   const cannotSend =
     !inputText.trim() && successFiles.length === 0 && marks.length === 0;
@@ -362,16 +372,22 @@ export function ChatInput({
     <div
       {...dc('chat/input_box/root')}
       className="p-2 relative space-y-1"
-      {...dropzone__getRootProps()}
+      {...dropzone__getRootProps({ ref: composerRootRef })}
     >
       <input {...dropzone__getInputProps()} />
       {mentions.isOpen && (
         <MentionPicker
-          results={mentions.results}
+          anchorRef={composerRootRef}
+          inputRef={inputRef}
+          anchorIndex={mentions.anchorIndex}
+          preview={mentionsConfig?.preview !== false}
+          groups={mentions.groups}
+          visible={mentions.visible}
           searching={mentions.searching}
           highlighted={mentions.highlighted}
           onHighlight={mentions.setHighlighted}
           onPick={mentions.pick}
+          onExpand={mentions.expandGroup}
         />
       )}
       {/* Mark-mode visuals (hint bar + hover frame + region editor) —
@@ -474,14 +490,6 @@ export function ChatInput({
                       <PageMarkPill mark={mark} onRemove={() => detach(mark)} />
                     </MotionDiv>
                   ))}
-                  {mentions.picked.map((item) => (
-                    <MotionDiv key={`mention-${item.type}:${item.id}`} snapExit>
-                      <MentionPill
-                        item={item}
-                        onRemove={() => mentions.remove(item)}
-                      />
-                    </MotionDiv>
-                  ))}
                 </AnimatePresence>
               </div>
             </MotionDiv__VerticalReveal>
@@ -530,58 +538,93 @@ export function ChatInput({
                 </AnimatePresence>
               </div>
             )}
-            <textarea
-              {...dc('chat/input_box/textarea')}
-              onPaste={handlePaste}
-              ref={inputRef}
-              id="chat-input"
-              value={inputText}
-              // Thw `rows` attribute will take effect in browsers that do not support [field-sizing:content;] (Firefox and Safari as of now)
-              rows={3}
-              className={cn(
-                /** Match the border radius of the container */
-                // INPUT_CONTAINER_B_RADIUS,
-                'max-h-16 [field-sizing:content]',
-                'w-full resize-none px-2',
-                allFiles.length === 0 && 'pt-1',
-                'bg-transparent outline-none',
-                'placeholder:text-muted-foreground',
-                // 16px on mobiles prevents auto-zoom on the input when focused
-                isSmallScreen ? 'text-[16px]' : 'text-sm',
+            {/* Picked mentions are highlighted IN the text: a mirror of the
+                textarea's content sits under it, in the same box, with the
+                `@Title` tokens tinted, and the textarea paints only its caret
+                over that while a mention is in the draft. */}
+            <div className="relative">
+              {hasMentionsInDraft && (
+                <div
+                  ref={mirrorRef}
+                  aria-hidden
+                  className={cn(
+                    TEXTAREA_BOX_CLASS,
+                    'pointer-events-none absolute inset-0 overflow-hidden',
+                    'whitespace-pre-wrap break-words text-foreground',
+                    allFiles.length === 0 && 'pt-1',
+                    isSmallScreen ? 'text-[16px]' : 'text-sm',
+                  )}
+                >
+                  <MentionText
+                    text={inputText}
+                    mentions={mentions.picked}
+                    tokenClassName="bg-primary/10 text-primary"
+                  />
+                </div>
               )}
-              onChange={(e) => {
-                recall.onEdit();
-                setInputText(e.target.value);
-              }}
-              onClick={mentions.onCaretMove}
-              onKeyUp={(event) => {
-                if (event.key.startsWith('Arrow')) mentions.onCaretMove();
-              }}
-              onKeyDown={(event) => {
-                if (event.nativeEvent.isComposing) return;
-                // An open mention picker owns ↑/↓/Enter/Tab/Escape.
-                if (mentions.onKeyDown(event)) return;
-                // Mod+Enter sends too — muscle memory from every other
-                // composer; plain Shift+Enter stays a newline.
-                if (
-                  matchesBinding(event, WIDGET_KEYBINDINGS.send) ||
-                  matchesBinding(event, WIDGET_KEYBINDINGS['send-alt'])
-                ) {
-                  event.preventDefault();
-                  if (flushQueueOnEnter) stop();
-                  else handleSubmit();
-                  return;
-                }
-                // Mark-mode's own Esc listener lives on the HOST document;
-                // keystrokes inside the chat iframe never reach it.
-                if (event.key === 'Escape' && marking.isActive) {
-                  marking.disarm();
-                  return;
-                }
-                recall.onKeyDown(event);
-              }}
-              placeholder={placeholder ?? t('write_a_message_placeholder')}
-            />
+              <textarea
+                {...dc('chat/input_box/textarea')}
+                onPaste={handlePaste}
+                ref={inputRef}
+                id="chat-input"
+                value={inputText}
+                // Thw `rows` attribute will take effect in browsers that do not support [field-sizing:content;] (Firefox and Safari as of now)
+                rows={3}
+                className={cn(
+                  /** Match the border radius of the container */
+                  // INPUT_CONTAINER_B_RADIUS,
+                  TEXTAREA_BOX_CLASS,
+                  'relative resize-none',
+                  allFiles.length === 0 && 'pt-1',
+                  'bg-transparent outline-none',
+                  'placeholder:text-muted-foreground',
+                  hasMentionsInDraft && 'text-transparent caret-foreground',
+                  // 16px on mobiles prevents auto-zoom on the input when focused
+                  isSmallScreen ? 'text-[16px]' : 'text-sm',
+                )}
+                onScroll={(e) => {
+                  if (mirrorRef.current)
+                    mirrorRef.current.scrollTop = e.currentTarget.scrollTop;
+                }}
+                onChange={(e) => {
+                  recall.onEdit();
+                  setInputText(e.target.value);
+                }}
+                onClick={() => mentions.onCaretMove('nearest')}
+                onKeyUp={(event) => {
+                  if (event.key === 'ArrowRight' || event.key === 'ArrowDown')
+                    mentions.onCaretMove('forward');
+                  else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp')
+                    mentions.onCaretMove('backward');
+                  else if (event.key === 'Home' || event.key === 'End')
+                    mentions.onCaretMove('nearest');
+                }}
+                onKeyDown={(event) => {
+                  if (event.nativeEvent.isComposing) return;
+                  // An open mention picker owns ↑/↓/Enter/Tab/Escape.
+                  if (mentions.onKeyDown(event)) return;
+                  // Mod+Enter sends too — muscle memory from every other
+                  // composer; plain Shift+Enter stays a newline.
+                  if (
+                    matchesBinding(event, WIDGET_KEYBINDINGS.send) ||
+                    matchesBinding(event, WIDGET_KEYBINDINGS['send-alt'])
+                  ) {
+                    event.preventDefault();
+                    if (flushQueueOnEnter) stop();
+                    else handleSubmit();
+                    return;
+                  }
+                  // Mark-mode's own Esc listener lives on the HOST document;
+                  // keystrokes inside the chat iframe never reach it.
+                  if (event.key === 'Escape' && marking.isActive) {
+                    marking.disarm();
+                    return;
+                  }
+                  recall.onKeyDown(event);
+                }}
+                placeholder={placeholder ?? t('write_a_message_placeholder')}
+              />
+            </div>
           </div>
           <div className="gap-2 flex justify-between">
             {/* Left group: composer inputs (attach + page marks). Hidden

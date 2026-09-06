@@ -42,6 +42,7 @@ export type {
   WidgetUiAction,
   WidgetContext,
   WidgetMention,
+  WidgetMentionsOptions,
   WidgetPageContext,
 } from './types/widget-config';
 export type { ExternalStorage } from './types/external-storage';

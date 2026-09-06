@@ -2,11 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useSettings } from '../lib/queries.ts';
 import { getWidgetConfig } from '../lib/widgetConfig.ts';
 import { currentEntity, searchMentions } from '../lib/widgetMentions.ts';
-import {
-  WIDGET_CSS_OVERRIDES,
-  WIDGET_INK,
-  WIDGET_PANEL_RADIUS,
-} from '../lib/widgetTheme.ts';
+import { WIDGET_CSS_OVERRIDES, WIDGET_INK } from '../lib/widgetTheme.ts';
 
 // Loads the OpenCX Companion widget from the LOCAL build (public/opencx-widget/script.js,
 // copied from packages/embed by scripts/sync-widget.mjs — no unpkg), then calls
@@ -80,10 +76,10 @@ export function CompanionWidget({
                 // resting bar itself is the background token either way.
                 pillLabel: 'Ask Payla…',
                 placeholder: 'Ask Payla…',
-                // Linear keeps its tools on the resting bar too; the stock
-                // default ('history-only') hides attach + the element picker
-                // until the panel expands.
-                quickAskTools: 'all',
+                // quickAskTools stays at its default ('history-only'): the
+                // resting bar shows history + send, and attach / dictation /
+                // the element picker appear once the panel expands — the
+                // same resting look as the OpenCX dashboard's own companion.
                 // The demo shows off the app-frame: the page shrinks beside
                 // the panel instead of sitting under it. The PACKAGE default
                 // stays 'floating' on purpose — docking restyles the host's
@@ -94,7 +90,6 @@ export function CompanionWidget({
                   maxWidth: 400,
                   minHeight: 440,
                   maxHeight: 560,
-                  borderRadius: WIDGET_PANEL_RADIUS,
                 },
               },
             }
@@ -109,6 +104,9 @@ export function CompanionWidget({
               // The companion has the copy button by default; keep it visible
               // rather than hover-only so the demo shows it.
               messageActions: { copy: true, display: 'always' },
+              // Demo-only debug surface, as in the OpenCX dashboard: each
+              // tool step expands to its arguments and result.
+              showStepToolIO: true,
             }
           : {}),
         // Function form: resolved fresh at every send, so the SPA's current

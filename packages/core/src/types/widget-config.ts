@@ -320,19 +320,51 @@ export type WidgetContext = WidgetPageContext & Record<string, unknown>;
  * entity pill) and "these" (mentions).
  */
 export type WidgetMention = {
-  /** Host vocabulary, e.g. `workflow`, `integration`, `order`. */
+  /** Host vocabulary, e.g. `workflow`, `integration`, `order`; the menu groups by it. */
   type: string;
   id: string;
-  /** What the picker and the chip show, and what the agent calls it. */
+  /** What the menu shows, what `@Title` reads in the text, what the agent calls it. */
   title: string;
-  /** One line under the title in the picker. */
+  /** Shown in the preview card beside the menu (see `mentions.preview`). */
   description?: string;
-  /** Icon URL shown in the picker and on the chip. Wins over `iconName`. */
+  /** Icon URL shown in the menu. Wins over `iconName`. */
   icon?: string;
   /** A built-in icon instead of a URL. See {@link IconNameU}. */
   iconName?: IconNameU;
   /** Anything the agent needs to act on it that is not in `id`. */
   meta?: Record<string, unknown>;
+};
+
+/** Where the @-mention menu gets its items, and how it presents them. */
+export type WidgetMentionsOptions = (
+  | {
+      /**
+       * A fixed list the widget filters itself as the visitor types
+       * (case-insensitive match on title, then description). Right for a
+       * few dozen items known up front.
+       */
+      items: WidgetMention[];
+      search?: never;
+    }
+  | {
+      /**
+       * Called as the visitor types after `@` (debounced), with the text so
+       * far — empty right after the `@` — and must return the items to
+       * offer, best first. Right for anything you look up on a server. Each
+       * type shows three at first with a "See N more" row.
+       */
+      search: (query: string) => WidgetMention[] | Promise<WidgetMention[]>;
+      items?: never;
+    }
+) & {
+  /**
+   * Shows the highlighted item's description in a card beside the menu, when
+   * the widget is wide enough to fit one (the sidebar and fullscreen
+   * layouts; the compact panel has no room). Off, the description is not
+   * shown anywhere.
+   * @default true
+   */
+  preview?: boolean;
 };
 
 export interface WidgetConfig {
@@ -760,32 +792,14 @@ export interface WidgetConfig {
 
   /**
    * Let the visitor @-mention things on your site in a message. Typing `@`
-   * in the composer opens a picker; a picked item shows as `@Title` in the
-   * text and as a removable chip beside the composer, and rides the send as
+   * in the composer opens a menu beside it, grouped by `type`; a picked item
+   * lives in the text as a highlighted `@Title` (one unit: the caret skips
+   * it, Backspace removes it whole) and rides the send as
    * `clientContext.mentions` (type, id, title, meta) so the agent can resolve
-   * it. Give the picker either a fixed list or a search. Only available when
+   * it. Give the menu either a fixed list or a search. Only available when
    * your organization enabled "sees the page".
    */
-  mentions?:
-    | {
-        /**
-         * A fixed list the widget filters itself as the visitor types
-         * (case-insensitive match on title, then description). Right for a
-         * few dozen items known up front.
-         */
-        items: WidgetMention[];
-        search?: never;
-      }
-    | {
-        /**
-         * Called as the visitor types after `@` (debounced), with the text so
-         * far — empty right after the `@` — and must return the items to
-         * offer, best first. Right for anything you look up on a server.
-         * Keep it short; the picker shows the first eight.
-         */
-        search: (query: string) => WidgetMention[] | Promise<WidgetMention[]>;
-        items?: never;
-      };
+  mentions?: WidgetMentionsOptions;
 
   /**
    * Receives actions the visitor takes on agent-rendered inline UI that the

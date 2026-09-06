@@ -48,7 +48,6 @@ export const ItalianLanguage: TranslationInterface = {
   stop_response: 'Interrompi risposta',
   copy_reply: 'Copia risposta',
   mentions_empty: 'Nessun risultato',
-  mention_remove: 'Rimuovi menzione di {label}',
   copied: 'Copiato',
   send_message: 'Invia messaggio',
   upload_failed: 'Caricamento non riuscito: {error}',
@@ -64,6 +63,7 @@ export const ItalianLanguage: TranslationInterface = {
   json_see_more: 'Mostra altri {count}',
   queued_label: '{count} In coda',
   remove_queued_message: 'Rimuovi messaggio dalla coda',
+  send_queued_now: 'Invia ora i messaggi in coda',
   turn_failed_message:
     'Si è verificato un problema e la risposta non è arrivata.',
   turn_failed_retry: 'Riprova',

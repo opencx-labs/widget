@@ -10,11 +10,8 @@
 // (no brand blue inside the panel), and a composer that reads as a raised
 // card instead of melting into the transcript.
 
-/** Near-black ink: send button, armed page-mark button, focus rings, pill. */
+/** Near-black ink: send button, armed page-mark button, pill. */
 export const WIDGET_INK = '#16161a';
-
-/** Panel corner radius — Linear's is ~12px, not the stock 20px. */
-export const WIDGET_PANEL_RADIUS = 12;
 
 export const WIDGET_CSS_OVERRIDES = `
 /* ---------------------------------------------------------------- tokens
@@ -67,31 +64,10 @@ export const WIDGET_CSS_OVERRIDES = `
 }
 
 /* -------------------------------------------------------------- composer
-   The panel's one raised surface. The stock composer paints itself in the
-   same background token as the transcript behind it, so with no edge it read
-   as part of the conversation rather than as the thing you type into: white
-   card, firmer-than-hairline border, a 1px lift, and a real focus state.
-   Radius is scoped to the expanded panel — the resting quick-ask bar takes
-   its radius from the shell (--opencx-companion-input-radius) and has to keep
-   matching it or the corners go two-tone. */
-[data-companion-root] [data-component="chat/input_box/root"] {
-  padding: 8px;
-}
-[data-companion-root] [data-component="chat/input_box/inner_root"],
-[data-companion-input] [data-component="chat/input_box/inner_root"] {
-  background: #fff;
-  border-color: hsl(0 0% 84%);
-  box-shadow: 0 1px 2px rgba(16, 17, 20, 0.05);
-}
-[data-companion-root] [data-component="chat/input_box/inner_root"] {
-  border-radius: 10px;
-  padding: 6px;
-}
-[data-companion-root] [data-component="chat/input_box/inner_root"]:focus-within,
-[data-companion-input] [data-component="chat/input_box/inner_root"]:focus-within {
-  border-color: hsl(0 0% 68%);
-  box-shadow: 0 0 0 3px rgba(16, 17, 20, 0.06);
-}
+   Left to the stock sheet on purpose. The composer is already a raised
+   card with corners concentric to the shell and no focus ring on click —
+   the same look as the OpenCX dashboard's companion. Only the type size is
+   pulled down to match the transcript. */
 [data-companion-root] [data-component="chat/input_box/textarea"],
 [data-companion-input] [data-component="chat/input_box/textarea"] {
   font-size: 13px;

@@ -57,7 +57,6 @@ export type OpenCxComponentNameU =
   | 'chat/user_msg/root'
   | 'chat/user_msg/msg'
   | 'chat/user_msg/marked_elements'
-  | 'chat/user_msg/mentions'
   /* --------------------- Chat Input --------------------- */
   | 'chat/input_box/root'
   | 'chat/input_box/inner_root'
@@ -73,15 +72,21 @@ export type OpenCxComponentNameU =
   | 'chat/input_box/page_mark_pill'
   | 'chat/input_box/page_marks_toggle'
   | 'chat/input_box/page_context_pill'
-  | 'chat/input_box/mention_pill'
+  /* @-mentions: the menu above the composer, and the highlighted `@Title` in
+     the composer's text and the sent bubble. */
+  | 'chat/mention'
   | 'chat/input_box/mention_picker'
+  | 'chat/input_box/mention_picker/group'
   | 'chat/input_box/mention_picker/option'
+  | 'chat/input_box/mention_picker/more'
+  | 'chat/input_box/mention_picker/detail'
   /* Multi-send queue pill, docked above the composer (streaming engine). */
   | 'chat/queued_sends/root'
   | 'chat/queued_sends/header'
   | 'chat/queued_sends/list'
   | 'chat/queued_sends/item'
   | 'chat/queued_sends/remove'
+  | 'chat/queued_sends/send_now'
   /* --------------------- Chat Utils --------------------- */
   | 'chat/bot_loading/root'
   | 'chat/bot_loading/bouncing_dots_container'

@@ -47,7 +47,6 @@ export const GermanLanguage: TranslationInterface = {
   stop_response: 'Antwort stoppen',
   copy_reply: 'Antwort kopieren',
   mentions_empty: 'Keine Treffer',
-  mention_remove: 'Erwähnung von {label} entfernen',
   copied: 'Kopiert',
   send_message: 'Nachricht senden',
   upload_failed: 'Upload fehlgeschlagen: {error}',
@@ -63,6 +62,7 @@ export const GermanLanguage: TranslationInterface = {
   json_see_more: '{count} weitere anzeigen',
   queued_label: '{count} In Warteschlange',
   remove_queued_message: 'Nachricht aus der Warteschlange entfernen',
+  send_queued_now: 'Wartende Nachrichten jetzt senden',
   turn_failed_message:
     'Etwas ist schiefgelaufen und die Antwort ist nicht angekommen.',
   turn_failed_retry: 'Erneut versuchen',

@@ -14,11 +14,15 @@ import { dc } from '../../../utils/data-component';
  * stopped), at which point they move into the message list right above the
  * response they're about to get. Each row can be removed before it's sent.
  *
+ * A click on the header's ↵ or on a queued row sends the queue now: it
+ * stops the live turn, and the queue drains into the next one — the same
+ * thing Enter on an empty composer does.
+ *
  * Renders nothing outside an agent surface (bot-chat embeds: the default context
  * has no queued messages) or when the queue is empty.
  */
 export function QueuedSendsPill() {
-  const { queuedUserMessages, removeQueued } = useAgentChatUi();
+  const { queuedUserMessages, removeQueued, stop } = useAgentChatUi();
   const {
     messagesState: { messages },
   } = useMessages();
@@ -47,7 +51,16 @@ export function QueuedSendsPill() {
               <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                 {t('queued_label', { count: pending.length })}
               </span>
-              <CornerDownLeftIcon className="size-3 text-muted-foreground/60" />
+              <button
+                type="button"
+                {...dc('chat/queued_sends/send_now')}
+                aria-label={t('send_queued_now')}
+                title={t('send_queued_now')}
+                onClick={stop}
+                className="rounded-md p-0.5 text-muted-foreground/60 transition-colors hover:text-foreground hover:bg-muted"
+              >
+                <CornerDownLeftIcon className="size-3" />
+              </button>
             </div>
             <ul
               {...dc('chat/queued_sends/list')}
@@ -59,9 +72,14 @@ export function QueuedSendsPill() {
                   {...dc('chat/queued_sends/item')}
                   className="group flex items-center gap-2 px-3 py-1"
                 >
-                  <span className="min-w-0 flex-1 truncate text-xs text-foreground/80">
+                  <button
+                    type="button"
+                    title={t('send_queued_now')}
+                    onClick={stop}
+                    className="min-w-0 flex-1 truncate text-start text-xs text-foreground/80 hover:text-foreground"
+                  >
                     {message.content}
-                  </span>
+                  </button>
                   <button
                     type="button"
                     {...dc('chat/queued_sends/remove')}
