@@ -83,7 +83,7 @@ initOpenScript({
   router: { restoreLastSession: true },
   // A Copy button under AI replies. Default: on in the companion, off in the
   // popover, so an upgraded v4 embed looks the same until it asks.
-  messageActions: { copy: true },
+  messageActions: { copy: true, display: 'always' }, // display defaults to 'hover'
 });
 ```
 

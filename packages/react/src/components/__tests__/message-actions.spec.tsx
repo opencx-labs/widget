@@ -5,7 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
-let messageActions: { copy?: boolean } | undefined;
+let messageActions:
+  | { copy?: boolean; display?: 'hover' | 'always' }
+  | undefined;
 let displayMode: 'popover' | 'companion' = 'popover';
 
 vi.mock('@opencx/widget-react-headless', () => ({
@@ -117,6 +119,20 @@ describe('MessageActions', () => {
 
     await act(async () => vi.advanceTimersByTime(2001));
     expect(button()?.getAttribute('aria-label')).toBe('copy_reply');
+  });
+
+  it('hides until hover by default and stays visible with display: always', () => {
+    messageActions = undefined;
+    act(() => root.render(<MessageActions messages={[ai('Hello')]} />));
+    const row = () =>
+      container.querySelector(
+        '[data-component="chat/agent_msg_group/actions"]',
+      );
+    expect(row()?.className).toContain('opacity-0');
+
+    messageActions = { display: 'always' };
+    act(() => root.render(<MessageActions messages={[ai('Hello again')]} />));
+    expect(row()?.className).not.toContain('opacity-0');
   });
 
   it('renders nothing for an empty reply', () => {

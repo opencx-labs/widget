@@ -994,12 +994,20 @@ export interface WidgetConfig {
    */
   messageActions?: {
     /**
-     * A "Copy" button that copies the reply as text. Revealed on hover
-     * (always visible on touch screens).
+     * A "Copy" button that copies the reply as text.
      * @default true in the `companion` display mode, false in the `popover`
      * (so a v4 embed looks the same after upgrading)
      */
     copy?: boolean;
+
+    /**
+     * When the actions show under a reply.
+     * - `hover` – revealed while the reply is hovered or focused; always
+     *   visible on touch screens, which have no hover.
+     * - `always` – visible under every reply.
+     * @default 'hover'
+     */
+    display?: 'hover' | 'always';
   };
 
   /**

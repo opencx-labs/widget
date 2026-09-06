@@ -31,9 +31,10 @@ export function useShowsCopyAction(): boolean {
 }
 
 /**
- * The quiet action row under an AI reply group. Hidden until the group is
- * hovered on pointer devices, always visible on touch screens (there is no
- * hover to reveal it), and skipped when the clipboard is unavailable — an
+ * The quiet action row under an AI reply group. By default hidden until the
+ * group is hovered on pointer devices and always visible on touch screens
+ * (there is no hover to reveal it); `messageActions.display: 'always'` keeps
+ * it visible everywhere. Skipped when the clipboard is unavailable — an
  * insecure-origin host page — rather than showing a button that fails.
  */
 export function MessageActions({
@@ -42,6 +43,8 @@ export function MessageActions({
   messages: readonly WidgetAiMessage[];
 }) {
   const { t } = useTranslation();
+  const { messageActions } = useConfig();
+  const alwaysVisible = messageActions?.display === 'always';
   const [copied, setCopied] = useState(false);
   const resetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
@@ -75,10 +78,13 @@ export function MessageActions({
     <div
       {...dc('chat/agent_msg_group/actions')}
       className={cn(
-        'flex items-center gap-1 -mt-0.5',
-        'opacity-0 transition-opacity duration-150',
-        'group-hover:opacity-100 focus-within:opacity-100',
-        '[@media(hover:none)]:opacity-100',
+        'flex items-center gap-1 -mt-0.5 transition-opacity duration-150',
+        alwaysVisible
+          ? 'opacity-100'
+          : cn(
+              'opacity-0 group-hover:opacity-100 focus-within:opacity-100',
+              '[@media(hover:none)]:opacity-100',
+            ),
       )}
     >
       <Tooltippy content={label} side="bottom" align="start">
