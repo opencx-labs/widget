@@ -44,11 +44,9 @@ describe('StepsGroup reasoning markdown', () => {
   });
 
   function render(steps: StreamingStep[]) {
-    act(() => root.render(<StepsGroup steps={steps} active />));
-    // A finished run auto-collapses; open it so the rows are in the DOM.
-    if (steps.every((step) => step.done)) {
-      act(() => container.querySelector('button')?.click());
-    }
+    // A settled turn mounts collapsed; open it so the rows are in the DOM.
+    act(() => root.render(<StepsGroup steps={steps} active={false} />));
+    act(() => container.querySelector('button')?.click());
   }
 
   const thought: StreamingStep = {
@@ -64,7 +62,7 @@ describe('StepsGroup reasoning markdown', () => {
   });
 
   it('flattens markdown in the collapsed breadcrumb', () => {
-    act(() => root.render(<StepsGroup steps={[thought]} active />));
+    act(() => root.render(<StepsGroup steps={[thought]} active={false} />));
     const breadcrumb = container.querySelector('button')?.textContent ?? '';
     expect(breadcrumb).toContain('Clarifying profile check');
     expect(breadcrumb).not.toContain('*');

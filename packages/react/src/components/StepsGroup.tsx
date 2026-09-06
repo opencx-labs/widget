@@ -351,15 +351,18 @@ export function StepsGroup({
     ? turnSteps
     : turnSteps.map((step) => (step.done ? step : { ...step, done: true }));
   const isStreaming = steps.some((step) => !step.done);
-  const [isOpen, setIsOpen] = useState(isStreaming);
-  const wasStreamingRef = useRef(isStreaming);
-
-  // Auto-collapse when the run finishes.
+  // Open while the TURN is live, collapsed once it ends. Keyed on the turn,
+  // not on the steps: between two tool calls every step is briefly done while
+  // the model decides the next one, and collapsing there made the trace
+  // fold and unfold on every step. A visitor's own toggle wins until the
+  // turn ends.
+  const [isOpen, setIsOpen] = useState(active);
+  const wasActiveRef = useRef(active);
   useEffect(() => {
-    if (wasStreamingRef.current && !isStreaming) setIsOpen(false);
-    else if (!wasStreamingRef.current && isStreaming) setIsOpen(true);
-    wasStreamingRef.current = isStreaming;
-  }, [isStreaming]);
+    if (wasActiveRef.current && !active) setIsOpen(false);
+    else if (!wasActiveRef.current && active) setIsOpen(true);
+    wasActiveRef.current = active;
+  }, [active]);
 
   if (steps.length === 0) return null;
 

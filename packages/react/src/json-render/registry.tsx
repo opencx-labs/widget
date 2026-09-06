@@ -46,12 +46,23 @@ import {
 
 const GAP_CLASS = { sm: 'gap-1.5', md: 'gap-3', lg: 'gap-4' } as const;
 // The prompt's contract is "Grid columns max 3" (compact chat widget).
-/** `columns` is schema-clamped to 1–3, so the lookup is total. */
-const COL_CLASS: Record<1 | 2 | 3, string> = {
-  1: 'grid-cols-1',
-  2: 'grid-cols-2',
-  3: 'grid-cols-3',
-};
+/**
+ * Narrowest a grid cell may get before the row wraps. A metric card needs
+ * about this much for its label, number and caption to stay readable.
+ */
+const GRID_MIN_COLUMN = '10rem';
+
+/**
+ * `columns` is a CEILING, not a promise: the model asks for up to three
+ * side-by-side cells, the container decides how many actually fit. Each cell
+ * is at least a third/half of the width (so never more columns than asked)
+ * and at least `GRID_MIN_COLUMN` (so a 400px compact panel wraps a
+ * three-up into two and one). Column count is schema-clamped to 1–3.
+ */
+function gridColumns(columns: 1 | 2 | 3): string {
+  if (columns === 1) return 'minmax(0, 1fr)';
+  return `repeat(auto-fit, minmax(max(${GRID_MIN_COLUMN}, calc(100% / ${columns} - 1rem)), 1fr))`;
+}
 
 export const { registry } = defineRegistry(widgetCatalog, {
   components: {
@@ -111,11 +122,8 @@ export const { registry } = defineRegistry(widgetCatalog, {
       const p = parseProps(gridPropsSchema, props, {});
       return (
         <div
-          className={cn(
-            'grid',
-            COL_CLASS[p.columns ?? 1],
-            GAP_CLASS[p.gap ?? 'md'],
-          )}
+          className={cn('grid', GAP_CLASS[p.gap ?? 'md'])}
+          style={{ gridTemplateColumns: gridColumns(p.columns ?? 1) }}
         >
           {children}
         </div>

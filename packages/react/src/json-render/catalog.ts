@@ -47,7 +47,7 @@ export const widgetCatalog = defineCatalog(schema, {
       props: gridPropsSchema,
       slots: ['default'],
       description:
-        'Responsive column grid. Use columns=2/3 for side-by-side metrics or cards.',
+        'Column grid that wraps on narrow screens. columns=2 for side-by-side metrics or cards; columns=3 only for three short metrics — the chat panel is about 400px wide, so three wide cells wrap.',
     },
     Heading: {
       props: headingPropsSchema,

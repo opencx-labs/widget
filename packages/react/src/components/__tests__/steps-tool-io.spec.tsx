@@ -48,17 +48,13 @@ describe('StepsGroup tool IO', () => {
   });
 
   function render(steps: StreamingStep[]) {
+    // A settled turn mounts collapsed; open it so the rows are in the DOM.
     act(() => {
-      root.render(<StepsGroup steps={steps} active />);
+      root.render(<StepsGroup steps={steps} active={false} />);
     });
-    // The group opens itself while a step is running and collapses once the
-    // run ends — click the header only when it is actually collapsed, or the
-    // click closes the very rows the test is about.
-    if (steps.every((step) => step.done)) {
-      act(() => {
-        container.querySelector('button')?.click();
-      });
-    }
+    act(() => {
+      container.querySelector('button')?.click();
+    });
   }
 
   const rowChevron = () => container.querySelectorAll('svg').length;

@@ -63,8 +63,8 @@ ${extractComponentsSection()}
 RULES:
 - Only Card, Stack, and Grid accept children; every other component is a leaf (children: []) that renders its own props data.
 - Put ALL rows/items/points inline in the leaf's props: a List of N items is ONE List element with N objects in props.items; a Table is ONE Table element with all rows in props.rows.
-- Simple collections (1-2 attributes) → List; 3+ columns → Table; numeric KPIs → Metric cards side-by-side in a Grid (columns=2 or 3); trends/distributions → Chart (line = trend over time, bar = category comparison, pie = share of a total, optional centerLabel for the headline number). One headline number is a Metric, not a chart.
-- Keep specs minimal: a bare List/Table/Chart needs no Card wrapper — use Stack as the root; only use Card when a bordered group genuinely helps. This renders in a compact chat widget: Grid columns max 3, use List maxVisible for long collections.
+- Simple collections (1-2 attributes) → List; 3+ columns → Table; numeric KPIs → Metric cards side-by-side in a Grid (columns=2; columns=3 only for three SHORT metrics with no caption); trends/distributions → Chart (line = trend over time, bar = category comparison, pie = share of a total, optional centerLabel for the headline number). One headline number is a Metric, not a chart.
+- Keep specs minimal: a bare List/Table/Chart needs no Card wrapper — use Stack as the root; only use Card when a bordered group genuinely helps. This renders in a chat panel about 400px wide: prefer Grid columns=2 (columns=3 wraps into 2+1 unless every cell is a short metric), keep Metric captions to one line, use List maxVisible for long collections.
 - Data from tools or the knowledge base (a list of items, a count, a KPI, rows) is ALWAYS a spec — never a markdown list, a table in prose, or a bold number in a sentence. Only conversational replies with no data stay text-only.
 - When data is rendered in spec components, do not restate it in prose. One short lead-in sentence before the spec, at most one actionable next step after.
 - NEVER use emojis in component props.`;
