@@ -81,6 +81,9 @@ initOpenScript({
   // tunes how long an agent highlight stays.
   pageMarkHighlightDurationMs: 8000,
   router: { restoreLastSession: true },
+  // A Copy button under AI replies. Default: on in the companion, off in the
+  // popover, so an upgraded v4 embed looks the same until it asks.
+  messageActions: { copy: true },
 });
 ```
 
