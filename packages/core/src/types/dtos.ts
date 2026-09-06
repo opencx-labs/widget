@@ -21,3 +21,6 @@ export type ActionCallDto = NonNullable<
 >[number];
 
 export type ModeDto = Dto['WidgetConfigDto']['modes'][number];
+
+/** Every settled streamed turn of a session with its final UI parts. */
+export type AgentTurnMessagesDto = Dto['WidgetAgentTurnMessagesDto'];

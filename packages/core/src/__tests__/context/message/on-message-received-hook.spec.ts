@@ -110,7 +110,6 @@ const seedMessageStateAsAlreadyLoaded = (widgetCtx: WidgetCtx) => {
     id: genUuid(),
     type: 'USER',
     content: '__seed__',
-    deliveredAt: null,
     timestamp: new Date(0).toISOString(),
   };
   widgetCtx.messageCtx.state.setPartial({ messages: [seed] });
@@ -140,6 +139,7 @@ suite('hooks.onMessageReceived', () => {
               value: { content: 'hello from AI', error: false },
               mightSolveUserIssue: false,
               completelyAndFullyCoveredUserIssue: false,
+              assistMode: false,
             },
           },
         });
@@ -185,6 +185,7 @@ suite('hooks.onMessageReceived', () => {
               value: { content: 'reply', error: false },
               mightSolveUserIssue: false,
               completelyAndFullyCoveredUserIssue: false,
+              assistMode: false,
             },
           },
         });
@@ -238,6 +239,7 @@ suite('hooks.onMessageReceived', () => {
               value: { content: 'reply', error: false },
               mightSolveUserIssue: false,
               completelyAndFullyCoveredUserIssue: false,
+              assistMode: false,
             },
           },
         });
@@ -490,6 +492,7 @@ suite('hooks.onMessageReceived', () => {
             value: { content: 'shared reply', error: false },
             mightSolveUserIssue: false,
             completelyAndFullyCoveredUserIssue: false,
+            assistMode: false,
           },
         },
       });
@@ -568,7 +571,6 @@ suite('hooks.onMessageReceived', () => {
           id: genUuid(),
           type: 'USER',
           content: 'hi',
-          deliveredAt: null,
           timestamp: null,
         };
         widgetCtx.messageCtx.dispatchToOnMessageReceivedHook(userMessage);

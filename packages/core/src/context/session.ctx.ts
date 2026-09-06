@@ -6,6 +6,8 @@ import { Poller } from '../utils/Poller';
 import { PrimitiveState } from '../utils/PrimitiveState';
 import { runCatching } from '../utils/run-catching';
 import type { ContactCtx } from './contact.ctx';
+import type { StorageCtx } from './storage.ctx';
+import { log } from '../utils/log';
 
 type SessionState = {
   /**
@@ -32,8 +34,11 @@ export class SessionCtx {
   private config: WidgetConfig;
   private api: ApiCaller;
   private contactCtx: ContactCtx;
+  private storageCtx?: StorageCtx;
   private sessionsPollingIntervalSeconds: number;
   private sessionsRefresher = new Poller();
+  /** The session id currently written to storage (null = none written). */
+  private persistedSessionId: string | null = null;
 
   public sessionState = new PrimitiveState<SessionState>({
     session: null,
@@ -55,20 +60,66 @@ export class SessionCtx {
     config,
     api,
     contactCtx,
+    storageCtx,
     sessionsPollingIntervalSeconds,
   }: {
     config: WidgetConfig;
     api: ApiCaller;
     contactCtx: ContactCtx;
+    storageCtx?: StorageCtx;
     sessionsPollingIntervalSeconds: number;
   }) {
     this.config = config;
     this.api = api;
     this.contactCtx = contactCtx;
+    this.storageCtx = storageCtx;
     this.sessionsPollingIntervalSeconds = sessionsPollingIntervalSeconds;
 
     this.registerSessionsRefresherWrapper();
+    this.registerActiveSessionPersistence();
   }
+
+  /**
+   * Remember which conversation the visitor is in, so a page reload can put
+   * them back into it (`RouterCtx` does the restoring). Only OPEN sessions are
+   * remembered — a closed one would reopen as a dead transcript — and the
+   * pointer is dropped the moment the visitor leaves for a new chat.
+   *
+   * The boot value is deliberately NOT written: `subscribe` fires on changes
+   * only, and clearing on a null we never set would wipe the pointer the
+   * restore is about to read.
+   */
+  private registerActiveSessionPersistence = () => {
+    const storageCtx = this.storageCtx;
+    if (!storageCtx) return;
+    this.sessionState.subscribe(({ session }) => {
+      const openSessionId = session?.isOpened ? session.id : null;
+      if (openSessionId === this.persistedSessionId) return;
+      // Nothing to forget until something was remembered.
+      if (!openSessionId && this.persistedSessionId === null) return;
+      this.persistedSessionId = openSessionId;
+      const write = openSessionId
+        ? storageCtx.setActiveSessionId(openSessionId)
+        : storageCtx.clearActiveSessionId();
+      // Storage is an embedder-provided adapter; a broken one must never take
+      // the conversation down with it.
+      void write.catch((error: unknown) => {
+        log.warn('failed to persist the active session', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+    });
+  };
+
+  /** The conversation the visitor was last in, from a previous page load. */
+  getLastActiveSessionId = async (): Promise<string | null> => {
+    if (!this.storageCtx) return null;
+    try {
+      return await this.storageCtx.getActiveSessionId();
+    } catch {
+      return null;
+    }
+  };
 
   /** Clears the session and stops polling */
   reset = async () => {
@@ -123,27 +174,61 @@ export class SessionCtx {
     );
   };
 
-  createSession = async () => {
+  createSession = async (): Promise<SessionDto | null> => {
     this.sessionState.setPartial({ session: null, isCreatingSession: true });
+    try {
+      const first = await this.requestSession();
+      if (first.session) return first.session;
 
+      // Self-heal a stale contact token (401): drop it, mint a fresh contact,
+      // then retry exactly once.
+      if (
+        first.status === 401 &&
+        (await this.contactCtx.recoverFromStaleToken())
+      ) {
+        const retry = await this.requestSession();
+        if (retry.session) return retry.session;
+        log.error('failed to create session', retry.error);
+        return null;
+      }
+
+      log.error('failed to create session', first.error);
+      return null;
+    } catch (error) {
+      log.error('failed to create session', error);
+      return null;
+    } finally {
+      this.sessionState.setPartial({ isCreatingSession: false });
+    }
+  };
+
+  /** One create-session request; on success the session is stored and the hook fires. */
+  private requestSession = async (): Promise<{
+    session: SessionDto | null;
+    status: number | undefined;
+    error: unknown;
+  }> => {
     const externalId = this.contactCtx.state.get().contact?.externalId;
-
     const customData: CreateSessionDto['customData'] = {
       ...this.getParsedCustomData(),
       ...(externalId ? { external_id: externalId } : {}),
     };
-    const { data: session, error } = await this.api.createSession({
+    const {
+      data: session,
+      error,
+      response,
+    } = await this.api.createSession({
       customData: Object.keys(customData).length > 0 ? customData : undefined,
     });
-    if (session) {
-      this.sessionState.setPartial({ session, isCreatingSession: false });
-      this.config.hooks?.onSessionCreated?.({ session });
-      return session;
-    }
+    if (!session) return { session: null, status: response?.status, error };
 
-    this.sessionState.setPartial({ isCreatingSession: false });
-    console.error('Failed to create session:', error);
-    return null;
+    this.sessionState.setPartial({ session });
+    try {
+      this.config.hooks?.onSessionCreated?.({ session });
+    } catch (hookError) {
+      log.error('onSessionCreated hook failed', hookError);
+    }
+    return { session, status: response.status, error: undefined };
   };
 
   loadMoreSessions = async () => {
@@ -223,7 +308,7 @@ export class SessionCtx {
     const session_id = this.sessionState.get().session?.id;
     if (!session_id) return;
 
-    const { data, error } = await this.api.createStateCheckpoint({
+    const { data } = await this.api.createStateCheckpoint({
       session_id,
       payload,
     });

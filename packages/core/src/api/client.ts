@@ -1,4 +1,5 @@
 import createClient, { type Middleware } from 'openapi-fetch';
+import { log } from '../utils/log';
 import type { paths } from './schema';
 import type { components } from './schema';
 
@@ -10,7 +11,7 @@ type Options = {
 };
 
 const defaultOnError: Middleware['onError'] = (onErrorOptions) => {
-  console.log(onErrorOptions.error);
+  log.error('request failed', onErrorOptions.error);
 };
 
 export const basicClient = (options: Options) => {

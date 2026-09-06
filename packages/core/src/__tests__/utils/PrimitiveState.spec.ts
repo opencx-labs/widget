@@ -136,9 +136,9 @@ suite(PrimitiveState.name, () => {
       const subscriber2 = vi.fn();
       const subscriber3 = vi.fn();
 
-      const _unsubscribe1 = state.subscribe(subscriber1);
+      state.subscribe(subscriber1);
       const unsubscribe2 = state.subscribe(subscriber2);
-      const _unsubscribe3 = state.subscribe(subscriber3);
+      state.subscribe(subscriber3);
 
       unsubscribe2();
       state.set({ count: 1 });

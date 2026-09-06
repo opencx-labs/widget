@@ -4,6 +4,7 @@ import { type WidgetConfig } from '../types/widget-config';
 import { type Dto } from '../api/client';
 import type { StorageCtx } from './storage.ctx';
 import { v4 } from 'uuid';
+import { log } from '../utils/log';
 
 type ContactState = {
   contact: {
@@ -130,9 +131,55 @@ export class ContactCtx {
       } else {
         this.state.setPartial({ isErrorCreatingUnverifiedContact: true });
       }
+    } catch (e) {
+      // A THROWN failure (offline, DNS, 5xx) must land on the same state as a
+      // response that carried no token — callers read the flag, not an
+      // exception. Without this catch the rejection escapes to the widget's
+      // fire-and-forget send (`void sendMessage(...)`) and surfaces as an
+      // unhandled promise rejection in the EMBEDDER's page, while the flag
+      // stays false so nothing in the UI ever reports the failure.
+      this.state.setPartial({ isErrorCreatingUnverifiedContact: true });
+      log.error('failed to create an unverified contact', {
+        _e: e instanceof Error ? e.message : String(e),
+      });
     } finally {
       this.state.setPartial({ isCreatingUnverifiedContact: false });
     }
+  };
+
+  /**
+   * A persisted contact token can go stale — it no longer resolves to a
+   * contact and the backend answers 401 "Invalid token". Drop the dead token,
+   * clear auth, and mint a fresh anonymous contact so the widget self-heals
+   * instead of getting stuck on create-session. No-op for a config-provided
+   * verified token (authoritative — re-minting it is not ours to do).
+   * Returns true if a fresh contact token was obtained.
+   */
+  recoverFromStaleToken = async (): Promise<boolean> => {
+    if (this.config.user?.token) return false;
+    this.api.setAuthToken('');
+    // `null`, not `undefined` — `ContactState.contact` declares `| null` as its
+    // one "no contact" sentinel, and a second representation eventually
+    // disagrees with a `=== null` check somewhere downstream.
+    this.state.setPartial({ contact: null });
+    try {
+      await this.storageCtx?.clearContactToken();
+      // The remembered conversation belonged to the dead contact — the fresh
+      // one must never be handed a pointer into somebody else's session.
+      await this.storageCtx?.clearActiveSessionId();
+    } catch (error) {
+      // Storage is an embedder-provided adapter. A broken adapter must not keep
+      // the runtime authenticated with a token the server already rejected.
+      log.warn('failed to clear a stale contact token', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+    await this.createUnverifiedContact({
+      email: this.config.user?.data?.email,
+      non_verified_name: this.config.user?.data?.name,
+      non_verified_custom_data: this.config.user?.data?.customData,
+    });
+    return Boolean(this.state.get().contact?.token);
   };
 
   setUnverifiedContact = async (token: string) => {
