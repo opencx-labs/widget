@@ -758,20 +758,32 @@ export interface WidgetConfig {
 
   /**
    * Let the visitor @-mention things on your site in a message. Typing `@`
-   * in the composer opens a picker fed by `search`; a picked item shows as
-   * `@Title` in the text and as a removable chip beside the composer, and
-   * rides the send as `clientContext.mentions` (type, id, title, meta) so
-   * the agent can resolve it. Only available when your organization enabled
-   * "sees the page".
+   * in the composer opens a picker; a picked item shows as `@Title` in the
+   * text and as a removable chip beside the composer, and rides the send as
+   * `clientContext.mentions` (type, id, title, meta) so the agent can resolve
+   * it. Give the picker either a fixed list or a search. Only available when
+   * your organization enabled "sees the page".
    */
-  mentions?: {
-    /**
-     * Called as the visitor types after `@` (debounced), with the text so
-     * far — empty right after the `@` — and must return the items to offer,
-     * best first. Keep it short; the picker shows the first eight.
-     */
-    search: (query: string) => WidgetMention[] | Promise<WidgetMention[]>;
-  };
+  mentions?:
+    | {
+        /**
+         * A fixed list the widget filters itself as the visitor types
+         * (case-insensitive match on title, then description). Right for a
+         * few dozen items known up front.
+         */
+        items: WidgetMention[];
+        search?: never;
+      }
+    | {
+        /**
+         * Called as the visitor types after `@` (debounced), with the text so
+         * far — empty right after the `@` — and must return the items to
+         * offer, best first. Right for anything you look up on a server.
+         * Keep it short; the picker shows the first eight.
+         */
+        search: (query: string) => WidgetMention[] | Promise<WidgetMention[]>;
+        items?: never;
+      };
 
   /**
    * Receives actions the visitor takes on agent-rendered inline UI that the

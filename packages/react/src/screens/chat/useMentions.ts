@@ -29,6 +29,30 @@ export function activeMentionQuery(
   return { start: caret - match[1]!.length - 1, query: match[1]! };
 }
 
+/**
+ * The widget's own filter for a fixed list: title matches first (prefix
+ * before substring), description matches after; an empty query lists all.
+ */
+export function filterMentions(
+  items: readonly WidgetMention[],
+  query: string,
+): WidgetMention[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return [...items];
+  const rank = (item: WidgetMention): number => {
+    const title = item.title.toLowerCase();
+    if (title.startsWith(needle)) return 0;
+    if (title.includes(needle)) return 1;
+    if (item.description?.toLowerCase().includes(needle)) return 2;
+    return -1;
+  };
+  return items
+    .map((item, index) => ({ item, index, rank: rank(item) }))
+    .filter((entry) => entry.rank >= 0)
+    .sort((a, b) => a.rank - b.rank || a.index - b.index)
+    .map((entry) => entry.item);
+}
+
 /** The text a picked mention occupies in the composer. */
 export const mentionText = (item: WidgetMention): string => `@${item.title}`;
 
@@ -50,7 +74,15 @@ export function useMentions({
 }) {
   const { mentions: mentionsConfig } = useConfig();
   const { widgetCtx } = useWidget();
-  const search = mentionsConfig?.search;
+  // One search either way: a fixed list is filtered here, a search function
+  // is the host's own lookup.
+  const items = mentionsConfig?.items;
+  const hostSearch = mentionsConfig?.search;
+  const search = useMemo(() => {
+    if (hostSearch) return hostSearch;
+    if (items) return (query: string) => filterMentions(items, query);
+    return undefined;
+  }, [hostSearch, items]);
   const enabled = Boolean(search) && widgetCtx.features.pageContext;
 
   const [picked, setPicked] = useState<WidgetMention[]>([]);

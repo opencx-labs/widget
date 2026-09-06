@@ -80,13 +80,13 @@ initOpenScript({
   // Page marks and highlights follow the organization's switches; this only
   // tunes how long an agent highlight stays.
   pageMarkHighlightDurationMs: 8000,
-  // "@" in the composer opens a picker fed by your search; a pick shows as
-  // `@Title` in the text plus a chip, and rides the send as
-  // `clientContext.mentions`. Needs the org's "sees the page" switch.
+  // "@" in the composer opens a picker; a pick shows as `@Title` in the text
+  // plus a chip, and rides the send as `clientContext.mentions`. Either a
+  // fixed list the widget filters, or your own (async) search. Needs the
+  // org's "sees the page" switch.
   mentions: {
-    search: async (query) => (await api.search(query)).map((w) => ({
-      type: 'workflow', id: w.id, title: w.name, icon: w.iconUrl,
-    })),
+    items: [{ type: 'plan', id: 'pro', title: 'Pro plan' }],
+    // or: search: async (query) => (await api.search(query)).map(toMention),
   },
   router: { restoreLastSession: true },
   // A Copy button under AI replies. Default: on in the companion, off in the

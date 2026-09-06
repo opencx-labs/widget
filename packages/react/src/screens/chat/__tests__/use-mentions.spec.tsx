@@ -21,7 +21,32 @@ vi.mock('@opencx/widget-react-headless', () => ({
   useWidget: () => ({ widgetCtx: { features: { pageContext } } }),
 }));
 
-import { activeMentionQuery, useMentions } from '../useMentions';
+import {
+  activeMentionQuery,
+  filterMentions,
+  useMentions,
+} from '../useMentions';
+
+describe('filterMentions (a fixed list)', () => {
+  const list: WidgetMention[] = [
+    {
+      type: 'doc',
+      id: 'a',
+      title: 'Backups',
+      description: 'Restore a database',
+    },
+    { type: 'doc', id: 'b', title: 'Database backups' },
+    { type: 'doc', id: 'c', title: 'Billing' },
+  ];
+  it('lists everything for an empty query', () => {
+    expect(filterMentions(list, '').map((i) => i.id)).toEqual(['a', 'b', 'c']);
+  });
+  it('ranks title prefix, then title substring, then description', () => {
+    expect(filterMentions(list, 'back').map((i) => i.id)).toEqual(['a', 'b']);
+    expect(filterMentions(list, 'data').map((i) => i.id)).toEqual(['b', 'a']);
+    expect(filterMentions(list, 'zzz')).toEqual([]);
+  });
+});
 
 describe('activeMentionQuery', () => {
   it('finds an @ at the start or after whitespace, up to the caret', () => {
