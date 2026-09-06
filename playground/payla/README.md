@@ -27,10 +27,11 @@ OpenCX backend  ──  localhost:8080   ← companion agent "Payla Assistant" (
 Payla Worker + D1  ──  localhost:5173   ← the mock data (payments, refunds, settlements…)
 ```
 
-**Baked token — nothing to copy.** The seed pins the widget token
-`payla-companion-demo-token` and the app defaults to exactly it
-(`src/lib/widgetConfig.ts`). Fresh seed + fresh app → the widget just works. There is
-no agent id: the org IS the agent, and the backend decides whether the embed streams.
+**Baked token — nothing to copy.** `seed-opencx-companion.ts` writes the widget token
+`opencx-local-companion-token`, and the app defaults to exactly it
+(`src/lib/demo-defaults.json`, read by the app and by the `pnpm dev` pre-flight). Fresh
+seed + fresh app → the widget just works. There is no agent id: the org IS the agent,
+and the backend decides whether the embed streams.
 
 ## Prerequisites
 
@@ -47,11 +48,19 @@ docker compose up -d
 pnpm install
 cp .env.example .env                    # set OPENROUTER_API_KEY
 pnpm dev:prepare                        # migrate + codegen
-NODE_ENV=test bun scripts/seed-payla-demo.ts   # seed the org + companion agent + actions + KB
+
+# Seeds, in this order. The first creates the org and its widget token; the
+# second turns that org into Payla; the third registers the HTTP actions.
+NODE_ENV=test bun scripts/seed-opencx-companion.ts
+NODE_ENV=test bun scripts/seed-payla-demo.ts
+NODE_ENV=test bun scripts/seed-payla-actions.ts
+
 pnpm ddev                               # → http://localhost:8080
 ```
 
-The seed prints the org token (it matches the app's baked default).
+Each seed is idempotent. The second prints the org token — it matches the app's baked
+default, so there is nothing to copy. If you skip a seed, `pnpm dev` in step 3 says so
+before the dashboard opens.
 
 ### 2) Widget — repo `widget` (this repo)
 

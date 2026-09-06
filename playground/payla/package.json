@@ -6,11 +6,11 @@
   "description": "Payla — fictional payments dashboard with a Cloudflare Worker + D1 mock backend, built to demo the OpenCX Companion agent doing real actions.",
   "scripts": {
     "dev": "vite",
-    "predev": "node scripts/sync-widget.mjs && pnpm db:migrate:local",
+    "predev": "node scripts/sync-widget.mjs && pnpm db:migrate:local && node scripts/check-backend.mjs",
     "build": "pnpm typecheck && vite build",
     "prebuild": "node scripts/sync-widget.mjs",
     "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.worker.json --noEmit",
-    "test": "node --test scripts/sync-widget.test.mjs",
+    "test": "node --test scripts/*.test.mjs",
     "db:migrate:local": "wrangler d1 migrations apply payla --local",
     "db:seed:local": "wrangler d1 execute payla --local --file=./migrations/0002_seed.sql",
     "db:seed:regen": "node scripts/gen-seed.mjs && pnpm db:seed:local"

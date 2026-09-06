@@ -1,6 +1,11 @@
-// Config for the embedded OpenCX widget. The token and backend URL are baked here and
-// match the seed (backend/scripts/seed-payla-demo.ts), so a fresh seed + a fresh app
-// just work; set VITE_OPENCX_WIDGET_TOKEN / VITE_OPENCX_API_URL to point somewhere else.
+import demoDefaults from './demo-defaults.json';
+
+// Config for the embedded OpenCX widget. The token and backend URL live in
+// `demo-defaults.json` — one file, read by the app here and by the `pnpm dev`
+// pre-flight (`scripts/check-backend.mjs`), so the two can never disagree
+// about what a fresh clone should talk to. The token is the one
+// `seed-opencx-companion.ts` writes; set VITE_OPENCX_WIDGET_TOKEN /
+// VITE_OPENCX_API_URL to point somewhere else.
 //
 // There is no agent id: the org IS the agent, and the backend decides whether the
 // embed streams. Both demo surfaces (companion dashboard, support popover) share the
@@ -19,12 +24,9 @@ export function getWidgetConfig() {
   return {
     token: fromEnv(
       import.meta.env.VITE_OPENCX_WIDGET_TOKEN,
-      'payla-companion-demo-token',
+      demoDefaults.widgetToken,
     ),
     // Local opencx backend (`pnpm ddev` in the opencx repo).
-    apiUrl: fromEnv(
-      import.meta.env.VITE_OPENCX_API_URL,
-      'http://localhost:8080',
-    ),
+    apiUrl: fromEnv(import.meta.env.VITE_OPENCX_API_URL, demoDefaults.apiUrl),
   };
 }
