@@ -137,6 +137,11 @@ export function ChatInput({
     copyTextLayoutStyles(input, mirror);
   }, [hasMentionsInDraft, inputText]);
   const [pageEntityDismissed, setPageEntityDismissed] = useState(false);
+  // Dismissal is per entity: a new page brings its own "this" back.
+  const pageEntityKey = pageEntity ? `${pageEntity.type}:${pageEntity.id}` : '';
+  useEffect(() => {
+    setPageEntityDismissed(false);
+  }, [pageEntityKey]);
   const [fileSelectionError, setFileSelectionError] = useState<string | null>(
     null,
   );

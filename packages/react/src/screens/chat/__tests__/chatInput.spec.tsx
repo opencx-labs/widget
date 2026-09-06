@@ -47,6 +47,7 @@ let allFiles: Array<{
 }> = [];
 
 vi.mock('@opencx/widget-react-headless', () => ({
+  useHostLocation: () => 'http://host.test/page',
   useAgentChatUi: () => ({
     isStreaming,
     stop: onStopSpy,

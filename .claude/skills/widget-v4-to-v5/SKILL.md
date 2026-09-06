@@ -71,7 +71,9 @@ initOpenScript({
   // Per-embed narrowing of what the organization enabled.
   features: { dictation: false, pageContext: true, clientTools: true },
   // Resolved at every send — the right form for SPAs. `page` and `entity` are what the
-  // agent reads as "here" and "this"; the entity shows as a removable pill.
+  // agent reads as "here" and "this"; the entity shows as a removable pill that
+  // follows the route by itself (the widget re-reads this on host navigation).
+  // Changed something without a URL change? `window.dispatchEvent(new Event('opencx:context-changed'))`.
   context: () => ({
     page: { url: location.href, title: document.title },
     entity: { type: 'order', id: currentOrder.id, title: `#${currentOrder.number}` },
@@ -80,10 +82,12 @@ initOpenScript({
   // Page marks and highlights follow the organization's switches; this only
   // tunes how long an agent highlight stays.
   pageMarkHighlightDurationMs: 8000,
-  // "@" in the composer opens a picker; a pick shows as `@Title` in the text
-  // plus a chip, and rides the send as `clientContext.mentions`. Either a
-  // fixed list the widget filters, or your own (async) search. Needs the
-  // org's "sees the page" switch.
+  // "@" in the composer opens a menu beside it, grouped by `type`; a pick lives
+  // in the text as one highlighted `@Title` and rides the send as
+  // `clientContext.mentions` (type, id, title, meta). Either a fixed list the
+  // widget filters, or your own (async) search. `description` shows in a
+  // preview card beside the menu where the panel is wide enough (`preview:
+  // false` turns it off). Needs the org's "sees the page" switch.
   mentions: {
     items: [{ type: 'plan', id: 'pro', title: 'Pro plan', iconName: 'CreditCard' }],
     // or: search: async (query) => (await api.search(query)).map(toMention),

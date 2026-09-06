@@ -20,6 +20,10 @@ export { useConfig } from './hooks/useConfig';
 export { useDisplayMode } from './hooks/useDisplayMode';
 export { useContact } from './hooks/useContact';
 export { useDocumentDir } from './hooks/useDocumentDir';
+export {
+  HOST_CONTEXT_CHANGED_EVENT,
+  useHostLocation,
+} from './hooks/useHostLocation';
 export { useIsAwaitingBotReply } from './hooks/useIsAwaitingBotReply';
 export { useMessages } from './hooks/useMessages';
 export { usePrimitiveState } from './hooks/usePrimitiveState';

@@ -2,7 +2,11 @@ import {
   resolveConfigContext,
   type WidgetPageContext,
 } from '@opencx/widget-core';
-import { useConfig, useWidget } from '@opencx/widget-react-headless';
+import {
+  useConfig,
+  useHostLocation,
+  useWidget,
+} from '@opencx/widget-react-headless';
 import { z } from 'zod';
 
 const entitySchema = z.object({
@@ -21,11 +25,14 @@ export type PageEntity = NonNullable<WidgetPageContext['entity']>;
  * simply does not show, and the send still carries whatever the host sent.
  * Also null when page context is off for this embed (org feature narrowed
  * by `config.features.pageContext`): the agent will not read the page, so
- * the pill must not promise it.
+ * the pill must not promise it. Re-read when the host navigates, so a
+ * function-form `context` that follows the route is reflected in the pill
+ * without a reload.
  */
 export function usePageEntity(): PageEntity | null {
   const config = useConfig();
   const { widgetCtx } = useWidget();
+  useHostLocation();
   if (!widgetCtx.features.pageContext) return null;
   const parsed = entitySchema.safeParse(
     resolveConfigContext(config)?.['entity'],

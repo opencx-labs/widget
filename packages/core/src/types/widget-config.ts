@@ -785,7 +785,11 @@ export interface WidgetConfig {
    * `entity` also shows as a context pill in the composer, removable per
    * message. Pass a FUNCTION to have it resolved fresh at every send — the
    * right form for SPAs, where a static object captured at init goes stale on
-   * the first navigation.
+   * the first navigation. The composer's pill follows the page on its own:
+   * the widget re-reads the function when the host URL changes (route,
+   * back/forward, hash). When the situation changes without the URL (a tab
+   * inside one page, a record loaded by id), tell it:
+   * `window.dispatchEvent(new Event('opencx:context-changed'))`.
    * @default undefined
    */
   context?: WidgetContext | (() => WidgetContext);
