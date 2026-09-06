@@ -237,12 +237,188 @@ export type CustomComponent = (
   props: CustomComponentProps,
 ) => ReturnType<typeof React.createElement> | null;
 
+/**
+ * How the widget presents itself on the host page.
+ * - `popover` – the classic corner trigger button that opens a chat popover.
+ * - `companion` – a bottom-centered floating pill that morphs into a
+ *   floating chat panel. The docked "app-frame sidebar" presentation is
+ *   NOT a separate mode — it is the companion's `sidebar` layout; set it as the
+ *   resting default via `companion.defaultLayout: 'sidebar'`.
+ */
+export type WidgetDisplayModeU = 'popover' | 'companion';
+
+/**
+ * Runtime presentation of the companion widget: a bottom-centered compact
+ * panel, an expanded fullscreen modal, or a docked sidebar. Switchable at
+ * runtime via the header controls.
+ */
+export type WidgetCompanionLayoutU = 'compact' | 'sidebar' | 'fullscreen';
+
+/**
+ * Layouts embedders can explicitly configure as `defaultLayout`.
+ * `fullscreen` is deliberately absent because it normally acts as a transient
+ * expansion of the open chat. Runtime normalization can still select it when
+ * every configured resting layout is excluded by `companion.layouts`.
+ */
+export type WidgetCompanionDefaultLayoutU = 'compact' | 'sidebar';
+
+/**
+ * Which viewport edge the sidebar layout occupies.
+ * - `left` / `right` – pin to that physical edge regardless of text direction.
+ * - `auto` – follow the host document's direction: the inline-end edge, i.e.
+ *   right under LTR and left under RTL.
+ */
+export type WidgetSidebarSideU = 'left' | 'right' | 'auto';
+
+/**
+ * How the sidebar layout coexists with the host page.
+ * - `floating` – the panel overlays the page edge; the page is untouched.
+ * - `docked` – the host page is framed (inset, rounded, on a canvas) and the
+ *   panel sits beside it, so nothing sits underneath the sidebar.
+ */
+export type WidgetSidebarModeU = 'docked' | 'floating';
+
+/**
+ * An action a visitor takes on agent-rendered inline UI (json-render card)
+ * that the host page must complete. Discriminated on `type` so hosts can
+ * narrow the payload.
+ */
+export type WidgetUiAction = {
+  type: 'test-phone-agent';
+  payload: { agentId: string; model: string | null };
+};
+
+/**
+ * The page the visitor is on and, when the host knows it, the one thing on
+ * that page they are looking at. This is what the agent treats as "here" and
+ * "this": a Linear-style context pill in the composer shows the entity, and
+ * the agent resolves it (by `type` + `id`) before asking the visitor what
+ * they mean.
+ */
+export type WidgetPageContext = {
+  page?: {
+    url: string;
+    title?: string;
+  };
+  entity?: {
+    /** Host vocabulary, e.g. `instruction`, `order`, `workflow`. */
+    type: string;
+    id: string;
+    /** What the pill shows and the agent calls it. */
+    title: string;
+    /** Anything the agent needs to act on the entity that is not in `id`. */
+    meta?: Record<string, unknown>;
+  };
+};
+
+/** `WidgetConfig.context`: the well-known page keys plus free-form host data. */
+export type WidgetContext = WidgetPageContext & Record<string, unknown>;
+
+/**
+ * Something on the host the visitor can @-mention in a message — the same
+ * shape as `context.entity`, so the agent has one vocabulary for "this" (the
+ * entity pill) and "these" (mentions).
+ */
+export type WidgetMention = {
+  /** Host vocabulary, e.g. `workflow`, `integration`, `order`; the menu groups by it. */
+  type: string;
+  id: string;
+  /** What the menu shows, what `@Title` reads in the text, what the agent calls it. */
+  title: string;
+  /** Shown in the preview card beside the menu (see `mentions.preview`). */
+  description?: string;
+  /** Icon URL shown in the menu. Wins over `iconName`. */
+  icon?: string;
+  /** A built-in icon instead of a URL. See {@link IconNameU}. */
+  iconName?: IconNameU;
+  /** Anything the agent needs to act on it that is not in `id`. */
+  meta?: Record<string, unknown>;
+};
+
+/** Where the @-mention menu gets its items, and how it presents them. */
+export type WidgetMentionsOptions = (
+  | {
+      /**
+       * A fixed list the widget filters itself as the visitor types
+       * (case-insensitive match on title, then description). Right for a
+       * few dozen items known up front.
+       */
+      items: WidgetMention[];
+      search?: never;
+    }
+  | {
+      /**
+       * Called as the visitor types after `@` (debounced), with the text so
+       * far — empty right after the `@` — and must return the items to
+       * offer, best first. Right for anything you look up on a server. Each
+       * type shows three at first with a "See N more" row.
+       */
+      search: (query: string) => WidgetMention[] | Promise<WidgetMention[]>;
+      items?: never;
+    }
+) & {
+  /**
+   * Shows the highlighted item's description in a card beside the menu, when
+   * the widget is wide enough to fit one (the sidebar and fullscreen
+   * layouts; the compact panel has no room). Off, the description is not
+   * shown anywhere.
+   * @default true
+   */
+  preview?: boolean;
+};
+
 export interface WidgetConfig {
   /**
    * Your organization's widget token.
    * Can be found in the dashboard in the web widget page.
    */
   token: string;
+
+  /**
+   * Per-embed feature toggles. Each one can only NARROW what your
+   * organization enabled server-side — `true` (or omitted) leaves the org
+   * setting in charge; `false` switches the feature off for this embed.
+   */
+  features?: {
+    /**
+     * Whether the agent sends a short heads-up line before it starts tool
+     * work ("Let me look that up…").
+     * @default org setting
+     */
+    preamble?: boolean;
+
+    /**
+     * Whether the agent may reply with inline UI (rich rendered blocks)
+     * instead of plain text where that fits the answer better.
+     * @default org setting
+     */
+    inlineUi?: boolean;
+
+    /**
+     * Whether the composer offers voice dictation (speak, and the words land
+     * in the message box). Only available when your organization enabled it.
+     * @default org setting
+     */
+    dictation?: boolean;
+
+    /**
+     * Whether the visitor can mark things on your page from the composer
+     * and the agent reads them, along with the well-known `page` / `entity`
+     * keys of the `context` you pass. Only available when your organization
+     * enabled it. Switch it off for an embed on a page the visitor should
+     * not be able to mark.
+     * @default org setting
+     */
+    pageContext?: boolean;
+
+    /**
+     * Whether the agent may act on your page (highlight elements) as part of
+     * its reply. Only available when your organization enabled it. Switch it
+     * off for an embed on a page the agent should never draw on.
+     * @default org setting
+     */
+    clientTools?: boolean;
+  };
 
   /**
    * The language of the widget.
@@ -256,7 +432,8 @@ export interface WidgetConfig {
   };
 
   /**
-   * A name and an avatar for the bot.
+   * A name and an avatar for the bot. Overrides the agent name/avatar your
+   * organization configured in the dashboard.
    */
   bot?: Pick<
     Agent,
@@ -516,6 +693,17 @@ export interface WidgetConfig {
      * @default false
      */
     chatScreenOnly?: boolean;
+
+    /**
+     * If true, a page load returns the visitor to the conversation they were
+     * last in (when it is still open), instead of the sessions list or an
+     * empty chat. Only the session POINTER is stored client-side — through the
+     * same storage adapter as the contact token — and it is dropped as soon as
+     * the conversation is closed or a new one is started.
+     *
+     * @default false
+     */
+    restoreLastSession?: boolean;
   };
 
   /**
@@ -590,11 +778,57 @@ export interface WidgetConfig {
   bodyProperties?: Record<string, JsonValue>;
 
   /**
-   * Dynamic context to be sent with each send-message request from the widget.
-   * Useful if you want to send data regarding the current page the user is viewing.
+   * AI-visible context sent with each send-message request: where the
+   * visitor is and what they are looking at, plus anything else the host
+   * wants the agent to know. The two well-known keys, `page` and `entity`,
+   * are what the agent reads as "here" and "this" (see `WidgetPageContext`);
+   * `entity` also shows as a context pill in the composer, removable per
+   * message. Pass a FUNCTION to have it resolved fresh at every send — the
+   * right form for SPAs, where a static object captured at init goes stale on
+   * the first navigation. The composer's pill follows the page on its own:
+   * the widget re-reads the function when the host URL changes (route,
+   * back/forward, hash). When the situation changes without the URL (a tab
+   * inside one page, a record loaded by id), tell it:
+   * `window.dispatchEvent(new Event('opencx:context-changed'))`.
    * @default undefined
    */
-  context?: Record<string, unknown>;
+  context?: WidgetContext | (() => WidgetContext);
+
+  /**
+   * Let the visitor @-mention things on your site in a message. Typing `@`
+   * in the composer opens a menu beside it, grouped by `type`; a picked item
+   * lives in the text as a highlighted `@Title` (one unit: the caret skips
+   * it, Backspace removes it whole) and rides the send as
+   * `clientContext.mentions` (type, id, title, meta) so the agent can resolve
+   * it. Give the menu either a fixed list or a search. Only available when
+   * your organization enabled "sees the page".
+   */
+  mentions?: WidgetMentionsOptions;
+
+  /**
+   * Receives actions the visitor takes on agent-rendered inline UI that the
+   * widget cannot complete on its own — today only `test-phone-agent`, the
+   * "Test via web" button on a phone-agent card. Meant for the OpenCX
+   * dashboard embed; without a handler such cards render without the action.
+   */
+  onUiAction?: (action: WidgetUiAction) => void;
+
+  /**
+   * Makes each step row in an agent turn's trace expandable to show that tool
+   * call's arguments and its result, pretty-printed. For debugging an agent
+   * against a real conversation — the default trace shows only what each step
+   * did, which is what a customer should see.
+   *
+   * @default false
+   */
+  showStepToolIO?: boolean;
+
+  /**
+   * How long an agent-requested page highlight remains visible, in
+   * milliseconds (the `clientTools` feature).
+   * @default 8000
+   */
+  pageMarkHighlightDurationMs?: number;
 
   /**
    * Dynamic custom data to be sent with each contact message.
@@ -623,6 +857,191 @@ export interface WidgetConfig {
   inline?: boolean;
 
   /**
+   * How the widget presents itself on the host page.
+   * - `popover` – the classic corner trigger button that opens a chat popover.
+   * - `companion` – a bottom-centered floating pill that morphs into a
+   *   floating chat panel.
+   *
+   * Ignored when `inline` is `true`.
+   * @default 'popover'
+   */
+  displayMode?: WidgetDisplayModeU;
+
+  /**
+   * Options for the `companion` display mode.
+   */
+  companion?: {
+    /**
+     * Layout the companion rests in: a compact panel or a docked sidebar.
+     * Fullscreen cannot be selected here because it normally acts as a runtime
+     * expansion of the open chat. If this value is excluded by `layouts`, the
+     * first allowed layout is used instead; this can be `fullscreen` when it is
+     * the only or first configured option.
+     * When omitted, the first allowed layout is used. With the default
+     * `layouts` order this is `'compact'`; a custom order makes its first entry
+     * the resting default.
+     * @default first allowed layout
+     */
+    defaultLayout?: WidgetCompanionDefaultLayoutU;
+
+    /**
+     * Which layouts the corner layout picker offers, and in what order. The
+     * current layout is highlighted; picking one switches to it. Order is
+     * preserved and duplicate entries are ignored. Provide fewer
+     * than two to hide the picker entirely (there is nothing to switch
+     * between) — e.g. `['sidebar']` locks the companion to the sidebar with no
+     * switcher. An omitted, empty, or otherwise unusable list falls back to all
+     * three: compact ("Floating"), sidebar, fullscreen.
+     * @default ['compact', 'sidebar', 'fullscreen']
+     */
+    layouts?: WidgetCompanionLayoutU[];
+
+    /**
+     * Render messages as chat bubbles (agent + user bubbles, avatars in the
+     * gutter). By default the companion uses a flat, document-style layout:
+     * agent replies flow as unbubbled text and user messages become quiet
+     * chips (Linear/Claude-style). Set `true` to opt into classic chat
+     * bubbles. Applies to the `companion` display mode; the `popover` mode is
+     * always bubbles.
+     * @default false
+     */
+    bubbles?: boolean;
+
+    /**
+     * URL of an icon that replaces the built-in animated face, on the
+     * floating pill and in the quick-ask input bar.
+     */
+    icon?: string;
+
+    /**
+     * Which composer tools the docked quick-ask bar shows. The expanded chat
+     * panel always shows the full tool row regardless.
+     * - 'history-only' (default): just the conversation-history control —
+     *   the resting bar stays quiet.
+     * - 'all': attach + page-mark buttons too.
+     * @default 'history-only'
+     */
+    quickAskTools?: 'history-only' | 'all';
+
+    /** Geometry of the floating conversation panel. Values are pixels except
+     * `viewportHeightRatio`, which is a 0–1 fraction of viewport height. */
+    compact?: {
+      /** Maximum panel width. @default 440 */
+      maxWidth?: number;
+
+      /** Preferred minimum panel width when the viewport has room. @default 280 */
+      minWidth?: number;
+
+      /** Preferred minimum conversation height. @default 420 */
+      minHeight?: number;
+
+      /** Maximum conversation height. @default 640 */
+      maxHeight?: number;
+
+      /** Preferred share of viewport height. @default 0.65 */
+      viewportHeightRatio?: number;
+
+      /** Chat-panel corner radius. @default 20 */
+      borderRadius?: number;
+    };
+
+    /**
+     * Maximum width of the centered conversation column in fullscreen mode.
+     * Any valid CSS length is accepted.
+     * @default '48rem'
+     */
+    contentMaxWidth?: string;
+
+    /**
+     * Background color of the resting pill. The built-in animated face
+     * adopts this color for its head so the two blend seamlessly.
+     * @default 'hsl(var(--opencx-primary))' – the widget's primary theme color
+     */
+    pillBackground?: string;
+
+    /**
+     * Placeholder text for the quick-ask input bar.
+     * Defaults to the localized "Write a message...".
+     */
+    placeholder?: string;
+
+    /**
+     * Text shown beside the icon while the companion rests at the bottom
+     * of the page, turning the small round pill into a wider docked bar
+     * (e.g. "Ask Companion…").
+     * Defaults to `placeholder` (localized "Write a message...").
+     */
+    pillLabel?: string;
+
+    /**
+     * Fullscreen-layout behavior. The option touches the embedder's page,
+     * so it can be turned off.
+     */
+    fullscreen?: {
+      /**
+       * Prevent the host page from scrolling while fullscreen is open.
+       * @default true
+       */
+      lockScroll?: boolean;
+    };
+
+    /**
+     * Sidebar-layout behavior: which edge it occupies (`side`) and how it
+     * coexists with the page (`mode`). The sidebar floats over the page edge
+     * on its inline-end by default; docking (host-page framing) is an explicit
+     * opt-in because it restyles the document root and body.
+     */
+    sidebar?: {
+      /**
+       * Which viewport edge the sidebar occupies. `auto` follows the host
+       * document's direction (right under LTR, left under RTL); `left` and
+       * `right` pin to that physical edge in both directions.
+       * @default 'auto'
+       */
+      side?: WidgetSidebarSideU;
+
+      /**
+       * How the sidebar coexists with the host page.
+       * - `floating` – the panel overlays the page edge, leaving the host
+       *   document untouched.
+       * - `docked` – the host page is framed (inset on the sidebar's side,
+       *   rounded, on a canvas) so the two sit side by side. Opt-in because
+       *   framing restyles the host's document root and body.
+       * @default 'floating'
+       */
+      mode?: WidgetSidebarModeU;
+
+      /**
+       * Sidebar width in pixels.
+       * @default 400
+       */
+      width?: number;
+
+      /** Minimum width allowed by pointer or keyboard resizing. @default 320 */
+      minWidth?: number;
+
+      /** Maximum width allowed by pointer or keyboard resizing. @default 560 */
+      maxWidth?: number;
+
+      /**
+       * Canvas color revealed behind the framed page.
+       * @default '#f4f4f5'
+       */
+      canvasColor?: string;
+    };
+
+    /**
+     * How the resting pill label shows:
+     * - `always` – the resting state is the labeled bar.
+     * - `hover` – rests as the icon-only pill and expands to the labeled
+     *   bar on hover. Falls back to the icon-only pill on touch devices.
+     * - `never` – icon-only pill.
+     * @default 'always'
+     */
+    pillLabelDisplay?: 'always' | 'hover' | 'never';
+  };
+
+  /**
    * This shows when the AI's response might have solved the user's issue.
    * The prompt shows as two buttons: "This was helpful" and "I need more help".
    */
@@ -636,6 +1055,27 @@ export interface WidgetConfig {
       /** @default false */
       enabled?: boolean;
     };
+  };
+
+  /**
+   * Actions offered under each AI reply.
+   */
+  messageActions?: {
+    /**
+     * A "Copy" button that copies the reply as text.
+     * @default true in the `companion` display mode, false in the `popover`
+     * (so a v4 embed looks the same after upgrading)
+     */
+    copy?: boolean;
+
+    /**
+     * When the actions show under a reply.
+     * - `hover` – revealed while the reply is hovered or focused; always
+     *   visible on touch screens, which have no hover.
+     * - `always` – visible under every reply.
+     * @default 'hover'
+     */
+    display?: 'hover' | 'always';
   };
 
   /**
@@ -660,6 +1100,10 @@ export interface WidgetConfig {
    * Set this to `false` to let the user send messages even while the AI is still
    * generating. The in-chat typing indicator is preserved; only the send button's
    * disabled/spinner state is dropped.
+   *
+   * Applies to the non-streaming reply engine only. The streaming agent surface
+   * never blocks: a message sent while a reply is streaming is queued and sent
+   * the moment the current reply finishes or is stopped.
    *
    * @default true
    */

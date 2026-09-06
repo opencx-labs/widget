@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, type Target } from 'framer-motion';
 import { type ComponentProps, forwardRef } from 'react';
+import { FADE_TRANSITION, QUICK_TWEEN } from '../../motion';
 
 type MotionProps = ComponentProps<typeof motion.div>;
 type AnimationDirection = 'right' | 'left' | 'up' | 'down';
@@ -26,8 +27,19 @@ const fadeInRight = (
   delay: number,
 ): MotionProps => ({
   initial: { opacity: 0, x: -distance, ...overrides.initial },
-  animate: { opacity: 1, x: 0, ...overrides.animate, transition: { delay } },
-  exit: { opacity: 0, x: distance, ...overrides.exit },
+  animate: {
+    opacity: 1,
+    x: 0,
+    ...overrides.animate,
+    transition: { ...FADE_TRANSITION, delay },
+  },
+  exit: {
+    opacity: 0,
+    x: distance,
+    ...overrides.exit,
+    transition: QUICK_TWEEN,
+  },
+  transition: FADE_TRANSITION,
 });
 
 const fadeInLeft = (
@@ -36,8 +48,19 @@ const fadeInLeft = (
   delay: number,
 ): MotionProps => ({
   initial: { opacity: 0, x: distance, ...overrides.initial },
-  animate: { opacity: 1, x: 0, ...overrides.animate, transition: { delay } },
-  exit: { opacity: 0, x: -distance, ...overrides.exit },
+  animate: {
+    opacity: 1,
+    x: 0,
+    ...overrides.animate,
+    transition: { ...FADE_TRANSITION, delay },
+  },
+  exit: {
+    opacity: 0,
+    x: -distance,
+    ...overrides.exit,
+    transition: QUICK_TWEEN,
+  },
+  transition: FADE_TRANSITION,
 });
 
 const fadeInUp = (
@@ -46,8 +69,19 @@ const fadeInUp = (
   delay: number,
 ): MotionProps => ({
   initial: { opacity: 0, y: distance, ...overrides.initial },
-  animate: { opacity: 1, y: 0, ...overrides.animate, transition: { delay } },
-  exit: { opacity: 0, y: -distance, ...overrides.exit },
+  animate: {
+    opacity: 1,
+    y: 0,
+    ...overrides.animate,
+    transition: { ...FADE_TRANSITION, delay },
+  },
+  exit: {
+    opacity: 0,
+    y: -distance,
+    ...overrides.exit,
+    transition: QUICK_TWEEN,
+  },
+  transition: FADE_TRANSITION,
 });
 
 const fadeInDown = (
@@ -56,8 +90,19 @@ const fadeInDown = (
   delay: number,
 ): MotionProps => ({
   initial: { opacity: 0, y: -distance, ...overrides.initial },
-  animate: { opacity: 1, y: 0, ...overrides.animate, transition: { delay } },
-  exit: { opacity: 0, y: distance, ...overrides.exit },
+  animate: {
+    opacity: 1,
+    y: 0,
+    ...overrides.animate,
+    transition: { ...FADE_TRANSITION, delay },
+  },
+  exit: {
+    opacity: 0,
+    y: distance,
+    ...overrides.exit,
+    transition: QUICK_TWEEN,
+  },
+  transition: FADE_TRANSITION,
 });
 
 const treasureMap: Record<

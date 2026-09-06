@@ -1,0 +1,15 @@
+{
+  "mode": "pre",
+  "tag": "beta",
+  "initialVersions": {
+    "@opencx/widget-core": "4.0.62",
+    "@opencx/widget": "4.0.62",
+    "@opencx/eslint-config": "0.0.1",
+    "@opencx/widget-react": "4.0.62",
+    "@opencx/widget-react-headless": "4.0.62",
+    "@opencx/tsconfig": "0.0.2"
+  },
+  "changesets": [
+    "widget-v5-beta"
+  ]
+}

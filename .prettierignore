@@ -1,0 +1,6 @@
+pnpm-lock.yaml
+dist
+dist-embed
+# Widget build mirrored into the payla demo by scripts/sync-widget.mjs.
+playground/payla/public/opencx-widget
+playground/payla/.wrangler

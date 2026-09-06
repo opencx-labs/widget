@@ -2,17 +2,17 @@ import { AnimatePresence } from 'framer-motion';
 import React, {
   cloneElement,
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useState,
-  type Dispatch,
-  type SetStateAction,
 } from 'react';
 import { MotionDiv } from './lib/MotionDiv';
 import { cn } from './lib/utils/cn';
 import { Button } from './lib/button';
 import { X } from 'lucide-react';
 import { useWidget } from '@opencx/widget-react-headless';
+import { log } from '@opencx/widget-core';
 
 interface DialogerProviderValue {
   open: (content: React.ReactNode) => void;
@@ -32,12 +32,12 @@ export function DialogerProvider({ children }: { children: React.ReactNode }) {
     setIsOpen(true);
   };
 
-  const closeDialog = () => {
+  const closeDialog = useCallback(() => {
     setIsOpen(false);
     setTimeout(() => {
       setContent(null);
     }, 200);
-  };
+  }, []);
 
   return (
     <context.Provider
@@ -53,7 +53,7 @@ export function useDialoger(): DialogerProviderValue {
   const dialoger = useContext(context);
 
   if (!dialoger) {
-    console.error('useDialoger must be used within a DialogerProvider');
+    log.error('useDialoger must be used within a DialogerProvider');
     return {
       open: () => {},
       close: () => {},
@@ -69,21 +69,23 @@ function DialogerPortal() {
   const { contentIframeRef } = useWidget();
   const { isOpen, content, close } = useDialoger();
 
+  // Bound only while a dialog is actually up. A permanently-installed
+  // listener swallowed EVERY Escape in the widget iframe — it called
+  // preventDefault() before closing nothing — so the companion's own
+  // `handleCompanionFrameKeyDown` (which stands down on `defaultPrevented`)
+  // never saw the key and Escape stopped dismissing the panel.
   useEffect(() => {
+    if (!isOpen) return;
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close();
+      if (e.defaultPrevented || e.key !== 'Escape') return;
+      e.preventDefault();
+      close();
     };
 
-    contentIframeRef?.current?.contentWindow?.document.addEventListener(
-      'keydown',
-      handleEscape,
-    );
-    return () =>
-      contentIframeRef?.current?.contentWindow?.document.removeEventListener(
-        'keydown',
-        handleEscape,
-      );
-  }, []);
+    const contentDocument = contentIframeRef?.current?.contentWindow?.document;
+    contentDocument?.addEventListener('keydown', handleEscape);
+    return () => contentDocument?.removeEventListener('keydown', handleEscape);
+  }, [close, contentIframeRef, isOpen]);
 
   return (
     <AnimatePresence mode="wait">
@@ -117,6 +119,7 @@ export function DialogerContent({
   const { close } = useDialoger();
   return (
     <div
+      data-opencx-escape-scope
       className={cn(
         'fixed left-[50%] top-[50%] z-50 flex flex-col gap-4 w-full max-w-[61.8%] translate-x-[-50%] translate-y-[-50%] border bg-background p-4 rounded-3xl',
         className,

@@ -8,7 +8,8 @@ export function ChatFooterItems() {
   const { sessionState } = useSessions();
   const { chatFooterItems } = useConfig();
 
-  const isSessionResolved = !!sessionState.session && !sessionState.session.isOpened;
+  const isSessionResolved =
+    !!sessionState.session && !sessionState.session.isOpened;
   const isSessionOpen = !isSessionResolved;
 
   return (

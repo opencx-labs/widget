@@ -13,6 +13,10 @@ export default {
       zIndex: {
         max: 9999,
       },
+      // EASE_OUT from src/motion.ts, for CSS transitions (`ease-opencx`).
+      transitionTimingFunction: {
+        opencx: 'cubic-bezier(0.23, 1, 0.32, 1)',
+      },
       colors: {
         primary: 'hsl(var(--opencx-primary))',
         'primary-foreground': 'hsl(var(--opencx-primary-foreground))',

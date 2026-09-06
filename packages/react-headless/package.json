@@ -1,7 +1,7 @@
 {
   "name": "@opencx/widget-react-headless",
   "private": false,
-  "version": "4.0.62",
+  "version": "5.0.0-beta.0",
   "type": "module",
   "repository": {
     "type": "git",
@@ -28,8 +28,8 @@
   },
   "dependencies": {
     "@opencx/widget-core": "workspace:*",
-    "swr": "^2.2.5",
-    "uuid": "^11.0.4"
+    "uuid": "^11.0.4",
+    "zod": "^4.3.6"
   },
   "peerDependencies": {
     "@types/react": ">=18 <20",
@@ -38,7 +38,13 @@
     "react-dom": ">=18 <20"
   },
   "devDependencies": {
+    "@ai-sdk/react": "4.0.34",
     "@opencx/eslint-config": "workspace:*",
-    "@opencx/tsconfig": "workspace:*"
+    "@opencx/tsconfig": "workspace:*",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "ai": "^7.0.31",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   }
 }

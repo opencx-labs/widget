@@ -16,3 +16,98 @@
     @apply border-border no-scrollbar;
   }
 }
+
+@layer components {
+  /* Agent steps trace: shimmering "Running…" label on a live step group, a
+     fade-up entrance per row, and a crossfading current-step name while the
+     group is collapsed. The shimmer is indeterminate progress and may loop. */
+  .opencx-text-shimmer {
+    animation: opencx-text-shimmer 2.5s ease-in-out infinite;
+  }
+  .opencx-fade-up {
+    animation: opencx-fade-up 0.3s cubic-bezier(0.23, 1, 0.32, 1) both;
+  }
+  .opencx-placeholder-in {
+    animation: opencx-placeholder-in 0.2s cubic-bezier(0.23, 1, 0.32, 1) both;
+  }
+  .opencx-placeholder-out {
+    animation: opencx-placeholder-out 0.18s cubic-bezier(0.23, 1, 0.32, 1)
+      both;
+  }
+
+  @keyframes opencx-text-shimmer {
+    0%,
+    100% {
+      opacity: 0.45;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+  @keyframes opencx-fade-up {
+    from {
+      opacity: 0;
+      filter: blur(4px);
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      filter: blur(0px);
+      transform: translateY(0);
+    }
+  }
+  @keyframes opencx-placeholder-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+      filter: blur(1px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+    }
+  }
+  @keyframes opencx-placeholder-out {
+    from {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-8px);
+      filter: blur(1px);
+    }
+  }
+
+  /* Composer history recall (↑/↓): the recalled text settles in with a quick
+     fade + drop, so the swap reads as an arrival, not a glitch. A one-shot
+     content-changed signal on the persistent textarea — nothing enters or
+     leaves the DOM, so there is no exit to pair (see MOTION.md). The curve is
+     EASE_OUT from src/motion.ts, in CSS notation. */
+  .opencx-input-recall {
+    animation: opencx-input-recall 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  @keyframes opencx-input-recall {
+    from {
+      opacity: 0.25;
+      translate: 0 -3px;
+    }
+    to {
+      opacity: 1;
+      translate: 0 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .opencx-text-shimmer,
+    .opencx-fade-up,
+    .opencx-placeholder-in,
+    .opencx-placeholder-out,
+    .opencx-input-recall {
+      animation: none;
+    }
+  }
+}

@@ -1,0 +1,4 @@
+{
+  "widgetToken": "opencx-local-companion-token",
+  "apiUrl": "http://localhost:8080"
+}

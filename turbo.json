@@ -12,6 +12,7 @@
       "outputs": ["dist/**", "dist-embed/**"]
     },
     "type-check": {},
+    "lint": {},
     "test": {},
     "dev:prepare": {
       "persistent": false,

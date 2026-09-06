@@ -1,10 +1,28 @@
 import { type Dto, type Endpoint, basicClient } from './client';
+import type { DictationMint } from '../dictation/dictation-session';
 import type { WidgetConfig } from '../types/widget-config';
 import type {
+  AgentTurnMessagesDto,
   ResolveSessionDto,
   SendMessageDto,
   VoteInputDto,
 } from '../types/dtos';
+import { log } from '../utils/log';
+
+/**
+ * The two stream endpoints the AI SDK transport hits directly (it needs raw
+ * URLs, not the typed client). Everything else goes through `this.client`.
+ */
+const STREAM_PATH = '/backend/widget/v5/chat/stream' satisfies Endpoint;
+const RECONNECT_PATH =
+  '/backend/widget/v5/chat/{sessionId}/stream' satisfies Endpoint;
+
+const streamUrl = (baseUrl: string, path: string, sessionId?: string) =>
+  `${baseUrl.replace(/\/$/, '')}${
+    sessionId
+      ? path.replace('{sessionId}', encodeURIComponent(sessionId))
+      : path
+  }`;
 
 export class ApiCaller {
   private client: ReturnType<typeof basicClient>;
@@ -58,9 +76,109 @@ export class ApiCaller {
     this.client = this.createOpenAPIClient({ baseUrl, headers });
   };
 
+  /**
+   * AUTH headers only (X-Bot-Token / Authorization), stripped of
+   * content-type/accept. The transport sets its own Content-Type, and a second
+   * (case-differing) copy gets COMBINED by the Headers init into
+   * "application/json, application/json" — which the server rejects (415). Also
+   * reused for the reconnect/stop control calls (empty-body POST/GET).
+   */
+  private getStreamAuthContext = (): {
+    baseUrl: string;
+    headers: Record<string, string>;
+  } => {
+    const { baseUrl, headers } = this.constructClientOptions(this.userToken);
+    const definedHeaders: Record<string, string> = {};
+    for (const [key, value] of Object.entries(headers)) {
+      if (typeof value !== 'string') continue;
+      if (['content-type', 'accept'].includes(key.toLowerCase())) continue;
+      definedHeaders[key] = value;
+    }
+    return { baseUrl, headers: definedHeaders };
+  };
+
+  /**
+   * Wiring for the agent-chat streaming adapter: the send endpoint, the
+   * session-scoped reconnect endpoint, and the shared auth headers.
+   * Computed lazily so a later `setAuthToken` is always reflected.
+   */
+  getStreamTransportOptions = (): {
+    api: string;
+    reconnectApi: (sessionId: string) => string;
+    headers: Record<string, string>;
+  } => {
+    const { baseUrl, headers } = this.getStreamAuthContext();
+    return {
+      api: streamUrl(baseUrl, STREAM_PATH),
+      reconnectApi: (sessionId: string) =>
+        streamUrl(baseUrl, RECONNECT_PATH, sessionId),
+      headers,
+    };
+  };
+
+  /**
+   * Stop / interrupt the session's in-flight streamed turn. With resumable
+   * streams on, a client abort is treated as a disconnect (the stream
+   * survives), so a real "stop" is this explicit call — the backend cancels
+   * generation and clears the resume pointer. Throws on failure — the caller
+   * decides how to react, so a failed cancel is never mistaken for an ACKed
+   * one.
+   */
+  stopStream = async (sessionId: string): Promise<void> => {
+    const { response } = await this.client.POST(
+      '/backend/widget/v5/chat/{sessionId}/stop',
+      { params: { path: { sessionId } } },
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to stop stream: ${response.status}`);
+    }
+  };
+
+  /**
+   * The session's settled agent turns with their final UIMessage parts and
+   * the transcript rows each produced — the reload-fidelity read (widget v5).
+   * Returns null on any failure: the caller then keeps the plain-row
+   * rendering, exactly the pre-feature behavior.
+   */
+  getAgentTurnMessages = async (
+    sessionId: string,
+  ): Promise<AgentTurnMessagesDto | null> => {
+    const { data, response } = await this.client.GET(
+      '/backend/widget/v5/chat/{sessionId}/messages',
+      { params: { path: { sessionId } } },
+    );
+    if (!data) {
+      log.warn('agent turn messages fetch failed', response.status);
+      return null;
+    }
+    return data;
+  };
+
+  /**
+   * Mint a short-lived transcription token for voice dictation (widget v5).
+   * Org-gated server-side; throws on any failure so the caller can surface
+   * "dictation unavailable" instead of hanging with an open mic.
+   */
+  createDictationSession = async ({
+    language,
+  }: {
+    language?: string | undefined;
+  }): Promise<DictationMint> => {
+    const { data, response } = await this.client.POST(
+      '/backend/widget/v5/dictation/sessions',
+      { body: language ? { language } : {} },
+    );
+    if (!data) {
+      throw new Error(`Failed to start dictation: ${response.status}`);
+    }
+    return data;
+  };
+
   getExternalWidgetConfig = async () => {
     return await this.client.GET('/backend/widget/v2/config', {
-      params: { header: { 'x-bot-token': this.config.token } },
+      params: {
+        header: { 'x-bot-token': this.config.token },
+      },
     });
   };
 
@@ -111,7 +229,12 @@ export class ApiCaller {
     abortSignal?: AbortSignal;
   }) => {
     return await this.client.GET('/backend/widget/v2/sessions', {
-      params: { query: { offset: cursor, filters: JSON.stringify(filters) } },
+      params: {
+        query: {
+          offset: cursor,
+          filters: JSON.stringify(filters),
+        },
+      },
       signal: abortSignal,
     });
   };
@@ -189,7 +312,7 @@ export class ApiCaller {
       if (userToken) {
         xhr.setRequestHeader('Authorization', `Bearer ${this.userToken}`);
       } else {
-        console.error('User token not set');
+        log.error('user token not set');
       }
 
       xhr.send(formData);

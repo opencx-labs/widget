@@ -1,51 +1,53 @@
 import React from 'react';
 import type { WidgetAiMessage } from '@opencx/widget-core';
-import { useMessages, useConfig } from '@opencx/widget-react-headless';
+import { useBot, useMessages, useConfig } from '@opencx/widget-react-headless';
 import { AgentMessageGroup } from '../../components/AgentMessageGroup';
 
+/**
+ * The greeting shown at the top of a fresh conversation.
+ * `advancedInitialMessages` wins over the plain `initialMessages` strings;
+ * with neither configured, a default greeting shows. Renders nothing once the
+ * conversation has real messages.
+ */
 export function InitialMessages() {
   const {
     messagesState: { messages },
   } = useMessages();
   const config = useConfig();
+  const bot = useBot();
   const {
     advancedInitialMessages = [],
     initialQuestions,
     initialQuestionsPosition,
   } = config;
 
-  const initialMessages = (() => {
-    if (advancedInitialMessages.length) return [];
-    if (messages.length) return [];
-    // TODO translate default welcome message
-    if (!config.initialMessages?.length) return ['Hello, how can I help you?'];
-    return config.initialMessages;
-  })();
+  if (messages.length > 0) return null;
+
+  const texts = advancedInitialMessages.length
+    ? advancedInitialMessages.map((m) => m.message)
+    : config.initialMessages?.length
+      ? config.initialMessages
+      : // TODO translate default welcome message
+        ['Hello, how can I help you?'];
 
   return (
-    <>
-      {messages.length === 0 && initialMessages.length > 0 && (
-        <AgentMessageGroup
-          messages={initialMessages.map(
-            (m, index) =>
-              ({
-                component: 'bot_message',
-                data: { message: m },
-                id: `${index}-${m}`,
-                type: 'AI',
-                timestamp: null,
-              }) satisfies WidgetAiMessage,
-          )}
-          suggestedReplies={
-            initialQuestionsPosition === 'below-initial-messages'
-              ? initialQuestions
-              : undefined
-          }
-          agent={
-            config.bot ? { ...config.bot, isAi: true, id: null } : undefined
-          }
-        />
+    <AgentMessageGroup
+      messages={texts.map(
+        (m, index) =>
+          ({
+            component: 'bot_message',
+            data: { message: m },
+            id: `${index}-${m}`,
+            type: 'AI',
+            timestamp: null,
+          }) satisfies WidgetAiMessage,
       )}
-    </>
+      suggestedReplies={
+        initialQuestionsPosition === 'below-initial-messages'
+          ? initialQuestions
+          : undefined
+      }
+      agent={bot}
+    />
   );
 }

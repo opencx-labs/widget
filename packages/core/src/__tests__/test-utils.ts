@@ -1,8 +1,25 @@
 import { vi } from 'vitest';
 import type { ApiCaller } from '../api/api-caller';
+import type { Dto } from '../api/client';
+
+type AgentFeaturesDto = Dto['WidgetAgentFeaturesDto'];
 import { genUuid } from '../utils/uuid';
 
+/** The config endpoint's `agent.features` with every feature off unless overridden. */
+const agentFeatures = (
+  overrides: Partial<AgentFeaturesDto> = {},
+): AgentFeaturesDto => ({
+  preamble: false,
+  inline_ui: false,
+  dictation: false,
+  attachments: false,
+  page_context: false,
+  client_tools: false,
+  ...overrides,
+});
+
 export const TestUtils = {
+  agentFeatures,
   sleep: (ms: number) => new Promise((resolve) => setTimeout(resolve, ms)),
   mock: {
     ApiCaller: {
@@ -76,6 +93,7 @@ export const TestUtils = {
                       id: genUuid(),
                       mightSolveUserIssue: false,
                       completelyAndFullyCoveredUserIssue: false,
+                      assistMode: false,
                     },
                     ...returnValue?.data,
                   },
@@ -83,6 +101,21 @@ export const TestUtils = {
       },
       setAuthToken(target, _returnValue) {
         target.prototype.setAuthToken = vi.fn();
+      },
+      getStreamTransportOptions(target, _returnValue) {
+        target.prototype.getStreamTransportOptions = vi
+          .fn(target.prototype.getStreamTransportOptions)
+          .mockReturnValue({
+            api: 'http://localhost:8080/backend/widget/v5/chat/stream',
+            reconnectApi: (sessionId: string) =>
+              `http://localhost:8080/backend/widget/v5/chat/${sessionId}/stream`,
+            headers: {},
+          });
+      },
+      stopStream(target, _returnValue) {
+        target.prototype.stopStream = vi
+          .fn(target.prototype.stopStream)
+          .mockResolvedValue(undefined);
       },
       uploadFile(target, _returnValue) {
         target.prototype.uploadFile = vi
@@ -115,6 +148,12 @@ export const TestUtils = {
               sessionsPollingIntervalSeconds: 60,
               sessionPollingIntervalSeconds: 10,
               modes: [],
+              agent: {
+                name: 'some-agent',
+                avatar_url: null,
+                streaming: false,
+                features: agentFeatures(),
+              },
               ...returnValue?.data,
             },
           });
@@ -192,6 +231,24 @@ export const TestUtils = {
               success: true,
               ...returnValue?.data,
             },
+          });
+      },
+      getAgentTurnMessages(target, returnValue) {
+        target.prototype.getAgentTurnMessages = vi
+          .fn(target.prototype.getAgentTurnMessages)
+          .mockResolvedValue({
+            turns: [],
+            ...(returnValue ?? {}),
+          });
+      },
+      createDictationSession(target, returnValue) {
+        target.prototype.createDictationSession = vi
+          .fn(target.prototype.createDictationSession)
+          .mockResolvedValue({
+            token: 'ek_test',
+            expiresAt: new Date(Date.now() + 120_000).toISOString(),
+            model: 'test-model',
+            ...(returnValue ?? {}),
           });
       },
     } satisfies {

@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { useIsSmallScreen } from '../../hooks/useIsSmallScreen.js';
 import { cn } from './utils/cn.js';
-import { Wobble } from './wobble.js';
 
 export type InputProps = React.InputHTMLAttributes<HTMLInputElement>;
 

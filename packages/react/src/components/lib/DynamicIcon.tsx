@@ -1,5 +1,28 @@
 import { isExhaustive, type IconNameU } from '@opencx/widget-core';
 import {
+  AtSignIcon,
+  BotIcon,
+  BookIcon,
+  BookOpenIcon,
+  Building2Icon,
+  CalendarIcon,
+  CreditCardIcon,
+  DatabaseIcon,
+  FileTextIcon,
+  FolderIcon,
+  GlobeIcon,
+  LinkIcon,
+  MailIcon,
+  PackageIcon,
+  PlugIcon,
+  SettingsIcon,
+  ShoppingCartIcon,
+  TagIcon,
+  TicketIcon,
+  UserIcon,
+  UsersIcon,
+  WorkflowIcon,
+  ZapIcon,
   CheckCheckIcon,
   CheckIcon,
   CircleCheckBigIcon,
@@ -62,6 +85,52 @@ export function DynamicIcon({
         return SquareXIcon;
       case 'X':
         return XIcon;
+      case 'AtSign':
+        return AtSignIcon;
+      case 'Bot':
+        return BotIcon;
+      case 'Book':
+        return BookIcon;
+      case 'BookOpen':
+        return BookOpenIcon;
+      case 'Building2':
+        return Building2Icon;
+      case 'Calendar':
+        return CalendarIcon;
+      case 'CreditCard':
+        return CreditCardIcon;
+      case 'Database':
+        return DatabaseIcon;
+      case 'FileText':
+        return FileTextIcon;
+      case 'Folder':
+        return FolderIcon;
+      case 'Globe':
+        return GlobeIcon;
+      case 'Link':
+        return LinkIcon;
+      case 'Mail':
+        return MailIcon;
+      case 'Package':
+        return PackageIcon;
+      case 'Plug':
+        return PlugIcon;
+      case 'Settings':
+        return SettingsIcon;
+      case 'ShoppingCart':
+        return ShoppingCartIcon;
+      case 'Tag':
+        return TagIcon;
+      case 'Ticket':
+        return TicketIcon;
+      case 'User':
+        return UserIcon;
+      case 'Users':
+        return UsersIcon;
+      case 'Workflow':
+        return WorkflowIcon;
+      case 'Zap':
+        return ZapIcon;
 
       case undefined:
         return FallbackIcon;
