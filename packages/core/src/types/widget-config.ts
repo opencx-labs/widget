@@ -262,6 +262,58 @@ export type WidgetCompanionLayoutU = 'compact' | 'sidebar' | 'fullscreen';
  */
 export type WidgetCompanionDefaultLayoutU = 'compact' | 'sidebar';
 
+/**
+ * Which viewport edge the sidebar layout occupies.
+ * - `left` / `right` – pin to that physical edge regardless of text direction.
+ * - `auto` – follow the host document's direction: the inline-end edge, i.e.
+ *   right under LTR and left under RTL.
+ */
+export type WidgetSidebarSideU = 'left' | 'right' | 'auto';
+
+/**
+ * How the sidebar layout coexists with the host page.
+ * - `floating` – the panel overlays the page edge; the page is untouched.
+ * - `docked` – the host page is framed (inset, rounded, on a canvas) and the
+ *   panel sits beside it, so nothing sits underneath the sidebar.
+ */
+export type WidgetSidebarModeU = 'docked' | 'floating';
+
+/**
+ * An action a visitor takes on agent-rendered inline UI (json-render card)
+ * that the host page must complete. Discriminated on `type` so hosts can
+ * narrow the payload.
+ */
+export type WidgetUiAction = {
+  type: 'test-phone-agent';
+  payload: { agentId: string; model: string | null };
+};
+
+/**
+ * The page the visitor is on and, when the host knows it, the one thing on
+ * that page they are looking at. This is what the agent treats as "here" and
+ * "this": a Linear-style context pill in the composer shows the entity, and
+ * the agent resolves it (by `type` + `id`) before asking the visitor what
+ * they mean.
+ */
+export type WidgetPageContext = {
+  page?: {
+    url: string;
+    title?: string;
+  };
+  entity?: {
+    /** Host vocabulary, e.g. `instruction`, `order`, `workflow`. */
+    type: string;
+    id: string;
+    /** What the pill shows and the agent calls it. */
+    title: string;
+    /** Anything the agent needs to act on the entity that is not in `id`. */
+    meta?: Record<string, unknown>;
+  };
+};
+
+/** `WidgetConfig.context`: the well-known page keys plus free-form host data. */
+export type WidgetContext = WidgetPageContext & Record<string, unknown>;
+
 export interface WidgetConfig {
   /**
    * Your organization's widget token.
@@ -270,17 +322,47 @@ export interface WidgetConfig {
   token: string;
 
   /**
-   * Binds this embed to a specific AI agent from your organization's agents
-   * platform (dashboard → AI Training → Agents → Embed). Every session the
-   * widget creates is served by that agent's published configuration, and the
-   * widget adopts the agent's name/avatar for the header and bot bubbles
-   * (your `bot` option fills any gaps).
-   *
-   * Omit to use your organization's default agent. The agent must be enabled
-   * and have a published version — otherwise initialization fails with the
-   * backend's reason.
+   * Per-embed feature toggles. Each one can only NARROW what your
+   * organization enabled server-side — `true` (or omitted) leaves the org
+   * setting in charge; `false` switches the feature off for this embed.
    */
-  agentId?: string;
+  features?: {
+    /**
+     * Whether the agent sends a short heads-up line before it starts tool
+     * work ("Let me look that up…").
+     * @default org setting
+     */
+    preamble?: boolean;
+
+    /**
+     * Whether the agent may reply with inline UI (rich rendered blocks)
+     * instead of plain text where that fits the answer better.
+     * @default org setting
+     */
+    inlineUi?: boolean;
+
+    /**
+     * Whether the composer offers voice dictation (speak, and the words land
+     * in the message box). Only available when your organization enabled it.
+     * @default org setting
+     */
+    dictation?: boolean;
+
+    /**
+     * Whether the agent sees the page you are on (the `context` you pass,
+     * page marks, picked elements). Only available when your organization
+     * enabled it.
+     * @default org setting
+     */
+    pageContext?: boolean;
+
+    /**
+     * Whether the agent may act on the page (highlight elements) as part of
+     * its reply. Only available when your organization enabled it.
+     * @default org setting
+     */
+    clientTools?: boolean;
+  };
 
   /**
    * The language of the widget.
@@ -294,7 +376,8 @@ export interface WidgetConfig {
   };
 
   /**
-   * A name and an avatar for the bot.
+   * A name and an avatar for the bot. Overrides the agent name/avatar your
+   * organization configured in the dashboard.
    */
   bot?: Pick<
     Agent,
@@ -554,6 +637,17 @@ export interface WidgetConfig {
      * @default false
      */
     chatScreenOnly?: boolean;
+
+    /**
+     * If true, a page load returns the visitor to the conversation they were
+     * last in (when it is still open), instead of the sessions list or an
+     * empty chat. Only the session POINTER is stored client-side — through the
+     * same storage adapter as the contact token — and it is dropped as soon as
+     * the conversation is closed or a new one is started.
+     *
+     * @default false
+     */
+    restoreLastSession?: boolean;
   };
 
   /**
@@ -628,13 +722,17 @@ export interface WidgetConfig {
   bodyProperties?: Record<string, JsonValue>;
 
   /**
-   * AI-visible context sent with each send-message request. Useful for data
-   * about the current page the user is viewing. Pass a FUNCTION to have it
-   * resolved fresh at every send — the right form for SPAs, where a static
-   * object captured at init goes stale on the first navigation.
+   * AI-visible context sent with each send-message request: where the
+   * visitor is and what they are looking at, plus anything else the host
+   * wants the agent to know. The two well-known keys, `page` and `entity`,
+   * are what the agent reads as "here" and "this" (see `WidgetPageContext`);
+   * `entity` also shows as a context pill in the composer, removable per
+   * message. Pass a FUNCTION to have it resolved fresh at every send — the
+   * right form for SPAs, where a static object captured at init goes stale on
+   * the first navigation.
    * @default undefined
    */
-  context?: Record<string, unknown> | (() => Record<string, unknown>);
+  context?: WidgetContext | (() => WidgetContext);
 
   /**
    * Show the page-mark button in the composer: the visitor clicks anything on
@@ -648,8 +746,27 @@ export interface WidgetConfig {
   enablePageMarks?: boolean;
 
   /**
-   * How long an agent-requested page highlight remains visible. Agent page
-   * effects are disabled entirely unless `enablePageMarks` is true.
+   * Receives actions the visitor takes on agent-rendered inline UI that the
+   * widget cannot complete on its own — today only `test-phone-agent`, the
+   * "Test via web" button on a phone-agent card. Meant for the OpenCX
+   * dashboard embed; without a handler such cards render without the action.
+   */
+  onUiAction?: (action: WidgetUiAction) => void;
+
+  /**
+   * Makes each step row in an agent turn's trace expandable to show that tool
+   * call's arguments and its result, pretty-printed. For debugging an agent
+   * against a real conversation — the default trace shows only what each step
+   * did, which is what a customer should see.
+   *
+   * @default false
+   */
+  showStepToolIO?: boolean;
+
+  /**
+   * How long an agent-requested page highlight remains visible, in
+   * milliseconds. Agent page effects are disabled entirely unless
+   * `enablePageMarks` is true.
    * @default 8000
    */
   pageMarkHighlightDurationMs?: number;
@@ -686,11 +803,8 @@ export interface WidgetConfig {
    * - `companion` – a bottom-centered floating pill that morphs into a
    *   floating chat panel.
    *
-   * When omitted, embeds bound to an agent through `agentId` use `companion`;
-   * unbound embeds use `popover`. An explicit value always wins.
-   *
    * Ignored when `inline` is `true`.
-   * @default 'companion' for agent-bound embeds; 'popover' otherwise
+   * @default 'popover'
    */
   displayMode?: WidgetDisplayModeU;
 
@@ -813,16 +927,30 @@ export interface WidgetConfig {
     };
 
     /**
-     * Sidebar-layout behavior. The sidebar overlays the page edge by default.
-     * Host-page framing is available as an explicit opt-in because it restyles
-     * the document root and body.
+     * Sidebar-layout behavior: which edge it occupies (`side`) and how it
+     * coexists with the page (`mode`). The sidebar floats over the page edge
+     * on its inline-end by default; docking (host-page framing) is an explicit
+     * opt-in because it restyles the document root and body.
      */
     sidebar?: {
       /**
-       * Frame the host page while the sidebar is open.
-       * @default false
+       * Which viewport edge the sidebar occupies. `auto` follows the host
+       * document's direction (right under LTR, left under RTL); `left` and
+       * `right` pin to that physical edge in both directions.
+       * @default 'auto'
        */
-      framePage?: boolean;
+      side?: WidgetSidebarSideU;
+
+      /**
+       * How the sidebar coexists with the host page.
+       * - `floating` – the panel overlays the page edge, leaving the host
+       *   document untouched.
+       * - `docked` – the host page is framed (inset on the sidebar's side,
+       *   rounded, on a canvas) so the two sit side by side. Opt-in because
+       *   framing restyles the host's document root and body.
+       * @default 'floating'
+       */
+      mode?: WidgetSidebarModeU;
 
       /**
        * Sidebar width in pixels.
@@ -892,6 +1020,10 @@ export interface WidgetConfig {
    * Set this to `false` to let the user send messages even while the AI is still
    * generating. The in-chat typing indicator is preserved; only the send button's
    * disabled/spinner state is dropped.
+   *
+   * Applies to the non-streaming reply engine only. The streaming agent surface
+   * never blocks: a message sent while a reply is streaming is queued and sent
+   * the moment the current reply finishes or is stopped.
    *
    * @default true
    */

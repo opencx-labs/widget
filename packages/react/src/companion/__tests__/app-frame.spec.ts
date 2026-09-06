@@ -1,11 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mountAppFrame, unmountAppFrame } from '../app-frame';
+import { mountAppFrame as mountAppFrameLease } from '../app-frame';
 
 const FRAME_ATTR = 'data-opencx-app-frame';
 const STYLE_SELECTOR = 'style[data-opencx-app-frame-style]';
 const OPEN_ATTR = 'data-opencx-sidebar-open';
 const NO_ANIM_ATTR = 'data-opencx-frame-no-anim';
 const WIDTH_VAR = '--opencx-sidebar-w';
+
+/** Every lease this test took; released together so owners never leak across tests. */
+const leases: Array<ReturnType<typeof mountAppFrameLease>> = [];
+function mountAppFrame(
+  ...args: Parameters<typeof mountAppFrameLease>
+): ReturnType<typeof mountAppFrameLease> {
+  const lease = mountAppFrameLease(...args);
+  leases.push(lease);
+  return lease;
+}
+function releaseAll(): void {
+  leases.splice(0).forEach((lease) => lease.release());
+}
 
 function frameStyles(): HTMLStyleElement[] {
   return Array.from(document.querySelectorAll(STYLE_SELECTOR));
@@ -17,7 +30,7 @@ describe('app-frame', () => {
   });
 
   afterEach(() => {
-    unmountAppFrame();
+    releaseAll();
     document.body.innerHTML = '';
     vi.unstubAllGlobals();
   });
@@ -32,7 +45,7 @@ describe('app-frame', () => {
     portal.id = 'react-portal';
     document.body.append(appRoot, portal);
 
-    mountAppFrame({ canvas: '#f4f4f5', dir: 'ltr', pageBackground: '#fff' });
+    mountAppFrame({ canvas: '#f4f4f5', side: 'right', pageBackground: '#fff' });
 
     expect(Array.from(document.body.children)).toEqual([appRoot, portal]);
     expect(appRoot.parentNode).toBe(document.body);
@@ -43,7 +56,7 @@ describe('app-frame', () => {
     const portal = document.createElement('div');
     document.body.appendChild(portal);
 
-    mountAppFrame({ canvas: '#f4f4f5', dir: 'ltr', pageBackground: '#fff' });
+    mountAppFrame({ canvas: '#f4f4f5', side: 'right', pageBackground: '#fff' });
 
     // This exact call is what React's removeChildFromContainer does when a
     // portal unmounts. With the reparenting frame it threw NotFoundError.
@@ -51,7 +64,7 @@ describe('app-frame', () => {
   });
 
   it('frames the page via attributes + a stylesheet, nothing else', () => {
-    mountAppFrame({ canvas: '#f4f4f5', dir: 'ltr', pageBackground: '#fff' });
+    mountAppFrame({ canvas: '#f4f4f5', side: 'right', pageBackground: '#fff' });
 
     expect(document.documentElement.hasAttribute(FRAME_ATTR)).toBe(true);
     expect(frameStyles()).toHaveLength(1);
@@ -64,8 +77,8 @@ describe('app-frame', () => {
   });
 
   it('mount is idempotent — a second mount adds nothing', () => {
-    mountAppFrame({ canvas: '#f4f4f5', dir: 'ltr', pageBackground: '#fff' });
-    mountAppFrame({ canvas: '#f4f4f5', dir: 'ltr', pageBackground: '#fff' });
+    mountAppFrame({ canvas: '#f4f4f5', side: 'right', pageBackground: '#fff' });
+    mountAppFrame({ canvas: '#f4f4f5', side: 'right', pageBackground: '#fff' });
 
     expect(frameStyles()).toHaveLength(1);
   });
@@ -73,12 +86,12 @@ describe('app-frame', () => {
   it('keeps the shared frame mounted until every widget owner releases it', () => {
     const first = mountAppFrame({
       canvas: '#f4f4f5',
-      dir: 'ltr',
+      side: 'right',
       pageBackground: '#fff',
     });
     const second = mountAppFrame({
       canvas: '#f4f4f5',
-      dir: 'ltr',
+      side: 'right',
       pageBackground: '#fff',
     });
 
@@ -94,7 +107,7 @@ describe('app-frame', () => {
   it('skips mounting when another widget instance already framed the page', () => {
     document.documentElement.setAttribute(FRAME_ATTR, '');
 
-    mountAppFrame({ canvas: '#f4f4f5', dir: 'ltr', pageBackground: '#fff' });
+    mountAppFrame({ canvas: '#f4f4f5', side: 'right', pageBackground: '#fff' });
 
     expect(frameStyles()).toHaveLength(0);
     document.documentElement.removeAttribute(FRAME_ATTR);
@@ -103,14 +116,14 @@ describe('app-frame', () => {
   it('unmount removes every attribute, the stylesheet, and the width var', () => {
     const frame = mountAppFrame({
       canvas: '#f4f4f5',
-      dir: 'ltr',
+      side: 'right',
       pageBackground: '#fff',
     });
     frame.setOpen(true);
     frame.setAnimated(false);
     frame.setWidth(420);
 
-    unmountAppFrame();
+    releaseAll();
 
     const html = document.documentElement;
     expect(html.hasAttribute(FRAME_ATTR)).toBe(false);
@@ -120,20 +133,26 @@ describe('app-frame', () => {
     expect(frameStyles()).toHaveLength(0);
   });
 
-  it('unmount without a mount is a no-op', () => {
-    expect(() => unmountAppFrame()).not.toThrow();
-    expect(window.scrollTo).not.toHaveBeenCalled();
+  it('releasing a lease twice is a no-op', () => {
+    const frame = mountAppFrame({
+      canvas: '#f4f4f5',
+      side: 'right',
+      pageBackground: '#fff',
+    });
+    frame.release();
+    expect(() => frame.release()).not.toThrow();
+    expect(window.scrollTo).toHaveBeenCalledTimes(1);
   });
 
   it('restores the host scroll position on unmount', () => {
-    mountAppFrame({ canvas: '#f4f4f5', dir: 'ltr', pageBackground: '#fff' });
+    mountAppFrame({ canvas: '#f4f4f5', side: 'right', pageBackground: '#fff' });
     Object.defineProperty(document.body, 'scrollTop', {
       value: 320,
       writable: true,
       configurable: true,
     });
 
-    unmountAppFrame();
+    releaseAll();
 
     expect(window.scrollTo).toHaveBeenCalledWith({ top: 320 });
     // jsdom shares the body across tests — drop the stubbed own property
@@ -143,7 +162,7 @@ describe('app-frame', () => {
   it('open/width/anim toggles are attribute- and var-driven', () => {
     const frame = mountAppFrame({
       canvas: '#f4f4f5',
-      dir: 'ltr',
+      side: 'right',
       pageBackground: '#fff',
     });
     const html = document.documentElement;
@@ -165,7 +184,7 @@ describe('app-frame', () => {
   it('isolates open, width, and animation state between two owners', () => {
     const first = mountAppFrame({
       canvas: '#eee',
-      dir: 'ltr',
+      side: 'right',
       pageBackground: '#fff',
     });
     first.setWidth(380);
@@ -173,7 +192,7 @@ describe('app-frame', () => {
 
     const second = mountAppFrame({
       canvas: '#111',
-      dir: 'rtl',
+      side: 'left',
       pageBackground: '#000',
     });
     second.setWidth(520);
@@ -210,7 +229,7 @@ describe('app-frame', () => {
     const inFlow = document.createElement('div');
     document.body.append(shell, inFlow);
 
-    mountAppFrame({ canvas: '#f4f4f5', dir: 'ltr', pageBackground: '#fff' });
+    mountAppFrame({ canvas: '#f4f4f5', side: 'right', pageBackground: '#fff' });
 
     expect(shell.hasAttribute('data-opencx-fixed-fit')).toBe(true);
     // In-flow content keeps its own overflow behavior (wide tables, code
@@ -223,7 +242,7 @@ describe('app-frame', () => {
   });
 
   it('stamps fixed elements the host adds while framed (SPA route change, portaled menus)', async () => {
-    mountAppFrame({ canvas: '#f4f4f5', dir: 'ltr', pageBackground: '#fff' });
+    mountAppFrame({ canvas: '#f4f4f5', side: 'right', pageBackground: '#fff' });
 
     // Directly-added fixed element, and one nested in a static wrapper.
     const toast = document.createElement('div');
@@ -244,10 +263,10 @@ describe('app-frame', () => {
     const shell = document.createElement('main');
     shell.style.position = 'fixed';
     document.body.appendChild(shell);
-    mountAppFrame({ canvas: '#f4f4f5', dir: 'ltr', pageBackground: '#fff' });
+    mountAppFrame({ canvas: '#f4f4f5', side: 'right', pageBackground: '#fff' });
     expect(shell.hasAttribute('data-opencx-fixed-fit')).toBe(true);
 
-    unmountAppFrame();
+    releaseAll();
 
     expect(shell.hasAttribute('data-opencx-fixed-fit')).toBe(false);
     const late = document.createElement('div');
@@ -257,16 +276,16 @@ describe('app-frame', () => {
     expect(late.hasAttribute('data-opencx-fixed-fit')).toBe(false);
   });
 
-  it('resolves the panel side from the widget dir, not the host dir', () => {
-    mountAppFrame({ canvas: '#f4f4f5', dir: 'rtl', pageBackground: '#fff' });
-    const rtlCss = frameStyles()[0]?.textContent ?? '';
-    expect(rtlCss).toContain(`left: calc(var(${WIDTH_VAR}, 400px) + 32px)`);
-    expect(rtlCss).toContain('right: 16px');
-    unmountAppFrame();
+  it('insets the page on the physical side the panel occupies', () => {
+    mountAppFrame({ canvas: '#f4f4f5', side: 'left', pageBackground: '#fff' });
+    const leftCss = frameStyles()[0]?.textContent ?? '';
+    expect(leftCss).toContain(`left: calc(var(${WIDTH_VAR}, 400px) + 32px)`);
+    expect(leftCss).toContain('right: 16px');
+    releaseAll();
 
-    mountAppFrame({ canvas: '#f4f4f5', dir: 'ltr', pageBackground: '#fff' });
-    const ltrCss = frameStyles()[0]?.textContent ?? '';
-    expect(ltrCss).toContain(`right: calc(var(${WIDTH_VAR}, 400px) + 32px)`);
-    expect(ltrCss).toContain('left: 16px');
+    mountAppFrame({ canvas: '#f4f4f5', side: 'right', pageBackground: '#fff' });
+    const rightCss = frameStyles()[0]?.textContent ?? '';
+    expect(rightCss).toContain(`right: calc(var(${WIDTH_VAR}, 400px) + 32px)`);
+    expect(rightCss).toContain('left: 16px');
   });
 });

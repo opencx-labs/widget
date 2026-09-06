@@ -7,20 +7,21 @@ import { cn } from '../components/lib/utils/cn';
  * from the call site (`size-7`, `size-8`, ...) so the base stays reusable.
  *
  * Forwards its ref so it can be the `asChild` target of Radix wrappers
- * (Popover trigger, `Tooltippy`). When wrapped in `Tooltippy`, pass
- * `title=""` at the call site to suppress the native tooltip so it
- * doesn't double up with the styled one.
+ * (Popover trigger, `Tooltippy`). Never renders a native `title`: every
+ * call site pairs it with the styled tooltip, and a native one would double
+ * up with it.
  */
 export const FrameIconButton = React.forwardRef<
   HTMLButtonElement,
-  React.ButtonHTMLAttributes<HTMLButtonElement> & { label: string }
->(function FrameIconButton({ label, title, className, ...props }, ref) {
+  Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'title'> & {
+    label: string;
+  }
+>(function FrameIconButton({ label, className, ...props }, ref) {
   return (
     <button
       ref={ref}
       type="button"
       aria-label={label}
-      title={title === undefined ? label : title || undefined}
       {...props}
       className={cn(
         'flex shrink-0 items-center justify-center rounded-lg',

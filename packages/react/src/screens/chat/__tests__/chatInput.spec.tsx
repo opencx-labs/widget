@@ -11,10 +11,26 @@ const handleCancelUploadSpy = vi.fn();
 const detachSpy = vi.fn();
 const recallOnSentSpy = vi.fn();
 const onStopSpy = vi.fn();
+const dictationToggleSpy = vi.fn();
+const dictationStopSpy = vi.fn();
+let dictationEnabled = false;
+let dictationError: 'microphone' | 'unavailable' | null = null;
 let isStreaming = false;
+let queuedUserMessages: Array<{ id: string; content: string }> = [];
 let enablePageMarks = true;
+/** `WidgetCtx.features`: the org's features narrowed by the embed. */
+let canAttach = true;
+let sendsPageContext = true;
+let configContext: Record<string, unknown> | undefined;
 let capturedInput: SendMessageInput | null = null;
-let marks: Array<{ shape: string; elements: Array<{ name: string }> }> = [];
+let marks: Array<{
+  shape: string;
+  note?: string;
+  elements: Array<{ name: string }>;
+  snapshotUrl?: string;
+}> = [];
+/** Marks whose snapshot upload is still in flight, resolved by the test. */
+const pendingSnapshots = new Map<object, (url: string | null) => void>();
 let allFiles: Array<{
   id: string;
   status: 'success';
@@ -24,13 +40,35 @@ let allFiles: Array<{
 }> = [];
 
 vi.mock('@opencx/widget-react-headless', () => ({
-  useAgentChatUi: () => ({ isStreaming, onStop: onStopSpy }),
-  useConfig: () => ({ enablePageMarks }),
+  useAgentChatUi: () => ({
+    isStreaming,
+    stop: onStopSpy,
+    liveItems: [],
+    turnSources: [],
+    queuedUserMessages,
+    removeQueued: vi.fn(),
+    // The composer hands its slot to a pending clarification; these cases
+    // have none, so the input renders as before.
+    pendingClarification: null,
+  }),
+  useConfig: () => ({ enablePageMarks, context: configContext }),
+  useDictation: () => ({
+    enabled: dictationEnabled,
+    status: 'idle',
+    error: dictationError,
+    isActive: false,
+    levelRef: { current: 0 },
+    start: vi.fn(),
+    stop: dictationStopSpy,
+    toggle: dictationToggleSpy,
+    prewarm: vi.fn(),
+  }),
   useIsAwaitingBotReply: () => ({ isAwaitingBotReply: false }),
   useMessages: () => ({
     sendMessage: sendMessageSpy,
     rememberSentText: rememberSentTextSpy,
     getSentTextHistory: () => [],
+    messagesState: { messages: [] },
   }),
   useSessions: () => ({ sessionState: { session: null } }),
   useUploadFiles: () => ({
@@ -40,7 +78,39 @@ vi.mock('@opencx/widget-react-headless', () => ({
     isUploading: false,
     successFiles: allFiles,
   }),
-  useWidget: () => ({ widgetCtx: { isAgentBound: true } }),
+  useWidget: () => ({
+    widgetCtx: {
+      streaming: true,
+      features: {
+        dictation: dictationEnabled,
+        attachments: canAttach,
+        pageContext: sendsPageContext,
+        pageMarks: enablePageMarks && sendsPageContext,
+        clientTools: false,
+      },
+      messageCtx: { blocksSendWhileAwaitingReply: false },
+    },
+    componentStore: {
+      getComponent: (key: string) =>
+        key === 'agent_chat_questions' ? () => null : undefined,
+    },
+  }),
+}));
+
+vi.mock('../../../page-marks/mark-thumbnail', () => ({
+  awaitSnapshotUrl: (mark: { snapshotUrl?: string }, maxWaitMs: number) => {
+    if (mark.snapshotUrl) return Promise.resolve(mark.snapshotUrl);
+    const pending = pendingSnapshots.get(mark);
+    if (!pending) return Promise.resolve(null);
+    return new Promise<string | null>((resolve) => {
+      const timer = setTimeout(() => resolve(null), maxWaitMs);
+      pendingSnapshots.set(mark, (url) => {
+        clearTimeout(timer);
+        if (url) mark.snapshotUrl = url;
+        resolve(url);
+      });
+    });
+  },
 }));
 
 vi.mock('react-dropzone', () => ({
@@ -97,7 +167,7 @@ vi.mock('../../../page-marks/page-mark-theme', () => ({
   resolvePageMarkTheme: () => ({ accent: '#123456', inkZIndex: 11 }),
 }));
 
-vi.mock('../../../page-marks/usePageMarks', () => ({
+vi.mock('../../../page-marks/usePageMarking', () => ({
   usePageMarking: () => ({
     isActive: false,
     draft: null,
@@ -149,8 +219,14 @@ describe('ChatInput send acceptance', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     isStreaming = false;
+    queuedUserMessages = [];
     enablePageMarks = true;
+    canAttach = true;
+    sendsPageContext = true;
+    dictationEnabled = false;
+    dictationError = null;
     capturedInput = null;
+    configContext = undefined;
     marks = [{ shape: 'box', elements: [{ name: 'button "Save"' }] }];
     allFiles = [
       {
@@ -177,13 +253,13 @@ describe('ChatInput send acceptance', () => {
     vi.restoreAllMocks();
   });
 
-  async function renderInput(onMessageSent = vi.fn()) {
+  async function renderInput() {
     await act(async () => {
-      root.render(<ChatInput onMessageSent={onMessageSent} />);
+      root.render(<ChatInput />);
     });
     const textarea = container.querySelector('textarea');
     if (!textarea) throw new Error('textarea did not render');
-    return { textarea, onMessageSent };
+    return { textarea };
   }
 
   async function submit(textarea: HTMLTextAreaElement, text = 'hello') {
@@ -198,7 +274,7 @@ describe('ChatInput send acceptance', () => {
   }
 
   it('keeps the draft and owned context when a send is not accepted', async () => {
-    const { textarea, onMessageSent } = await renderInput();
+    const { textarea } = await renderInput();
     await submit(textarea);
 
     expect(textarea.value).toBe('hello');
@@ -206,7 +282,6 @@ describe('ChatInput send acceptance', () => {
     expect(recallOnSentSpy).not.toHaveBeenCalled();
     expect(handleCancelUploadSpy).not.toHaveBeenCalled();
     expect(detachSpy).not.toHaveBeenCalled();
-    expect(onMessageSent).not.toHaveBeenCalled();
   });
 
   it('handles a rejected send promise without clearing the payload', async () => {
@@ -216,7 +291,7 @@ describe('ChatInput send acceptance', () => {
       capturedInput = input;
       return Promise.reject(error);
     });
-    const { textarea, onMessageSent } = await renderInput();
+    const { textarea } = await renderInput();
 
     await submit(textarea);
 
@@ -229,15 +304,13 @@ describe('ChatInput send acceptance', () => {
     expect(textarea.value).toBe('hello');
     expect(handleCancelUploadSpy).not.toHaveBeenCalled();
     expect(detachSpy).not.toHaveBeenCalled();
-    expect(onMessageSent).not.toHaveBeenCalled();
   });
 
-  it('clears only after acceptance and notifies the parent last', async () => {
+  it('clears only after acceptance', async () => {
     const order: string[] = [];
     detachSpy.mockImplementation(() => order.push('detach'));
     handleCancelUploadSpy.mockImplementation(() => order.push('file'));
-    const onMessageSent = vi.fn(() => order.push('parent'));
-    const { textarea } = await renderInput(onMessageSent);
+    const { textarea } = await renderInput();
     const input = await submit(textarea);
 
     await act(async () => input.onAccepted?.());
@@ -247,11 +320,11 @@ describe('ChatInput send acceptance', () => {
     expect(recallOnSentSpy).toHaveBeenCalledTimes(1);
     expect(handleCancelUploadSpy).toHaveBeenCalledWith('file-1');
     expect(detachSpy).toHaveBeenCalledWith(marks[0]);
-    expect(order).toEqual(['detach', 'file', 'parent']);
+    expect(order).toEqual(['detach', 'file']);
   });
 
   it('does not update or reopen an unmounted composer after delayed acceptance', async () => {
-    const { textarea, onMessageSent } = await renderInput();
+    const { textarea } = await renderInput();
     const input = await submit(textarea);
 
     act(() => root.unmount());
@@ -262,7 +335,6 @@ describe('ChatInput send acceptance', () => {
     expect(detachSpy).toHaveBeenCalledWith(marks[0]);
     expect(recallOnSentSpy).not.toHaveBeenCalled();
     expect(handleCancelUploadSpy).toHaveBeenCalledWith('file-1');
-    expect(onMessageSent).not.toHaveBeenCalled();
   });
 
   it('does not send Enter while an IME composition is active', async () => {
@@ -282,18 +354,366 @@ describe('ChatInput send acceptance', () => {
     expect(sendMessageSpy).not.toHaveBeenCalled();
   });
 
-  it('keeps Stop accessible with typed text under the default streaming gate', async () => {
+  it('sends an attached mark on its own, its note standing in as the message', async () => {
+    // Attaching a mark and writing the note on it IS asking the question —
+    // the composer must not demand it typed a second time.
+    allFiles = [];
+    marks = [
+      {
+        shape: 'box',
+        note: 'what is this?',
+        elements: [{ name: 'div "Mode"' }],
+      },
+    ];
+    await renderInput();
+
+    const button = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="send_message"]',
+    );
+    expect(button?.disabled).toBe(false);
+    await act(async () => button?.click());
+
+    expect(capturedInput?.content).toBe('what is this?');
+    // Both keys: the rich marks for this turn, and the flat picked elements
+    // the backend persists and re-surfaces on later turns.
+    expect(capturedInput?.clientContext).toEqual({
+      page_marks: marks,
+      picked_elements: [{ name: 'div "Mode"', note: 'what is this?' }],
+    });
+  });
+
+  it('carries the mark snapshot URL on the send, so a reload shows the picture', async () => {
+    allFiles = [];
+    marks = [
+      {
+        shape: 'box',
+        note: 'call failed',
+        elements: [{ name: 'div "Call summary"' }],
+        snapshotUrl: 'https://storage.test/marks/1.jpg',
+      },
+    ];
+    await renderInput();
+    const button = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="send_message"]',
+    );
+    await act(async () => button?.click());
+
+    expect(capturedInput?.clientContext).toEqual({
+      page_marks: marks,
+      picked_elements: [{ name: 'div "Call summary"', note: 'call failed' }],
+    });
+    const [sentMark] = capturedInput?.clientContext?.page_marks as Array<{
+      snapshotUrl?: string;
+    }>;
+    expect(sentMark?.snapshotUrl).toBe('https://storage.test/marks/1.jpg');
+  });
+
+  it('waits for an in-flight snapshot upload before sending', async () => {
+    allFiles = [];
+    const mark = {
+      shape: 'box',
+      note: 'call failed',
+      elements: [{ name: 'div "Call summary"' }],
+    };
+    marks = [mark];
+    pendingSnapshots.set(mark, () => undefined);
+    await renderInput();
+    const button = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="send_message"]',
+    );
+    await act(async () => button?.click());
+    // Not sent yet: the upload has not landed and the grace period is open.
+    expect(capturedInput).toBeNull();
+
+    await act(async () => {
+      pendingSnapshots.get(mark)?.('https://storage.test/marks/late.jpg');
+    });
+    const [sentMark] = capturedInput?.clientContext?.page_marks as Array<{
+      snapshotUrl?: string;
+    }>;
+    expect(sentMark?.snapshotUrl).toBe('https://storage.test/marks/late.jpg');
+    pendingSnapshots.clear();
+  });
+
+  it("shows the host page's entity as a context pill, and a send carries it", async () => {
+    configContext = {
+      page: { url: 'https://app.test/ai-instructions?selectedDocumentId=i-1' },
+      entity: { type: 'instruction', id: 'i-1', title: 'Payment questions' },
+    };
+    const { textarea } = await renderInput();
+    expect(container.textContent).toContain('Payment questions');
+    const input = await submit(textarea, 'what does this do?');
+    expect(input.withPageEntity).toBe(true);
+  });
+
+  it('dismissing the pill drops the entity from that send only, then it comes back', async () => {
+    configContext = {
+      entity: { type: 'instruction', id: 'i-1', title: 'Payment questions' },
+    };
+    sendMessageSpy.mockImplementation((input: SendMessageInput) => {
+      capturedInput = input;
+      input.onAccepted?.();
+      return Promise.resolve();
+    });
+    const { textarea } = await renderInput();
+    const remove = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="page_context_remove"]',
+    );
+    expect(remove).not.toBeNull();
+    await act(async () => remove?.click());
+    expect(container.textContent).not.toContain('Payment questions');
+
+    const input = await submit(textarea, 'unrelated question');
+    expect(input.withPageEntity).toBe(false);
+    // Accepted send: the pill is back for the next message.
+    expect(container.textContent).toContain('Payment questions');
+  });
+
+  it('renders no pill for a malformed entity, and the send still says withPageEntity', async () => {
+    configContext = { entity: { type: 'x' } };
+    const { textarea } = await renderInput();
+    expect(
+      container.querySelector('button[aria-label="page_context_remove"]'),
+    ).toBeNull();
+    const input = await submit(textarea, 'hi');
+    expect(input.withPageEntity).toBe(true);
+  });
+
+  it('falls back to the default question for a note-less mark, and stays disabled with nothing at all', async () => {
+    allFiles = [];
+    marks = [{ shape: 'box', elements: [{ name: 'div "Mode"' }] }];
+    await renderInput();
+    await act(async () =>
+      container
+        .querySelector<HTMLButtonElement>('button[aria-label="send_message"]')
+        ?.click(),
+    );
+    expect(capturedInput?.content).toBe('page_mark_default_message');
+
+    act(() => root.unmount());
+    rootMounted = false;
+    container.remove();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    rootMounted = true;
+    marks = [];
+    sendMessageSpy.mockClear();
+    await renderInput();
+    const button = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="send_message"]',
+    );
+    expect(button?.disabled).toBe(true);
+    await act(async () => button?.click());
+    expect(sendMessageSpy).not.toHaveBeenCalled();
+  });
+
+  it('typed text mid-stream sends (queues) even under the default awaiting-reply gate', async () => {
+    // The gate belongs to the non-streaming engine; the streaming agent
+    // surface queues a mid-turn send instead of blocking it.
     isStreaming = true;
     const { textarea } = await renderInput();
     await act(async () => setTextareaValue(textarea, 'next message'));
+    expect(
+      container.querySelector('button[aria-label="stop_response"]'),
+    ).toBeNull();
+    const sendButton = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="send_message"]',
+    );
+    expect(sendButton?.disabled).toBe(false);
+    await act(async () => sendButton?.click());
+    expect(sendMessageSpy).toHaveBeenCalledTimes(1);
+    expect(onStopSpy).not.toHaveBeenCalled();
+  });
+
+  it('an empty box mid-stream offers Stop', async () => {
+    isStreaming = true;
+    marks = [];
+    allFiles = [];
+    await renderInput();
     const stopButton = container.querySelector<HTMLButtonElement>(
       'button[aria-label="stop_response"]',
     );
-
-    expect(stopButton).not.toBeNull();
     expect(stopButton?.disabled).toBe(false);
     await act(async () => stopButton?.click());
     expect(onStopSpy).toHaveBeenCalledTimes(1);
     expect(sendMessageSpy).not.toHaveBeenCalled();
+  });
+
+  it('Enter on an empty box flushes the queue the pill advertises', async () => {
+    isStreaming = true;
+    marks = [];
+    allFiles = [];
+    queuedUserMessages = [{ id: 'q-1', content: 'and the invoice too' }];
+    const { textarea } = await renderInput();
+
+    await act(async () =>
+      textarea.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Enter',
+          bubbles: true,
+          cancelable: true,
+        }),
+      ),
+    );
+
+    expect(onStopSpy).toHaveBeenCalledTimes(1);
+    expect(sendMessageSpy).not.toHaveBeenCalled();
+  });
+
+  it('leaves a live response alone on a stray Enter with nothing queued', async () => {
+    isStreaming = true;
+    marks = [];
+    allFiles = [];
+    const { textarea } = await renderInput();
+
+    await act(async () =>
+      textarea.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Enter',
+          bubbles: true,
+          cancelable: true,
+        }),
+      ),
+    );
+
+    expect(onStopSpy).not.toHaveBeenCalled();
+  });
+
+  it('docks attached context outside the composer so the box never grows', async () => {
+    marks = [];
+    allFiles = [];
+    configContext = {
+      entity: { type: 'instruction', id: 'i-1', title: 'Payment questions' },
+    };
+    await renderInput();
+
+    const composer = container.querySelector(
+      '[data-component="chat/input_box/inner_root"]',
+    );
+    const pills = container.querySelector(
+      '[data-component="chat/input_box/page_marks_container"]',
+    );
+    if (!composer || !pills)
+      throw new Error('composer or pills did not render');
+
+    expect(pills.textContent).toContain('Payment questions');
+    // Inside the bordered box, every attached pill pushed the textarea down
+    // and made the composer taller. It must sit on the outside edge.
+    expect(composer.contains(pills)).toBe(false);
+    // ...but in the SAME tray, directly above it: that shared frame is what
+    // fuses context and composer into one unit instead of a floating chip.
+    const tray = container.querySelector(
+      '[data-component="chat/input_box/attached_context_tray"]',
+    );
+    expect(pills.parentElement).toBe(tray);
+    expect(composer.parentElement).toBe(tray);
+    expect(pills.nextElementSibling).toBe(composer);
+    expect(tray?.className).toContain('bg-muted');
+    // The box is permanent; only the colour changes. If the padding rode the
+    // content, detaching snapped the composer 4px before the row above it had
+    // finished collapsing — attach and detach stopped being mirrors.
+    expect(tray?.className).toContain('p-[var(--cx-p)]');
+  });
+
+  it('collapses the tray to the bare composer with nothing attached', async () => {
+    marks = [];
+    allFiles = [];
+    await renderInput();
+
+    const tray = container.querySelector(
+      '[data-component="chat/input_box/attached_context_tray"]',
+    );
+    expect(
+      container.querySelector(
+        '[data-component="chat/input_box/page_marks_container"]',
+      ),
+    ).toBeNull();
+    // No context, no second surface — the composer looks exactly as it did
+    // before the tray existed.
+    expect(tray?.className).not.toContain('bg-muted');
+    expect(tray?.className).toContain('bg-transparent');
+    // ...but the BOX stays, so nothing snaps when context attaches.
+    expect(tray?.className).toContain('p-[var(--cx-p)]');
+  });
+
+  it('shows the paperclip when the org has attachments', async () => {
+    await renderInput();
+    expect(
+      container.querySelector('button[aria-label="attach_files"]'),
+    ).not.toBeNull();
+  });
+
+  it('hides the paperclip when the org has no attachments (agent.features.attachments=false)', async () => {
+    canAttach = false;
+    await renderInput();
+    expect(
+      container.querySelector('button[aria-label="attach_files"]'),
+    ).toBeNull();
+    // The rest of the tool row is untouched.
+    expect(
+      container.querySelector('button[aria-label="mark_page"]'),
+    ).not.toBeNull();
+  });
+
+  it('shows the page-mark button and the entity pill when page context is on', async () => {
+    configContext = {
+      entity: { type: 'instruction', id: 'i-1', title: 'Payment questions' },
+    };
+    await renderInput();
+    expect(
+      container.querySelector('button[aria-label="mark_page"]'),
+    ).not.toBeNull();
+    expect(container.textContent).toContain('Payment questions');
+  });
+
+  it('page context off: no page-mark button, no entity pill, and a send carries no page context', async () => {
+    sendsPageContext = false;
+    marks = [];
+    configContext = {
+      page: { url: 'https://app.test/ai-instructions' },
+      entity: { type: 'instruction', id: 'i-1', title: 'Payment questions' },
+    };
+    const { textarea } = await renderInput();
+    expect(
+      container.querySelector('button[aria-label="mark_page"]'),
+    ).toBeNull();
+    expect(
+      container.querySelector('button[aria-label="page_context_remove"]'),
+    ).toBeNull();
+    expect(container.textContent).not.toContain('Payment questions');
+    // Attachments are a separate feature: the paperclip stays.
+    expect(
+      container.querySelector('button[aria-label="attach_files"]'),
+    ).not.toBeNull();
+
+    const input = await submit(textarea, 'hi');
+    expect(input.clientContext).toBeUndefined();
+  });
+
+  it('shows no mic when dictation is off for this embed', async () => {
+    await renderInput();
+    expect(container.querySelector('button[aria-label="dictate"]')).toBeNull();
+  });
+
+  it('shows the mic when dictation is on, toggles it, and surfaces errors', async () => {
+    dictationEnabled = true;
+    dictationError = 'microphone';
+    await renderInput();
+    const mic = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="dictate"]',
+    );
+    expect(mic).not.toBeNull();
+    await act(async () => mic?.click());
+    expect(dictationToggleSpy).toHaveBeenCalledTimes(1);
+    expect(container.textContent).toContain('dictation_mic_blocked');
+  });
+
+  it('sending stops a live dictation first so half a phrase never ships', async () => {
+    dictationEnabled = true;
+    const { textarea } = await renderInput();
+    await submit(textarea, 'spoken words');
+    expect(dictationStopSpy).toHaveBeenCalled();
+    expect(sendMessageSpy).toHaveBeenCalledTimes(1);
   });
 });

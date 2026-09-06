@@ -7,22 +7,17 @@ but do it deliberately: update the code, this file, and the test constants
 in the same change. If a new animation fails the suite, the default
 assumption is the animation is wrong, not the test.
 
-(Pattern borrowed from the Catamorphic desktop app's motion contract —
-`apps/desktop/DESIGN.md` in `opencx-labs/catamorphic` — adapted to a
-framer-motion, iframe-rendered embeddable widget.)
-
 ## Motion tokens
 
-All tokens live in [`src/companion/materials.ts`](src/companion/materials.ts)
-(companion-named for historical reasons; both shells consume them):
+All tokens live in [`src/motion.ts`](src/motion.ts); both shells consume them:
 
 | Token             | Value                                 | Use                                                                     |
 | ----------------- | ------------------------------------- | ----------------------------------------------------------------------- |
 | `EASE_OUT`        | `cubic-bezier(0.23, 1, 0.32, 1)`      | every tween — framer array form; CSS notation for keyframes             |
 | `MORPH_SPRING`    | spring 500/45/1 (critically damped)   | the companion shell morph + popover open/close                          |
 | `APP_FRAME_EASE`  | `cubic-bezier(0.32, 0.72, 0.24, 1)`   | sidebar app-frame inset only                                            |
-| `FADE_TRANSITION` | 200ms `EASE_OUT` (in `MotionDiv.tsx`) | the default for every `MotionDiv` enter                                 |
-| `EXIT_TRANSITION` | 150ms `EASE_OUT` (in `MotionDiv.tsx`) | `MotionDiv` exits — 50ms snappier than the enter (sanctioned asymmetry) |
+| `FADE_TRANSITION` | 200ms `EASE_OUT`                      | the default for every `MotionDiv` enter                                 |
+| `QUICK_TWEEN`     | 150ms `EASE_OUT`                      | exits (50ms snappier than the enter), reduced-motion morphs, pill settle |
 
 ## The rules
 
@@ -52,10 +47,11 @@ All tokens live in [`src/companion/materials.ts`](src/companion/materials.ts)
    `<MotionConfig reducedMotion="user">` at the root; every CSS animation
    class ships an `animation: none` override under
    `@media (prefers-reduced-motion: reduce)`.
-7. **Keyboard-driven transitions take the fast path.** Shortcut and Escape
-   flows set the `keyboardDriven` flag in `WidgetCompanion`, swapping
-   `MORPH_SPRING` for the 150ms `SNAPPY` tween and skipping fade delays.
-   Any new shortcut that morphs the shell must set it.
+7. **The shell morph is the same whatever moved it.** Escape, the × button
+   and the layout picker all run `MORPH_SPRING` — one journey, one feel.
+   Dismissing a panel is an occasional structural move (rule 2 puts those
+   at 180–300ms), never micro-feedback; `QUICK_TWEEN` stands in only under
+   reduced motion.
 
 ## CSS animation inventory
 
@@ -79,7 +75,7 @@ component — a rebind must move the handler and every hint together.
 
 | Action                          | Binding                          | Scope                                 |
 | ------------------------------- | -------------------------------- | ------------------------------------- |
-| `close-panel`                   | `Escape`                         | staged close, host + iframe documents |
+| `close-panel`                   | `Escape`                         | dismiss, inside the widget iframe     |
 | `toggle-fullscreen`             | `Mod+Shift+F`                    | companion chat panel only             |
 | `send`                          | `Enter` (`Mod+Enter` also sends) | composer                              |
 | `history-prev` / `history-next` | `↑` / `↓`                        | composer, caret at start/end          |

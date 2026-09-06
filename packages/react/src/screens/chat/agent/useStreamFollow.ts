@@ -21,8 +21,7 @@ export type StreamFollow = {
 };
 
 /**
- * Companion-parity streaming scroll behavior (dashboard
- * companion/_components/Chat.tsx): the container follows the bottom as content
+ * Streaming scroll behavior: the container follows the bottom as content
  * streams in ONLY while the user is pinned near it. The moment they scroll up,
  * `autoFollowRef` releases so new tokens no longer yank the viewport down and
  * the scroll-to-bottom button surfaces instead.
@@ -35,7 +34,7 @@ export function useStreamFollow(followKey: DependencyList): StreamFollow {
   // Intent flag, not a derived position read: a sudden content jump can push
   // the layout past the threshold in a single render even though the user
   // never scrolled. Driven off real scroll events only, it stays armed in
-  // that case (companion parity).
+  // that case.
   const autoFollowRef = useRef(true);
   const [showScrollDown, setShowScrollDown] = useState(false);
 

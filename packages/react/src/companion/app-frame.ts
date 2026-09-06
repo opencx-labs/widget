@@ -3,7 +3,8 @@
  * fixed, full-viewport frame with its own scroller — no host DOM node is
  * ever moved. Opening the sidebar insets body on the inline sides only
  * (16px gap, 20px radius, ring + shadow) so the host page reads as a
- * child window on the canvas. The block sides stay flush on purpose:
+ * child window on the canvas, with the wide inset on whichever physical
+ * side the panel occupies (`companion.sidebar.side`). The block sides stay flush on purpose:
  * viewport units don't shrink with the frame, so any top/bottom gap makes
  * a 100vh/100dvh host shell overflow by exactly that gap and grow a stray
  * scrollbar. Full height keeps vh-sized apps fitting exactly.
@@ -30,13 +31,14 @@
  * release removes every attribute/style and restores scroll.
  */
 
+import type { WidgetSidebarSideResolvedU } from '@opencx/widget-core';
 import {
   DEFAULT_SIDEBAR_WIDTH,
   RADII,
   SIDEBAR_FULL_BLEED_MAX_WIDTH,
   SIDEBAR_MARGIN,
-} from './companion-geometry.utils';
-import { APP_FRAME_EASE_CSS } from './materials';
+} from './companion-geometry';
+import { APP_FRAME_EASE_CSS } from '../motion';
 
 const FRAME_ATTR = 'data-opencx-app-frame';
 const STYLE_ATTR = 'data-opencx-app-frame-style';
@@ -52,7 +54,7 @@ let ownerOrder = 0;
 
 type AppFrameOwner = {
   canvas: string;
-  dir: string;
+  side: WidgetSidebarSideResolvedU;
   pageBackground: string;
   open: boolean;
   width: number;
@@ -92,7 +94,11 @@ function applyOwnerState(): void {
   const owner = activeOwner();
   if (!owner || !styleEl) return;
 
-  styleEl.textContent = buildCss(owner.canvas, owner.dir, owner.pageBackground);
+  styleEl.textContent = buildCss(
+    owner.canvas,
+    owner.side,
+    owner.pageBackground,
+  );
   const html = document.documentElement;
   if (owner.open) html.setAttribute(OPEN_ATTR, '');
   else html.removeAttribute(OPEN_ATTR);
@@ -124,11 +130,15 @@ function stampFixedElements(root: Element): void {
   }
 }
 
-function buildCss(canvas: string, dir: string, pageBackground: string): string {
-  // The panel sits at the widget's inline-end, which may differ from the
-  // host page's direction — resolve to physical sides here instead of
-  // relying on body's own dir.
-  const [start, end] = dir === 'rtl' ? ['right', 'left'] : ['left', 'right'];
+function buildCss(
+  canvas: string,
+  side: WidgetSidebarSideResolvedU,
+  pageBackground: string,
+): string {
+  // `side` is the panel's PHYSICAL edge, already resolved from config + host
+  // dir by the caller — body's own dir is irrelevant here, and an explicit
+  // `sidebar.side` deliberately overrides it.
+  const [near, far] = side === 'left' ? ['right', 'left'] : ['left', 'right'];
   return `
 html[${FRAME_ATTR}] {
   overflow: hidden !important;
@@ -167,8 +177,8 @@ html[${FRAME_ATTR}] body [${FIT_ATTR}] {
 html[${OPEN_ATTR}] body {
   top: ${SIDEBAR_MARGIN}px !important;
   bottom: ${SIDEBAR_MARGIN}px !important;
-  ${start}: ${SIDEBAR_MARGIN}px !important;
-  ${end}: calc(var(${WIDTH_VAR}, ${DEFAULT_SIDEBAR_WIDTH}px) + ${SIDEBAR_MARGIN * 2}px) !important;
+  ${near}: ${SIDEBAR_MARGIN}px !important;
+  ${far}: calc(var(${WIDTH_VAR}, ${DEFAULT_SIDEBAR_WIDTH}px) + ${SIDEBAR_MARGIN * 2}px) !important;
   border-radius: ${RADII.sidebar}px !important;
   box-shadow: 0 0 0 1px rgba(0,0,0,0.06), 0 10px 24px -6px rgba(0,0,0,0.10) !important;
 }
@@ -184,11 +194,11 @@ html[${OPEN_ATTR}] body {
 
 export function mountAppFrame({
   canvas,
-  dir,
+  side,
   pageBackground,
 }: {
   canvas: string;
-  dir: string;
+  side: WidgetSidebarSideResolvedU;
   pageBackground: string;
 }): AppFrameLease {
   if (typeof document === 'undefined') return NOOP_LEASE;
@@ -222,7 +232,7 @@ export function mountAppFrame({
   const ownerId = Symbol('opencx-app-frame-owner');
   const owner: AppFrameOwner = {
     canvas,
-    dir,
+    side,
     pageBackground,
     open: false,
     width: DEFAULT_SIDEBAR_WIDTH,
@@ -283,11 +293,4 @@ function teardownAppFrame(): void {
   styleEl.remove();
   styleEl = null;
   window.scrollTo({ top: prevScrollTop });
-}
-
-/** Force cleanup for legacy callers and test teardown. New mounts should
- * release their lease so owners cannot tear down each other's host frame. */
-export function unmountAppFrame(): void {
-  owners.clear();
-  teardownAppFrame();
 }

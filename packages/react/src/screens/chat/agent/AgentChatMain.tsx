@@ -51,16 +51,11 @@ export function AgentChatMain() {
     turnSources,
     liveTurnKey,
     turnFailed,
-    onRetryFailedTurn,
+    retryFailedTurn,
   } = useAgentChatUi();
   const { componentStore } = useWidget();
   const { t } = useTranslation();
-  // Server-resolved agent branding wins over the local `bot` option.
   const bot = useBot();
-  const botAgent = useMemo(
-    () => (bot ? { ...bot, isAi: true, id: null } : undefined),
-    [bot],
-  );
 
   const groupedMessages = useMemo(
     () => groupMessagesByType(messages),
@@ -125,7 +120,7 @@ export function AgentChatMain() {
               <StreamingTurn
                 key={source.key}
                 turn={{ active: false, items: source.items }}
-                agent={botAgent}
+                agent={bot}
                 timestamp={message.timestamp}
               />,
             );
@@ -139,28 +134,23 @@ export function AgentChatMain() {
       flushRun();
     });
     return { nodes, renderedSourceKeys };
-  }, [
-    groupedMessages,
-    sourceByRowId,
-    hasLiveItems,
-    lastUserGroupIndex,
-    botAgent,
-  ]);
+  }, [groupedMessages, sourceByRowId, hasLiveItems, lastUserGroupIndex, bot]);
 
   // One owner per node key: a finished turn is retained into `turnSources` at
   // the stream boundary, BEFORE its rows land — the overlay keeps rendering
   // it until then. The commit where the rows arrive renders the source, so
   // the overlay must stand down in that same commit (the release effect only
   // flips state afterwards).
-  const liveTurnNodeKey = liveTurnKey;
   const showLiveTurn =
-    liveItems.length > 0 && !renderedSourceKeys.has(liveTurnNodeKey);
+    liveTurnKey !== null &&
+    liveItems.length > 0 &&
+    !renderedSourceKeys.has(liveTurnKey);
 
   const LoadingComponent = componentStore.getComponent(
     'loading' satisfies SafeExtract<LiteralWidgetComponentKey, 'loading'>,
   );
 
-  // Companion-parity streaming scroll: follow the bottom only while pinned;
+  // Streaming scroll: follow the bottom only while pinned;
   // once the user scrolls up, release and surface the scroll-to-bottom button.
   const { containerRef, handleScroll, showScrollDown, scrollToBottom } =
     useStreamFollow([messages, liveItems]);
@@ -190,9 +180,9 @@ export function AgentChatMain() {
           ...(showLiveTurn
             ? [
                 <StreamingTurn
-                  key={liveTurnNodeKey}
+                  key={liveTurnKey}
                   turn={{ active: isStreaming, items: liveItems }}
-                  agent={botAgent}
+                  agent={bot}
                 />,
               ]
             : []),
@@ -214,7 +204,7 @@ export function AgentChatMain() {
             <button
               {...dc('chat/turn_failed/retry')}
               type="button"
-              onClick={onRetryFailedTurn}
+              onClick={retryFailedTurn}
               className="font-medium underline underline-offset-2 hover:opacity-80"
             >
               {t('turn_failed_retry')}

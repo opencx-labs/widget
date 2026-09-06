@@ -1,10 +1,11 @@
 import { PenLineIcon, XIcon } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { cn } from '../components/lib/utils/cn';
 import { useTranslation } from '../hooks/useTranslation';
 import { dc } from '../utils/data-component';
 import type { PageMark } from './page-mark';
-import { getThumbnail } from './mark-thumbnail';
+import { MarkThumbnail } from './MarkThumbnail';
+import { useMarkThumbnail } from './useMarkThumbnail';
 
 /**
  * One page-mark pill in the composer. Shows the region's actual pixels
@@ -21,49 +22,22 @@ export function PageMarkPill({
   onRemove: () => void;
 }) {
   const { t } = useTranslation();
-  const [thumb, setThumb] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    void getThumbnail(mark)?.then((dataUrl) => {
-      if (!cancelled && dataUrl) setThumb(dataUrl);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [mark]);
+  const thumb = useMarkThumbnail(mark);
 
   const label = mark.note ?? mark.elements[0]?.name ?? t('page_mark_region');
-  const removeLabel = t('page_mark_remove').replace('{label}', label);
+  const removeLabel = t('page_mark_remove', { label });
   const hoverTitle = mark.elements.map((el) => el.name).join(', ');
 
   if (thumb) {
     return (
-      <div
+      <MarkThumbnail
         {...dc('chat/input_box/page_mark_pill')}
-        className={cn(
-          'group relative max-w-full overflow-hidden',
-          'rounded-xl bg-background ring-1 ring-border',
-        )}
+        className="group"
+        src={thumb}
+        alt={label}
+        title={hoverTitle}
+        note={mark.note}
       >
-        <img
-          src={thumb}
-          alt={label}
-          title={hoverTitle}
-          draggable={false}
-          className="block h-10 w-auto max-w-40 object-cover object-left-top"
-        />
-        {mark.note && (
-          <div
-            className={cn(
-              'absolute inset-x-0 bottom-0 truncate px-1.5 py-0.5',
-              'bg-gradient-to-t from-foreground/70 to-foreground/0',
-              'text-[10px] font-medium leading-tight text-background',
-            )}
-          >
-            {mark.note}
-          </div>
-        )}
         <button
           type="button"
           aria-label={removeLabel}
@@ -77,7 +51,7 @@ export function PageMarkPill({
         >
           <XIcon className="size-3" />
         </button>
-      </div>
+      </MarkThumbnail>
     );
   }
 

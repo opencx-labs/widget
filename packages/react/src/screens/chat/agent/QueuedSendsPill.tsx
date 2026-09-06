@@ -18,7 +18,7 @@ import { dc } from '../../../utils/data-component';
  * has no queued messages) or when the queue is empty.
  */
 export function QueuedSendsPill() {
-  const { queuedUserMessages, onRemoveQueued } = useAgentChatUi();
+  const { queuedUserMessages, removeQueued } = useAgentChatUi();
   const {
     messagesState: { messages },
   } = useMessages();
@@ -45,7 +45,7 @@ export function QueuedSendsPill() {
               className="flex items-center justify-between px-3 pt-2 pb-1"
             >
               <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                {pending.length} {t('queued_label')}
+                {t('queued_label', { count: pending.length })}
               </span>
               <CornerDownLeftIcon className="size-3 text-muted-foreground/60" />
             </div>
@@ -66,7 +66,7 @@ export function QueuedSendsPill() {
                     type="button"
                     {...dc('chat/queued_sends/remove')}
                     aria-label={t('remove_queued_message')}
-                    onClick={() => onRemoveQueued(message.id)}
+                    onClick={() => removeQueued(message.id)}
                     className="shrink-0 rounded-md p-0.5 text-muted-foreground/60 transition-colors hover:text-foreground hover:bg-muted"
                   >
                     <XIcon className="size-3.5" />

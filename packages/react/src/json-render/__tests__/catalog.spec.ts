@@ -62,3 +62,22 @@ describe('widgetUiPrompt (slim display-only contract)', () => {
     expect(widgetUiPrompt).toContain('NEVER use emojis');
   });
 });
+
+describe('widgetCatalog prompt shape', () => {
+  it('declares List href as an optional string, not the opaque sanitizer', () => {
+    // The registry parses href through a transform (javascript:/relative URLs
+    // dropped); json-render's prompt printer cannot see through it and would
+    // print a required `href: unknown`, which the model then tries to satisfy.
+    const prompt = widgetCatalog.prompt({ mode: 'inline' });
+    expect(prompt).toContain('href?: string');
+    expect(prompt).not.toContain('href: unknown');
+  });
+
+  it('lists the tool-built PhoneAgentCard so a verbatim tool fence stays in contract', () => {
+    const prompt = widgetCatalog.prompt({ mode: 'inline' });
+    expect(prompt).toContain(
+      'PhoneAgentCard: { agentId: string, agentName: string, model?: string }',
+    );
+    expect(prompt).toContain('NEVER author this yourself');
+  });
+});

@@ -1,5 +1,6 @@
 import * as PopoverPrimitive from '@radix-ui/react-popover';
-import React from 'react';
+import { AnimatePresence } from 'framer-motion';
+import React, { useState } from 'react';
 import { useWidgetLayout } from '@opencx/widget-react-headless';
 import type {
   TranslationKeyU,
@@ -11,6 +12,9 @@ import { dc } from '../utils/data-component';
 import { formatBinding, WIDGET_KEYBINDINGS } from '../utils/keybindings';
 import { useTranslation } from '../hooks/useTranslation';
 import { FrameIconButton } from './FrameIconButton';
+import { useCanHover } from '../hooks/useCanHover';
+import { LayoutGlyph } from './layout-glyphs';
+import { SidebarSubmenu } from './SidebarSubmenu';
 
 /**
  * One control for all three arrangements — a macOS-style layout menu. A single
@@ -19,75 +23,44 @@ import { FrameIconButton } from './FrameIconButton';
  * a SEPARATE control (rendered by the caller), exactly like macOS keeps the
  * red traffic light apart from the green tiling menu.
  *
+ * Hovering the SIDEBAR tile opens a SUBMENU — a small flyout hanging off that
+ * tile with the layout's two sub-choices: Dock (push the page aside vs. lie
+ * over it) and Side (which edge). It only opens while the sidebar is the
+ * ACTIVE layout, so the controls are never offered against a sidebar that
+ * isn't on screen.
+ *
+ * Why a submenu and not another row in this menu: the tiles are nouns naming a
+ * destination — click Fullscreen and you go to fullscreen. Dock and Side are
+ * switches. Rendered in the same grid they inherit the wrong grammar ("Dock"
+ * reads as a place to go), and naming their state instead would put a second,
+ * unrelated "Floating" directly under the Floating tile. A separate surface
+ * lets switch controls read as switches, so the names stay fixed and the state
+ * rides the control.
+ *
  * The popover renders WITHOUT a Radix Portal: companion chrome lives inside the
  * content iframe, and a portal would escape to the host document. Inline
  * content keeps the menu in the iframe where it belongs.
  */
 
-/** A tiny window diagram per layout, in the macOS tiling-menu idiom. */
-function LayoutGlyph({ layout }: { layout: WidgetCompanionLayoutU }) {
-  const common = {
-    width: 18,
-    height: 18,
-    viewBox: '0 0 18 18',
-    fill: 'none',
-    'aria-hidden': true,
-  } as const;
-  const frame = (
-    <rect
-      x={2}
-      y={2.5}
-      width={14}
-      height={13}
-      rx={2.5}
-      stroke="currentColor"
-      strokeWidth={1.4}
-    />
-  );
-  if (layout === 'fullscreen') {
-    // Framed like its siblings, with the content filling the window (an inset
-    // fill) — not a solid black square, which read far heavier than the other
-    // two tiles.
-    return (
-      <svg {...common}>
-        {frame}
-        <rect x={4.5} y={5} width={9} height={8} rx={1.4} fill="currentColor" />
-      </svg>
-    );
-  }
-  if (layout === 'sidebar') {
-    // A docked panel on the inline-end third.
-    return (
-      <svg {...common}>
-        {frame}
-        <rect
-          x={10.5}
-          y={2.5}
-          width={5.5}
-          height={13}
-          rx={2.5}
-          fill="currentColor"
-        />
-      </svg>
-    );
-  }
-  // compact — a small floating card near the bottom center.
-  return (
-    <svg {...common}>
-      {frame}
-      <rect x={5} y={9} width={8} height={4.5} rx={1.6} fill="currentColor" />
-    </svg>
-  );
-}
-
-// Single-word labels so every tile is exactly one line — two-line labels
-// ("Floating panel") stretch their tile tall and pad the others out to match.
-// Config owns order; this record only supplies presentation metadata.
 const LAYOUT_LABELS: Record<WidgetCompanionLayoutU, TranslationKeyU> = {
   compact: 'companion_layout_floating',
   sidebar: 'companion_layout_sidebar',
   fullscreen: 'companion_layout_fullscreen',
 };
+
+/**
+ * True only when focus arrived from the keyboard. Clicking a button focuses it
+ * as well, and treating that as hover left the submenu open with the pointer
+ * nowhere near it. jsdom's selector engine has no `:focus-visible`, so a throw
+ * there degrades to "treat it as keyboard" rather than breaking the reveal.
+ */
+function isKeyboardFocus(element: Element): boolean {
+  try {
+    return element.matches(':focus-visible');
+  } catch {
+    return true;
+  }
+}
 
 export function LayoutPicker({
   current,
@@ -97,26 +70,87 @@ export function LayoutPicker({
   onSelect: (layout: WidgetCompanionLayoutU) => void;
 }) {
   const { t } = useTranslation();
-  const { allowedLayouts } = useWidgetLayout();
+  const {
+    allowedLayouts,
+    sidebarSide,
+    setSidebarSide,
+    sidebarMode,
+    setSidebarMode,
+  } = useWidgetLayout();
+  const [sidebarTileHovered, setSidebarTileHovered] = useState(false);
+  // Tap fires pointerenter on touch, so a hover-opened submenu would open on
+  // the very tap that closes the menu.
+  const canHover = useCanHover();
+
   const options = allowedLayouts.map((layout) => ({
     layout,
     label: LAYOUT_LABELS[layout],
   }));
 
-  // Fewer than two options means there's nothing to switch between — hide it.
-  if (options.length < 2) return null;
+  // Fewer than two layouts means there is nothing to switch BETWEEN, so the
+  // tile row goes away — but a locked-to-sidebar companion still has a dock
+  // and a side worth offering, so the control itself survives on that alone.
+  const showLayoutTiles = options.length >= 2;
+  const sidebarAvailable = allowedLayouts.includes('sidebar');
+  if (!showLayoutTiles && !sidebarAvailable) return null;
+
+  // Hover on the sidebar tile is the ONLY thing that opens the submenu, from
+  // any layout. It is not gated on the sidebar being active: a control that
+  // only appears once you are already there can't be discovered. What keeps
+  // that honest is that the controls activate the sidebar themselves (see
+  // `applyFromAnyLayout`), so a click from the floating panel is never a
+  // change the visitor can't see.
+  const sidebarOptionsShown =
+    sidebarAvailable &&
+    (!showLayoutTiles
+      ? // No tile row means no tile to hover, and the submenu is then the only
+        // thing the menu has to say.
+        true
+      : canHover
+        ? sidebarTileHovered
+        : // Touch has no hover, and a tap would close the menu. Fall back to
+          // the layout the visitor is in so the controls stay reachable.
+          current === 'sidebar');
+
+  // From another layout a dock/side pick is also a layout decision: apply it
+  // AND go there, so the visitor lands in exactly what they chose rather than
+  // setting an invisible preference. Adjusting from inside the sidebar leaves
+  // the menu open — that is a tweak, not a decision.
+  const applyFromAnyLayout = (apply: () => void) => {
+    apply();
+    if (current !== 'sidebar') onSelect('sidebar');
+  };
+
+  const submenu = (
+    <AnimatePresence initial={false}>
+      {sidebarOptionsShown && (
+        <SidebarSubmenu
+          anchored={showLayoutTiles}
+          side={sidebarSide}
+          onSelectSide={(next) =>
+            applyFromAnyLayout(() => setSidebarSide(next))
+          }
+          docked={sidebarMode === 'docked'}
+          onToggleDock={() =>
+            applyFromAnyLayout(() =>
+              setSidebarMode(sidebarMode === 'docked' ? 'floating' : 'docked'),
+            )
+          }
+        />
+      )}
+    </AnimatePresence>
+  );
 
   return (
-    <PopoverPrimitive.Root>
+    <PopoverPrimitive.Root onOpenChange={() => setSidebarTileHovered(false)}>
       <Tooltippy content={t('companion_layout_label')} side="bottom">
         <PopoverPrimitive.Trigger asChild>
           <FrameIconButton
             {...dc('companion/layout_picker/trigger')}
             label={t('companion_layout_label')}
-            title=""
             className="size-7"
           >
-            <LayoutGlyph layout={current} />
+            <LayoutGlyph layout={current} sidebarSide={sidebarSide} />
           </FrameIconButton>
         </PopoverPrimitive.Trigger>
       </Tooltippy>
@@ -127,57 +161,96 @@ export function LayoutPicker({
         align="end"
         sideOffset={6}
         collisionPadding={8}
+        // Leaving the MENU (not the tile) is what closes the submenu. The
+        // flyout is a DOM descendant of this element even though it paints
+        // outside it, so travelling onto it never counts as leaving.
+        onPointerLeave={() => setSidebarTileHovered(false)}
         // Concentric radii, enforced by calc so the math can't drift:
         // tile radius = popover radius − padding (16 − 6 = 10).
         style={{ '--pk-r': '16px', '--pk-p': '6px' } as React.CSSProperties}
         className={cn(
-          'z-50 flex items-stretch gap-0.5 rounded-[var(--pk-r)] border bg-background p-[var(--pk-p)] shadow-lg',
+          'z-50 flex flex-col rounded-[var(--pk-r)] border bg-background p-[var(--pk-p)] shadow-lg',
           'origin-[var(--radix-popover-content-transform-origin)]',
           'animate-in fade-in-0 zoom-in-95',
           'data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
         )}
       >
-        {options.map(({ layout, label: labelKey }) => {
-          const selected = layout === current;
-          const label = t(labelKey);
-          const tile = (
-            <PopoverPrimitive.Close asChild key={layout}>
-              <button
-                {...dc('companion/layout_picker/option')}
-                type="button"
-                aria-label={label}
-                aria-pressed={selected}
-                onClick={() => onSelect(layout)}
-                className={cn(
-                  'flex w-14 flex-col items-center gap-1 rounded-[calc(var(--pk-r)-var(--pk-p))] px-1.5 py-1.5',
-                  'transition-colors duration-150',
-                  selected
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-secondary-foreground/60 hover:bg-muted hover:text-secondary-foreground',
-                )}
-              >
-                <LayoutGlyph layout={layout} />
-                <span className="whitespace-nowrap text-[10px] font-medium leading-none">
-                  {label}
-                </span>
-              </button>
-            </PopoverPrimitive.Close>
-          );
-          // Fullscreen is the one tile with a keyboard shortcut — advertise
-          // it (the tile's own label already names the action, so the hint
-          // carries the label + key chip like every shortcut button).
-          if (layout !== 'fullscreen') return tile;
-          return (
-            <Tooltippy
-              key={layout}
-              content={label}
-              shortcut={formatBinding(WIDGET_KEYBINDINGS['toggle-fullscreen'])}
-              side="bottom"
-            >
-              {tile}
-            </Tooltippy>
-          );
-        })}
+        {showLayoutTiles ? (
+          <div className="flex items-stretch gap-0.5">
+            {options.map(({ layout, label: labelKey }) => {
+              const selected = layout === current;
+              const label = t(labelKey);
+              const isSidebar = layout === 'sidebar';
+              const tile = (
+                <PopoverPrimitive.Close asChild>
+                  <button
+                    {...dc('companion/layout_picker/option')}
+                    type="button"
+                    aria-label={label}
+                    aria-pressed={selected}
+                    aria-expanded={isSidebar ? sidebarOptionsShown : undefined}
+                    onClick={() => onSelect(layout)}
+                    // Every tile reports, not just the sidebar one: without
+                    // the others clearing it, hovering Sidebar once left the
+                    // submenu open for as long as the pointer stayed anywhere
+                    // in the menu.
+                    onPointerEnter={() => setSidebarTileHovered(isSidebar)}
+                    // Keyboard reaches the submenu the same way the pointer
+                    // does — but only a KEYBOARD focus. A click focuses the
+                    // tile too, and that must not count as hover.
+                    onFocus={(event) =>
+                      setSidebarTileHovered(
+                        isSidebar && isKeyboardFocus(event.currentTarget),
+                      )
+                    }
+                    className={cn(
+                      'flex w-14 flex-col items-center gap-1 rounded-[calc(var(--pk-r)-var(--pk-p))] px-1.5 py-1.5',
+                      'transition-colors duration-150',
+                      selected
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-secondary-foreground/60 hover:bg-muted hover:text-secondary-foreground',
+                    )}
+                  >
+                    <LayoutGlyph layout={layout} sidebarSide={sidebarSide} />
+                    <span className="whitespace-nowrap text-[10px] font-medium leading-none">
+                      {label}
+                    </span>
+                  </button>
+                </PopoverPrimitive.Close>
+              );
+
+              // The sidebar tile owns the submenu, so it gets the positioning
+              // context the flyout hangs off.
+              if (isSidebar) {
+                return (
+                  <div key={layout} className="relative flex">
+                    {tile}
+                    {submenu}
+                  </div>
+                );
+              }
+              // Fullscreen is the one tile with a keyboard shortcut — advertise
+              // it (the tile's own label already names the action, so the hint
+              // carries the label + key chip like every shortcut button).
+              if (layout !== 'fullscreen')
+                return <React.Fragment key={layout}>{tile}</React.Fragment>;
+              return (
+                <Tooltippy
+                  key={layout}
+                  content={label}
+                  shortcut={formatBinding(
+                    WIDGET_KEYBINDINGS['toggle-fullscreen'],
+                  )}
+                  side="bottom"
+                >
+                  {tile}
+                </Tooltippy>
+              );
+            })}
+          </div>
+        ) : (
+          submenu
+        )}
       </PopoverPrimitive.Content>
     </PopoverPrimitive.Root>
   );

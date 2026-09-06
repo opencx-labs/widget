@@ -3,6 +3,7 @@ import { isApplePlatform } from '../../utils/keybindings';
 import {
   handleCompanionFrameKeyDown,
   handleCompanionHostKeyDown,
+  resolveEscapeAction,
 } from '../companion-keyboard';
 
 function keyEvent(
@@ -57,15 +58,15 @@ describe('companion keyboard ownership', () => {
   });
 
   it('handles Escape inside the frame only when no nested dismissal owns it', () => {
-    const onEscape = vi.fn();
+    const onDismiss = vi.fn();
     const onToggleFullscreen = vi.fn();
 
     handleCompanionFrameKeyDown(keyEvent('Escape'), {
       state: 'chat',
-      onEscape,
+      onDismiss,
       onToggleFullscreen,
     });
-    expect(onEscape).toHaveBeenCalledOnce();
+    expect(onDismiss).toHaveBeenCalledOnce();
 
     const nestedTarget = document.createElement('button');
     const nestedScope = document.createElement('div');
@@ -73,18 +74,80 @@ describe('companion keyboard ownership', () => {
     nestedScope.appendChild(nestedTarget);
     handleCompanionFrameKeyDown(keyEvent('Escape', { target: nestedTarget }), {
       state: 'chat',
-      onEscape,
+      onDismiss,
       onToggleFullscreen,
     });
-    expect(onEscape).toHaveBeenCalledOnce();
+    expect(onDismiss).toHaveBeenCalledOnce();
   });
 
   it('respects a nested dismissible that already prevented Escape', () => {
-    const onEscape = vi.fn();
+    const onDismiss = vi.fn();
     handleCompanionFrameKeyDown(
       keyEvent('Escape', { defaultPrevented: true }),
-      { state: 'chat', onEscape, onToggleFullscreen: vi.fn() },
+      { state: 'chat', onDismiss, onToggleFullscreen: vi.fn() },
     );
-    expect(onEscape).not.toHaveBeenCalled();
+    expect(onDismiss).not.toHaveBeenCalled();
+  });
+});
+
+describe('resolveEscapeAction', () => {
+  const allLayouts = ['compact', 'sidebar', 'fullscreen'] as const;
+
+  it('leaves fullscreen for the layout the panel came from', () => {
+    expect(
+      resolveEscapeAction({
+        panelLayout: 'fullscreen',
+        previousLayout: 'sidebar',
+        defaultLayout: 'compact',
+        allowedLayouts: allLayouts,
+      }),
+    ).toEqual({ kind: 'layout', layout: 'sidebar' });
+  });
+
+  it('closes from every other layout — Escape dismisses, it does not minimize', () => {
+    for (const panelLayout of ['compact', 'sidebar'] as const) {
+      expect(
+        resolveEscapeAction({
+          panelLayout,
+          previousLayout: panelLayout,
+          defaultLayout: 'compact',
+          allowedLayouts: allLayouts,
+        }),
+        panelLayout,
+      ).toEqual({ kind: 'close' });
+    }
+  });
+
+  it('falls back to the configured layout when the previous one is excluded', () => {
+    expect(
+      resolveEscapeAction({
+        panelLayout: 'fullscreen',
+        previousLayout: 'sidebar',
+        defaultLayout: 'compact',
+        allowedLayouts: ['compact', 'fullscreen'],
+      }),
+    ).toEqual({ kind: 'layout', layout: 'compact' });
+  });
+
+  it('falls back to any allowed layout when neither candidate survives', () => {
+    expect(
+      resolveEscapeAction({
+        panelLayout: 'fullscreen',
+        previousLayout: 'fullscreen',
+        defaultLayout: 'fullscreen',
+        allowedLayouts: ['sidebar', 'fullscreen'],
+      }),
+    ).toEqual({ kind: 'layout', layout: 'sidebar' });
+  });
+
+  it('closes a fullscreen-only embed: there is no mode to fall back to', () => {
+    expect(
+      resolveEscapeAction({
+        panelLayout: 'fullscreen',
+        previousLayout: 'fullscreen',
+        defaultLayout: 'fullscreen',
+        allowedLayouts: ['fullscreen'],
+      }),
+    ).toEqual({ kind: 'close' });
   });
 });

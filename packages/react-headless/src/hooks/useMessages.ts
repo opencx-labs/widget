@@ -5,15 +5,12 @@ import { useAgentChatUi } from '../agent-chat/AgentChatContext';
 export function useMessages() {
   const { widgetCtx } = useWidget();
   const messagesState = usePrimitiveState(widgetCtx.messageCtx.state);
-  const { isStreaming: isAgentStreaming } = useAgentChatUi();
-  const effectiveMessagesState =
-    widgetCtx.isAgentBound && isAgentStreaming
-      ? {
-          ...messagesState,
-          isSendingMessage: true,
-          isSendingMessageToAI: true,
-        }
-      : messagesState;
+  // While a streamed reply is in flight the classic "awaiting reply" flags
+  // read true too, so every consumer sees one notion of "the AI is replying".
+  const { isStreaming } = useAgentChatUi();
+  const effectiveMessagesState = isStreaming
+    ? { ...messagesState, isSendingMessage: true, isSendingMessageToAI: true }
+    : messagesState;
 
   return {
     messagesState: effectiveMessagesState,

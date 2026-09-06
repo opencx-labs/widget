@@ -13,9 +13,7 @@ export interface paths {
     };
     get: {
       parameters: {
-        query?: {
-          agentId?: string;
-        };
+        query?: never;
         header: {
           'x-bot-token': string;
         };
@@ -116,12 +114,6 @@ export interface paths {
         query: {
           filters: string;
           offset?: string;
-          /**
-           * Agents-platform binding: when the widget is bound to an agent, the
-           * backend narrows the list to sessions stamped with this agent
-           * (`ai_agent_id`). Omitted when the widget isn't agent-bound.
-           */
-          agentId?: string;
         };
         header?: never;
         path?: never;
@@ -633,6 +625,234 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/backend/widget/v5/chat/stream': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['WidgetSendMessageInputDto'];
+        };
+      };
+      responses: {
+        /** @description Default Response */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorDto'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/backend/widget/v5/chat/{sessionId}/stream': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          sessionId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Default Response */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorDto'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/backend/widget/v5/chat/{sessionId}/messages': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          sessionId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Default Response */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['WidgetAgentTurnMessagesDto'];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorDto'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/backend/widget/v5/chat/{sessionId}/stop': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          sessionId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Default Response */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorDto'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/backend/widget/v5/dictation/sessions': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['CreateWidgetDictationSessionDto'];
+        };
+      };
+      responses: {
+        /** @description Default Response */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['WidgetDictationSessionResponseDto'];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorDto'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -658,8 +878,6 @@ export interface components {
       customData?: {
         [key: string]: string | number | boolean;
       };
-      /** Format: uuid */
-      agentId?: string;
     } | null;
     WidgetSendMessageInputDto: {
       /** Format: uuid */
@@ -684,6 +902,13 @@ export interface components {
       /** @description Context for the AI to be sent with each contact message */
       clientContext?: {
         [key: string]: unknown;
+      } | null;
+      /** @description Per-embed feature narrowing: each flag can only switch OFF a feature the organization enabled for its agent (preamble = a heads-up line before tool work; inline_ui = inline rendered components in replies; page_context = the agent sees the page context sent with the message; client_tools = the agent may act on the page). Absent = the organization settings apply. */
+      features?: {
+        preamble?: boolean;
+        inline_ui?: boolean;
+        page_context?: boolean;
+        client_tools?: boolean;
       } | null;
       /** @description Custom data to be sent with each contact message */
       custom_data?: {
@@ -745,48 +970,11 @@ export interface components {
       feedback?: string;
       system_message_uuid?: string;
     };
+    CreateWidgetDictationSessionDto: {
+      language?: string;
+    };
     WidgetVoteResponseDto: {
       messagePublicId: string | null;
-      success: boolean;
-    };
-    WidgetAgentBrandingDto: {
-      id: string;
-      name: string;
-      avatar_url: string | null;
-    };
-    WidgetConfigDto: {
-      org: {
-        id: string;
-        name: string;
-      };
-      sessionsPollingIntervalSeconds: number;
-      sessionPollingIntervalSeconds: number;
-      modes: {
-        id: string;
-        name: string;
-        slug?: string | null;
-      }[];
-      agent?: components['schemas']['WidgetAgentBrandingDto'];
-    };
-    WidgetPreludeDto: {
-      org: {
-        id: string;
-        name: string;
-      };
-      sessionsPollingIntervalSeconds: number;
-      sessionPollingIntervalSeconds: number;
-      modes: {
-        id: string;
-        name: string;
-        slug?: string | null;
-      }[];
-      agent?: components['schemas']['WidgetAgentBrandingDto'];
-    };
-    WidgetContactTokenResponseDto: {
-      /** @description The JWT token to use for further requests */
-      token: string;
-    };
-    WidgetCreateStateCheckpointOutputDto: {
       success: boolean;
     };
     /** @enum {string} */
@@ -812,6 +1000,7 @@ export interface components {
       | 'ai_reopened_session'
       | 'ai_response_cancelled'
       | 'ai_resumed_by_system'
+      | 'ai_suggestion'
       | 'call_history'
       | 'call_transferred'
       | 'closed_resolved_by_agent'
@@ -823,6 +1012,7 @@ export interface components {
       | 'closed_unresolved_by_api'
       | 'closed_unresolved_by_system'
       | 'contact_data_updated'
+      | 'csat_request_cancelled'
       | 'csat_requested'
       | 'csat_submitted'
       | 'email_draft_message'
@@ -831,10 +1021,16 @@ export interface components {
       | 'handoff_to_zendesk'
       | 'integration_reopened_session'
       | 'message'
+      | 'pii_attachment_removed'
       | 'prohibited_topic_detected'
+      | 'quoted_content_modified'
       | 'salesforce_fields_updated'
       | 'sequence_message'
       | 'session_forwarded'
+      | 'session_language_changed_by_agent'
+      | 'session_language_changed_by_api'
+      | 'session_language_changed_by_integration'
+      | 'session_language_changed_by_system'
       | 'skills_added_by_system'
       | 'sla_applied_by_agent'
       | 'sla_applied_by_system'
@@ -930,51 +1126,6 @@ export interface components {
           type: 'none';
           payload?: null;
         };
-    WidgetHistoryDto: {
-      publicId: string;
-      type: components['schemas']['MessageTypeEnum'];
-      content: {
-        text?: string | null;
-      };
-      sender: {
-        kind: components['schemas']['SenderTypeEnum'];
-        name?: string | null;
-        avatar?: string | null;
-      };
-      sentAt?: string | null;
-      actionCalls?:
-        | {
-            actionName: string;
-            args: unknown;
-            result: unknown;
-            action: {
-              name: string;
-              id: string;
-              openapi?: {
-                openapi_spec_id?: string;
-                operation_spec: unknown;
-                operation_id?: string;
-                operation_method?: string;
-              };
-              metadata: unknown;
-              required_form_submission?: boolean;
-              is_handoff_like?: boolean;
-            };
-          }[]
-        | null;
-      attachments?: components['schemas']['ChatAttachmentDto'][] | null;
-      systemMessagePayload: components['schemas']['SystemMessagePayload'];
-      /** @description Activity (reasoning/tool calls) that happened before this message within its turn. */
-      stepsBefore?: {
-        /** @enum {string} */
-        kind: 'reasoning' | 'tool';
-        label: string;
-      }[];
-      /** @description User messages only: display names of page elements the visitor attached with the element picker. */
-      pickedElements?: {
-        name: string;
-      }[];
-    };
     WidgetSessionDto: {
       /** Format: uuid */
       id: string;
@@ -1014,6 +1165,93 @@ export interface components {
       items: components['schemas']['WidgetSessionDto'][];
       next: string | null;
     };
+    WidgetAgentFeaturesDto: {
+      preamble: boolean;
+      inline_ui: boolean;
+      dictation: boolean;
+      attachments: boolean;
+      page_context: boolean;
+      client_tools: boolean;
+    };
+    WidgetAgentDto: {
+      name: string;
+      avatar_url: string | null;
+      streaming: boolean;
+      features: components['schemas']['WidgetAgentFeaturesDto'];
+    };
+    WidgetConfigDto: {
+      org: {
+        id: string;
+        name: string;
+      };
+      sessionsPollingIntervalSeconds: number;
+      sessionPollingIntervalSeconds: number;
+      modes: {
+        id: string;
+        name: string;
+        slug?: string | null;
+      }[];
+      agent: components['schemas']['WidgetAgentDto'];
+    };
+    WidgetPreludeDto: {
+      org: {
+        id: string;
+        name: string;
+      };
+      sessionsPollingIntervalSeconds: number;
+      sessionPollingIntervalSeconds: number;
+      modes: {
+        id: string;
+        name: string;
+        slug?: string | null;
+      }[];
+      agent: components['schemas']['WidgetAgentDto'];
+    };
+    WidgetHistoryDto: {
+      publicId: string;
+      type: components['schemas']['MessageTypeEnum'];
+      content: {
+        text?: string | null;
+      };
+      sender: {
+        kind: components['schemas']['SenderTypeEnum'];
+        name?: string | null;
+        avatar?: string | null;
+      };
+      sentAt?: string | null;
+      actionCalls?:
+        | {
+            actionName: string;
+            args: unknown;
+            result: unknown;
+            action: {
+              name: string;
+              id: string;
+              openapi?: {
+                openapi_spec_id?: string;
+                operation_spec: unknown;
+                operation_id?: string;
+                operation_method?: string;
+              };
+              metadata: unknown;
+              required_form_submission?: boolean;
+              is_handoff_like?: boolean;
+            };
+          }[]
+        | null;
+      attachments?: components['schemas']['ChatAttachmentDto'][] | null;
+      systemMessagePayload: components['schemas']['SystemMessagePayload'];
+      pickedElements?: {
+        name: string;
+        note?: string;
+        snapshotUrl?: string;
+      }[];
+    };
+    WidgetSessionAndHistoryDto: {
+      /** @description WidgetSession */
+      session: components['schemas']['WidgetSessionDto'];
+      history: components['schemas']['WidgetHistoryDto'][];
+    };
     WidgetSendMessageOutputDto:
       | {
           /** @constant */
@@ -1036,6 +1274,7 @@ export interface components {
             id?: string;
             mightSolveUserIssue: boolean;
             completelyAndFullyCoveredUserIssue: boolean;
+            assistMode: boolean;
             mode?: {
               id: string;
               name: string;
@@ -1080,27 +1319,48 @@ export interface components {
             message?: string;
           };
         };
-    WidgetSubmitCsatOutputDto: {
+    WidgetCreateStateCheckpointOutputDto: {
       success: boolean;
-      /**
-       * @description Why the submit was refused. rescore_locked = the org rescore window has closed, so the recorded score can no longer be changed by the customer
-       * @enum {string}
-       */
-      reason?: 'rescore_locked';
-    };
-    WidgetSessionAndHistoryDto: {
-      /** @description WidgetSession */
-      session: components['schemas']['WidgetSessionDto'];
-      history: components['schemas']['WidgetHistoryDto'][];
     };
     WidgetActionFormSubmissionOutputDto: {
       action: {
         response: unknown;
       };
     };
+    WidgetSubmitCsatOutputDto: {
+      success: boolean;
+      /**
+       * @description Why the submit was refused. rescore_locked = the org rescore window has closed, so the recorded score can no longer be changed by the customer. request_cancelled = the survey was voided before it was answered, so a rating is no longer accepted at all
+       * @enum {string}
+       */
+      reason?: 'rescore_locked' | 'request_cancelled';
+    };
+    WidgetContactTokenResponseDto: {
+      /** @description The JWT token to use for further requests */
+      token: string;
+    };
     UploadWidgetFileResponseDto: {
       fileName: string;
       fileUrl: string;
+    };
+    WidgetAgentTurnMessagesDto: {
+      turns: {
+        /** Format: uuid */
+        turn_id: string;
+        ui_parts:
+          | ({
+              type: string;
+            } & {
+              [key: string]: unknown;
+            })[]
+          | null;
+        message_uuids: string[];
+      }[];
+    };
+    WidgetDictationSessionResponseDto: {
+      token: string;
+      expiresAt: string;
+      model: string;
     };
   };
   responses: {

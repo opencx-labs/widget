@@ -1,10 +1,6 @@
-import type { AgentTurnMessages } from '@opencx/widget-core';
+import type { AgentTurnMessagesDto } from '@opencx/widget-core';
 import { describe, expect, it } from 'vitest';
-import {
-  mapUiMessageToItems,
-  mapUiPartsToItems,
-  type UiMessageLike,
-} from '../agent-chat-stream';
+import { mapUiPartsToItems, type UiMessageLike } from '../agent-chat-stream';
 import {
   mergeTurnSources,
   parseTurnSettledPart,
@@ -12,7 +8,7 @@ import {
 } from '../agent-turn-sources';
 
 type PersistedUiParts = NonNullable<
-  AgentTurnMessages['turns'][number]['uiParts']
+  AgentTurnMessagesDto['turns'][number]['ui_parts']
 >;
 
 const PARTS: PersistedUiParts = [
@@ -51,7 +47,7 @@ describe('mapUiPartsToItems', () => {
       ],
     };
 
-    expect(mapUiMessageToItems(liveMessage)).toEqual(fromServer);
+    expect(mapUiPartsToItems(liveMessage.parts)).toEqual(fromServer);
     expect(fromServer).toEqual([
       {
         kind: 'steps',
@@ -60,7 +56,15 @@ describe('mapUiPartsToItems', () => {
       { kind: 'text', text: 'Let me check.' },
       {
         kind: 'steps',
-        steps: [{ kind: 'tool', label: 'count_sessions', done: true }],
+        steps: [
+          {
+            kind: 'tool',
+            label: 'count_sessions',
+            done: true,
+            input: { scope: 'all' },
+            output: { count: 42 },
+          },
+        ],
       },
       { kind: 'text', text: 'You have 42 sessions.' },
       { kind: 'spec', parts: [{ type: 'data-spec', data: { op: 'add' } }] },
@@ -110,10 +114,10 @@ describe('mapUiPartsToItems', () => {
 });
 
 describe('mergeTurnSources', () => {
-  const fetched: AgentTurnMessages = {
+  const fetched: AgentTurnMessagesDto = {
     turns: [
-      { turnId: 't-1', uiParts: PARTS, messageUuids: ['r1', 'r2'] },
-      { turnId: 't-2', uiParts: PARTS, messageUuids: ['r3'] },
+      { turn_id: 't-1', ui_parts: PARTS, message_uuids: ['r1', 'r2'] },
+      { turn_id: 't-2', ui_parts: PARTS, message_uuids: ['r3'] },
     ],
   };
 
@@ -149,9 +153,9 @@ describe('mergeTurnSources', () => {
       existing: [],
       fetched: {
         turns: [
-          { turnId: 't-a', uiParts: PARTS, messageUuids: [] },
-          { turnId: 't-b', uiParts: null, messageUuids: ['r9'] },
-          { turnId: 't-c', uiParts: PARTS, messageUuids: ['r10'] },
+          { turn_id: 't-a', ui_parts: PARTS, message_uuids: [] },
+          { turn_id: 't-b', ui_parts: null, message_uuids: ['r9'] },
+          { turn_id: 't-c', ui_parts: PARTS, message_uuids: ['r10'] },
         ],
       },
     });

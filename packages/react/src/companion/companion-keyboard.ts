@@ -1,3 +1,4 @@
+import type { WidgetCompanionLayoutU } from '@opencx/widget-core';
 import type { PanelState } from './types';
 import { matchesBinding, WIDGET_KEYBINDINGS } from '../utils/keybindings';
 
@@ -37,17 +38,17 @@ export function handleCompanionFrameKeyDown(
   event: KeyboardEvent,
   {
     state,
-    onEscape,
+    onDismiss,
     onToggleFullscreen,
   }: {
     state: Exclude<PanelState, 'pill'>;
-    onEscape: () => void;
+    onDismiss: () => void;
     onToggleFullscreen: () => void;
   },
 ): void {
   if (event.defaultPrevented) return;
   if (matchesBinding(event, WIDGET_KEYBINDINGS['close-panel'])) {
-    if (!isInsideNestedEscapeScope(event)) onEscape();
+    if (!isInsideNestedEscapeScope(event)) onDismiss();
     return;
   }
   if (
@@ -57,4 +58,44 @@ export function handleCompanionFrameKeyDown(
     event.preventDefault();
     onToggleFullscreen();
   }
+}
+
+/** What Escape does to an open panel. */
+export type EscapeAction =
+  | { kind: 'layout'; layout: WidgetCompanionLayoutU }
+  | { kind: 'close' };
+
+/**
+ * Escape reads the panel's LAYOUT, not its state: fullscreen is a mode the
+ * visitor entered, so Escape leaves the mode and lands back on the layout they
+ * came from — everywhere else Escape means dismiss, straight to the launcher.
+ * (The × button keeps its staged collapse: that control is a minimize, this
+ * key is a dismissal, and conflating them made Escape feel like it did
+ * nothing.)
+ *
+ * Falls back to the configured resting layout when the one they came from is
+ * no longer allowed, and closes outright when every non-fullscreen layout is
+ * excluded — a fullscreen-only embed has no mode to fall back to.
+ */
+export function resolveEscapeAction({
+  panelLayout,
+  previousLayout,
+  defaultLayout,
+  allowedLayouts,
+}: {
+  panelLayout: WidgetCompanionLayoutU;
+  /** The non-fullscreen layout the panel was in before going fullscreen. */
+  previousLayout: WidgetCompanionLayoutU;
+  defaultLayout: WidgetCompanionLayoutU;
+  allowedLayouts: ReadonlyArray<WidgetCompanionLayoutU>;
+}): EscapeAction {
+  if (panelLayout !== 'fullscreen') return { kind: 'close' };
+  const candidates = [previousLayout, defaultLayout];
+  for (const layout of candidates) {
+    if (layout !== 'fullscreen' && allowedLayouts.includes(layout)) {
+      return { kind: 'layout', layout };
+    }
+  }
+  const anyOther = allowedLayouts.find((layout) => layout !== 'fullscreen');
+  return anyOther ? { kind: 'layout', layout: anyOther } : { kind: 'close' };
 }

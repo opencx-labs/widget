@@ -6,7 +6,7 @@ import { useTheme } from '../hooks/useTheme';
 import { useTranslation } from '../hooks/useTranslation';
 import { MARK_SHAPES, type MarkShape } from './page-mark';
 import { resolvePageMarkTheme, type PageMarkTheme } from './page-mark-theme';
-import type { MarkDraft, MarkHover } from './usePageMarks';
+import type { MarkDraft, MarkHover } from './usePageMarking';
 
 /**
  * Mark-mode visuals, rendered on the HOST page: a hint bar while armed, a
@@ -47,11 +47,7 @@ export function PageMarkOverlay({
   const { accent } = markTheme;
 
   return createPortal(
-    <div
-      data-opencx-overlay=""
-      data-opencx-page-marks=""
-      style={{ pointerEvents: 'none' }}
-    >
+    <div data-opencx-overlay="" style={{ pointerEvents: 'none' }}>
       <style>{`
         @keyframes opencx-mark-hint-in {
           from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
@@ -335,10 +331,7 @@ function MarkEditorCard({
               key={shape}
               type="button"
               title={shapeLabel}
-              aria-label={t('page_mark_shape_aria').replace(
-                '{shape}',
-                shapeLabel,
-              )}
+              aria-label={t('page_mark_shape_aria', { shape: shapeLabel })}
               aria-pressed={selected}
               onClick={() => onShapeChange(shape)}
               style={{

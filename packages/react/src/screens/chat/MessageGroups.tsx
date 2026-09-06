@@ -34,7 +34,7 @@ export function MessageGroups({ groups }: { groups: WidgetMessageU[][] }) {
             <AgentMessageGroup
               key={firstIdInGroup}
               messages={group}
-              agent={bot ? { ...bot, isAi: true, id: null } : undefined}
+              agent={bot}
             />
           );
         }

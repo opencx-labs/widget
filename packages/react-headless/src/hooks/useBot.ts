@@ -1,21 +1,24 @@
+import type { Agent } from '@opencx/widget-core';
+import { useMemo } from 'react';
 import { useWidget } from '../WidgetProvider';
 
 /**
- * Effective bot branding for AI messages and the header.
- *
- * When the embed is bound to an agents-platform agent (config `agentId`), the
- * server-resolved agent branding wins — it is the source of truth the backend
- * serves the conversation with — and the embedder's `bot` option only fills
- * gaps (e.g. a missing avatar). Unbound embeds keep using `config.bot`
- * exactly as before.
+ * The AI agent as the transcript shows it: the org's agent name/avatar
+ * (resolved by the backend at init), overridden field by field by the
+ * embedder's `bot` option.
  */
-export function useBot() {
+export function useBot(): Agent {
   const { config, widgetCtx } = useWidget();
-  const agent = widgetCtx.agent;
-  if (!agent) return config.bot;
-  return {
-    name: agent.name,
-    avatarUrl: agent.avatarUrl ?? config.bot?.avatarUrl ?? null,
-    avatar: config.bot?.avatar,
-  };
+  const { name, avatarUrl } = widgetCtx.agent;
+  const bot = config.bot;
+  return useMemo(
+    () => ({
+      isAi: true,
+      id: null,
+      name: bot?.name ?? name,
+      avatarUrl: bot?.avatarUrl ?? avatarUrl,
+      avatar: bot?.avatar,
+    }),
+    [bot?.name, bot?.avatarUrl, bot?.avatar, name, avatarUrl],
+  );
 }

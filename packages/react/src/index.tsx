@@ -26,9 +26,15 @@ import { AgentChatPageEffects } from './screens/chat/agent/AgentChatPageEffects'
 import {
   StreamingSpec,
   type StreamingSpecComponentProps,
-  type StreamingStepsComponentProps,
 } from './components/StreamingTurn';
-import { StepsGroup } from './components/StepsGroup';
+import {
+  StepsGroup,
+  type StreamingStepsComponentProps,
+} from './components/StepsGroup';
+import {
+  ClarificationQuestions,
+  type ClarificationQuestionsProps,
+} from './components/ClarificationQuestions';
 import {
   WidgetImperativeHandler,
   type WidgetRef,
@@ -47,17 +53,20 @@ function WidgetPopoverTriggerAndContent() {
 }
 
 /**
- * Shell picker. Must render INSIDE WidgetProvider: the effective display mode
- * comes from `useDisplayMode`, which needs the resolved config — agent-bound
- * embeds default to the companion shell, explicit `displayMode`
- * always wins. The companion is one shell across every layout (compact,
- * fullscreen, sidebar): it morphs between them in place — no mount/unmount
- * swap — so switching layouts expands FROM the current rect.
+ * Shell picker: the classic popover unless the embed asked for the companion
+ * (`displayMode`). Must render INSIDE WidgetProvider. The companion is one
+ * shell across every layout (compact, fullscreen, sidebar): it morphs between
+ * them in place — no mount/unmount swap — so switching layouts expands FROM
+ * the current rect.
  */
 function WidgetDisplayRoot() {
   const displayMode = useDisplayMode();
   return displayMode === 'companion' ? (
-    <WidgetCompanion />
+    // Layout state (compact/sidebar/fullscreen + the visitor's remembered
+    // preferences) is a companion concept; the popover never reads it.
+    <WidgetLayoutProvider>
+      <WidgetCompanion />
+    </WidgetLayoutProvider>
   ) : (
     <WidgetPopoverTriggerAndContent />
   );
@@ -87,6 +96,10 @@ const defaultComponents: WidgetComponentType[] = [
   {
     key: 'agent_chat_spec' satisfies LiteralWidgetComponentKey,
     component: StreamingSpec,
+  },
+  {
+    key: 'agent_chat_questions' satisfies LiteralWidgetComponentKey,
+    component: ClarificationQuestions,
   },
 ];
 
@@ -129,13 +142,11 @@ const Widget = React.forwardRef<
         errorComponent={errorComponent}
       >
         <WidgetTriggerProvider>
-          <WidgetLayoutProvider>
-            <PageMarksProvider>
-              <AgentChatPageEffects />
-              <WidgetImperativeHandler widgetRef={ref} />
-              {options.inline ? <WidgetContent /> : <WidgetDisplayRoot />}
-            </PageMarksProvider>
-          </WidgetLayoutProvider>
+          <PageMarksProvider>
+            <AgentChatPageEffects />
+            <WidgetImperativeHandler widgetRef={ref} />
+            {options.inline ? <WidgetContent /> : <WidgetDisplayRoot />}
+          </PageMarksProvider>
         </WidgetTriggerProvider>
       </WidgetProvider>
     </MotionConfig>
@@ -144,7 +155,19 @@ const Widget = React.forwardRef<
 Widget.displayName = 'Widget';
 
 export { Widget };
+/**
+ * The agent's inline UI, for a host page that shows widget transcripts
+ * outside the widget (the OpenCX inbox): the same catalog, renderer, and
+ * fence parser the widget uses, so what the agent reads is what the customer
+ * saw.
+ */
+export {
+  HostedSpecRenderer,
+  segmentContent,
+  type ContentSegment,
+} from './json-render';
 export type {
+  ClarificationQuestionsProps,
   StreamingSpecComponentProps,
   StreamingStepsComponentProps,
   WidgetRef,

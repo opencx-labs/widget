@@ -1,4 +1,10 @@
-import type { WidgetCompanionLayoutU } from '../types/widget-config';
+import type {
+  WidgetCompanionLayoutU,
+  WidgetSidebarModeU,
+} from '../types/widget-config';
+
+/** The sidebar side after `auto` has been resolved against the host dir. */
+export type WidgetSidebarSideResolvedU = 'left' | 'right';
 
 export const DEFAULT_COMPANION_LAYOUTS = [
   'compact',
@@ -48,4 +54,23 @@ export function resolveCompanionDefaultLayout(
     return configuredDefault;
   }
   return allowedLayouts[0] ?? DEFAULT_COMPANION_LAYOUTS[0];
+}
+
+/**
+ * Resolve the physical edge the sidebar occupies. `auto` (and any unusable
+ * runtime value) follows the host document's direction — the inline-end edge,
+ * which is the historical behavior — while an explicit side wins in both
+ * directions.
+ */
+export function resolveSidebarSide(
+  side: unknown,
+  dir: string,
+): WidgetSidebarSideResolvedU {
+  if (side === 'left' || side === 'right') return side;
+  return dir === 'rtl' ? 'left' : 'right';
+}
+
+/** Resolve how the sidebar coexists with the page; anything but `docked` floats. */
+export function resolveSidebarMode(mode: unknown): WidgetSidebarModeU {
+  return mode === 'docked' ? 'docked' : 'floating';
 }

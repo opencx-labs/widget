@@ -10,7 +10,6 @@ type AgentChatPageEffect = ReturnType<
 >['pageEffects'][number];
 
 let pageEffects: AgentChatPageEffect[] = [];
-let enablePageMarks = true;
 let pageMarkHighlightDurationMs: number | undefined;
 
 vi.mock('@shardsui/notation', () => ({
@@ -29,7 +28,7 @@ vi.mock('@shardsui/notation', () => ({
 
 vi.mock('@opencx/widget-react-headless', () => ({
   useAgentChatUi: () => ({ pageEffects }),
-  useConfig: () => ({ enablePageMarks, pageMarkHighlightDurationMs }),
+  useConfig: () => ({ pageMarkHighlightDurationMs }),
 }));
 
 vi.mock('../../../../hooks/useTheme', () => ({
@@ -55,7 +54,6 @@ describe('AgentChatPageEffects', () => {
 
   beforeEach(() => {
     pageEffects = [];
-    enablePageMarks = true;
     pageMarkHighlightDurationMs = undefined;
     container = document.createElement('div');
     document.body.appendChild(container);
@@ -127,21 +125,5 @@ describe('AgentChatPageEffects', () => {
     expect(overlays()).toHaveLength(1);
     await act(async () => vi.advanceTimersByTime(301));
     expect(overlays()).toHaveLength(0);
-  });
-
-  it('does nothing unless page marks are explicitly enabled', async () => {
-    enablePageMarks = false;
-    const target = addTarget();
-    pageEffects = [
-      {
-        key: 'sess-1:call-disabled',
-        type: 'highlight-element',
-        input: { selector: '#create-key' },
-      },
-    ];
-    await render();
-
-    expect(target.scrollIntoView).not.toHaveBeenCalled();
-    expect(document.querySelectorAll('[data-opencx-overlay]')).toHaveLength(0);
   });
 });

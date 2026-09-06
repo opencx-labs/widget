@@ -1,6 +1,7 @@
 import type {
-  AgentTurnMessages,
+  AgentTurnMessagesDto,
   SendMessageInput,
+  StagedUserTurn,
   WidgetCtx,
   WidgetMessageU,
   WidgetUserMessage,
@@ -91,21 +92,25 @@ function buildUserMessage(content: string): WidgetUserMessage {
 const fakeReconcileAfterStream = vi.fn(async () => {});
 
 /** Per-test wiring for the v5 messages endpoint. */
-const getAgentTurnMessages = vi.fn<() => Promise<AgentTurnMessages | null>>(
+const getAgentTurnMessages = vi.fn<() => Promise<AgentTurnMessagesDto | null>>(
   async () => null,
 );
 
 const fakeMessageCtx = {
-  beginAgentTurn: vi.fn(async (input: SendMessageInput) => ({
-    sessionId: 'sess-1',
-    userMessage: buildUserMessage(input.content),
-  })),
+  stageUserTurn: vi.fn(
+    async (input: SendMessageInput): Promise<StagedUserTurn | null> => ({
+      sessionId: 'sess-1',
+      userMessage: buildUserMessage(input.content),
+      initialMessages: [],
+    }),
+  ),
   buildQueuedUserMessage: vi.fn((input: SendMessageInput) => ({
     sessionId: 'sess-1',
     userMessage: buildUserMessage(input.content),
   })),
   appendUserMessageIfAbsent: vi.fn(),
   markUserMessageDelivered: vi.fn(),
+  notifySendAccepted: vi.fn((input: SendMessageInput) => input.onAccepted?.()),
   registerAgentHandlers: vi.fn(),
   unregisterAgentHandlers: vi.fn(),
 };
@@ -130,10 +135,17 @@ const fakeWidgetCtx = {
   },
   messageCtx: fakeMessageCtx,
   reconcileAfterStream: fakeReconcileAfterStream,
+  // Org features on, embed silent (WidgetCtx getters).
+  features: {
+    dictation: false,
+    attachments: true,
+    pageContext: true,
+    pageMarks: true,
+    clientTools: true,
+  },
 };
 
 import { useAgentChat } from '../useAgentChat';
-import { LIVE_TURN_FALLBACK_KEY } from '../agent-turn-sources';
 
 let hookValue: ReturnType<typeof useAgentChat> | null = null;
 
@@ -229,7 +241,7 @@ describe('useAgentChat turn retention', () => {
     // key, the STREAMED items (tool chip included), the wire-mapped rows.
     // The turn-identity part itself never renders as an item.
     expect(hookValue?.liveItems).toEqual([]);
-    expect(hookValue?.liveTurnKey).toBe(LIVE_TURN_FALLBACK_KEY);
+    expect(hookValue?.liveTurnKey).toBeNull();
     const source = hookValue?.turnSources[0];
     expect(source?.key).toBe('turn-msg-hey');
     expect(source?.turnId).toBe('T1');
@@ -238,7 +250,15 @@ describe('useAgentChat turn retention', () => {
       { kind: 'text', text: 'Let me count your sessions.' },
       {
         kind: 'steps',
-        steps: [{ kind: 'tool', label: 'count_sessions', done: true }],
+        steps: [
+          {
+            kind: 'tool',
+            label: 'count_sessions',
+            done: true,
+            input: {},
+            output: { count: 42 },
+          },
+        ],
       },
       { kind: 'text', text: 'You have 42 sessions.' },
     ]);
@@ -255,8 +275,8 @@ describe('useAgentChat turn retention', () => {
     getAgentTurnMessages.mockImplementation(async () => ({
       turns: [
         {
-          turnId: 'T0',
-          uiParts: [
+          turn_id: 'T0',
+          ui_parts: [
             { type: 'text', text: 'Historic answer.', state: 'done' },
             {
               type: 'tool-lookup',
@@ -266,7 +286,7 @@ describe('useAgentChat turn retention', () => {
               output: {},
             },
           ],
-          messageUuids: ['r-old'],
+          message_uuids: ['r-old'],
         },
       ],
     }));
@@ -287,12 +307,19 @@ describe('useAgentChat turn retention', () => {
     expect(source?.rowIds).toEqual(['r-old']);
     expect(source?.items).toEqual([
       { kind: 'text', text: 'Historic answer.' },
-      { kind: 'steps', steps: [{ kind: 'tool', label: 'lookup', done: true }] },
+      {
+        kind: 'steps',
+        steps: [
+          { kind: 'tool', label: 'lookup', done: true, input: {}, output: {} },
+        ],
+      },
     ]);
   });
 
   it('preserves a retained turn when a delayed historical snapshot does not include it', async () => {
-    let resolveHistoricalFetch: (value: AgentTurnMessages) => void = () => {};
+    let resolveHistoricalFetch: (
+      value: AgentTurnMessagesDto,
+    ) => void = () => {};
     getAgentTurnMessages.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
@@ -314,11 +341,11 @@ describe('useAgentChat turn retention', () => {
       resolveHistoricalFetch({
         turns: [
           {
-            turnId: 'T0',
-            uiParts: [
+            turn_id: 'T0',
+            ui_parts: [
               { type: 'text', text: 'Historic answer.', state: 'done' },
             ],
-            messageUuids: ['r-old'],
+            message_uuids: ['r-old'],
           },
         ],
       });

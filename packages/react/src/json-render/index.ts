@@ -5,19 +5,21 @@
  * 0.19.0. They stay behind this module instead of becoming peer requirements
  * for widget consumers.
  *
- * This barrel is the module's render seam, nothing more — the two things the
- * rest of the widget needs to turn spec parts into UI:
- * - `SpecRenderer` — the render seam (streaming + history both go through it).
+ * This barrel is the module's render seam:
+ * - `SpecRenderer` — the in-widget render seam (streaming + history).
+ * - `HostedSpecRenderer` + `segmentContent` — the same renderer and the same
+ *   fence parser for a host page that shows widget transcripts (the OpenCX
+ *   inbox), so there is one catalog and one implementation of every card.
  * - `buildSpec` — assemble a spec from a message's `data-spec` parts.
  *
- * Everything else (catalog, registry, spec normalization, content
- * segmentation) is internal to this module; the few in-module consumers
+ * The catalog, registry, and normalizer stay internal; in-module consumers
  * import those files directly.
  */
 import { type Spec } from '@json-render/core';
 import { buildSpecFromParts, type DataPart } from '@json-render/react';
 
-export { SpecRenderer } from './SpecRenderer';
+export { HostedSpecRenderer, SpecRenderer } from './SpecRenderer';
+export { segmentContent, type ContentSegment } from './segment-content';
 
 /**
  * Assemble the accumulated element-tree spec from a message's `data-spec` parts

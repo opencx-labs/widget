@@ -1,5 +1,6 @@
 import { annotate, type Annotation } from '@shardsui/notation';
 import type { MarkedElement, Rect } from './page-element';
+import { log } from '@opencx/widget-core';
 
 /**
  * A mark the visitor put on the host page to ask about: a hand-drawn shape
@@ -37,9 +38,9 @@ export type MarkShape = (typeof MARK_SHAPES)[number];
 
 /**
  * Serialized as `clientContext.page_marks` on the send payload — every field
- * must be JSON-safe and meaningful to the LLM. The ink handle stays in the
- * Widget-scoped page-mark provider and the pill thumbnail in a WeakMap,
- * never in the payload.
+ * must be JSON-safe. The ink handle stays in the Widget-scoped page-mark
+ * provider and the pill thumbnail's base64 in a WeakMap, never in the
+ * payload; only the uploaded snapshot's URL rides along.
  */
 export type PageMark = {
   /** The shape the visitor chose (boxed it / circled it / struck it out). */
@@ -52,7 +53,64 @@ export type PageMark = {
   rect: Rect;
   /** Elements inside the region (deduped, focus element first, capped). */
   elements: MarkedElement[];
+  /**
+   * The region's pixels as a message file, once the thumbnail's upload lands
+   * (`mark-thumbnail.ts` writes it onto the very object the composer holds,
+   * so the send carries it and reloads show the image, not the tag names).
+   * Absent when the capture or upload failed — surfaces fall back to text.
+   */
+  snapshotUrl?: string;
 };
+
+/**
+ * One marked element as the BACKEND has understood it since the element
+ * picker: an entry of `clientContext.picked_elements`.
+ */
+export type PickedElement = MarkedElement & {
+  /** The note written on the mark this element came from, if any. */
+  note?: string;
+};
+
+/**
+ * The marks' elements under the key the backend actually reads and KEEPS.
+ * `page_marks` is the richer payload (shape, note, region) but it is only
+ * rendered into the current turn's client-context block; what the backend
+ * re-surfaces on later turns — and what customer-facing surfaces read back —
+ * is `picked_elements`. So both ride along: the marks for this turn's
+ * reasoning, the flat elements for everything that outlives it.
+ *
+ * Deduped across marks (two marks on the same control are one element), and
+ * the visitor's note travels on the element it was placed on, so a follow-up
+ * turn still knows what was asked, not just what was clicked.
+ */
+export function pickedElementsFromMarks(marks: PageMark[]): PickedElement[] {
+  const byKey = new Map<string, PickedElement>();
+  const picked: PickedElement[] = [];
+  for (const mark of marks) {
+    // The first element this mark contributes carries its note — an existing
+    // entry when every element was already picked, so marking the same control
+    // twice keeps both questions instead of dropping the second.
+    let noteTarget: PickedElement | undefined;
+    for (const element of mark.elements) {
+      const key = element.selector || element.name;
+      const existing = byKey.get(key);
+      if (existing) {
+        noteTarget ??= existing;
+        continue;
+      }
+      const entry: PickedElement = { ...element };
+      byKey.set(key, entry);
+      picked.push(entry);
+      noteTarget ??= entry;
+    }
+    if (mark.note && noteTarget) {
+      noteTarget.note = noteTarget.note
+        ? `${noteTarget.note}\n${mark.note}`
+        : mark.note;
+    }
+  }
+  return picked;
+}
 
 /** A region can never be resized smaller than this, per side. */
 export const MIN_REGION_SIZE_PX = 20;
@@ -131,7 +189,7 @@ export function createMarkInk(
     marker.show();
     adoptNotationInk(anchor, zIndex);
   } catch (err) {
-    console.warn('page mark: could not be drawn', err);
+    log.warn('page mark: could not be drawn', err);
   }
 
   let gone = false;

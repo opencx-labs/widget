@@ -4,8 +4,8 @@ import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { FrameDocument } from '../components/FrameDocument';
 import { Button } from '../components/lib/button';
 import { RootScreen } from '../screens';
-import { ChatInput } from '../screens/chat/ChatFooter';
-import { RADII } from './companion-geometry.utils';
+import { ChatInput } from '../screens/chat/ChatInput';
+import { RADII } from './companion-geometry';
 import { FLAT_MESSAGE_CSS } from './message-styles';
 import type { WidgetCompanionLayoutU } from '@opencx/widget-core';
 import { PanelControls } from './PanelControls';
@@ -19,7 +19,7 @@ import { handleCompanionFrameKeyDown } from './companion-keyboard';
  * as they do to popover (FrameDocument injects `cssOverrides` after this
  * sheet, so their customizations win). The `widgetContentContainer`
  * sizing/radius/shadow keys are popover-only: the companion shell owns its
- * own geometry (companion-geometry.utils).
+ * own geometry (companion-geometry).
  */
 const companionLayoutOverrides = `
 /* Quick-ask (resting) composer: the stock card is a two-row layout (textarea
@@ -31,12 +31,28 @@ const companionLayoutOverrides = `
 [data-companion-input] [data-component="chat/input_box/root"] {
   padding: 0 !important;
 }
+/* The attached-context tray is a FULL-composer affordance. In the one-row
+   quick-ask bar it stacks a second row and paints a second surface inside the
+   shell — a grey box with its own padding and radius sitting inside the white
+   pill, which is not what the resting bar is. Flatten the tray to a pure
+   pass-through here and hide its row; the entity still rides the send, and
+   the full chat panel (one rung up) is where you see and remove it. */
+[data-companion-input] [data-component="chat/input_box/attached_context_tray"] {
+  padding: 0 !important;
+  background: transparent !important;
+  /* The root's space-y-1 puts a 4px top margin on the tray (its first sibling
+     is the hidden dropzone input); with the outer padding gone that margin
+     shows as a strip of shell background above the bar. */
+  margin-top: 0 !important;
+}
+[data-companion-input]
+  [data-component="chat/input_box/attached_context_tray"]
+  > *:not([data-component="chat/input_box/inner_root"]) {
+  display: none !important;
+}
 [data-companion-input] [data-component="chat/input_box/inner_root"] {
   flex-direction: row !important;
   align-items: center !important;
-  /* The root's space-y-1 puts a 4px top margin on this card (its first
-     sibling is the hidden dropzone input); with the outer padding gone that
-     margin shows as a strip of shell background above the bar. */
   margin-top: 0 !important;
   /* The stock card is rounded-3xl (24px), but the companion shell that frames
      it clips at RADII.input in the resting-input state. A mismatch leaves the
@@ -78,9 +94,8 @@ const companionLayoutOverrides = `
 export function CompanionContent({
   state,
   layout,
-  onMessageSent,
-  onClose,
-  onEscape,
+  onMinimize,
+  onDismiss,
   onToggleFullscreen,
   onSelectLayout,
   onHistory,
@@ -92,17 +107,15 @@ export function CompanionContent({
 }: {
   state: 'input' | 'chat';
   layout: WidgetCompanionLayoutU;
-  /** The user sent from the quick-ask composer — morph into the chat panel */
-  onMessageSent: () => void;
   /** Quick-ask composer placeholder (e.g. "Follow up…" while continuing) */
   placeholder: string;
   /** Hide attach + page-mark tools on the quick-ask composer (default UX:
    *  history-only until the panel expands). */
   hideAttachTools: boolean;
-  /** Pointer-initiated staged close (× button) */
-  onClose: () => void;
-  /** Keyboard-initiated staged close (Escape) */
-  onEscape: () => void;
+  /** Staged collapse, one rung at a time (the × button) */
+  onMinimize: () => void;
+  /** Outright dismissal (Escape): drop fullscreen, else straight to the pill */
+  onDismiss: () => void;
   /** Keyboard toggle between fullscreen and the prior layout (Mod+Shift+F) */
   onToggleFullscreen: () => void;
   /** Switch layout from the corner picker (compact / sidebar / fullscreen) */
@@ -120,6 +133,7 @@ export function CompanionContent({
   const { t } = useTranslation();
   const rootRef = useRef<HTMLDivElement>(null);
   const inputPaneRef = useRef<HTMLDivElement>(null);
+  const chatPaneRef = useRef<HTMLDivElement>(null);
 
   // Agent chat default: flat, document-style AI replies (no bubbles) for
   // every companion layout. `companion.bubbles: true` opts back into chat
@@ -139,13 +153,13 @@ export function CompanionContent({
     function handleKey(e: KeyboardEvent) {
       handleCompanionFrameKeyDown(e, {
         state,
-        onEscape,
+        onDismiss,
         onToggleFullscreen,
       });
     }
     doc.addEventListener('keydown', handleKey);
     return () => doc.removeEventListener('keydown', handleKey);
-  }, [onEscape, onToggleFullscreen, state]);
+  }, [onDismiss, onToggleFullscreen, state]);
 
   // Measure the real composer (it grows as the user types) and drive the
   // shell card height from it. The composer lives in the iframe document, so
@@ -175,10 +189,27 @@ export function CompanionContent({
   // would be wrong.)
   useLayoutEffect(() => {
     if (state !== 'input' || canExpand) return;
-    inputPaneRef.current
-      ?.querySelector<HTMLTextAreaElement>('textarea')
-      ?.focus({ preventScroll: true });
+    focusComposer(inputPaneRef.current);
   }, [state, canExpand]);
+
+  // The same rule one rung up: expanding into the conversation must leave the
+  // caret in the composer. Without it the panel opens looking ready to type
+  // and swallows every keystroke until the visitor clicks the textarea — the
+  // exact bug the quick-ask pane fixed above. Runs on the transition INTO
+  // chat only, so switching layouts (or scrolling back through the
+  // transcript) never yanks focus away. One retry after paint covers the
+  // panel that opens while the screen is still mounting; the sessions screen
+  // has no composer, and there the query simply finds nothing.
+  useLayoutEffect(() => {
+    if (state !== 'chat') return;
+    if (focusComposer(chatPaneRef.current)) return;
+    const view = chatPaneRef.current?.ownerDocument.defaultView;
+    if (!view) return;
+    const frame = view.requestAnimationFrame(() =>
+      focusComposer(chatPaneRef.current),
+    );
+    return () => view.cancelAnimationFrame(frame);
+  }, [state]);
 
   return (
     <FrameDocument overrides={overrides} rootRef={rootRef}>
@@ -209,7 +240,6 @@ export function CompanionContent({
           }}
         >
           <ChatInput
-            onMessageSent={onMessageSent}
             disableTooltips
             hideAttachTools={hideAttachTools}
             placeholder={placeholder}
@@ -240,6 +270,7 @@ export function CompanionContent({
         </div>
       ) : (
         <div
+          ref={chatPaneRef}
           data-companion-root
           data-layout={layout}
           style={{
@@ -259,10 +290,23 @@ export function CompanionContent({
           <PanelControls
             layout={layout}
             onSelectLayout={onSelectLayout}
-            onClose={onClose}
+            onClose={onMinimize}
           />
         </div>
       )}
     </FrameDocument>
   );
+}
+
+/**
+ * Put the caret in a pane's composer, reporting whether there was one to
+ * focus. Generic `querySelector` typing, no cast: the iframe's elements
+ * belong to another realm, so an `instanceof` check against the host's
+ * `HTMLTextAreaElement` would be wrong.
+ */
+function focusComposer(pane: HTMLElement | null): boolean {
+  const textarea = pane?.querySelector<HTMLTextAreaElement>('textarea');
+  if (!textarea) return false;
+  textarea.focus({ preventScroll: true });
+  return true;
 }

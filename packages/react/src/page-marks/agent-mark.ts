@@ -2,6 +2,7 @@ import { annotate, type AnnotationType } from '@shardsui/notation';
 import { z } from 'zod';
 import { resolveElementByHint } from './page-element';
 import { adoptNotationInk } from './page-mark';
+import { log } from '@opencx/widget-core';
 
 /**
  * The AI's browser-effect tool: the backend defines `highlight_element` with an
@@ -23,8 +24,6 @@ import { adoptNotationInk } from './page-mark';
  * Dismisses on click, Esc, or after a few seconds — by UN-drawing itself (the
  * strokes reverse-play), which reads as the hand lifting off the page.
  */
-export const HIGHLIGHT_ELEMENT_TOOL_NAME = 'highlight_element';
-
 /**
  * Mark styles the model may request — a deliberate subset of notation's types.
  * `highlight` is excluded because it is the one type that mutates the target's
@@ -53,7 +52,8 @@ export const highlightElementInputSchema = z.object({
 
 type HighlightElementInput = z.infer<typeof highlightElementInputSchema>;
 
-const DEFAULT_HIGHLIGHT_DURATION_MS = 8000;
+/** How long a highlight stays before un-drawing itself (`pageMarkHighlightDurationMs`). */
+export const DEFAULT_HIGHLIGHT_DURATION_MS = 8000;
 
 /**
  * When the model doesn't ask for a mark style, choose like a person with a pen
@@ -108,7 +108,7 @@ export function highlightElementOnHostPage(
     surfaceColor?: string;
     foregroundColor?: string;
     zIndex?: number;
-    durationMs?: number;
+    durationMs?: number | undefined;
     seed?: number;
   } = {},
 ): boolean {
@@ -156,7 +156,7 @@ export function highlightElementOnHostPage(
       adoptNotationInk(el, zIndex);
     } catch (err) {
       // The mark is decoration — a draw failure must never break the chat.
-      console.warn('highlight_element: mark could not be drawn', err);
+      log.warn('highlight_element: mark could not be drawn', err);
     }
   };
   // Draw after webfonts settle (a swap reflows text under already-placed ink);

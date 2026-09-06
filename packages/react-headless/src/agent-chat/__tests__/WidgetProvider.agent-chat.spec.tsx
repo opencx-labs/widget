@@ -107,13 +107,13 @@ describe('WidgetProvider agent-chat ownership', () => {
     let handlers: AgentChatHandlers | null = null;
     const buffered: SendMessageInput[] = [];
 
-    const beginAgentTurn = vi.fn(async (input: SendMessageInput) => {
+    const stageUserTurn = vi.fn(async (input: SendMessageInput) => {
       const userMessage = buildUserMessage(input.content);
       messageState.setPartial({
         messages: [...messageState.get().messages, userMessage],
       });
       sessionState.setPartial({ session: { id: 'sess-new' } });
-      return { sessionId: 'sess-new', userMessage };
+      return { sessionId: 'sess-new', userMessage, initialMessages: [] };
     });
     registerAgentHandlers = vi.fn((next: AgentChatHandlers) => {
       handlers = next;
@@ -132,13 +132,16 @@ describe('WidgetProvider agent-chat ownership', () => {
         }
         await handlers.send(input);
       }),
-      beginAgentTurn,
+      stageUserTurn,
       buildQueuedUserMessage: vi.fn((input: SendMessageInput) => ({
         sessionId: sessionState.get().session?.id ?? 'sess-new',
         userMessage: buildUserMessage(input.content),
       })),
       appendUserMessageIfAbsent: vi.fn(),
       markUserMessageDelivered: vi.fn(),
+      notifySendAccepted: vi.fn((input: SendMessageInput) =>
+        input.onAccepted?.(),
+      ),
       registerAgentHandlers,
       unregisterAgentHandlers,
       rememberSentText: vi.fn(),
@@ -146,7 +149,7 @@ describe('WidgetProvider agent-chat ownership', () => {
     };
 
     fakeWidgetCtx = {
-      isAgentBound: true,
+      streaming: true,
       sessionCtx: { sessionState },
       messageCtx,
       api: {
@@ -159,6 +162,14 @@ describe('WidgetProvider agent-chat ownership', () => {
         getAgentTurnMessages: vi.fn(async () => null),
       },
       reconcileAfterStream: vi.fn(async () => {}),
+      // Org features on, embed silent (`WidgetCtx.features`).
+      features: {
+        dictation: false,
+        attachments: true,
+        pageContext: true,
+        pageMarks: true,
+        clientTools: true,
+      },
     } as unknown as WidgetCtx;
     vi.spyOn(WidgetCtx, 'initialize').mockResolvedValue(fakeWidgetCtx);
 

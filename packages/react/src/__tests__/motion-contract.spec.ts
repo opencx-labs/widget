@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { EASE_OUT } from '../companion/materials';
+import { EASE_OUT, FADE_TRANSITION, QUICK_TWEEN } from '../motion';
 
 /**
  * Motion-contract sweep (see ../../MOTION.md). This does not measure frames —
@@ -22,11 +22,7 @@ const PKG_ROOT = join(__dirname, '..', '..');
 const EASE_OUT_CSS = `cubic-bezier(${EASE_OUT.join(', ')})`;
 
 /** Sanctioned loops: indeterminate progress may repeat forever. */
-const LOOP_ALLOWLIST = new Set([
-  'opencx-text-shimmer',
-  'opencx-caret-blink',
-  'ocx-text-shimmer',
-]);
+const LOOP_ALLOWLIST = new Set(['opencx-text-shimmer']);
 const MIN_MS = 100;
 const MAX_MS = 300;
 
@@ -34,13 +30,6 @@ const SOURCES = [
   {
     label: 'index.css',
     text: readFileSync(join(PKG_ROOT, 'index.css'), 'utf8'),
-  },
-  {
-    label: 'StepsGroup.tsx',
-    text: readFileSync(
-      join(PKG_ROOT, 'src', 'components', 'StepsGroup.tsx'),
-      'utf8',
-    ),
   },
 ];
 
@@ -80,7 +69,7 @@ describe('motion contract', () => {
   const decls = collectAnimationDecls();
 
   it('finds the animation inventory (the sweep must not silently go blind)', () => {
-    expect(decls.length).toBeGreaterThanOrEqual(6);
+    expect(decls.length).toBeGreaterThanOrEqual(5);
   });
 
   it('nothing loops except sanctioned indeterminate-progress indicators', () => {
@@ -117,8 +106,8 @@ describe('motion contract', () => {
 
   it('paired enter/exit durations stay within 50ms of each other', () => {
     const byName = new Map(decls.map((d) => [d.name, d]));
-    const enter = byName.get('ocx-placeholder-in');
-    const exit = byName.get('ocx-placeholder-out');
+    const enter = byName.get('opencx-placeholder-in');
+    const exit = byName.get('opencx-placeholder-out');
     expect(enter).toBeDefined();
     expect(exit).toBeDefined();
     expect(Math.abs(enter!.durationMs - exit!.durationMs)).toBeLessThanOrEqual(
@@ -135,16 +124,11 @@ describe('motion contract', () => {
       expect(media, `${label}: missing prefers-reduced-motion block`).not.toBe(
         '',
       );
-      // Class names mirror animation names in both sources, except two
-      // index.css classes named for their role rather than their keyframes.
-      const CLASS_FOR_ANIMATION: Record<string, string> = {
-        'opencx-text-shimmer': 'opencx-shimmer-text',
-        'opencx-caret-blink': 'opencx-stream-caret',
-      };
+      // Class names mirror animation names.
       const classNames = new Set(
         collectAnimationDecls()
           .filter((d) => d.source === label)
-          .map((d) => CLASS_FOR_ANIMATION[d.name] ?? d.name),
+          .map((d) => d.name),
       );
       for (const className of Array.from(classNames)) {
         expect(
@@ -155,19 +139,17 @@ describe('motion contract', () => {
     }
   });
 
-  it('MotionDiv default transition matches the contract', () => {
-    const source = readFileSync(
-      join(PKG_ROOT, 'src', 'components', 'lib', 'MotionDiv.tsx'),
-      'utf8',
-    );
-    const match =
-      /FADE_TRANSITION = \{ duration: ([\d.]+), ease: EASE_OUT \}/.exec(source);
-    expect(
-      match,
-      'MotionDiv must define FADE_TRANSITION on EASE_OUT',
-    ).not.toBeNull();
-    const ms = parseFloat(match![1]!) * 1000;
-    expect(ms).toBeGreaterThanOrEqual(MIN_MS);
-    expect(ms).toBeLessThanOrEqual(MAX_MS);
+  it('the tailwind `ease-opencx` timing function is EASE_OUT', () => {
+    const config = readFileSync(join(PKG_ROOT, 'tailwind.config.js'), 'utf8');
+    expect(config).toContain(`opencx: '${EASE_OUT_CSS}'`);
+  });
+
+  it('the shared tween tokens ride EASE_OUT within the duration bounds', () => {
+    for (const token of [FADE_TRANSITION, QUICK_TWEEN]) {
+      expect(token.ease).toBe(EASE_OUT);
+      const ms = token.duration * 1000;
+      expect(ms).toBeGreaterThanOrEqual(MIN_MS);
+      expect(ms).toBeLessThanOrEqual(MAX_MS);
+    }
   });
 });

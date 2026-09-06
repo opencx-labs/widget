@@ -1,7 +1,9 @@
+import { log } from '@opencx/widget-core';
 import { useAgentChatUi, useConfig } from '@opencx/widget-react-headless';
 import { useEffect, useRef } from 'react';
 import { useTheme } from '../../../hooks/useTheme';
 import {
+  dismissActiveHighlight,
   highlightElementInputSchema,
   highlightElementOnHostPage,
 } from '../../../page-marks/agent-mark';
@@ -11,11 +13,13 @@ const MAX_HANDLED_PAGE_EFFECTS = 200;
 
 /**
  * Styled host-page adapter for effects emitted by the headless agent engine.
- * Headless owns turn/lifecycle state; this bridge alone owns DOM lookup,
- * widget theme colors, layering, and the hand-drawn page-mark implementation.
+ * Headless owns turn/lifecycle state and the client-tools gate
+ * (`WidgetCtx.features.clientTools`, which needs the embed's page-marks
+ * opt-in); this bridge alone owns DOM lookup, widget theme colors, layering,
+ * and the hand-drawn page-mark implementation.
  */
 export function AgentChatPageEffects() {
-  const config = useConfig();
+  const { pageMarkHighlightDurationMs } = useConfig();
   const { pageEffects } = useAgentChatUi();
   const { theme, cssVars } = useTheme();
   const pageMarkTheme = resolvePageMarkTheme({
@@ -25,8 +29,10 @@ export function AgentChatPageEffects() {
   });
   const handledEffectKeysRef = useRef(new Set<string>());
 
+  // The ink lives in the HOST document: an unmounting widget takes it along.
+  useEffect(() => () => dismissActiveHighlight(), []);
+
   useEffect(() => {
-    if (config.enablePageMarks !== true) return;
     const handled = handledEffectKeysRef.current;
     for (const effect of pageEffects) {
       if (effect.type !== 'highlight-element' || handled.has(effect.key)) {
@@ -41,7 +47,7 @@ export function AgentChatPageEffects() {
 
       const parsed = highlightElementInputSchema.safeParse(effect.input);
       if (!parsed.success) {
-        console.warn('highlight_element: invalid tool input', {
+        log.warn('highlight_element: invalid tool input', {
           issues: parsed.error.issues,
         });
         continue;
@@ -51,19 +57,15 @@ export function AgentChatPageEffects() {
         surfaceColor: pageMarkTheme.surface,
         foregroundColor: pageMarkTheme.foreground,
         zIndex: pageMarkTheme.inkZIndex,
-        durationMs: config.pageMarkHighlightDurationMs ?? 8000,
+        durationMs: pageMarkHighlightDurationMs,
       });
       if (!found) {
-        console.warn(
-          'highlight_element: element not found on page',
-          parsed.data,
-        );
+        log.warn('highlight_element: element not found on page', parsed.data);
       }
     }
   }, [
     pageEffects,
-    config.enablePageMarks,
-    config.pageMarkHighlightDurationMs,
+    pageMarkHighlightDurationMs,
     pageMarkTheme.accent,
     pageMarkTheme.surface,
     pageMarkTheme.foreground,

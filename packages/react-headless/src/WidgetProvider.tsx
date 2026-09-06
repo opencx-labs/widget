@@ -10,6 +10,7 @@ import { version } from '../package.json';
 import {
   type ExternalStorage,
   type WidgetConfig,
+  log,
   WidgetCtx,
 } from '@opencx/widget-core';
 import { ComponentRegistry } from './ComponentRegistry';
@@ -45,9 +46,10 @@ export function WidgetProvider({
    */
   loadingComponent?: React.ReactNode;
   /**
-   * Render initialization failures (invalid token, unavailable agent, network
-   * failure). When omitted the error is thrown to the nearest React error
-   * boundary instead of leaving the loading state mounted forever.
+   * Render initialization failures (invalid token, network failure). When
+   * omitted the widget renders nothing and reports the failure to the
+   * console — a support widget must never take the host's React tree down
+   * with it.
    */
   errorComponent?: (error: Error) => React.ReactNode;
 }): React.ReactElement | null {
@@ -81,7 +83,7 @@ export function WidgetProvider({
           reason instanceof Error
             ? reason
             : new Error('Widget initialization failed', { cause: reason });
-        console.error('[opencx] widget initialization failed', error);
+        log.error('widget initialization failed', error);
         if (active) setInitialization({ status: 'error', error });
       },
     );
@@ -95,8 +97,7 @@ export function WidgetProvider({
     return loadingComponent ? <>{loadingComponent}</> : null;
   }
   if (initialization.status === 'error') {
-    if (errorComponent) return <>{errorComponent(initialization.error)}</>;
-    throw initialization.error;
+    return errorComponent ? <>{errorComponent(initialization.error)}</> : null;
   }
 
   const { widgetCtx } = initialization;

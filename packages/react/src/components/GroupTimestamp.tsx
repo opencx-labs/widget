@@ -1,4 +1,5 @@
 import React from 'react';
+import { log } from '@opencx/widget-core';
 import type {
   WidgetAiMessage,
   WidgetAgentMessage,
@@ -33,7 +34,7 @@ export function GroupTimestamp({
         hour12: true,
       });
     } catch (error) {
-      console.error(error);
+      log.error('failed to format timestamp', error);
       return null;
     }
   })();

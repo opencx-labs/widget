@@ -11,7 +11,7 @@ import {
   SIDEBAR_MARGIN,
   shellAnchor,
   type Region,
-} from '../companion-geometry.utils';
+} from '../companion-geometry';
 
 /**
  * The one companion shell renders compact / fullscreen / sidebar and morphs
@@ -22,6 +22,34 @@ import {
 const VIEWPORT: Region = { width: 1200, height: 800 };
 
 describe('effectiveSidebarWidth', () => {
+  it('keeps a sidebar beside the page at tablet widths', () => {
+    expect(effectiveSidebarWidth({ width: 600, height: 800 }, 400)).toBe(400);
+    expect(effectiveSidebarWidth({ width: 760, height: 800 }, 400)).toBe(400);
+  });
+
+  it('preserves room for the host page in a narrow preview', () => {
+    const region = { width: 540, height: 800 };
+    const width = effectiveSidebarWidth(region, 400);
+    expect(width).toBeGreaterThanOrEqual(320);
+    expect(region.width - width - SIDEBAR_MARGIN * 3).toBeGreaterThanOrEqual(
+      120,
+    );
+    expect(
+      chatDims({
+        layout: 'sidebar',
+        region,
+        sidebarWidth: 400,
+        bottomOffset: 24,
+      }).width,
+    ).toBeLessThan(
+      chatDims({
+        layout: 'fullscreen',
+        region,
+        sidebarWidth: 400,
+        bottomOffset: 24,
+      }).width,
+    );
+  });
   it('returns the requested width when it fits', () => {
     expect(effectiveSidebarWidth(VIEWPORT, 400)).toBe(400);
   });
@@ -42,12 +70,12 @@ describe('effectiveSidebarWidth', () => {
     expect(effectiveSidebarWidth(atBreakpoint, 400)).toBe(
       SIDEBAR_FULL_BLEED_MAX_WIDTH - SIDEBAR_MARGIN * 2,
     );
-    // Just above it the configured width applies again.
+    // Just above it a readable sidebar fits beside the reserved host page.
     const above: Region = {
       width: SIDEBAR_FULL_BLEED_MAX_WIDTH + 1,
       height: 800,
     };
-    expect(effectiveSidebarWidth(above, 400)).toBe(400);
+    expect(effectiveSidebarWidth(above, 400)).toBe(321);
   });
 
   it('never returns a negative width when the viewport is smaller than its margins', () => {
@@ -195,7 +223,7 @@ describe('shellAnchor', () => {
         ...base,
         isChatOpen: false,
         layout: 'sidebar',
-        dir: 'ltr',
+        sidebarSide: 'right',
       }),
     ).toEqual({ centerX: 600, bottom: 24 });
     // Same for a fullscreen layout while resting.
@@ -204,7 +232,7 @@ describe('shellAnchor', () => {
         ...base,
         isChatOpen: false,
         layout: 'fullscreen',
-        dir: 'ltr',
+        sidebarSide: 'right',
       }),
     ).toEqual({ centerX: 600, bottom: 24 });
   });
@@ -214,7 +242,7 @@ describe('shellAnchor', () => {
       shellAnchor({
         ...base,
         layout: 'compact',
-        dir: 'ltr',
+        sidebarSide: 'right',
       }),
     ).toEqual({ centerX: 600, bottom: 24 });
   });
@@ -224,35 +252,35 @@ describe('shellAnchor', () => {
       shellAnchor({
         ...base,
         layout: 'fullscreen',
-        dir: 'ltr',
+        sidebarSide: 'right',
       }),
     ).toEqual({ centerX: 600, bottom: FULLSCREEN_MARGIN });
   });
 
-  it('LTR sidebar pins its far edge to the viewport inline-end', () => {
+  it('a right-side sidebar pins its far edge to the viewport right', () => {
     // right edge = 1200 - 16 = 1184; center = right - 400/2 = 984.
     expect(
       shellAnchor({
         ...base,
         layout: 'sidebar',
-        dir: 'ltr',
+        sidebarSide: 'right',
       }),
     ).toEqual({ centerX: 1200 - SIDEBAR_MARGIN - 200, bottom: SIDEBAR_MARGIN });
     // The shell's far (right) edge lands exactly on the viewport edge minus margin.
     const { centerX } = shellAnchor({
       ...base,
       layout: 'sidebar',
-      dir: 'ltr',
+      sidebarSide: 'right',
     });
     expect(centerX + 400 / 2).toBe(1200 - SIDEBAR_MARGIN);
   });
 
-  it('RTL sidebar flips to the inline-start (left) edge', () => {
+  it('a left-side sidebar pins its far edge to the viewport left', () => {
     // left edge = 16; center = 16 + 400/2 = 216.
     const { centerX } = shellAnchor({
       ...base,
       layout: 'sidebar',
-      dir: 'rtl',
+      sidebarSide: 'left',
     });
     expect(centerX).toBe(SIDEBAR_MARGIN + 200);
     expect(centerX - 400 / 2).toBe(SIDEBAR_MARGIN); // left edge on the margin

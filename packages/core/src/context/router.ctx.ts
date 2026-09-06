@@ -24,6 +24,17 @@ export class RouterCtx {
   private contactCtx: ContactCtx;
   private sessionCtx: SessionCtx;
   private resetChat: WidgetCtx['resetChat'];
+  /**
+   * Whether a reload returns the visitor to the conversation they were in.
+   * Off by default: the home screen is the sessions list. Embedders whose
+   * widget is a continuous assistant (an empty panel beside a live
+   * conversation reads as data loss) opt in via `router.restoreLastSession`.
+   */
+  private readonly shouldRestoreLastSession: boolean;
+  /** The stored pointer, until it is used or found unusable. */
+  private restorableSessionId: string | null = null;
+  /** Has the (async) storage read settled? Automatic routing waits for it. */
+  private didReadStoredSession = false;
 
   constructor({
     config,
@@ -47,9 +58,33 @@ export class RouterCtx {
           ? 'chat'
           : 'sessions',
     });
+    this.shouldRestoreLastSession =
+      this.config.router?.restoreLastSession ?? false;
 
+    this.readStoredSession();
     this.registerRoutingListener();
   }
+
+  /**
+   * Read the remembered conversation before any automatic routing runs. The
+   * read is async (the storage adapter may be), and the sessions list can land
+   * first — so routing is re-run once the pointer is known.
+   */
+  private readStoredSession = () => {
+    if (!this.shouldRestoreLastSession) {
+      this.didReadStoredSession = true;
+      return;
+    }
+    void this.sessionCtx
+      .getLastActiveSessionId()
+      .then((sessionId) => {
+        this.restorableSessionId = sessionId;
+      })
+      .finally(() => {
+        this.didReadStoredSession = true;
+        this.routeFromSessions(this.sessionCtx.sessionsState.get());
+      });
+  };
 
   private registerRoutingListener = () => {
     this.contactCtx.state.subscribe(({ contact }) => {
@@ -61,29 +96,63 @@ export class RouterCtx {
       }
     });
 
-    this.sessionCtx.sessionsState.subscribe(
-      ({ isInitialFetchLoading, data }) => {
-        if (
-          this.config.router?.chatScreenOnly &&
-          // Do not route to a chat if we are currently inside one already
-          // This also applies to newly created sessions; the new session will be in `sessionState` before it is refreshed and included in `sessionsState`
-          !this.sessionCtx.sessionState.get().session?.id
-        ) {
-          const mostRecentOpenSessionId = data.find((s) => s.isOpened)?.id;
-          return mostRecentOpenSessionId
-            ? this.toChatScreen(mostRecentOpenSessionId)
-            : undefined;
-        }
+    this.sessionCtx.sessionsState.subscribe(this.routeFromSessions);
+  };
 
-        if (data.length) return;
-        if (this.config.router?.goToChatIfNoSessions === false) return;
+  /**
+   * Every automatic route the sessions list can trigger, in one place so the
+   * restore can re-run it once the stored pointer is known.
+   */
+  private routeFromSessions = ({
+    isInitialFetchLoading,
+    data,
+  }: {
+    isInitialFetchLoading: boolean;
+    data: SessionDto[];
+  }) => {
+    // Hold automatic routing until we know whether there is a conversation to
+    // return to: routing first and restoring second would flash the wrong
+    // screen, or start a second conversation beside the live one.
+    if (!this.didReadStoredSession) return;
 
-        // Auto navigate to chat screen if contact has no previous sessions
-        if (!isInitialFetchLoading && this.state.get().screen !== 'chat') {
-          this.toChatScreen();
-        }
-      },
-    );
+    if (
+      this.restorableSessionId &&
+      !this.sessionCtx.sessionState.get().session?.id
+    ) {
+      const restored = data.find(
+        (s) => s.id === this.restorableSessionId && s.isOpened,
+      );
+      if (restored) {
+        this.restorableSessionId = null;
+        this.toChatScreen(restored.id);
+        return;
+      }
+      // Not in the list yet — the first page may still be loading. Once it has
+      // landed, a pointer with no open session behind it (closed elsewhere,
+      // deleted, another contact) is stale: drop it and route normally.
+      if (isInitialFetchLoading) return;
+      this.restorableSessionId = null;
+    }
+
+    if (
+      this.config.router?.chatScreenOnly &&
+      // Do not route to a chat if we are currently inside one already
+      // This also applies to newly created sessions; the new session will be in `sessionState` before it is refreshed and included in `sessionsState`
+      !this.sessionCtx.sessionState.get().session?.id
+    ) {
+      const mostRecentOpenSessionId = data.find((s) => s.isOpened)?.id;
+      return mostRecentOpenSessionId
+        ? this.toChatScreen(mostRecentOpenSessionId)
+        : undefined;
+    }
+
+    if (data.length) return;
+    if (this.config.router?.goToChatIfNoSessions === false) return;
+
+    // Auto navigate to chat screen if contact has no previous sessions
+    if (!isInitialFetchLoading && this.state.get().screen !== 'chat') {
+      this.toChatScreen();
+    }
   };
 
   toSessionsScreen = () => {

@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, type Target } from 'framer-motion';
 import { type ComponentProps, forwardRef } from 'react';
-import { EASE_OUT } from '../../companion/materials';
+import { FADE_TRANSITION, QUICK_TWEEN } from '../../motion';
 
 type MotionProps = ComponentProps<typeof motion.div>;
 type AnimationDirection = 'right' | 'left' | 'up' | 'down';
@@ -21,19 +21,6 @@ type Overrides = {
 
 export const ANIMATION_DISTANCE_PX = 10;
 
-/** One curve and bounded duration for every fade wrapper — MotionDiv is
- * behind nearly every screen/element transition, so this IS the widget's
- * default motion signature. EASE_OUT is the shared token the companion
- * shell and popover already ride (see MOTION.md); before this, MotionDiv
- * fell back to framer's stock tween and read as a different system. Exits
- * reuse the same transition so enter/exit mirror (snapExit opts out). */
-const FADE_TRANSITION = { duration: 0.2, ease: EASE_OUT } as const;
-
-/** Exits run 50ms snappier than enters (the sanctioned asymmetry): the user
- * has already moved on — a departing element should get out of the way, not
- * hold the stage as long as it took to arrive. */
-const EXIT_TRANSITION = { duration: 0.15, ease: EASE_OUT } as const;
-
 const fadeInRight = (
   distance: number,
   overrides: Overrides,
@@ -50,7 +37,7 @@ const fadeInRight = (
     opacity: 0,
     x: distance,
     ...overrides.exit,
-    transition: EXIT_TRANSITION,
+    transition: QUICK_TWEEN,
   },
   transition: FADE_TRANSITION,
 });
@@ -71,7 +58,7 @@ const fadeInLeft = (
     opacity: 0,
     x: -distance,
     ...overrides.exit,
-    transition: EXIT_TRANSITION,
+    transition: QUICK_TWEEN,
   },
   transition: FADE_TRANSITION,
 });
@@ -92,7 +79,7 @@ const fadeInUp = (
     opacity: 0,
     y: -distance,
     ...overrides.exit,
-    transition: EXIT_TRANSITION,
+    transition: QUICK_TWEEN,
   },
   transition: FADE_TRANSITION,
 });
@@ -113,7 +100,7 @@ const fadeInDown = (
     opacity: 0,
     y: distance,
     ...overrides.exit,
-    transition: EXIT_TRANSITION,
+    transition: QUICK_TWEEN,
   },
   transition: FADE_TRANSITION,
 });

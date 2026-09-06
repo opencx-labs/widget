@@ -54,15 +54,17 @@ type PreparedAgentTurn = {
 } | null;
 
 const fakeMessageCtx = {
-  beginAgentTurn: vi.fn(
+  stageUserTurn: vi.fn(
     async (input: SendMessageInput): Promise<PreparedAgentTurn> => ({
       sessionId: 'sess-1',
       userMessage: buildUserMessage(input.content),
+      initialMessages: [],
     }),
   ),
   buildQueuedUserMessage: vi.fn(),
   appendUserMessageIfAbsent: vi.fn(),
   markUserMessageDelivered: vi.fn(),
+  notifySendAccepted: vi.fn((input: SendMessageInput) => input.onAccepted?.()),
   registerAgentHandlers: vi.fn(),
   unregisterAgentHandlers: vi.fn(),
 };
@@ -87,6 +89,14 @@ const fakeWidgetCtx = {
   },
   messageCtx: fakeMessageCtx,
   reconcileAfterStream: vi.fn(async () => {}),
+  // Org features on, embed silent (WidgetCtx getters).
+  features: {
+    dictation: false,
+    attachments: true,
+    pageContext: true,
+    pageMarks: true,
+    clientTools: true,
+  },
 } as unknown as WidgetCtx;
 
 import { useAgentChat } from '../useAgentChat';
@@ -98,7 +108,7 @@ function Probe() {
     widgetCtx: fakeWidgetCtx,
     config: {
       token: 't',
-      context: { page: 'from-config', tenant: 'acme' },
+      context: { plan: 'from-config', tenant: 'acme' },
       messageCustomData: { seat: 'pro' },
     },
     sessionId: 'sess-1',
@@ -136,7 +146,7 @@ describe('useAgentChat clientContext + page effects', () => {
 
   it('carries config.context unchanged when the send has no clientContext', async () => {
     const body = await renderAndSend({ content: 'hello' });
-    expect(body.clientContext).toEqual({ page: 'from-config', tenant: 'acme' });
+    expect(body.clientContext).toEqual({ plan: 'from-config', tenant: 'acme' });
     expect(body.custom_data).toEqual({ seat: 'pro' });
   });
 
@@ -144,11 +154,11 @@ describe('useAgentChat clientContext + page effects', () => {
     const marks = [{ shape: 'box', elements: [{ name: 'button "Save"' }] }];
     const body = await renderAndSend({
       content: 'what is this?',
-      clientContext: { page_marks: marks, page: 'from-send' },
+      clientContext: { page_marks: marks, plan: 'from-send' },
     });
     expect(body.clientContext).toEqual({
       tenant: 'acme',
-      page: 'from-send', // per-send wins the collision
+      plan: 'from-send', // per-send wins the collision
       page_marks: marks,
     });
   });
@@ -170,11 +180,11 @@ describe('useAgentChat clientContext + page effects', () => {
     await renderAndSend({ content: 'accepted', onAccepted });
 
     expect(onAccepted).toHaveBeenCalledTimes(1);
-    expect(fakeMessageCtx.beginAgentTurn).toHaveBeenCalledTimes(1);
+    expect(fakeMessageCtx.stageUserTurn).toHaveBeenCalledTimes(1);
   });
 
   it('does not signal acceptance when first-session preparation fails', async () => {
-    fakeMessageCtx.beginAgentTurn.mockResolvedValueOnce(null);
+    fakeMessageCtx.stageUserTurn.mockResolvedValueOnce(null);
     const onAccepted = vi.fn();
     await act(async () => {
       root.render(<Probe />);
@@ -196,7 +206,7 @@ describe('useAgentChat clientContext + page effects', () => {
       timestamp: new Date().toISOString(),
       data: { message: 'Persistent greeting' },
     };
-    fakeMessageCtx.beginAgentTurn.mockResolvedValueOnce({
+    fakeMessageCtx.stageUserTurn.mockResolvedValueOnce({
       sessionId: 'sess-1',
       userMessage: buildUserMessage('hello'),
       initialMessages: [greeting],

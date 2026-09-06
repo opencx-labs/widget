@@ -13,7 +13,7 @@ import {
   FrameDocument,
   WIDGET_FRAME_TITLE,
 } from './components/FrameDocument';
-import { MORPH_SPRING } from './companion/materials';
+import { MORPH_SPRING } from './motion';
 import { useTheme } from './hooks/useTheme';
 import { RootScreen } from './screens';
 

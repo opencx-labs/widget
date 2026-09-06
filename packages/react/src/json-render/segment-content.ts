@@ -5,7 +5,7 @@ import {
   type Spec,
 } from '@json-render/core';
 
-type ContentSegment =
+export type ContentSegment =
   | { type: 'markdown'; content: string }
   | { type: 'ui'; spec: Spec };
 
@@ -18,8 +18,8 @@ type ContentSegment =
  * spec from the stored text here.
  *
  * There is exactly ONE spec format: JSONL patch lines inside a ` ```spec `
- * fence (what the prompt instructs the model to emit). Everything else is
- * markdown. A fence is consumed only after its patches compile to nonempty UI;
+ * fence — what the prompt instructs the model to emit and what every tool
+ * that hands back a card emits. Everything else is markdown. A fence is consumed only after its patches compile to nonempty UI;
  * malformed, unsupported, empty, and incomplete-only fences remain visible as
  * their original fenced markdown. An unclosed fence (turn cut mid-stream)
  * still compiles when enough valid patches arrived.

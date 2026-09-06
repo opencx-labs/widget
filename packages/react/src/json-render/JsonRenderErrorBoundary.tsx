@@ -1,4 +1,5 @@
 import React from 'react';
+import { log } from '@opencx/widget-core';
 
 /**
  * Last-resort guard around a rendered spec. json-render validates props at the
@@ -18,7 +19,7 @@ export class JsonRenderErrorBoundary extends React.Component<
   }
 
   override componentDidCatch(error: unknown) {
-    console.error('json-render: spec failed to render', {
+    log.error('json-render: spec failed to render', {
       _e: error instanceof Error ? error.message : String(error),
     });
   }

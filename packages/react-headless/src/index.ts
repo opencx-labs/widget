@@ -9,8 +9,11 @@ export type {
   SpecDataPart,
   StreamingStep,
   StreamingTurnState,
+  StreamingTurnItem,
 } from './agent-chat/agent-chat-stream';
 export type { TurnRenderSource } from './agent-chat/agent-turn-sources';
+export { formatAskQuestionsAnswers } from './agent-chat/ask-questions';
+export type { AskQuestionsRequest } from './agent-chat/ask-questions';
 
 export { useBot } from './hooks/useBot';
 export { useConfig } from './hooks/useConfig';
@@ -30,3 +33,4 @@ export {
 export { useWidgetLayout, WidgetLayoutProvider } from './hooks/useWidgetLayout';
 export { useModes } from './hooks/useModes';
 export { useCsat } from './hooks/useCsat';
+export { useDictation } from './hooks/useDictation';

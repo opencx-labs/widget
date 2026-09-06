@@ -3,7 +3,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PageMark } from '../page-mark';
 import { PageMarksProvider, usePageMarks } from '../PageMarksProvider';
-import { usePageMarking } from '../usePageMarks';
+import { usePageMarking } from '../usePageMarking';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
@@ -214,6 +214,43 @@ describe('usePageMarking', () => {
       (ink().target as HTMLElement).hasAttribute('data-opencx-overlay'),
     ).toBe(true);
     expect(document.querySelectorAll('svg.notation')).toHaveLength(1);
+  });
+
+  it('keeps the frame and the mark inside the viewport for an oversized element', () => {
+    // A full-height sidebar: unclamped, the frame's edges would be drawn off
+    // the page and read as a border running off the screen.
+    const nav = document.createElement('nav');
+    nav.getBoundingClientRect = () =>
+      ({
+        x: -20,
+        y: -200,
+        left: -20,
+        top: -200,
+        width: 260,
+        height: 1400,
+        right: 240,
+        bottom: 1200,
+      }) as DOMRect;
+    document.body.appendChild(nav);
+    document.elementFromPoint = () => nav;
+
+    act(() => marking.toggle());
+    pointer('pointermove', 120, 300);
+    // jsdom's viewport is 1024x768; the margin is 8 on every side.
+    expect(marking.hover?.rect).toEqual({
+      x: 8,
+      y: 8,
+      width: 232,
+      height: 752,
+    });
+
+    click(120, 300);
+    expect(marking.draft?.rect).toEqual({
+      x: 8,
+      y: 8,
+      width: 238,
+      height: 752,
+    });
   });
 
   it('a click on empty page opens a default region around the cursor', () => {

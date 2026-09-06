@@ -97,8 +97,15 @@ if (hasRealInit) {
       tag.onload = () => {
         const realInit = window.initOpenScript;
         // widget.js installs the implementation during module evaluation,
-        // before this load event. If it somehow did not, retain the queue.
+        // before this load event. If it did not, the module is not the
+        // widget (a stale or foreign file at the resolved URL): keep the
+        // queue and say so, rather than silently never rendering.
         if (realInit === activeState.stub || typeof realInit !== 'function') {
+          console.error(
+            '[opencx] the widget module loaded but did not install initOpenScript; check that',
+            moduleUrl,
+            'is the widget build published beside script.js',
+          );
           return;
         }
         flushQueue(activeState, realInit);

@@ -25,10 +25,10 @@ const session: SessionDto = {
 };
 
 function buildCtx({
-  agentBound,
+  streaming,
   withSession = false,
 }: {
-  agentBound: boolean;
+  streaming: boolean;
   withSession?: boolean;
 }) {
   const config: WidgetConfig = {
@@ -55,7 +55,8 @@ function buildCtx({
     api,
     sessionCtx,
     contactCtx,
-    agentBound,
+    streaming,
+    sendsPageContext: true,
   });
   return { api, messageCtx, sessionCtx };
 }
@@ -67,12 +68,15 @@ afterEach(() => {
 describe('MessageCtx send acceptance', () => {
   it('rolls back the agent first message and persistent greetings when session creation fails', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    const { messageCtx, sessionCtx } = buildCtx({ agentBound: true });
+    const { messageCtx, sessionCtx } = buildCtx({ streaming: true });
     vi.spyOn(sessionCtx, 'createSession').mockResolvedValue(null);
     const onAccepted = vi.fn();
 
     await expect(
-      messageCtx.beginAgentTurn({ content: 'hello', onAccepted }),
+      messageCtx.stageUserTurn(
+        { content: 'hello', onAccepted },
+        { pending: true },
+      ),
     ).resolves.toBeNull();
 
     expect(messageCtx.state.get().messages).toEqual([]);
@@ -81,7 +85,7 @@ describe('MessageCtx send acceptance', () => {
 
   it('does not accept a blocking first send and rolls back its optimistic rows when session creation fails', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    const { api, messageCtx, sessionCtx } = buildCtx({ agentBound: false });
+    const { api, messageCtx, sessionCtx } = buildCtx({ streaming: false });
     vi.spyOn(sessionCtx, 'createSession').mockResolvedValue(null);
     const requestSpy = vi.spyOn(api, 'sendMessage');
     const onAccepted = vi.fn();
@@ -95,7 +99,7 @@ describe('MessageCtx send acceptance', () => {
 
   it('signals acceptance before the request wait without changing blocking send semantics', async () => {
     const { api, messageCtx } = buildCtx({
-      agentBound: false,
+      streaming: false,
       withSession: true,
     });
     const order: string[] = [];

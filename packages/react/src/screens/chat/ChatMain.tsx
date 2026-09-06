@@ -27,7 +27,6 @@ export function ChatMain() {
   } = useMessages();
   const { isAwaitingBotReply } = useIsAwaitingBotReply();
   const { componentStore } = useWidget();
-  // Server-resolved agent branding wins over the local `bot` option.
   const bot = useBot();
 
   const groupedMessages = useMemo(

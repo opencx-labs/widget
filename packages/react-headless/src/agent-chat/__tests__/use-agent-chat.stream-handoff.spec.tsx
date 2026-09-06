@@ -1,5 +1,6 @@
 import type {
   SendMessageInput,
+  StagedUserTurn,
   WidgetCtx,
   WidgetMessageU,
   WidgetUserMessage,
@@ -31,7 +32,7 @@ type ChatState = {
   messages: unknown[];
 };
 
-/** A streamed assistant turn, in the shape `mapUiMessageToItems` consumes. */
+/** A streamed assistant turn, in the shape `mapUiPartsToItems` consumes. */
 const ASSISTANT_TURN = [
   {
     role: 'assistant',
@@ -79,16 +80,20 @@ const fakeReconcileAfterStream = vi.fn(
 );
 
 const fakeMessageCtx = {
-  beginAgentTurn: vi.fn(async (input: SendMessageInput) => ({
-    sessionId: 'sess-1',
-    userMessage: buildUserMessage(input.content),
-  })),
+  stageUserTurn: vi.fn(
+    async (input: SendMessageInput): Promise<StagedUserTurn | null> => ({
+      sessionId: 'sess-1',
+      userMessage: buildUserMessage(input.content),
+      initialMessages: [],
+    }),
+  ),
   buildQueuedUserMessage: vi.fn((input: SendMessageInput) => ({
     sessionId: 'sess-1',
     userMessage: buildUserMessage(input.content),
   })),
   appendUserMessageIfAbsent: vi.fn(),
   markUserMessageDelivered: vi.fn(),
+  notifySendAccepted: vi.fn((input: SendMessageInput) => input.onAccepted?.()),
   registerAgentHandlers: vi.fn(),
   unregisterAgentHandlers: vi.fn(),
 };
@@ -115,6 +120,14 @@ const fakeWidgetCtx = {
   },
   messageCtx: fakeMessageCtx,
   reconcileAfterStream: fakeReconcileAfterStream,
+  // Org features on, embed silent (WidgetCtx getters).
+  features: {
+    dictation: false,
+    attachments: true,
+    pageContext: true,
+    pageMarks: true,
+    clientTools: true,
+  },
 } as unknown as WidgetCtx;
 
 import { useAgentChat } from '../useAgentChat';
@@ -253,6 +266,12 @@ describe('useAgentChat post-stream handoff', () => {
     await act(async () => {
       hookValue?.stop();
       setChatState({ status: 'ready', messages: ASSISTANT_TURN });
+    });
+    // The reconcile waits for the `/stop` ACK (resolved at once here), and
+    // the partial reply stays on screen through it.
+    expect(fakeReconcileAfterStream).toHaveBeenCalledTimes(1);
+    expect(hookValue?.liveItems).toHaveLength(1);
+    await act(async () => {
       resolveReconcile();
     });
     // A stopped turn keeps its partial reply on screen while the row loads.

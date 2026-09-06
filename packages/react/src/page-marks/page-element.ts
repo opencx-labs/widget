@@ -158,6 +158,41 @@ export function rectOf(el: Element): Rect {
   };
 }
 
+/**
+ * Breathing room kept between a mark's box and the viewport edge: the hover
+ * frame inflates the rect by 4px and paints a ~4px ring outside that, which
+ * is also enough for the ink's stroke and its wobble.
+ */
+export const VIEWPORT_MARGIN_PX = 8;
+
+/**
+ * Clamp a viewport rect so everything drawn around it stays on the page. An
+ * element taller or wider than the viewport — a full-height sidebar, a wide
+ * table — otherwise gets a frame whose edges land outside the visible page,
+ * and the visitor sees a border running off the screen instead of a box.
+ */
+export function clampRectToViewport(
+  rect: Rect,
+  margin: number = VIEWPORT_MARGIN_PX,
+): Rect {
+  // `clientWidth` excludes the scrollbar (and is 0 in layout-less
+  // environments, where `innerWidth` is the only answer available).
+  const viewportWidth =
+    document.documentElement.clientWidth || window.innerWidth;
+  const viewportHeight =
+    document.documentElement.clientHeight || window.innerHeight;
+  const left = Math.max(rect.x, margin);
+  const top = Math.max(rect.y, margin);
+  const right = Math.min(rect.x + rect.width, viewportWidth - margin);
+  const bottom = Math.min(rect.y + rect.height, viewportHeight - margin);
+  return {
+    x: Math.round(left),
+    y: Math.round(top),
+    width: Math.round(Math.max(0, right - left)),
+    height: Math.round(Math.max(0, bottom - top)),
+  };
+}
+
 /** Describe an element for the AI. */
 export function describeElement(el: HTMLElement): MarkedElement {
   const text = cleanText(el);

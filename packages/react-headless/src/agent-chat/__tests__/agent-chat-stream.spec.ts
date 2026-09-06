@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { mapUiMessageToItems, type UiMessageLike } from '../agent-chat-stream';
+import { mapUiPartsToItems, type UiMessageLike } from '../agent-chat-stream';
 
-describe('mapUiMessageToItems', () => {
+describe('mapUiPartsToItems', () => {
   it('maps parts in order, folding consecutive activity into one steps group', () => {
     const message: UiMessageLike = {
       parts: [
@@ -18,7 +18,7 @@ describe('mapUiMessageToItems', () => {
       ],
     };
 
-    const items = mapUiMessageToItems(message);
+    const items = mapUiPartsToItems(message.parts);
 
     expect(items).toHaveLength(3);
     expect(items[0]).toEqual({ kind: 'text', text: 'Let me check that' });
@@ -30,7 +30,9 @@ describe('mapUiMessageToItems', () => {
           label: 'looking up the order',
           done: true,
         },
-        { kind: 'tool', label: 'search_kb', done: true },
+        // The call's arguments and result ride the step (the styled layer
+        // shows them only behind `showStepToolIO`).
+        { kind: 'tool', label: 'search_kb', done: true, input: {}, output: {} },
       ]);
     }
     expect(items[2]).toEqual({ kind: 'text', text: 'Here is what I found' });
@@ -48,7 +50,7 @@ describe('mapUiMessageToItems', () => {
         },
       ],
     };
-    const items = mapUiMessageToItems(message);
+    const items = mapUiPartsToItems(message.parts);
     expect(items).toHaveLength(1);
     if (items[0]?.kind === 'steps') {
       expect(items[0].steps[0]?.done).toBe(false);
@@ -63,13 +65,30 @@ describe('mapUiMessageToItems', () => {
         { type: 'text', text: 'real content', state: 'done' },
       ],
     };
-    expect(mapUiMessageToItems(message)).toEqual([
+    expect(mapUiPartsToItems(message.parts)).toEqual([
       { kind: 'text', text: 'real content' },
     ]);
   });
 
   it('returns an empty list for a message with no renderable parts', () => {
-    expect(mapUiMessageToItems({ parts: [] })).toEqual([]);
+    expect(mapUiPartsToItems([])).toEqual([]);
+  });
+
+  it('a keepalive heartbeat renders nothing, before or between real parts', () => {
+    // Transient on the wire (the SDK never adds it), but a persisted
+    // `ui_parts` snapshot or an older backend might carry one.
+    expect(
+      mapUiPartsToItems([
+        { type: 'data-keepalive', data: null, transient: true },
+      ]),
+    ).toEqual([]);
+    expect(
+      mapUiPartsToItems([
+        { type: 'data-keepalive', data: null, transient: true },
+        { type: 'text', text: 'hello', state: 'done' },
+        { type: 'data-keepalive', data: null, transient: true },
+      ]),
+    ).toEqual([{ kind: 'text', text: 'hello' }]);
   });
 
   it('folds all data-spec parts into one spec item at the first patch', () => {
@@ -85,14 +104,12 @@ describe('mapUiMessageToItems', () => {
         value: { type: 'Card', props: {}, children: [] },
       },
     };
-    const items = mapUiMessageToItems({
-      parts: [
-        { type: 'text', text: 'Here is your summary:', state: 'done' },
-        { type: 'data-spec', data: patch1 },
-        { type: 'text', text: 'And a note after.', state: 'done' },
-        { type: 'data-spec', data: patch2 },
-      ],
-    });
+    const items = mapUiPartsToItems([
+      { type: 'text', text: 'Here is your summary:', state: 'done' },
+      { type: 'data-spec', data: patch1 },
+      { type: 'text', text: 'And a note after.', state: 'done' },
+      { type: 'data-spec', data: patch2 },
+    ]);
 
     expect(items).toEqual([
       { kind: 'text', text: 'Here is your summary:' },
@@ -108,19 +125,83 @@ describe('mapUiMessageToItems', () => {
   });
 
   it('spec parts do not break steps folding around them', () => {
-    const items = mapUiMessageToItems({
-      parts: [
-        { type: 'reasoning', text: 'planning', state: 'done' },
-        {
-          type: 'data-spec',
-          data: {
-            type: 'patch',
-            patch: { op: 'add', path: '/root', value: 'r' },
-          },
+    const items = mapUiPartsToItems([
+      { type: 'reasoning', text: 'planning', state: 'done' },
+      {
+        type: 'data-spec',
+        data: {
+          type: 'patch',
+          patch: { op: 'add', path: '/root', value: 'r' },
         },
-        { type: 'reasoning', text: 'rendering', state: 'done' },
+      },
+      { type: 'reasoning', text: 'rendering', state: 'done' },
+    ]);
+    expect(items.map((item) => item.kind)).toEqual(['steps', 'spec', 'steps']);
+  });
+});
+
+describe('tool step arguments and result', () => {
+  it('carries a tool part input/output onto its step', () => {
+    const items = mapUiPartsToItems([
+      {
+        type: 'tool-search_knowledge_base',
+        state: 'output-available',
+        input: { query: 'refund policy' },
+        output: { hits: 3 },
+      },
+      {
+        type: 'dynamic-tool',
+        toolName: 'highlight_element',
+        state: 'output-available',
+        input: { selector: '#save' },
+        output: 'ok',
+      },
+    ]);
+
+    expect(items).toEqual([
+      {
+        kind: 'steps',
+        steps: [
+          {
+            kind: 'tool',
+            label: 'search_knowledge_base',
+            done: true,
+            input: { query: 'refund policy' },
+            output: { hits: 3 },
+          },
+          {
+            kind: 'tool',
+            label: 'highlight_element',
+            done: true,
+            input: { selector: '#save' },
+            output: 'ok',
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('omits what the part does not carry — a running call has no result yet', () => {
+    const [item] = mapUiPartsToItems([
+      {
+        type: 'tool-search_knowledge_base',
+        state: 'input-available',
+        input: { q: 'x' },
+      },
+      { type: 'tool-noop', state: 'output-available' },
+    ]);
+
+    expect(item).toEqual({
+      kind: 'steps',
+      steps: [
+        {
+          kind: 'tool',
+          label: 'search_knowledge_base',
+          done: false,
+          input: { q: 'x' },
+        },
+        { kind: 'tool', label: 'noop', done: true },
       ],
     });
-    expect(items.map((item) => item.kind)).toEqual(['steps', 'spec', 'steps']);
   });
 });

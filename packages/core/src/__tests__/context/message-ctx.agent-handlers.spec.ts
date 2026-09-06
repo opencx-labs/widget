@@ -34,7 +34,8 @@ function buildAgentBoundCtx() {
     api,
     sessionCtx,
     contactCtx,
-    agentBound: true,
+    streaming: true,
+    sendsPageContext: true,
   });
 }
 

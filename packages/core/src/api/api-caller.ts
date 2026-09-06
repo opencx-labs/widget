@@ -1,15 +1,28 @@
 import { type Dto, type Endpoint, basicClient } from './client';
-import {
-  parseAgentTurnMessages,
-  type AgentTurnMessages,
-} from './agent-turn-messages';
-import { agentChatRoutes } from './agent-chat-routes';
+import type { DictationMint } from '../dictation/dictation-session';
 import type { WidgetConfig } from '../types/widget-config';
 import type {
+  AgentTurnMessagesDto,
   ResolveSessionDto,
   SendMessageDto,
   VoteInputDto,
 } from '../types/dtos';
+import { log } from '../utils/log';
+
+/**
+ * The two stream endpoints the AI SDK transport hits directly (it needs raw
+ * URLs, not the typed client). Everything else goes through `this.client`.
+ */
+const STREAM_PATH = '/backend/widget/v5/chat/stream' satisfies Endpoint;
+const RECONNECT_PATH =
+  '/backend/widget/v5/chat/{sessionId}/stream' satisfies Endpoint;
+
+const streamUrl = (baseUrl: string, path: string, sessionId?: string) =>
+  `${baseUrl.replace(/\/$/, '')}${
+    sessionId
+      ? path.replace('{sessionId}', encodeURIComponent(sessionId))
+      : path
+  }`;
 
 export class ApiCaller {
   private client: ReturnType<typeof basicClient>;
@@ -96,9 +109,9 @@ export class ApiCaller {
   } => {
     const { baseUrl, headers } = this.getStreamAuthContext();
     return {
-      api: agentChatRoutes.stream(baseUrl),
+      api: streamUrl(baseUrl, STREAM_PATH),
       reconnectApi: (sessionId: string) =>
-        agentChatRoutes.reconnect(baseUrl, sessionId),
+        streamUrl(baseUrl, RECONNECT_PATH, sessionId),
       headers,
     };
   };
@@ -112,61 +125,59 @@ export class ApiCaller {
    * one.
    */
   stopStream = async (sessionId: string): Promise<void> => {
-    const { baseUrl, headers } = this.getStreamAuthContext();
-    const res = await fetch(agentChatRoutes.stop(baseUrl, sessionId), {
-      method: 'POST',
-      headers,
-    });
-    if (!res.ok) {
-      throw new Error(`Failed to stop stream: ${res.status}`);
+    const { response } = await this.client.POST(
+      '/backend/widget/v5/chat/{sessionId}/stop',
+      { params: { path: { sessionId } } },
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to stop stream: ${response.status}`);
     }
   };
 
   /**
    * The session's settled agent turns with their final UIMessage parts and
    * the transcript rows each produced — the reload-fidelity read (widget v5).
-   * Returns null when the endpoint is absent (404 — an older backend) or on
-   * any failure/shape surprise: the caller then keeps the plain-row rendering,
-   * exactly the pre-feature behavior.
+   * Returns null on any failure: the caller then keeps the plain-row
+   * rendering, exactly the pre-feature behavior.
    */
   getAgentTurnMessages = async (
     sessionId: string,
-  ): Promise<AgentTurnMessages | null> => {
-    const { baseUrl, headers } = this.getStreamAuthContext();
-    let res: Response;
-    try {
-      res = await fetch(agentChatRoutes.messages(baseUrl, sessionId), {
-        headers,
-      });
-    } catch {
+  ): Promise<AgentTurnMessagesDto | null> => {
+    const { data, response } = await this.client.GET(
+      '/backend/widget/v5/chat/{sessionId}/messages',
+      { params: { path: { sessionId } } },
+    );
+    if (!data) {
+      log.warn('agent turn messages fetch failed', response.status);
       return null;
     }
-    if (res.status === 404) return null;
-    if (!res.ok) {
-      console.warn('[opencx] agent turn messages fetch failed', res.status);
-      return null;
-    }
-    try {
-      return parseAgentTurnMessages(await res.json());
-    } catch {
-      return null;
-    }
+    return data;
   };
 
   /**
-   * Agents-platform binding: scopes a request to the configured agent. The
-   * backend ignores the param when absent (widget not agent-bound).
+   * Mint a short-lived transcription token for voice dictation (widget v5).
+   * Org-gated server-side; throws on any failure so the caller can surface
+   * "dictation unavailable" instead of hanging with an open mic.
    */
-  private agentIdQuery = (): { agentId: string } | Record<string, never> =>
-    this.config.agentId ? { agentId: this.config.agentId } : {};
+  createDictationSession = async ({
+    language,
+  }: {
+    language?: string | undefined;
+  }): Promise<DictationMint> => {
+    const { data, response } = await this.client.POST(
+      '/backend/widget/v5/dictation/sessions',
+      { body: language ? { language } : {} },
+    );
+    if (!data) {
+      throw new Error(`Failed to start dictation: ${response.status}`);
+    }
+    return data;
+  };
 
   getExternalWidgetConfig = async () => {
     return await this.client.GET('/backend/widget/v2/config', {
       params: {
         header: { 'x-bot-token': this.config.token },
-        // The backend resolves the agent's branding into the config response
-        // (and 400s with a reason when unservable).
-        query: this.agentIdQuery(),
       },
     });
   };
@@ -222,8 +233,6 @@ export class ApiCaller {
         query: {
           offset: cursor,
           filters: JSON.stringify(filters),
-          // Scope the list to this agent's sessions.
-          ...this.agentIdQuery(),
         },
       },
       signal: abortSignal,
@@ -303,7 +312,7 @@ export class ApiCaller {
       if (userToken) {
         xhr.setRequestHeader('Authorization', `Bearer ${this.userToken}`);
       } else {
-        console.error('User token not set');
+        log.error('user token not set');
       }
 
       xhr.send(formData);

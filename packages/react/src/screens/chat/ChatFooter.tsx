@@ -18,8 +18,6 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { ChatFooterItems } from './ChatFooterItems';
 import { ChatInput } from './ChatInput';
 
-export { ChatInput } from './ChatInput';
-
 function NewConvOrBackToConvsButton() {
   const { widgetCtx } = useWidget();
   const { router } = useConfig();

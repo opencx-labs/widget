@@ -40,7 +40,6 @@ export function PanelControls({
         <FrameIconButton
           {...dc('companion/close_btn')}
           label={t('companion_close')}
-          title=""
           onClick={onClose}
           className="size-7"
         >

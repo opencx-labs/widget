@@ -5,27 +5,27 @@ import type { WidgetConfig } from '../types/widget-config';
 import { ActiveSessionPollingCtx } from './active-session-polling.ctx';
 import { ContactCtx } from './contact.ctx';
 import { CsatCtx } from './csat.ctx';
+import { DictationCtx } from './dictation.ctx';
 import { MessageCtx } from './message.ctx';
 import { RouterCtx } from './router.ctx';
 import { SessionCtx } from './session.ctx';
 import { StorageCtx } from './storage.ctx';
-
-export type WidgetInitializationErrorCode =
-  | 'config-fetch-failed'
-  | 'agent-binding-missing';
+import {
+  resolveClientFeatures,
+  resolveWidgetAgent,
+  type WidgetAgent,
+  type WidgetClientFeatures,
+} from './widget-agent';
+import { log } from '../utils/log';
 
 /** A configuration failure that prevents the widget from choosing a safe
  * runtime. The code is stable so headless consumers can render their own
  * recovery UI without matching error-message text. */
 export class WidgetInitializationError extends Error {
-  readonly code: WidgetInitializationErrorCode;
+  readonly code: 'config-fetch-failed';
   readonly details: unknown;
 
-  constructor(
-    code: WidgetInitializationErrorCode,
-    message: string,
-    details?: unknown,
-  ) {
+  constructor(code: 'config-fetch-failed', message: string, details?: unknown) {
     super(message);
     this.name = 'WidgetInitializationError';
     this.code = code;
@@ -41,6 +41,7 @@ export class WidgetCtx {
   public sessionCtx: SessionCtx;
   public messageCtx: MessageCtx;
   public csatCtx: CsatCtx;
+  public dictationCtx: DictationCtx;
   public routerCtx: RouterCtx;
   public storageCtx?: StorageCtx;
   public modes: ModeDto[] = [];
@@ -50,25 +51,25 @@ export class WidgetCtx {
     name: string;
   };
   /**
-   * Branding of the bound agents-platform agent (config `agentId`), resolved
-   * by the backend at init. Undefined when the embed is not agent-bound.
-   * Server values win over the local `bot` option at render time.
+   * The org's agent — branding plus which engine serves it — resolved by the
+   * backend at init. The `bot` option overrides the branding at render time.
    */
-  public agent?: {
-    id: string;
-    name: string;
-    avatarUrl: string | null;
-  };
+  public readonly agent: WidgetAgent;
 
   /**
-   * Whether this embed is bound to an agents-platform agent (config `agentId`
-   * resolved by the backend at init). Agent-bound embeds use the streaming
-   * agent-chat engine; others use the blocking bot-chat send. The single
-   * source for every "which engine?" decision.
+   * Whether turns stream (the v5 agent-chat engine) or use the blocking
+   * bot-chat send. Decided by the SERVER per org; the single source for every
+   * "which engine?" decision in the widget.
    */
-  public get isAgentBound(): boolean {
-    return this.agent !== undefined;
+  public get streaming(): boolean {
+    return this.agent.streaming;
   }
+
+  /**
+   * The org's features narrowed by this embed's `config.features` — the
+   * answers the UI asks for, resolved once for the ctx lifetime.
+   */
+  public readonly features: WidgetClientFeatures;
 
   private static pollingIntervalsSeconds: {
     session: number;
@@ -90,11 +91,7 @@ export class WidgetCtx {
       id: string;
       name: string;
     };
-    agent?: {
-      id: string;
-      name: string;
-      avatarUrl: string | null;
-    };
+    agent: WidgetAgent;
   }) {
     if (!WidgetCtx.pollingIntervalsSeconds) {
       throw Error(
@@ -105,6 +102,7 @@ export class WidgetCtx {
     this.config = config;
     this.org = org;
     this.agent = agent;
+    this.features = resolveClientFeatures(agent, config);
     this.api = new ApiCaller({ config });
     this.storageCtx = storage ? new StorageCtx({ storage, config }) : undefined;
     this.modes = modes;
@@ -119,6 +117,8 @@ export class WidgetCtx {
       config: this.config,
       api: this.api,
       contactCtx: this.contactCtx,
+      // Remembers the open conversation so a reload can return to it.
+      storageCtx: this.storageCtx,
       sessionsPollingIntervalSeconds:
         WidgetCtx.pollingIntervalsSeconds.sessions,
     });
@@ -128,15 +128,21 @@ export class WidgetCtx {
       api: this.api,
       sessionCtx: this.sessionCtx,
       contactCtx: this.contactCtx,
-      // Agent-bound embeds stream their turns (AI SDK transport) instead of
-      // using the blocking bot-chat send.
-      agentBound: this.isAgentBound,
+      // Streaming orgs send their turns over the AI SDK transport instead of
+      // the blocking bot-chat send.
+      streaming: this.streaming,
+      sendsPageContext: this.features.pageContext,
     });
 
     this.csatCtx = new CsatCtx({
       api: this.api,
       sessionCtx: this.sessionCtx,
       messageCtx: this.messageCtx,
+    });
+
+    this.dictationCtx = new DictationCtx({
+      api: this.api,
+      config: this.config,
     });
 
     this.activeSessionPollingCtx = new ActiveSessionPollingCtx({
@@ -167,12 +173,8 @@ export class WidgetCtx {
     }).getExternalWidgetConfig();
 
     if (!externalConfig.data) {
-      // Surface the backend's reason (e.g. an unservable `agentId`:
-      // not_found / disabled / no_active_version) instead of failing mutely.
-      console.error(
-        '[opencx] widget config fetch failed',
-        externalConfig.error,
-      );
+      // Surface the backend's reason instead of failing mutely.
+      log.error('widget config fetch failed', externalConfig.error);
       throw new WidgetInitializationError(
         'config-fetch-failed',
         'Failed to fetch widget config',
@@ -185,30 +187,15 @@ export class WidgetCtx {
       sessions: externalConfig.data?.sessionsPollingIntervalSeconds || 60,
     };
 
-    const serverAgent = externalConfig.data.agent;
-    if (config.agentId && serverAgent?.id !== config.agentId) {
-      throw new WidgetInitializationError(
-        'agent-binding-missing',
-        `Widget config did not resolve the requested agent ${config.agentId}`,
-        { requestedAgentId: config.agentId, resolvedAgent: serverAgent },
-      );
-    }
     return new WidgetCtx({
       config,
       storage,
-      modes: externalConfig.data?.modes || [],
+      modes: externalConfig.data.modes || [],
       org: {
         id: externalConfig.data.org.id,
         name: externalConfig.data.org.name,
       },
-      // snake_case (backend DTO) → camelCase (widget types) at the boundary.
-      agent: serverAgent
-        ? {
-            id: serverAgent.id,
-            name: serverAgent.name,
-            avatarUrl: serverAgent.avatar_url,
-          }
-        : undefined,
+      agent: resolveWidgetAgent(externalConfig.data),
     });
   };
 

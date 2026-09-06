@@ -30,7 +30,7 @@ const opencxRoot =
   process.env.OPENCX_REPO ?? resolve(here, '../../../../opencx');
 const outPath = resolve(
   opencxRoot,
-  'backend/src/agent-v3/ui-prompt.generated.ts',
+  'backend/src/agent-engine/ui-prompt.generated.ts',
 );
 
 const raw = `// AUTO-GENERATED. Do not edit by hand.

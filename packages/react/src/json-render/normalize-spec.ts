@@ -1,4 +1,5 @@
 import { getByPath, type Spec, type UIElement } from '@json-render/core';
+import { isRecord } from '@opencx/widget-core';
 
 /**
  * Recover List rows the model parked behind a `repeat`.
@@ -50,8 +51,4 @@ function recoverListRepeat(element: UIElement, spec: Spec): UIElement {
 
   const { repeat: _dropped, ...rest } = element;
   return { ...rest, props: { ...props, items: resolved } };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

@@ -14,7 +14,6 @@ export function InitialMessages() {
     messagesState: { messages },
   } = useMessages();
   const config = useConfig();
-  // Server-resolved agent branding wins over the local `bot` option.
   const bot = useBot();
   const {
     advancedInitialMessages = [],
@@ -48,7 +47,7 @@ export function InitialMessages() {
           ? initialQuestions
           : undefined
       }
-      agent={bot ? { ...bot, isAi: true, id: null } : undefined}
+      agent={bot}
     />
   );
 }

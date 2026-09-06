@@ -9,7 +9,7 @@ import type {
 import { genUuid } from '../../../utils/uuid';
 
 /**
- * The v5 pending lifecycle on `MessageCtx`: `beginAgentTurn` renders the user
+ * The v5 pending lifecycle on `MessageCtx`: `stageUserTurn` renders the user
  * bubble optimistically with `pending: true` (the UI dims it), and
  * `markUserMessageDelivered` — called by the engine when that turn starts
  * streaming or ends — clears only its flag. The react hook wires the calls;
@@ -18,12 +18,15 @@ import { genUuid } from '../../../utils/uuid';
 describe('v5 pending user messages', () => {
   const init = () => WidgetCtx.initialize({ config: { token: '' } });
 
-  it('beginAgentTurn renders the message with pending: true', async () => {
+  it('stageUserTurn renders the message with pending: true', async () => {
     const widgetCtx = await init();
 
-    const prepared = await widgetCtx.messageCtx.beginAgentTurn({
-      content: 'hey',
-    });
+    const prepared = await widgetCtx.messageCtx.stageUserTurn(
+      {
+        content: 'hey',
+      },
+      { pending: true },
+    );
 
     expect(prepared).not.toBeNull();
     const messages = widgetCtx.messageCtx.state.get().messages;
@@ -34,12 +37,18 @@ describe('v5 pending user messages', () => {
 
   it('marks only the user message owned by the delivered turn', async () => {
     const widgetCtx = await init();
-    const first = await widgetCtx.messageCtx.beginAgentTurn({
-      content: 'first',
-    });
-    const second = await widgetCtx.messageCtx.beginAgentTurn({
-      content: 'second',
-    });
+    const first = await widgetCtx.messageCtx.stageUserTurn(
+      {
+        content: 'first',
+      },
+      { pending: true },
+    );
+    const second = await widgetCtx.messageCtx.stageUserTurn(
+      {
+        content: 'second',
+      },
+      { pending: true },
+    );
     if (!first || !second) throw new Error('turn preparation failed');
 
     widgetCtx.messageCtx.markUserMessageDelivered(first.userMessage.id);
@@ -58,9 +67,12 @@ describe('v5 pending user messages', () => {
 
   it('is a state no-op when nothing is pending (no new messages array)', async () => {
     const widgetCtx = await init();
-    const prepared = await widgetCtx.messageCtx.beginAgentTurn({
-      content: 'hey',
-    });
+    const prepared = await widgetCtx.messageCtx.stageUserTurn(
+      {
+        content: 'hey',
+      },
+      { pending: true },
+    );
     if (!prepared) throw new Error('turn preparation failed');
     widgetCtx.messageCtx.markUserMessageDelivered(prepared.userMessage.id);
     const settled = widgetCtx.messageCtx.state.get().messages;
@@ -81,9 +93,12 @@ describe('v5 pending user messages', () => {
       data: { message: 'hello' },
     };
     widgetCtx.messageCtx.state.setPartial({ messages: [aiMessage] });
-    const prepared = await widgetCtx.messageCtx.beginAgentTurn({
-      content: 'hey',
-    });
+    const prepared = await widgetCtx.messageCtx.stageUserTurn(
+      {
+        content: 'hey',
+      },
+      { pending: true },
+    );
     if (!prepared) throw new Error('turn preparation failed');
 
     widgetCtx.messageCtx.markUserMessageDelivered(prepared.userMessage.id);

@@ -7,8 +7,9 @@ import {
   chartPropsSchema,
   gridPropsSchema,
   headingPropsSchema,
-  listPropsSchema,
+  listPropsPromptSchema,
   metricPropsSchema,
+  phoneAgentCardPropsSchema,
   stackPropsSchema,
   tablePropsSchema,
   textPropsSchema,
@@ -65,7 +66,7 @@ export const widgetCatalog = defineCatalog(schema, {
       example: { text: 'Delivered', variant: 'success' },
     },
     List: {
-      props: listPropsSchema,
+      props: listPropsPromptSchema,
       description:
         'A vertical list of items, each with a label and optional secondary text, badge, and status dot. Pass the full array in `items` — do NOT use repeat/state for the rows.',
       example: {
@@ -107,6 +108,16 @@ export const widgetCatalog = defineCatalog(schema, {
         type: 'tip',
         title: 'Heads up',
         content: 'Free shipping over $50.',
+      },
+    },
+    PhoneAgentCard: {
+      props: phoneAgentCardPropsSchema,
+      description:
+        'A phone agent card with a "Test via web" action. NEVER author this yourself: it only comes back, already fenced, from the phone-agent tools — carry that fence verbatim.',
+      example: {
+        agentId: '00000000-0000-4000-8000-000000000000',
+        agentName: 'Support line',
+        model: 'oppie-vox-livekit',
       },
     },
     Chart: {

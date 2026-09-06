@@ -1,7 +1,7 @@
-// Customer-facing help-center landing — the SUPPORT-agent test surface.
-// The widget here mounts WITHOUT agentId (see App.tsx): the session stays
-// unbound and the org's default v3 support agent answers from the seeded KB.
-// The merchant dashboard (every other route) remains the COMPANION test surface.
+// Customer-facing help-center landing — the SUPPORT test surface.
+// The widget here mounts as the classic popover (see App.tsx) with no merchant
+// context; the org's agent answers from the seeded KB. The merchant dashboard
+// (every other route) remains the COMPANION test surface.
 
 const TOPICS = [
   {

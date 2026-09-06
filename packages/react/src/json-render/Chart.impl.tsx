@@ -15,7 +15,7 @@ import {
   YAxis,
 } from 'recharts';
 import type { ChartProps } from './props';
-import { useTranslation } from '../hooks/useTranslation';
+import { useJsonRenderHost } from './host';
 
 /**
  * Measure the wrapper width ourselves instead of relying on recharts'
@@ -179,7 +179,7 @@ export default function ChartImpl({
 }
 
 function ChartEmpty({ height }: { height: number }) {
-  const { t } = useTranslation();
+  const { t } = useJsonRenderHost();
   return (
     <div
       className="flex w-full items-center justify-center rounded-lg border border-muted-foreground/15 text-xs text-muted-foreground"

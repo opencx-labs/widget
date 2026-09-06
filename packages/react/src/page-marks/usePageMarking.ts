@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  clampRectToViewport,
   describeElement,
   elementAt,
   isWidgetOwned,
@@ -15,7 +16,7 @@ import {
   type PageMark,
 } from './page-mark';
 import { usePageMarks } from './PageMarksProvider';
-import { beginThumbnail } from './mark-thumbnail';
+import { beginSnapshotUpload, beginThumbnail } from './mark-thumbnail';
 
 const CURSOR_STYLE_ATTR = 'data-opencx-mark-cursor';
 /** Elements a mark carries to the AI. */
@@ -73,6 +74,7 @@ const cornerCursor = (corner: Corner): MarkCursor =>
 export function usePageMarking({
   enabled,
   onAttach,
+  uploadSnapshot,
   accentColor,
   zIndex,
 }: {
@@ -80,6 +82,11 @@ export function usePageMarking({
   enabled: boolean;
   /** Notification only — the provider owns the mark either way. */
   onAttach?: (mark: PageMark) => void;
+  /**
+   * Uploads a mark's thumbnail as a message file and resolves its URL (null
+   * on failure). Without it, marks are sent text-only after a reload.
+   */
+  uploadSnapshot?: (file: File) => Promise<string | null>;
   accentColor: string;
   /** Host-page ink layer, normally resolved from the configured widget z-index. */
   zIndex: number;
@@ -181,21 +188,26 @@ export function usePageMarking({
 
     const placeRegion = (x: number, y: number) => {
       const el = elementAt(x, y);
-      const rect: Rect = el
-        ? (() => {
-            const r = el.getBoundingClientRect();
-            return {
-              x: r.left - SNAP_PADDING_PX,
-              y: r.top - SNAP_PADDING_PX,
-              width: r.width + SNAP_PADDING_PX * 2,
-              height: r.height + SNAP_PADDING_PX * 2,
-            };
-          })()
-        : {
-            x: x - DEFAULT_REGION.width / 2,
-            y: y - DEFAULT_REGION.height / 2,
-            ...DEFAULT_REGION,
-          };
+      // Clamped: an element that runs past the viewport (a full-height nav,
+      // a wide table) must still be marked with a box the visitor can SEE —
+      // ink drawn off the page reads as a broken border, not as a mark.
+      const rect: Rect = clampRectToViewport(
+        el
+          ? (() => {
+              const r = el.getBoundingClientRect();
+              return {
+                x: r.left - SNAP_PADDING_PX,
+                y: r.top - SNAP_PADDING_PX,
+                width: r.width + SNAP_PADDING_PX * 2,
+                height: r.height + SNAP_PADDING_PX * 2,
+              };
+            })()
+          : {
+              x: x - DEFAULT_REGION.width / 2,
+              y: y - DEFAULT_REGION.height / 2,
+              ...DEFAULT_REGION,
+            },
+      );
       // Always a BOX: one predictable default, and the chips do the rest.
       const shape: MarkShape = draftRef.current?.shape ?? 'box';
       setHover(null);
@@ -261,7 +273,7 @@ export function usePageMarking({
           lastHoverEl = el;
           hoverKey += 1;
         }
-        setHover({ rect: rectOf(el), key: hoverKey });
+        setHover({ rect: clampRectToViewport(rectOf(el)), key: hoverKey });
         return;
       }
 
@@ -418,14 +430,19 @@ export function usePageMarking({
       };
       // Thumbnail for the pill: the region's focus element (center-first
       // sampling puts it first). Rides a WeakMap, never the payload.
-      if (sampled[0]) beginThumbnail(mark, sampled[0]);
+      if (sampled[0]) {
+        beginThumbnail(mark, sampled[0]);
+        // Persist the same pixels: uploaded now, not at send, so the send
+        // rarely has to wait and a detached mark costs nothing but an orphan.
+        if (uploadSnapshot) beginSnapshotUpload(mark, uploadSnapshot);
+      }
       inkRef.current = null;
       setDraft(null);
       setArmed(false);
       attachPageMark(mark, ink);
       onAttach?.(mark);
     },
-    [attachPageMark, enabled, onAttach, setArmed],
+    [attachPageMark, enabled, onAttach, setArmed, uploadSnapshot],
   );
 
   const toggle = useCallback(() => {

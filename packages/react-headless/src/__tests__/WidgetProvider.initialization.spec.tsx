@@ -42,4 +42,35 @@ describe('WidgetProvider initialization', () => {
     act(() => root.unmount());
     container.remove();
   });
+
+  it('renders nothing on failure when no error surface is configured — never throws into the host tree', async () => {
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    vi.spyOn(WidgetCtx, 'initialize').mockRejectedValue(new Error('down'));
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <WidgetProvider
+          options={{ token: 'token' }}
+          components={[{ key: 'fallback', component: () => null }]}
+          loadingComponent={<div>loading</div>}
+        >
+          <div>ready</div>
+        </WidgetProvider>,
+      );
+    });
+
+    await vi.waitFor(() => expect(container.textContent).toBe(''));
+    expect(consoleError).toHaveBeenCalledWith(
+      '[opencx] widget initialization failed',
+      expect.any(Error),
+    );
+
+    act(() => root.unmount());
+    container.remove();
+  });
 });

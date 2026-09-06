@@ -25,9 +25,10 @@ OpenCX backend  ──  localhost:8080   ← companion agent "Payla Assistant" (
 Payla Worker + D1  ──  localhost:5173   ← the mock data (payments, refunds, settlements…)
 ```
 
-**Baked ids — nothing to copy.** The seed pins the widget token `payla-companion-demo-token`
-and agent id `0a71a000-0000-4000-8000-0000000000a2`; the app defaults to exactly these
-(`src/lib/widgetConfig.ts`). Fresh seed + fresh app → the widget just works.
+**Baked token — nothing to copy.** The seed pins the widget token
+`payla-companion-demo-token` and the app defaults to exactly it
+(`src/lib/widgetConfig.ts`). Fresh seed + fresh app → the widget just works. There is
+no agent id: the org IS the agent, and the backend decides whether the embed streams.
 
 ## Prerequisites
 
@@ -36,7 +37,7 @@ and agent id `0a71a000-0000-4000-8000-0000000000a2`; the app defaults to exactly
 
 ## Run it (all local)
 
-### 1) OpenCX backend — repo `opencx`, branch `osama/feat/agent-v5-platform`
+### 1) OpenCX backend — repo `opencx`, branch `osama/feat/companion-service`
 
 ```bash
 cd opencx/backend
@@ -48,9 +49,9 @@ NODE_ENV=test bun scripts/seed-payla-demo.ts   # seed the org + companion agent 
 pnpm ddev                               # → http://localhost:8080
 ```
 
-The seed prints the org token + agent id (they match the app's baked defaults).
+The seed prints the org token (it matches the app's baked default).
 
-### 2) Widget — repo `widget`, branch `osama/feat/widget-companion-mode`
+### 2) Widget — repo `widget`, branch `osama/epic/widget-v5`
 
 ```bash
 cd widget
@@ -77,15 +78,16 @@ Try:
 
 ## Configuration
 
-The widget's token, agent id and backend URL are **baked in code** (`src/lib/widgetConfig.ts`)
+The widget's token and backend URL are **baked in code** (`src/lib/widgetConfig.ts`)
 and match the seed, so there's nothing to configure. To point at a different OpenCX, set
-`VITE_OPENCX_WIDGET_TOKEN` / `VITE_OPENCX_AGENT_ID` / `VITE_OPENCX_API_URL` in `.env`.
+`VITE_OPENCX_WIDGET_TOKEN` / `VITE_OPENCX_API_URL` in `.env`. There is no agent id: the
+org is the agent, and the backend decides whether the embed streams.
 
 ## Notes / troubleshooting
 
 - The browser (`:5173`) calls the OpenCX backend (`:8080`) cross-origin — the widget v5
   endpoints are built to be called from any customer origin, so this works. If the bubble
-  can't connect, confirm the backend is on `:8080` and the agent id/token match the seed.
+  can't connect, confirm the backend is on `:8080` and the token matches the seed.
 - Actions execute **server-side** in the backend and call `:5173` on the same machine —
   no tunnel needed.
 - The v3 agent model is `openai/gpt-5.6-luna` via OpenRouter; without `OPENROUTER_API_KEY`

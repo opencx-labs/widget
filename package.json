@@ -18,8 +18,8 @@
     "dev:prepare": "dotenv -- turbo dev:prepare --env-mode",
     "dev": "dotenv -- turbo dev --env-mode",
     "/* --------------------- PUBLISHING --------------------- */": "",
-    "x": "pnpm clean:dist && pnpm build && pnpm type-check && pnpm test",
-    "cs:pre": "changeset pre enter prerelease",
+    "x": "pnpm clean:dist && pnpm build && pnpm lint && pnpm type-check && pnpm test",
+    "cs:pre": "changeset pre enter beta",
     "cs:pre:exit": "changeset pre exit",
     "cs": "changeset",
     "csv": "changeset version",
@@ -52,7 +52,8 @@
       "js-yaml@3": ">=3.15.1 <4",
       "js-yaml@4": ">=4.3.1 <5",
       "postcss@8": ">=8.5.23 <9",
-      "nanoid@3": ">=3.3.18 <4"
+      "nanoid@3": ">=3.3.18 <4",
+      "postcss-selector-parser@6": ">=6.1.3 <7"
     }
   }
 }

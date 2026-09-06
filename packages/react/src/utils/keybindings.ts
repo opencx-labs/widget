@@ -23,7 +23,7 @@ export type WidgetActionId =
   | 'history-next';
 
 export const WIDGET_KEYBINDINGS: Record<WidgetActionId, string> = {
-  /** Staged close: fullscreen → configured resting layout → input bar → pill. */
+  /** Dismiss the companion panel: fullscreen drops back to its layout, anything else goes to the pill. */
   'close-panel': 'Escape',
   /** Toggle the companion chat panel between fullscreen and its prior layout. */
   'toggle-fullscreen': 'Mod+Shift+F',

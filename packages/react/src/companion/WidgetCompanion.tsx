@@ -9,6 +9,7 @@ import React, {
 import { createPortal } from 'react-dom';
 import {
   useConfig,
+  useMessages,
   useSessions,
   useWidget,
   useWidgetLayout,
@@ -17,6 +18,7 @@ import {
 import type { WidgetCompanionLayoutU } from '@opencx/widget-core';
 import { buildFrameHtml } from '../components/FrameDocument';
 import { usePageMarks } from '../page-marks/PageMarksProvider';
+import { useCanHover } from '../hooks/useCanHover';
 import { useTheme } from '../hooks/useTheme';
 import { useTranslation } from '../hooks/useTranslation';
 import { useTriggerLabel } from '../hooks/useTriggerLabel';
@@ -30,26 +32,26 @@ import {
   PILL_SIZE,
   RADII,
   shellAnchor,
-} from './companion-geometry.utils';
+} from './companion-geometry';
 import { RestingPill } from './RestingPill';
 import {
   CHAT_SHADOW,
   DOCK_SHADOW,
-  EASE_OUT,
+  FADE_TRANSITION,
+  QUICK_TWEEN,
   INPUT_SHADOW,
   MORPH_SPRING,
   PILL_SHADOW,
-} from './materials';
+} from '../motion';
 import type { PanelState } from './types';
 import { useCompanionHostEffects } from './useCompanionHostEffects';
 import { useCompanionMeasurements } from './useCompanionMeasurements';
 import { useHostPortal } from './useHostPortal';
 import { usePersistedPillDrag } from './usePersistedPillDrag';
-import { handleCompanionHostKeyDown } from './companion-keyboard';
-
-/** Gentler-not-zero: keep the fades, collapse the travel (reduced motion),
- * and skip the theatrics on keyboard-initiated opens. */
-const SNAPPY = { duration: 0.15, ease: EASE_OUT } as const;
+import {
+  handleCompanionHostKeyDown,
+  resolveEscapeAction,
+} from './companion-keyboard';
 
 /** Quick-ask card seed height until the composer measures itself. */
 const COMPANION_INPUT_FALLBACK_HEIGHT = 96;
@@ -61,20 +63,24 @@ export function WidgetCompanion() {
   const { widgetCtx, contentIframeRef } = useWidget();
   const { companion, assets, customComponents } = useConfig();
   const { theme, cssVars } = useTheme();
-  const { t, dir, hostDocumentDir } = useTranslation();
+  const { t, dir } = useTranslation();
   const { sessionState } = useSessions();
+  const { messagesState } = useMessages();
   const { isArmed: isPageMarkModeArmed } = usePageMarks();
   const { region, dockWidth, dockContentRef } = useCompanionMeasurements();
 
   // Seed from isOpen so a layout swap-in (sidebar → fullscreen/compact) mounts
   // straight into the open chat instead of flashing the resting pill for a
-  // frame. The isOpen-sync effect refines it (input vs chat) right after.
+  // frame.
   const [state, setState] = useState<PanelState>(isOpen ? 'chat' : 'pill');
   const {
     layout: panelLayout,
     setLayout: setPanelLayout,
+    setLayoutPreference: setPanelLayoutPreference,
     allowedLayouts,
     defaultLayout,
+    sidebarSide,
+    sidebarMode,
   } = useWidgetLayout();
   // The quick-ask card is the real composer, which grows as the user types;
   // its measured height drives the shell card so the two stay in lockstep.
@@ -88,33 +94,27 @@ export function WidgetCompanion() {
       layout: panelLayout,
       state,
       region,
-      dir: hostDocumentDir,
+      sidebarSide,
+      sidebarMode,
       cssVars,
       storage: widgetCtx.storageCtx,
       resizeLabel: t('companion_resize_chat'),
     });
 
   const shouldReduceMotion = useReducedMotion();
-  // Keyboard-driven transitions (Escape, ...) skip the spring + fade
-  // delay — keyboard users are on the fast path, and the morph only earns
-  // its time on a pointer journey. The flag tracks the CURRENT input
-  // modality: set by keyboard handlers, cleared by pointer handlers, so a
-  // keyboard flow stays snappy end-to-end and a click restores the spring.
-  const [keyboardDriven, setKeyboardDriven] = useState(false);
+  // One morph for every path: Escape and the × button perform the identical
+  // journey, so the panel never feels different depending on how it was
+  // dismissed.
   const morphTransition = sidebarResizing
     ? // Drag-resize is a direct manipulation: the shell must track the pointer
       // 1:1, not spring after it. Restored to MORPH_SPRING on pointer-up.
       { duration: 0 }
-    : shouldReduceMotion || keyboardDriven
-      ? SNAPPY
+    : shouldReduceMotion
+      ? // Reduced motion: shorter than the spring, never zero — the panel
+        // still has to show where it went.
+        QUICK_TWEEN
       : MORPH_SPRING;
-  // Hover motion is gated off coarse pointers — tap-to-hover on touch reads
-  // as a phantom wiggle before every open.
-  const [canHover] = useState(
-    () =>
-      typeof window !== 'undefined' &&
-      window.matchMedia('(hover: hover) and (pointer: fine)').matches,
-  );
+  const canHover = useCanHover();
 
   const containerRef = useRef<HTMLDivElement>(null);
   // True once the panel has actually reached the chat state this mount. The
@@ -194,7 +194,7 @@ export function WidgetCompanion() {
 
   // Container anchor, ANIMATED (px) so every layout morphs its position, not
   // just the inner shell's size: compact/fullscreen center horizontally and
-  // grow from the bottom baseline; the sidebar pins to the inline-end edge and
+  // grow from the bottom baseline; the sidebar pins to its configured edge and
   // spans the full height. Animating left/bottom (vs. a static style) is what
   // lets sidebar↔fullscreen↔compact spring between rects instead of jumping.
   const { centerX: shellCenterX, bottom: shellBottom } = shellAnchor({
@@ -202,7 +202,7 @@ export function WidgetCompanion() {
     layout: panelLayout,
     region,
     sidebarWidth,
-    dir: hostDocumentDir,
+    sidebarSide,
     bottomOffset,
   });
 
@@ -260,18 +260,14 @@ export function WidgetCompanion() {
     setState(screen === 'welcome' || hasSession ? 'chat' : 'input');
   }, [widgetCtx]);
 
-  const launchFromPill = useCallback(
-    (keyboard: boolean) => {
-      if (shouldIgnoreLaunch()) return;
-      setKeyboardDriven(keyboard);
-      if (panelLayout === 'sidebar') {
-        setState('chat');
-        return;
-      }
-      openPanel();
-    },
-    [openPanel, panelLayout, shouldIgnoreLaunch],
-  );
+  const launchFromPill = useCallback(() => {
+    if (shouldIgnoreLaunch()) return;
+    if (panelLayout === 'sidebar') {
+      setState('chat');
+      return;
+    }
+    openPanel();
+  }, [openPanel, panelLayout, shouldIgnoreLaunch]);
 
   const closePanel = useCallback(() => {
     // Staged collapse, one rung per close: fullscreen → configured resting
@@ -299,16 +295,22 @@ export function WidgetCompanion() {
     });
   }, [defaultLayout, panelLayout, setPanelLayout, widgetCtx]);
 
-  // Close paths split by input modality so morphTransition matches intent
-  const handlePointerClose = useCallback(() => {
-    setKeyboardDriven(false);
-    closePanel();
-  }, [closePanel]);
-
-  const handleKeyboardClose = useCallback(() => {
-    setKeyboardDriven(true);
-    closePanel();
-  }, [closePanel]);
+  // Escape is a dismissal, not the × button's staged minimize: from
+  // fullscreen it drops the MODE (back to the layout the panel came from),
+  // and from every other layout it closes the panel outright.
+  const dismissPanel = useCallback(() => {
+    const action = resolveEscapeAction({
+      panelLayout,
+      previousLayout: lastNonFullscreenLayoutRef.current,
+      defaultLayout,
+      allowedLayouts,
+    });
+    if (action.kind === 'layout') {
+      setPanelLayout(action.layout);
+      return;
+    }
+    setState('pill');
+  }, [allowedLayouts, defaultLayout, panelLayout, setPanelLayout]);
 
   /** Straight to pill — used only for external (config/imperative) closes */
   const dismiss = useCallback(() => {
@@ -376,10 +378,7 @@ export function WidgetCompanion() {
       if (isPageMarkModeArmed) return;
       const container = containerRef.current;
       if (!container) return;
-      if (!e.composedPath().includes(container)) {
-        setKeyboardDriven(false);
-        closePanel();
-      }
+      if (!e.composedPath().includes(container)) closePanel();
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
@@ -392,18 +391,32 @@ export function WidgetCompanion() {
   // first, which wipes the just-sent optimistic message and aborts the in-flight
   // createSession/send (surfacing as an unhandled "Resetting chat" rejection and
   // dropping the panel to an empty conversation).
-  const handleQuickAskSent = useCallback(() => {
+  // A message sent while the panel is collapsed opens the conversation —
+  // whether it came from the quick-ask composer or from the host page
+  // (`WidgetRef.newChat({ message })`). Keyed on the newest USER row so a
+  // reply polled in while minimized never pops the panel open.
+  const lastUserMessageId =
+    messagesState.messages.findLast((m) => m.type === 'USER')?.id ?? null;
+  const userMessageIdOnCollapseRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (state === 'input')
+      userMessageIdOnCollapseRef.current = lastUserMessageId;
+    // Only the transition INTO the input state records the baseline.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+  useEffect(() => {
+    if (state !== 'input') return;
+    if (lastUserMessageId === userMessageIdOnCollapseRef.current) return;
     if (widgetCtx.routerCtx.state.get().screen !== 'chat') {
       widgetCtx.routerCtx.state.setPartial({ screen: 'chat' });
     }
     setState('chat');
-  }, [widgetCtx]);
+  }, [lastUserMessageId, state, widgetCtx]);
 
   // Pop the follow-up bar back up into the open conversation. The input state
   // with an active session is only ever reached by minimizing an open chat, so
   // the router is already on the chat screen; guard the screen flip anyway.
   const handleExpand = useCallback(() => {
-    setKeyboardDriven(false);
     if (
       widgetCtx.routerCtx.state.get().screen !== 'chat' &&
       widgetCtx.sessionCtx.sessionState.get().session?.id
@@ -429,17 +442,13 @@ export function WidgetCompanion() {
           widgetCtx.sessionCtx.sessionState.get().session?.id,
         );
       }
-      setPanelLayout(target);
+      // A pick in the menu is the visitor telling us how they want the
+      // companion to sit — remember it for the next visit. Every other
+      // setPanelLayout in this file is the shell moving them (leaving
+      // fullscreen, opening history) and must not overwrite that.
+      setPanelLayoutPreference(target);
     },
-    [allowedLayouts, widgetCtx, setPanelLayout],
-  );
-
-  const handleSelectLayout = useCallback(
-    (target: WidgetCompanionLayoutU) => {
-      setKeyboardDriven(false);
-      selectLayout(target);
-    },
-    [selectLayout],
+    [allowedLayouts, widgetCtx, setPanelLayoutPreference],
   );
 
   // The fullscreen shortcut is a TOGGLE, so it remembers where it came from:
@@ -465,7 +474,6 @@ export function WidgetCompanion() {
 
   const handleToggleFullscreen = useCallback(() => {
     if (!allowedLayouts.includes('fullscreen')) return;
-    setKeyboardDriven(true);
     if (panelLayout !== 'fullscreen') {
       selectLayout('fullscreen');
       return;
@@ -492,7 +500,6 @@ export function WidgetCompanion() {
 
   // History = the stock sessions screen, rendered inside the same panel
   const handleHistory = useCallback(() => {
-    setKeyboardDriven(false);
     setState('chat');
     // The sessions list is a card-sized screen — a fullscreen column just
     // strands it in empty space. Prefer the first configured non-fullscreen
@@ -534,7 +541,7 @@ export function WidgetCompanion() {
         }}
         initial={false}
         animate={{ opacity: isFullscreenModal ? 1 : 0 }}
-        transition={{ duration: 0.2, ease: EASE_OUT }}
+        transition={FADE_TRANSITION}
       />
 
       <motion.div
@@ -564,11 +571,7 @@ export function WidgetCompanion() {
         {/* Morphing shell — its surface is the background theme token, so
             palette changes recolor companion chrome like any stock screen */}
         <motion.div
-          onClick={
-            isPill && !hasCustomTrigger
-              ? () => launchFromPill(false)
-              : undefined
-          }
+          onClick={isPill && !hasCustomTrigger ? launchFromPill : undefined}
           role={isPill && !hasCustomTrigger ? 'button' : undefined}
           tabIndex={isPill && !hasCustomTrigger ? 0 : undefined}
           aria-label={isPill && !hasCustomTrigger ? pillAriaLabel : undefined}
@@ -578,7 +581,7 @@ export function WidgetCompanion() {
               ? (event) => {
                   if (event.key !== 'Enter' && event.key !== ' ') return;
                   event.preventDefault();
-                  launchFromPill(true);
+                  launchFromPill();
                 }
               : undefined
           }
@@ -667,10 +670,10 @@ export function WidgetCompanion() {
               animate={{
                 opacity: 1,
                 transition: {
-                  duration: 0.15,
-                  // The fade waits for the morph on pointer opens; on
-                  // keyboard opens or reduced motion that wait is just lag
-                  delay: keyboardDriven || shouldReduceMotion ? 0 : 0.1,
+                  ...QUICK_TWEEN,
+                  // The fade waits for the shell to arrive first; under
+                  // reduced motion there is nothing to wait for.
+                  delay: shouldReduceMotion ? 0 : 0.1,
                 },
               }}
             >
@@ -689,11 +692,10 @@ export function WidgetCompanion() {
                 <CompanionContent
                   state={state === 'chat' ? 'chat' : 'input'}
                   layout={panelLayout}
-                  onMessageSent={handleQuickAskSent}
-                  onClose={handlePointerClose}
-                  onEscape={handleKeyboardClose}
+                  onMinimize={closePanel}
+                  onDismiss={dismissPanel}
                   onToggleFullscreen={handleToggleFullscreen}
-                  onSelectLayout={handleSelectLayout}
+                  onSelectLayout={selectLayout}
                   onHistory={handleHistory}
                   onExpand={handleExpand}
                   canExpand={hasActiveSession}
@@ -708,17 +710,20 @@ export function WidgetCompanion() {
             </motion.div>
           )}
 
-          {/* Drag-resize handle — the sidebar's inline-start edge. Host-DOM
-              (not in the iframe) so the pointer capture spans the whole drag. */}
+          {/* Drag-resize handle — the sidebar's INNER edge, i.e. the one
+              facing the page: right edge for a left-docked panel, left edge
+              for a right-docked one. Physical (not inset-inline) because the
+              panel's side can be pinned independently of the host's dir.
+              Host-DOM (not in the iframe) so the pointer capture spans the
+              whole drag. */}
           {isSidebar && state === 'chat' && (
             <div
-              data-opencx-sidebar-resize
               {...resizeHandleProps}
               style={{
                 position: 'absolute',
                 top: 0,
                 bottom: 0,
-                insetInlineStart: 0,
+                ...(sidebarSide === 'left' ? { right: 0 } : { left: 0 }),
                 width: 8,
                 cursor: 'ew-resize',
                 zIndex: 2,

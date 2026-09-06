@@ -1,8 +1,5 @@
-import type { AgentTurnMessages } from '@opencx/widget-core';
+import { isRecord, type AgentTurnMessagesDto } from '@opencx/widget-core';
 import { mapUiPartsToItems, type StreamingTurnItem } from './agent-chat-stream';
-
-/** Internal fallback used before a live turn receives a message-derived key. */
-export const LIVE_TURN_FALLBACK_KEY = 'turn-live';
 
 /** One settled turn's transcript coverage and styled render model. */
 export type TurnRenderSource = {
@@ -18,7 +15,7 @@ export function mergeTurnSources({
   fetched,
 }: {
   existing: TurnRenderSource[];
-  fetched: AgentTurnMessages;
+  fetched: AgentTurnMessagesDto;
 }): TurnRenderSource[] {
   const existingByTurnId = new Map(
     existing.map((source) => [source.turnId, source] as const),
@@ -26,26 +23,26 @@ export function mergeTurnSources({
   const fetchedTurnIds = new Set<string>();
   const merged: TurnRenderSource[] = [];
   for (const turn of fetched.turns) {
-    fetchedTurnIds.add(turn.turnId);
-    if (turn.messageUuids.length === 0) continue;
-    const kept = existingByTurnId.get(turn.turnId);
+    fetchedTurnIds.add(turn.turn_id);
+    if (turn.message_uuids.length === 0) continue;
+    const kept = existingByTurnId.get(turn.turn_id);
     if (kept) {
       // Preserve React identity and the exact streamed items; only the server's
       // authoritative transcript row coverage may change.
-      if (sameRowIds(kept.rowIds, turn.messageUuids)) {
+      if (sameRowIds(kept.rowIds, turn.message_uuids)) {
         merged.push(kept);
       } else {
-        merged.push({ ...kept, rowIds: turn.messageUuids });
+        merged.push({ ...kept, rowIds: turn.message_uuids });
       }
       continue;
     }
-    if (turn.uiParts !== null) {
-      const items = mapUiPartsToItems(turn.uiParts);
+    if (turn.ui_parts !== null) {
+      const items = mapUiPartsToItems(turn.ui_parts);
       if (items.length === 0) continue;
       merged.push({
-        key: `turn-${turn.turnId}`,
-        turnId: turn.turnId,
-        rowIds: turn.messageUuids,
+        key: `turn-${turn.turn_id}`,
+        turnId: turn.turn_id,
+        rowIds: turn.message_uuids,
         items,
       });
     }
@@ -64,9 +61,6 @@ export function mergeTurnSources({
 
 const sameRowIds = (a: string[], b: string[]): boolean =>
   a.length === b.length && a.every((id, index) => id === b[index]);
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
 
 const isStringArray = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every((entry) => typeof entry === 'string');

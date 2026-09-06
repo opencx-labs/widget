@@ -1,5 +1,6 @@
 import type {
   SendMessageInput,
+  StagedUserTurn,
   WidgetCtx,
   WidgetUserMessage,
 } from '@opencx/widget-core';
@@ -19,6 +20,11 @@ Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
  *   hey / reply-to-hey / amazing day        ← correct
  *
  * So the drain must hold until `reconcileAfterStream` resolves.
+ *
+ * Since steering, a message sent while a turn is STREAMING joins that turn
+ * instead of queueing (see use-agent-chat.steer.spec). The queue covers the
+ * `submitted` phase (turn not started on the server yet), a stop awaiting its
+ * ACK, and the reconcile window — these specs set up those states.
  */
 
 type ChatState = {
@@ -79,10 +85,13 @@ const fakeReconcileAfterStream = vi.fn(() => {
 });
 
 const fakeMessageCtx = {
-  beginAgentTurn: vi.fn(async (input: SendMessageInput) => ({
-    sessionId: 'sess-1',
-    userMessage: buildUserMessage(input.content),
-  })),
+  stageUserTurn: vi.fn(
+    async (input: SendMessageInput): Promise<StagedUserTurn | null> => ({
+      sessionId: 'sess-1',
+      userMessage: buildUserMessage(input.content),
+      initialMessages: [],
+    }),
+  ),
   buildQueuedUserMessage: vi.fn(
     (
       input: SendMessageInput,
@@ -95,6 +104,7 @@ const fakeMessageCtx = {
     callOrder.push(`append:${m.content}`);
   }),
   markUserMessageDelivered: vi.fn(),
+  notifySendAccepted: vi.fn((input: SendMessageInput) => input.onAccepted?.()),
   registerAgentHandlers: vi.fn(),
   unregisterAgentHandlers: vi.fn(),
 };
@@ -115,6 +125,14 @@ const fakeWidgetCtx = {
   api: fakeApi,
   messageCtx: fakeMessageCtx,
   reconcileAfterStream: fakeReconcileAfterStream,
+  // Org features on, embed silent (WidgetCtx getters).
+  features: {
+    dictation: false,
+    attachments: true,
+    pageContext: true,
+    pageMarks: true,
+    clientTools: true,
+  },
 } as unknown as WidgetCtx;
 
 // The engine exposes `send` by registering it with MessageCtx (the shared
@@ -126,7 +144,6 @@ function registeredSend(): (input: SendMessageInput) => Promise<void> | void {
 }
 
 import { useAgentChat } from '../useAgentChat';
-import { LIVE_TURN_FALLBACK_KEY } from '../agent-turn-sources';
 
 let hookValue: ReturnType<typeof useAgentChat> | null = null;
 
@@ -152,10 +169,11 @@ describe('useAgentChat drain ordering', () => {
     currentSessionId = 'sess-1';
     blockAgentMultiSend = false;
     callOrder.length = 0;
-    fakeMessageCtx.beginAgentTurn.mockImplementation(
+    fakeMessageCtx.stageUserTurn.mockImplementation(
       async (input: SendMessageInput) => ({
         sessionId: currentSessionId ?? 'sess-1',
         userMessage: buildUserMessage(input.content),
+        initialMessages: [],
       }),
     );
     fakeMessageCtx.buildQueuedUserMessage.mockImplementation(
@@ -191,9 +209,10 @@ describe('useAgentChat drain ordering', () => {
     });
     expect(callOrder).toEqual(['append:hey', 'send:hey']);
 
-    // Turn 1 starts streaming; the user multi-sends mid-turn.
+    // Turn 1 is submitted (no chunk yet — nothing to steer into); the user
+    // multi-sends.
     await act(async () => {
-      setChatState({ status: 'streaming', messages: [] });
+      setChatState({ status: 'submitted', messages: [] });
     });
     await act(async () => {
       await registeredSend()({ content: 'amazing day' });
@@ -203,9 +222,16 @@ describe('useAgentChat drain ordering', () => {
       'amazing day',
     ]);
     expect(callOrder).toEqual(['append:hey', 'send:hey']);
+    // First chunk: delivery proven for turn 1 only; the queue is untouched.
+    await act(async () => {
+      setChatState({ status: 'streaming', messages: [] });
+    });
     expect(fakeMessageCtx.markUserMessageDelivered).toHaveBeenCalledWith(
       'msg-hey',
     );
+    expect(hookValue.queuedUserMessages.map((m) => m.content)).toEqual([
+      'amazing day',
+    ]);
 
     // Turn 1 finishes. Reconcile starts; while it's in flight the queued
     // message must stay held (appending it now would place it ABOVE reply 1).
@@ -230,7 +256,9 @@ describe('useAgentChat drain ordering', () => {
     expect(hookValue.queuedUserMessages).toEqual([]);
   });
 
-  it('declines every agent send entry while awaiting a reply when the gate is enabled', async () => {
+  it("queues a mid-turn send even under the default awaiting-reply gate (the gate is the non-streaming engine's)", async () => {
+    // `disableSendingWhenAwaitingAIReply` left at its default (blocking) — the
+    // streaming agent surface still accepts the send: the queue IS multi-send.
     blockAgentMultiSend = true;
     await act(async () => {
       root.render(<Probe />);
@@ -240,21 +268,21 @@ describe('useAgentChat drain ordering', () => {
     });
     expect(hookValue?.queuedUserMessages).toEqual([]);
     await act(async () => {
-      setChatState({ status: 'streaming', messages: [] });
+      setChatState({ status: 'submitted', messages: [] });
     });
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const onAccepted = vi.fn();
-    let result: unknown;
 
     await act(async () => {
-      result = await registeredSend()({ content: 'blocked', onAccepted });
+      await registeredSend()({ content: 'queued', onAccepted });
     });
 
-    expect(result).toEqual({ accepted: false, reason: 'awaiting-reply' });
-    expect(onAccepted).not.toHaveBeenCalled();
-    expect(fakeMessageCtx.buildQueuedUserMessage).not.toHaveBeenCalled();
-    expect(hookValue?.queuedUserMessages).toEqual([]);
-    expect(warnSpy).toHaveBeenCalledWith(
+    expect(onAccepted).toHaveBeenCalledTimes(1);
+    expect(fakeMessageCtx.buildQueuedUserMessage).toHaveBeenCalledTimes(1);
+    expect(hookValue?.queuedUserMessages.map((m) => m.content)).toEqual([
+      'queued',
+    ]);
+    expect(warnSpy).not.toHaveBeenCalledWith(
       'Cannot send messages while awaiting AI response',
     );
     warnSpy.mockRestore();
@@ -266,27 +294,22 @@ describe('useAgentChat drain ordering', () => {
       await registeredSend()({ content: 'current' });
     });
     await act(async () => {
-      setChatState({ status: 'streaming', messages: [] });
+      setChatState({ status: 'submitted', messages: [] });
     });
     const accepted = Array.from({ length: 21 }, () => vi.fn());
-    const results: unknown[] = [];
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     await act(async () => {
       for (let index = 0; index < accepted.length; index += 1) {
-        results.push(
-          await registeredSend()({
-            content: `queued-${index + 1}`,
-            onAccepted: accepted[index],
-          }),
-        );
+        await registeredSend()({
+          content: `queued-${index + 1}`,
+          onAccepted: accepted[index],
+        });
       }
     });
 
-    expect(results.slice(0, 20)).toEqual(
-      Array.from({ length: 20 }, () => ({ accepted: true })),
-    );
-    expect(results[20]).toEqual({ accepted: false, reason: 'queue-full' });
+    // Acceptance is observable through `onAccepted`: the 21st send never
+    // fires it and never appears in the queue.
     accepted
       .slice(0, 20)
       .forEach((callback) => expect(callback).toHaveBeenCalledTimes(1));
@@ -295,7 +318,7 @@ describe('useAgentChat drain ordering', () => {
       hookValue?.queuedUserMessages.map((message) => message.content),
     ).toEqual(Array.from({ length: 20 }, (_, index) => `queued-${index + 1}`));
     expect(warnSpy).toHaveBeenCalledWith(
-      'agent chat queue full; rejecting newest send',
+      '[opencx] agent chat queue full; rejecting newest send',
       { rejectedMessageId: 'msg-queued-21' },
     );
     warnSpy.mockRestore();
@@ -307,7 +330,7 @@ describe('useAgentChat drain ordering', () => {
       await registeredSend()({ content: 'failed-current' });
     });
     await act(async () => {
-      setChatState({ status: 'streaming', messages: [] });
+      setChatState({ status: 'submitted', messages: [] });
     });
     await act(async () => {
       for (let index = 1; index <= 20; index += 1) {
@@ -326,18 +349,15 @@ describe('useAgentChat drain ordering', () => {
     );
     expect(clearErrorSpy).not.toHaveBeenCalled();
     expect(warnSpy).toHaveBeenCalledWith(
-      'agent chat queue full; retry not enqueued',
+      '[opencx] agent chat queue full; retry not enqueued',
     );
     warnSpy.mockRestore();
   });
 
   it('serializes fresh-session preparation so followers keep FIFO order', async () => {
-    let resolveFirst: (prepared: {
-      sessionId: string;
-      userMessage: WidgetUserMessage;
-    }) => void = () => {};
+    let resolveFirst: (prepared: StagedUserTurn) => void = () => {};
     let sessionCreated = false;
-    fakeMessageCtx.beginAgentTurn.mockImplementationOnce(
+    fakeMessageCtx.stageUserTurn.mockImplementationOnce(
       (_input: SendMessageInput) =>
         new Promise((resolve) => {
           resolveFirst = resolve;
@@ -369,7 +389,7 @@ describe('useAgentChat drain ordering', () => {
 
     // Followers have not tried the session-dependent queued path while the
     // first send is still creating that session.
-    expect(fakeMessageCtx.beginAgentTurn).toHaveBeenCalledTimes(1);
+    expect(fakeMessageCtx.stageUserTurn).toHaveBeenCalledTimes(1);
     expect(fakeMessageCtx.buildQueuedUserMessage).not.toHaveBeenCalled();
 
     await act(async () => {
@@ -377,6 +397,7 @@ describe('useAgentChat drain ordering', () => {
       resolveFirst({
         sessionId: 'sess-new',
         userMessage: buildUserMessage('first'),
+        initialMessages: [],
       });
       await Promise.all([first, second, third]);
     });
@@ -395,7 +416,7 @@ describe('useAgentChat drain ordering', () => {
       await registeredSend()({ content: 'first' });
     });
     await act(async () => {
-      setChatState({ status: 'streaming', messages: [] });
+      setChatState({ status: 'submitted', messages: [] });
     });
     await act(async () => {
       await registeredSend()({ content: 'stale queued' });
@@ -410,7 +431,7 @@ describe('useAgentChat drain ordering', () => {
 
     expect(stopSpy).toHaveBeenCalledTimes(1);
     expect(hookValue?.queuedUserMessages).toEqual([]);
-    expect(hookValue?.liveTurnKey).toBe(LIVE_TURN_FALLBACK_KEY);
+    expect(hookValue?.liveTurnKey).toBeNull();
     expect(hookValue?.turnSources).toEqual([]);
 
     await act(async () => {

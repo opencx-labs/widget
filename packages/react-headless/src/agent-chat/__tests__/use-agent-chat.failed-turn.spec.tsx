@@ -1,5 +1,6 @@
 import type {
   SendMessageInput,
+  StagedUserTurn,
   WidgetCtx,
   WidgetUserMessage,
 } from '@opencx/widget-core';
@@ -62,16 +63,20 @@ function buildUserMessage(content: string): WidgetUserMessage {
 const fakeReconcileAfterStream = vi.fn(async () => {});
 
 const fakeMessageCtx = {
-  beginAgentTurn: vi.fn(async (input: SendMessageInput) => ({
-    sessionId: 'sess-1',
-    userMessage: buildUserMessage(input.content),
-  })),
+  stageUserTurn: vi.fn(
+    async (input: SendMessageInput): Promise<StagedUserTurn | null> => ({
+      sessionId: 'sess-1',
+      userMessage: buildUserMessage(input.content),
+      initialMessages: [],
+    }),
+  ),
   buildQueuedUserMessage: vi.fn((input: SendMessageInput) => ({
     sessionId: 'sess-1',
     userMessage: buildUserMessage(input.content),
   })),
   appendUserMessageIfAbsent: vi.fn(),
   markUserMessageDelivered: vi.fn(),
+  notifySendAccepted: vi.fn((input: SendMessageInput) => input.onAccepted?.()),
   registerAgentHandlers: vi.fn(),
   unregisterAgentHandlers: vi.fn(),
 };
@@ -98,6 +103,14 @@ const fakeWidgetCtx = {
   },
   messageCtx: fakeMessageCtx,
   reconcileAfterStream: fakeReconcileAfterStream,
+  // Org features on, embed silent (WidgetCtx getters).
+  features: {
+    dictation: false,
+    attachments: true,
+    pageContext: true,
+    pageMarks: true,
+    clientTools: true,
+  },
 } as unknown as WidgetCtx;
 
 import { useAgentChat } from '../useAgentChat';

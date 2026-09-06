@@ -45,18 +45,17 @@ function SessionCard({
   className?: string;
 }) {
   const { humanAgent } = useConfig();
-  // Server-resolved agent branding wins over the local `bot` option.
   const bot = useBot();
   const { toChatScreen } = useWidgetRouter();
 
   const assigneeName =
     session.assignee.kind === 'human'
       ? humanAgent?.name || session.assignee.name || 'Support Agent'
-      : bot?.name || 'AI Support Agent';
+      : bot.name;
   const assigneeAvatarUrl =
     session.assignee.kind === 'human'
       ? humanAgent?.avatarUrl || session.assignee.avatarUrl || ''
-      : bot?.avatarUrl || bot?.avatar || '';
+      : bot.avatarUrl || bot.avatar || '';
 
   return (
     <Button

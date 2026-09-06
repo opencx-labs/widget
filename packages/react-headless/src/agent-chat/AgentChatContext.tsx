@@ -6,10 +6,9 @@ import type {
 import React, { createContext, useContext, useMemo } from 'react';
 import { usePrimitiveState } from '../hooks/usePrimitiveState';
 import type { StreamingTurnItem } from './agent-chat-stream';
-import {
-  LIVE_TURN_FALLBACK_KEY,
-  type TurnRenderSource,
-} from './agent-turn-sources';
+import type { TurnRenderSource } from './agent-turn-sources';
+import type { AskQuestionsRequest } from './ask-questions';
+import { pendingClarification as resolvePendingClarification } from './pending-clarification';
 import { useAgentChat, type AgentChatPageEffect } from './useAgentChat';
 
 /**
@@ -18,7 +17,7 @@ import { useAgentChat, type AgentChatPageEffect } from './useAgentChat';
  * (live overlay) and the shared composer (stop button + the queue pill above
  * the input).
  *
- * On embeds that are not agent-bound there is no provider, so the defaults
+ * On embeds whose org does not stream there is no provider, so the defaults
  * below apply.
  */
 export type AgentChatUiValue = {
@@ -30,31 +29,41 @@ export type AgentChatUiValue = {
    * turns + server-fetched historical `ui_parts`).
    */
   turnSources: TurnRenderSource[];
-  /** The live turn's node key — stable through the retained promotion. */
-  liveTurnKey: string;
+  /**
+   * The live turn's node key — stable through the retained promotion. Null
+   * while no turn is live or settling.
+   */
+  liveTurnKey: string | null;
   /** The last turn failed — the transcript shows an error row with retry. */
   turnFailed: boolean;
-  onRetryFailedTurn: () => void;
+  retryFailedTurn: () => void;
   /** Messages the user queued mid-turn — rendered in the composer's queue pill. */
   queuedUserMessages: WidgetUserMessage[];
   /** Drop one queued (not-yet-sent) message from the pill. */
-  onRemoveQueued: (messageId: string) => void;
-  onStop: () => void;
+  removeQueued: (messageId: string) => void;
+  /** Stop the live response; queued messages survive and drain next. */
+  stop: () => void;
   /** Host-page effects normalized from the current assistant tool parts. */
   pageEffects: AgentChatPageEffect[];
+  /**
+   * The clarification the agent is waiting on — the composer shows the
+   * questionnaire in its place — or null.
+   */
+  pendingClarification: AskQuestionsRequest | null;
 };
 
 const DEFAULT: AgentChatUiValue = {
   isStreaming: false,
   liveItems: [],
   turnSources: [],
-  liveTurnKey: LIVE_TURN_FALLBACK_KEY,
+  liveTurnKey: null,
   turnFailed: false,
-  onRetryFailedTurn: () => {},
+  retryFailedTurn: () => {},
   queuedUserMessages: [],
-  onRemoveQueued: () => {},
-  onStop: () => {},
+  removeQueued: () => {},
+  stop: () => {},
   pageEffects: [],
+  pendingClarification: null,
 };
 
 const AgentChatContext = createContext<AgentChatUiValue | null>(null);
@@ -65,8 +74,8 @@ export function useAgentChatUi(): AgentChatUiValue {
 }
 
 /**
- * Active agent-bound implementation. WidgetProvider is the sole mount site,
- * so every headless and styled consumer shares one useChat lifecycle.
+ * The streaming engine mount. WidgetProvider is the sole mount site, so every
+ * headless and styled consumer shares one useChat lifecycle.
  */
 function ActiveAgentChatProvider({
   children,
@@ -96,6 +105,7 @@ function ActiveAgentChatProvider({
     sessionId: sessionState.session?.id ?? null,
     persistedMessages: messagesState.messages,
   });
+  const lastMessageIsFromUser = messagesState.messages.at(-1)?.type === 'USER';
   // Memoized so consumers (message list, composer) don't re-render on every
   // provider render — only when the streaming state actually changes.
   const value: AgentChatUiValue = useMemo(
@@ -105,11 +115,17 @@ function ActiveAgentChatProvider({
       turnSources,
       liveTurnKey,
       turnFailed,
-      onRetryFailedTurn: retryFailedTurn,
+      retryFailedTurn,
       queuedUserMessages,
-      onRemoveQueued: removeQueued,
-      onStop: stop,
+      removeQueued,
+      stop,
       pageEffects,
+      pendingClarification: resolvePendingClarification({
+        turnSources,
+        liveItems,
+        isStreaming,
+        lastMessageIsFromUser,
+      }),
     }),
     [
       isStreaming,
@@ -122,6 +138,7 @@ function ActiveAgentChatProvider({
       removeQueued,
       stop,
       pageEffects,
+      lastMessageIsFromUser,
     ],
   );
   return (
@@ -132,7 +149,7 @@ function ActiveAgentChatProvider({
 }
 
 /**
- * WidgetProvider-owned engine mount. Non-agent widgets get the same safe
+ * WidgetProvider-owned engine mount. Non-streaming widgets get the same safe
  * context interface without loading a useChat instance.
  */
 export function AgentChatProvider({
@@ -144,7 +161,7 @@ export function AgentChatProvider({
   widgetCtx: WidgetCtx;
   config: WidgetConfig;
 }) {
-  if (!widgetCtx.isAgentBound) {
+  if (!widgetCtx.streaming) {
     return (
       <AgentChatContext.Provider value={DEFAULT}>
         {children}

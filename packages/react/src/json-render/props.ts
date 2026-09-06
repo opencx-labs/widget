@@ -30,7 +30,7 @@ export const stackPropsSchema = z.object({
 export const gridPropsSchema = z.object({
   // The prompt's contract is "Grid columns max 3" — this renders in a compact
   // chat widget, so wider grids are rejected at the schema.
-  columns: z.number().int().min(1).max(3).nullish(),
+  columns: z.union([z.literal(1), z.literal(2), z.literal(3)]).nullish(),
   gap: z.enum(['sm', 'md', 'lg']).nullish(),
 });
 
@@ -104,6 +104,18 @@ export const listPropsSchema = z.object({
   maxVisible: z.number().int().positive().nullish(),
 });
 
+/**
+ * The List schema the CATALOG (and so the generated model prompt) sees. The
+ * `href` transform above is opaque to json-render's prompt printer, which
+ * renders it as a required `href: unknown` — so the prompt declares the plain
+ * `string?` shape the model should write, and the registry keeps parsing with
+ * the sanitizing schema.
+ */
+export const listPropsPromptSchema = z.object({
+  items: z.array(listItemSchema.extend({ href: z.string().nullish() })),
+  maxVisible: listPropsSchema.shape.maxVisible,
+});
+
 export const tablePropsSchema = z.object({
   columns: z.array(z.string()),
   rows: z.array(z.array(z.string())),
@@ -146,6 +158,19 @@ export const chartPropsSchema = z.object({
   height: z.number().int().positive().nullish(),
   /** Pie only: big number/text shown in the donut hole (e.g. the total). */
   centerLabel: z.string().nullish(),
+});
+
+// ── Tool-built cards ────────────────────────────────────────────────────────
+
+/**
+ * A phone agent the OpenCX companion just created or re-presented. The model
+ * never authors this itself — the `present_phone_agent` tool returns the whole
+ * spec, which the reply carries verbatim.
+ */
+export const phoneAgentCardPropsSchema = z.object({
+  agentId: z.string(),
+  agentName: z.string(),
+  model: z.string().nullish(),
 });
 
 export type ListItem = z.infer<typeof listItemSchema>;

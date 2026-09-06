@@ -35,7 +35,7 @@ const session: SessionDto = {
   customStatus: null,
 };
 
-function buildCtx(config: WidgetConfig) {
+function buildCtx(config: WidgetConfig, sendsPageContext = true) {
   const api = new ApiCaller({ config });
   const contactCtx = new ContactCtx({ api, config });
   const sessionCtx = new SessionCtx({
@@ -50,7 +50,8 @@ function buildCtx(config: WidgetConfig) {
     api,
     sessionCtx,
     contactCtx,
-    agentBound: false,
+    streaming: false,
+    sendsPageContext,
   });
   return messageCtx;
 }
@@ -90,18 +91,18 @@ suite('MessageCtx bot-chat send — clientContext wire merge', () => {
   test('per-send clientContext merges OVER config.context (per-send wins collisions)', async () => {
     const messageCtx = buildCtx({
       token: 'tok',
-      context: { page: 'from-config', tenant: 'acme' },
+      context: { plan: 'from-config', tenant: 'acme' },
     });
     const picked = [{ name: 'button "Save"', selector: '#save' }];
 
     await messageCtx.sendMessage({
       content: 'what is this button?',
-      clientContext: { page_marks: picked, page: 'from-send' },
+      clientContext: { page_marks: picked, plan: 'from-send' },
     });
 
     expect(sentBody()['clientContext']).toEqual({
       tenant: 'acme',
-      page: 'from-send',
+      plan: 'from-send',
       page_marks: picked,
     });
   });
@@ -109,12 +110,12 @@ suite('MessageCtx bot-chat send — clientContext wire merge', () => {
   test('a send without per-message context keeps the config context untouched', async () => {
     const messageCtx = buildCtx({
       token: 'tok',
-      context: { page: 'from-config' },
+      context: { plan: 'from-config' },
     });
 
     await messageCtx.sendMessage({ content: 'hello' });
 
-    expect(sentBody()['clientContext']).toEqual({ page: 'from-config' });
+    expect(sentBody()['clientContext']).toEqual({ plan: 'from-config' });
   });
 
   test('per-send context works with no config context at all', async () => {
@@ -129,5 +130,32 @@ suite('MessageCtx bot-chat send — clientContext wire merge', () => {
     });
 
     expect(sentBody()['clientContext']).toEqual({ page_marks: picked });
+  });
+
+  test('page context off: the host context still rides (v4 behavior), only the widget page marks are dropped', async () => {
+    const messageCtx = buildCtx(
+      { token: 'tok', context: { plan: 'from-config' } },
+      false,
+    );
+
+    await messageCtx.sendMessage({
+      content: 'hello',
+      clientContext: { page_marks: [{ name: 'x' }] },
+    });
+
+    expect(sentBody()['clientContext']).toEqual({ plan: 'from-config' });
+  });
+
+  test('a function-form context resolves at send time', async () => {
+    let url = '/first';
+    const messageCtx = buildCtx({
+      token: 'tok',
+      context: () => ({ page: { url } }),
+    });
+
+    url = '/second';
+    await messageCtx.sendMessage({ content: 'hello' });
+
+    expect(sentBody()['clientContext']).toEqual({ page: { url: '/second' } });
   });
 });

@@ -1,10 +1,10 @@
 /**
- * The companion's visual material system. Surfaces are theme tokens
- * (palette / primaryColor via cssVars on the host shell) so embedder
- * customizations apply to companion chrome exactly like popover; only the
- * shadows live here. There is no frosted glass — if it ever returns, it
- * returns as a host-DOM backdrop-filter (a filter inside the iframe can only
- * sample the iframe's own document, never the host page).
+ * The widget's motion tokens (see MOTION.md) and the companion's shadow
+ * materials. Surfaces are theme tokens (palette / primaryColor via cssVars
+ * on the host shell) so embedder customizations apply to companion chrome
+ * exactly like popover; only the shadows live here. There is no frosted
+ * glass — a filter inside the iframe can only sample the iframe's own
+ * document, never the host page.
  *
  * Rings and rim highlights stay whisper-faint: bright white edges read as
  * "weird white borders" on dark host pages.
@@ -12,6 +12,16 @@
 
 /** Strong ease-out for entering/exiting chrome (fades, veils, headers). */
 export const EASE_OUT = [0.23, 1, 0.32, 1] as const;
+
+/** The default enter: a 200ms fade on `EASE_OUT`. */
+export const FADE_TRANSITION = { duration: 0.2, ease: EASE_OUT } as const;
+
+/**
+ * The 150ms micro-feedback tween: exits (50ms snappier than the enter, a
+ * sanctioned asymmetry), reduced-motion stand-ins for the morph spring, and
+ * the pill settling after a drag.
+ */
+export const QUICK_TWEEN = { duration: 0.15, ease: EASE_OUT } as const;
 
 /**
  * The shared morph spring: near-critically damped (ratio ≈ 1.0 at stiffness

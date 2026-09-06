@@ -1,4 +1,5 @@
 import { PrimitiveState } from './PrimitiveState';
+import { log } from './log';
 
 export type PollingState = {
   isPolling: boolean;
@@ -39,7 +40,7 @@ export class Poller {
           // If aborted, just return and do not schedule the nest poll
           return;
         }
-        console.error('Failed to poll:', error);
+        log.error('failed to poll', error);
         this.state.setPartial({ isError: true });
       } finally {
         this.state.setPartial({ isPolling: false });

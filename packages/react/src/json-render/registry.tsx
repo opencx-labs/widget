@@ -6,11 +6,12 @@ import {
   ChevronUp,
   Info,
   Lightbulb,
+  Phone,
+  Play,
 } from 'lucide-react';
-import { useConfig } from '@opencx/widget-react-headless';
 import React, { useState } from 'react';
 import { cn } from '../components/lib/utils/cn';
-import { useTranslation } from '../hooks/useTranslation';
+import { useJsonRenderHost } from './host';
 import { Chart as ChartView } from './Chart';
 import { widgetCatalog } from './catalog';
 import {
@@ -23,6 +24,7 @@ import {
   listPropsSchema,
   metricPropsSchema,
   parseProps,
+  phoneAgentCardPropsSchema,
   stackPropsSchema,
   tablePropsSchema,
   textPropsSchema,
@@ -40,13 +42,12 @@ import {
  * `defineRegistry`'s type checking makes this map exhaustive against the
  * catalog: renderer and catalog can't drift.
  *
- * The Metric and List renderers mirror the dashboard companion's json-render
- * registry, ported onto widget primitives.
  */
 
 const GAP_CLASS = { sm: 'gap-1.5', md: 'gap-3', lg: 'gap-4' } as const;
 // The prompt's contract is "Grid columns max 3" (compact chat widget).
-const COL_CLASS: Record<number, string> = {
+/** `columns` is schema-clamped to 1–3, so the lookup is total. */
+const COL_CLASS: Record<1 | 2 | 3, string> = {
   1: 'grid-cols-1',
   2: 'grid-cols-2',
   3: 'grid-cols-3',
@@ -108,12 +109,11 @@ export const { registry } = defineRegistry(widgetCatalog, {
 
     Grid: ({ props, children }) => {
       const p = parseProps(gridPropsSchema, props, {});
-      const cols = Math.max(1, Math.min(3, p.columns ?? 1));
       return (
         <div
           className={cn(
             'grid',
-            COL_CLASS[cols] ?? 'grid-cols-1',
+            COL_CLASS[p.columns ?? 1],
             GAP_CLASS[p.gap ?? 'md'],
           )}
         >
@@ -264,6 +264,14 @@ export const { registry } = defineRegistry(widgetCatalog, {
       );
     },
 
+    PhoneAgentCard: ({ props }) => {
+      const p = parseProps(phoneAgentCardPropsSchema, props, {
+        agentId: '',
+        agentName: '',
+      });
+      return <PhoneAgentCard {...p} />;
+    },
+
     Chart: ({ props }) => {
       const p = parseProps(chartPropsSchema, props, { type: 'bar', data: [] });
       return (
@@ -282,10 +290,10 @@ export const { registry } = defineRegistry(widgetCatalog, {
 
 /** Rendered for any element whose `type` isn't in the registry. */
 export const JsonRenderFallback: ComponentRenderer = ({ element }) => {
-  const { t } = useTranslation();
+  const { t } = useJsonRenderHost();
   return (
     <div className="rounded-lg border border-dashed border-muted-foreground/30 px-2 py-1.5 text-xs text-muted-foreground">
-      {t('json_unsupported').replace('{type}', element.type)}
+      {t('json_unsupported', { type: element.type })}
     </div>
   );
 };
@@ -311,7 +319,7 @@ function EmptyState({
 }: {
   translationKey: 'json_no_items' | 'json_no_data';
 }) {
-  const { t } = useTranslation();
+  const { t } = useJsonRenderHost();
   return (
     <div className="rounded-lg border border-muted-foreground/15 px-3 py-2 text-xs text-muted-foreground">
       {t(translationKey)}
@@ -320,6 +328,58 @@ function EmptyState({
 }
 
 // ---------------------------------------------------------------------------
+// PhoneAgentCard — tool-built card; the action is the host's to complete
+// (`onUiAction`), so without a handler it is a plain summary card.
+const TESTABLE_PHONE_AGENT_MODEL = 'oppie-vox-livekit';
+
+function PhoneAgentCard({
+  agentId,
+  agentName,
+  model,
+}: {
+  agentId: string;
+  agentName: string;
+  model?: string | null;
+}) {
+  const { t, onUiAction } = useJsonRenderHost();
+  const canTest =
+    Boolean(onUiAction) &&
+    Boolean(agentId) &&
+    model === TESTABLE_PHONE_AGENT_MODEL;
+  return (
+    <div className="flex w-full flex-col gap-3 rounded-xl border border-muted-foreground/15 p-3">
+      <div className="flex items-center gap-3">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Phone className="size-4" aria-hidden />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-medium text-foreground">
+            {agentName}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {t('json_phone_agent')}
+          </div>
+        </div>
+      </div>
+      {canTest && (
+        <button
+          type="button"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-secondary px-3 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
+          onClick={() =>
+            onUiAction?.({
+              type: 'test-phone-agent',
+              payload: { agentId, model: model ?? null },
+            })
+          }
+        >
+          <Play className="size-4" aria-hidden />
+          {t('json_phone_agent_test')}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // Metric — KPI card (text arrows + delta)
 // ---------------------------------------------------------------------------
 
@@ -466,8 +526,7 @@ function CompactList({
   const limit = maxVisible ?? 10;
   // Same configured link target as RichText anchors — the embed decides where
   // links open (defaulting to the host page's top frame).
-  const { anchorTarget } = useConfig();
-  const { t } = useTranslation();
+  const { anchorTarget, t } = useJsonRenderHost();
   const [expanded, setExpanded] = useState(false);
   const showExpand = items.length > limit;
   const visible = expanded ? items : items.slice(0, limit);
@@ -543,10 +602,7 @@ function CompactList({
           ) : (
             <>
               <ChevronDown className="size-3" />
-              {t('json_see_more').replace(
-                '{count}',
-                String(items.length - limit),
-              )}
+              {t('json_see_more', { count: items.length - limit })}
             </>
           )}
         </button>

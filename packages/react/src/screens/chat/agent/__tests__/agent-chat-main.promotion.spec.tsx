@@ -142,13 +142,14 @@ function ui(partial: Partial<AgentChatUiValue>): AgentChatUiValue {
     isStreaming: false,
     liveItems: [],
     turnSources: [],
-    liveTurnKey: 'unused-live-turn',
+    liveTurnKey: null,
     turnFailed: false,
-    onRetryFailedTurn: () => {},
+    retryFailedTurn: () => {},
     queuedUserMessages: [],
-    onRemoveQueued: () => {},
-    onStop: () => {},
+    removeQueued: () => {},
+    stop: () => {},
     pageEffects: [],
+    pendingClarification: null,
     ...partial,
   };
 }

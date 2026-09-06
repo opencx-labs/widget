@@ -1,8 +1,15 @@
-import type { WidgetCompanionLayoutU } from '@opencx/widget-core';
+import type {
+  WidgetCompanionLayoutU,
+  WidgetSidebarSideResolvedU,
+} from '@opencx/widget-core';
+
+export function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
 
 /** Even margin on all four sides for the fullscreen modal window. */
 export const FULLSCREEN_MARGIN = 16;
-/** Margin around the docked sidebar (top/bottom + the inline-end edge). */
+/** Margin around the docked sidebar (top/bottom + its own outer edge). */
 export const SIDEBAR_MARGIN = 16;
 
 /** The resting disc size. The collapsed round pill's box (WidgetCompanion)
@@ -24,19 +31,24 @@ export const TOP_MARGIN = 48;
 /** Minimum gap between the shell and the viewport edge (drag bounds). */
 export const VIEWPORT_EDGE_PADDING = 12;
 
-// Sidebar layout: a docked, drag-resizable panel at the inline-end edge that
-// pushes the host page aside (app-frame). These are the drag-resize width
-// bounds; the margins + rects are computed by the pure functions below.
+// Sidebar layout: a drag-resizable panel pinned to one viewport edge
+// (`companion.sidebar.side`, `auto` = the inline-end edge). In `docked` mode
+// it pushes the host page aside via the app-frame; in `floating` mode it
+// overlays the page. These are the drag-resize width bounds; the margins +
+// rects are computed by the pure functions below.
 export const DEFAULT_SIDEBAR_WIDTH = 400;
 export const MIN_SIDEBAR_WIDTH = 320;
 export const MAX_SIDEBAR_WIDTH = 560;
 /** Default canvas color revealed behind the framed host page. */
 export const SIDEBAR_CANVAS = '#f4f4f5';
 
-/** Below this viewport width the sidebar goes full-bleed: the app-frame stops
- * insetting the host page (app-frame.ts media query) and the panel takes the
- * full available width instead of floating at its configured width. */
-export const SIDEBAR_FULL_BLEED_MAX_WIDTH = 760;
+/** Keep a visible strip of the website beside the sidebar, even in narrow
+ * embedded previews. Three margins separate the page, panel, and edges. */
+const MIN_HOST_PAGE_WIDTH = 120;
+/** Use the full-width phone layout only when a readable sidebar and the
+ * host page can no longer fit together. Shared with app-frame's media query. */
+export const SIDEBAR_FULL_BLEED_MAX_WIDTH =
+  MIN_SIDEBAR_WIDTH + MIN_HOST_PAGE_WIDTH + SIDEBAR_MARGIN * 3;
 
 /** Corner radius per shell state/layout — the single source for every radius
  * the companion draws, including the app-frame's framed-page corners and the
@@ -68,16 +80,16 @@ export type CompactGeometryOptions = {
  * spring so a layout switch expands FROM the current rect in place. */
 type ShellAnchor = { centerX: number; bottom: number };
 
-/** Sidebar clamped so it never exceeds the viewport minus its side margins.
- * Below the full-bleed breakpoint the configured width is ignored entirely
- * and the panel takes the full available width, matching the app-frame's
- * own full-bleed media query. */
+/** Keep room for the host page above the phone breakpoint. On phones the
+ * panel takes the available width, matching app-frame's media query. */
 export function effectiveSidebarWidth(
   region: Region,
   sidebarWidth: number,
 ): number {
-  const maxWidth = Math.max(0, region.width - SIDEBAR_MARGIN * 2);
-  if (region.width <= SIDEBAR_FULL_BLEED_MAX_WIDTH) return maxWidth;
+  if (region.width <= SIDEBAR_FULL_BLEED_MAX_WIDTH) {
+    return Math.max(0, region.width - SIDEBAR_MARGIN * 2);
+  }
+  const maxWidth = region.width - MIN_HOST_PAGE_WIDTH - SIDEBAR_MARGIN * 3;
   return Math.max(0, Math.min(sidebarWidth, maxWidth));
 }
 
@@ -172,17 +184,25 @@ export function chatDims(opts: {
  * resting pill and the quick-ask bar always sit bottom-center, so a sidebar
  * (or fullscreen) layout does NOT drag the pill to the edge. When open,
  * compact/fullscreen center on the viewport and the sidebar pins its far
- * edge to the viewport's inline-end (flipped under RTL).
+ * edge to `sidebarSide` — already resolved from config + host dir by the
+ * caller, so this stays a pure function of a physical side.
  */
 export function shellAnchor(opts: {
   isChatOpen: boolean;
   layout: WidgetCompanionLayoutU;
   region: Region;
   sidebarWidth: number;
-  dir: string;
+  sidebarSide: WidgetSidebarSideResolvedU;
   bottomOffset: number;
 }): ShellAnchor {
-  const { isChatOpen, layout, region, sidebarWidth, dir, bottomOffset } = opts;
+  const {
+    isChatOpen,
+    layout,
+    region,
+    sidebarWidth,
+    sidebarSide,
+    bottomOffset,
+  } = opts;
   // Pill / quick-ask (not open chat) always rest bottom-center, regardless of
   // the layout the panel WILL open into.
   const anchorLayout = isChatOpen ? layout : 'compact';
@@ -195,7 +215,7 @@ export function shellAnchor(opts: {
         : bottomOffset;
   const centerX =
     anchorLayout === 'sidebar'
-      ? dir === 'rtl'
+      ? sidebarSide === 'left'
         ? SIDEBAR_MARGIN + width / 2
         : region.width - SIDEBAR_MARGIN - width / 2
       : region.width / 2;

@@ -3,6 +3,8 @@ import {
   DEFAULT_COMPANION_LAYOUTS,
   normalizeCompanionLayouts,
   resolveCompanionDefaultLayout,
+  resolveSidebarMode,
+  resolveSidebarSide,
 } from '../../utils/companion-layout';
 
 describe('normalizeCompanionLayouts', () => {
@@ -44,5 +46,34 @@ describe('resolveCompanionDefaultLayout', () => {
     expect(
       resolveCompanionDefaultLayout('compact', ['fullscreen', 'sidebar']),
     ).toBe('fullscreen');
+  });
+});
+
+describe('resolveSidebarSide', () => {
+  it('honors an explicit side in both directions', () => {
+    expect(resolveSidebarSide('left', 'ltr')).toBe('left');
+    expect(resolveSidebarSide('right', 'rtl')).toBe('right');
+  });
+
+  it('follows the host dir for `auto` (the inline-end edge)', () => {
+    expect(resolveSidebarSide('auto', 'ltr')).toBe('right');
+    expect(resolveSidebarSide('auto', 'rtl')).toBe('left');
+  });
+
+  it.each([undefined, null, 'top', 42])(
+    'falls back to the inline-end edge for %p',
+    (side) => {
+      expect(resolveSidebarSide(side, 'ltr')).toBe('right');
+      expect(resolveSidebarSide(side, 'rtl')).toBe('left');
+    },
+  );
+});
+
+describe('resolveSidebarMode', () => {
+  it('docks only on an explicit docked mode; anything else floats', () => {
+    expect(resolveSidebarMode('docked')).toBe('docked');
+    expect(resolveSidebarMode('floating')).toBe('floating');
+    expect(resolveSidebarMode(undefined)).toBe('floating');
+    expect(resolveSidebarMode('nonsense')).toBe('floating');
   });
 });

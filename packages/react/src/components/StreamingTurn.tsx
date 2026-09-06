@@ -1,7 +1,6 @@
 import type { WidgetAiMessage } from '@opencx/widget-core';
 import type {
   SpecDataPart,
-  StreamingStep,
   StreamingTurnState,
 } from '@opencx/widget-react-headless';
 import { useWidget } from '@opencx/widget-react-headless';
@@ -9,10 +8,9 @@ import React, { useMemo, useState } from 'react';
 import { buildSpec, SpecRenderer } from '../json-render';
 import { dc } from '../utils/data-component';
 import { AgentMessageGroup } from './AgentMessageGroup';
-import { StepsGroup } from './StepsGroup';
 
 /**
- * The live streamed turn (agent-bound embeds): rendered in STREAM ORDER —
+ * The live streamed turn (streaming engine): rendered in STREAM ORDER —
  * top-to-bottom is time. Narration text renders through the STOCK
  * AgentMessageGroup (identical to persisted messages) at its true position,
  * each run of consecutive activity (reasoning/tools) renders as a collapsible
@@ -35,17 +33,21 @@ export function StreamingTurn({
    */
   timestamp?: string | null;
 }) {
+  // Registered by `Widget` (`agent_chat_steps` / `agent_chat_spec`) and
+  // replaceable through the `components` prop.
   const { componentStore } = useWidget();
-  const StepsComponent =
-    componentStore.getComponent('agent_chat_steps') ?? StepsGroup;
-  const SpecComponent =
-    componentStore.getComponent('agent_chat_spec') ?? StreamingSpec;
+  const StepsComponent = componentStore.getComponent('agent_chat_steps');
+  const SpecComponent = componentStore.getComponent('agent_chat_spec');
   // Fixed for the life of the turn. A fresh `new Date()` per render would make
   // the group timestamp tick with every streamed token and then jump when the
   // persisted row (stamped once, server-side) takes over at the handoff.
   const [startedAt] = useState(() => new Date().toISOString());
   const groupTimestamp = timestamp ?? startedAt;
 
+  // `questions` renders NOTHING in the transcript. A pending clarification
+  // takes the composer's place instead (`ChatInput`), so the customer answers
+  // where they would otherwise type — and a questionnaire the conversation
+  // has moved past leaves no dead card behind.
   return (
     <div {...dc('chat/streaming_turn/root')} className="flex flex-col gap-2">
       {turn.items.map((item, index) =>
@@ -65,23 +67,17 @@ export function StreamingTurn({
             agent={agent}
           />
         ) : item.kind === 'spec' ? (
-          <SpecComponent key={`spec-${index}`} parts={item.parts} />
-        ) : (
-          <StepsComponent
-            key={`steps-${index}`}
-            // `StepsGroup` reads "still running" off its steps' own `done`
-            // flags. A turn that ended with a step unfinished — a stopped turn
-            // leaves its last tool call at `input-available` — would otherwise
-            // shimmer "running..." forever. Once the turn is over nothing is
-            // running, so settle them, exactly as the persisted `stepsBefore`
-            // path does.
-            active={turn.active}
-            steps={
-              turn.active
-                ? item.steps
-                : item.steps.map((step) => ({ ...step, done: true }))
-            }
-          />
+          SpecComponent && (
+            <SpecComponent key={`spec-${index}`} parts={item.parts} />
+          )
+        ) : item.kind === 'questions' ? null : (
+          StepsComponent && (
+            <StepsComponent
+              key={`steps-${index}`}
+              active={turn.active}
+              steps={item.steps}
+            />
+          )
         ),
       )}
     </div>
@@ -94,13 +90,9 @@ export function StreamingTurn({
  * persisted-history path).
  */
 export type StreamingSpecComponentProps = { parts: SpecDataPart[] };
-export type StreamingStepsComponentProps = {
-  steps: StreamingStep[];
-  active: boolean;
-};
 
 export function StreamingSpec({ parts }: StreamingSpecComponentProps) {
-  // `mapUiMessageToItems` produces a fresh parts array on every stream
+  // `mapUiPartsToItems` produces a fresh parts array on every stream
   // snapshot, so the reference itself is the change signal.
   const spec = useMemo(() => buildSpec(parts), [parts]);
   return <SpecRenderer spec={spec} />;

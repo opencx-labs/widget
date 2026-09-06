@@ -1,3 +1,4 @@
+import { log } from '@opencx/widget-core';
 import type { FileWithProgress } from '@opencx/widget-react-headless';
 import {
   AlertCircle,
@@ -105,7 +106,7 @@ export function UploadPreview({
 
     const reader = new FileReader();
     reader.onload = () => setFileContent(reader.result as string);
-    reader.onerror = () => console.error('Error reading file');
+    reader.onerror = () => log.error('failed to read file for preview');
     reader.readAsDataURL(file);
 
     return () => reader.abort();
@@ -117,7 +118,7 @@ export function UploadPreview({
       content={
         status === 'error' ? (
           <span className="text-destructive">
-            {t('upload_failed').replace('{error}', error ?? '')}
+            {t('upload_failed', { error: error ?? '' })}
           </span>
         ) : (
           file.name

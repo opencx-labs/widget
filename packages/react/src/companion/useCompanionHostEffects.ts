@@ -2,6 +2,8 @@ import type {
   WidgetCompanionLayoutU,
   WidgetConfig,
   WidgetCtx,
+  WidgetSidebarModeU,
+  WidgetSidebarSideResolvedU,
 } from '@opencx/widget-core';
 import React, {
   useCallback,
@@ -12,13 +14,14 @@ import React, {
 } from 'react';
 import { mountAppFrame, type AppFrameLease } from './app-frame';
 import {
+  clamp,
   DEFAULT_SIDEBAR_WIDTH,
   effectiveSidebarWidth,
   MAX_SIDEBAR_WIDTH,
   MIN_SIDEBAR_WIDTH,
   type Region,
   SIDEBAR_CANVAS,
-} from './companion-geometry.utils';
+} from './companion-geometry';
 import { lockHostScroll } from './host-scroll-lock';
 import type { PanelState } from './types';
 
@@ -26,10 +29,6 @@ type SidebarWidthStorage = Pick<
   NonNullable<WidgetCtx['storageCtx']>,
   'getCompanionSidebarWidth' | 'setCompanionSidebarWidth'
 >;
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
-}
 
 function readCssVar(
   vars: Readonly<Record<string, string>>,
@@ -49,7 +48,8 @@ export function useCompanionHostEffects({
   layout,
   state,
   region,
-  dir,
+  sidebarSide,
+  sidebarMode,
   cssVars,
   storage,
   resizeLabel,
@@ -58,7 +58,13 @@ export function useCompanionHostEffects({
   layout: WidgetCompanionLayoutU;
   state: PanelState;
   region: Region;
-  dir: string;
+  /**
+   * Already resolved from config + host dir (and the visitor's own pick) by
+   * the layout context — everything here works in PHYSICAL terms so an
+   * explicit side beats the host document's direction.
+   */
+  sidebarSide: WidgetSidebarSideResolvedU;
+  sidebarMode: WidgetSidebarModeU;
   cssVars: Readonly<Record<string, string>>;
   storage: SidebarWidthStorage | undefined;
   resizeLabel: string;
@@ -108,14 +114,16 @@ export function useCompanionHostEffects({
     };
   }, [companion?.sidebar?.width, maxSidebarWidth, minSidebarWidth, storage]);
 
+  // The handle is on the panel's inner edge, so the width is the distance
+  // from the pointer to the panel's OWN viewport edge.
   const widthFromPointer = useCallback(
     (clientX: number) =>
       clamp(
-        dir === 'rtl' ? clientX : window.innerWidth - clientX,
+        sidebarSide === 'left' ? clientX : window.innerWidth - clientX,
         minSidebarWidth,
         maxSidebarWidth,
       ),
-    [dir, maxSidebarWidth, minSidebarWidth],
+    [maxSidebarWidth, minSidebarWidth, sidebarSide],
   );
 
   const onPointerDown = useCallback(
@@ -166,8 +174,10 @@ export function useCompanionHostEffects({
       if (event.key === 'Home') next = minSidebarWidth;
       if (event.key === 'End') next = maxSidebarWidth;
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        // Growing means moving the handle AWAY from the panel's edge: left
+        // for a right-side panel, right for a left-side one.
         const grows =
-          event.key === (dir === 'rtl' ? 'ArrowRight' : 'ArrowLeft');
+          event.key === (sidebarSide === 'left' ? 'ArrowRight' : 'ArrowLeft');
         next = clamp(
           sidebarWidth + (grows ? 16 : -16),
           minSidebarWidth,
@@ -179,11 +189,11 @@ export function useCompanionHostEffects({
       setSidebarWidth(next);
       void storage?.setCompanionSidebarWidth(next).catch(() => {});
     },
-    [dir, maxSidebarWidth, minSidebarWidth, sidebarWidth, storage],
+    [maxSidebarWidth, minSidebarWidth, sidebarSide, sidebarWidth, storage],
   );
 
   const isSidebar = layout === 'sidebar';
-  const framePage = companion?.sidebar?.framePage === true;
+  const isDocked = sidebarMode === 'docked';
   const frameWidth = effectiveSidebarWidth(region, sidebarWidth);
   const canvas = companion?.sidebar?.canvasColor ?? SIDEBAR_CANVAS;
   const pageBackground = `hsl(${readCssVar(cssVars, '--opencx-background')})`;
@@ -194,8 +204,8 @@ export function useCompanionHostEffects({
   frameStateRef.current = { open: state !== 'pill', width: frameWidth };
 
   useEffect(() => {
-    if (!isSidebar || !framePage) return;
-    const lease = mountAppFrame({ canvas, dir, pageBackground });
+    if (!isSidebar || !isDocked) return;
+    const lease = mountAppFrame({ canvas, side: sidebarSide, pageBackground });
     frameLeaseRef.current = lease;
     lease.setWidth(frameStateRef.current.width);
     lease.setOpen(frameStateRef.current.open);
@@ -203,17 +213,17 @@ export function useCompanionHostEffects({
       if (frameLeaseRef.current === lease) frameLeaseRef.current = null;
       lease.release();
     };
-  }, [canvas, dir, framePage, isSidebar, pageBackground]);
+  }, [canvas, isDocked, isSidebar, pageBackground, sidebarSide]);
 
   useEffect(() => {
-    if (isSidebar && framePage) frameLeaseRef.current?.setWidth(frameWidth);
-  }, [framePage, frameWidth, isSidebar]);
+    if (isSidebar && isDocked) frameLeaseRef.current?.setWidth(frameWidth);
+  }, [frameWidth, isDocked, isSidebar]);
 
   useEffect(() => {
-    if (isSidebar && framePage) {
+    if (isSidebar && isDocked) {
       frameLeaseRef.current?.setOpen(state !== 'pill');
     }
-  }, [framePage, isSidebar, state]);
+  }, [isDocked, isSidebar, state]);
 
   const isFullscreenModal = state === 'chat' && layout === 'fullscreen';
   const lockFullscreenScroll = companion?.fullscreen?.lockScroll !== false;

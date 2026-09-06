@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion';
 import React from 'react';
-import { PILL_SIZE } from './companion-geometry.utils';
+import { PILL_SIZE } from './companion-geometry';
 import { CompanionFaceIcon } from './CompanionFaceIcon';
-import { EASE_OUT } from './materials';
+import { EASE_OUT, QUICK_TWEEN } from '../motion';
 
 /**
  * The resting look of the companion shell: the icon disc, plus a label that
@@ -63,7 +63,7 @@ function restingFade(visible: boolean) {
   return {
     initial: false as const,
     animate: { opacity: visible ? 1 : 0 },
-    transition: { duration: 0.15, ease: EASE_OUT, delay: visible ? 0.25 : 0 },
+    transition: { ...QUICK_TWEEN, delay: visible ? 0.25 : 0 },
   };
 }
 

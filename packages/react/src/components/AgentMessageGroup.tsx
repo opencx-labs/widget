@@ -11,7 +11,6 @@ import { Tooltippy } from './lib/tooltip';
 import { cn } from './lib/utils/cn';
 import { SuggestedReplyButton } from './SuggestedReplyButton';
 import { GroupTimestamp } from './GroupTimestamp';
-import { StepsGroup } from './StepsGroup';
 
 export function AgentMessageGroup({
   messages,
@@ -51,24 +50,13 @@ export function AgentMessageGroup({
             className={cn('flex-1 flex flex-col gap-1')}
           >
             {messages.map((message, index, array) => (
-              <React.Fragment key={message.id}>
-                {'stepsBefore' in message &&
-                  message.stepsBefore &&
-                  message.stepsBefore.length > 0 && (
-                    <StepsGroup
-                      steps={message.stepsBefore.map((step) => ({
-                        ...step,
-                        done: true,
-                      }))}
-                    />
-                  )}
-                <AgentMessage
-                  isFirstInGroup={index === 0}
-                  isLastInGroup={index === array.length - 1}
-                  isAloneInGroup={array.length === 1}
-                  {...message}
-                />
-              </React.Fragment>
+              <AgentMessage
+                key={message.id}
+                isFirstInGroup={index === 0}
+                isLastInGroup={index === array.length - 1}
+                isAloneInGroup={array.length === 1}
+                {...message}
+              />
             ))}
             <GroupTimestamp messages={messages} />
           </div>

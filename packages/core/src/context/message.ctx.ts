@@ -1,6 +1,7 @@
 import { ApiCaller } from '../api/api-caller';
 import type { WidgetConfig } from '../types/widget-config';
 import {
+  type MarkedElementRef,
   type WidgetAiMessage,
   type WidgetMessageU,
   type WidgetUserMessage,
@@ -10,12 +11,14 @@ import type {
   SendMessageDto,
   SendMessageOutputDto,
 } from '../types/dtos';
+import { translate } from '../translation';
+import { log } from '../utils/log';
 import { PrimitiveState } from '../utils/PrimitiveState';
 import { genUuid } from '../utils/uuid';
 import { SessionCtx } from './session.ctx';
 import type { ContactCtx } from './contact.ctx';
 
-/** The shape a caller passes to `sendMessage` (and `beginAgentTurn`). */
+/** The shape a caller passes to `sendMessage` (and `stageUserTurn`). */
 export type SendMessageInput = {
   content: SendMessageDto['content'];
   attachments?: SendMessageDto['attachments'];
@@ -25,6 +28,12 @@ export type SendMessageInput = {
    * merged over the config-level `context` on the wire.
    */
   clientContext?: Record<string, unknown>;
+  /**
+   * False when the visitor dismissed the page's entity pill for this message:
+   * the send goes out without `context.entity`, everything else intact.
+   * @default true
+   */
+  withPageEntity?: boolean;
   exitModePrompt?: string;
   /**
    * Signals that the send has passed validation, has a session, and is owned
@@ -37,17 +46,13 @@ export type SendMessageInput = {
   onAccepted?: () => void;
 };
 
-/** Internal outcome from the headless streaming engine's send seam. */
-export type AgentChatSendResult =
-  | { accepted: true }
-  | {
-      accepted: false;
-      reason:
-        | 'awaiting-reply'
-        | 'queue-full'
-        | 'preparation-failed'
-        | 'conversation-changed';
-    };
+/** What `stageUserTurn` hands the engine that finishes the send. */
+export type StagedUserTurn = {
+  sessionId: string;
+  userMessage: WidgetUserMessage;
+  /** Persistent greetings riding a fresh conversation's first turn. */
+  initialMessages: WidgetAiMessage[];
+};
 
 /**
  * The seam the headless agent-chat provider registers so the shared
@@ -56,35 +61,50 @@ export type AgentChatSendResult =
  * shared persisted message list.
  */
 export type AgentChatHandlers = {
-  send: (
-    input: SendMessageInput,
-  ) => AgentChatSendResult | Promise<AgentChatSendResult | void> | void;
+  send: (input: SendMessageInput) => Promise<void> | void;
 };
 
 /**
- * The per-message wire context shared by both send engines: the config-level
- * `context`/`messageCustomData` merged under the per-send values.
+ * The per-message wire context shared by both send engines: the host's
+ * config-level `context` (resolved fresh when it is a function) with the
+ * widget's own per-send page context merged over it.
+ *
+ * `sendsPageContext` is `WidgetCtx.features.pageContext` — the org's
+ * page-context feature narrowed by the embed. Off → the widget adds nothing
+ * of its own (no page marks, no picked elements) but the host's `context`
+ * still rides along exactly as it did in v4; `custom_data` is unaffected.
  */
 export const mergeSendContext = (
   config: WidgetConfig,
   input: SendMessageInput,
+  { sendsPageContext }: { sendsPageContext: boolean },
 ): {
   clientContext: Record<string, unknown> | undefined;
   custom_data: Record<string, unknown>;
 } => {
-  // Function-form context resolves at SEND time — an SPA's current page, not
-  // the page the widget initialized on. A throwing getter degrades to no
-  // context rather than blocking the send.
   const configContext = resolveConfigContext(config);
-  return {
-    clientContext: input.clientContext
+  const merged =
+    sendsPageContext && input.clientContext
       ? { ...configContext, ...input.clientContext }
-      : configContext,
+      : configContext;
+  return {
+    clientContext:
+      input.withPageEntity === false && merged && 'entity' in merged
+        ? withoutKey(merged, 'entity')
+        : merged,
     custom_data: {
       ...(config.messageCustomData || {}),
       ...(input.customData || {}),
     },
   };
+};
+
+const withoutKey = (
+  record: Record<string, unknown>,
+  key: string,
+): Record<string, unknown> | undefined => {
+  const { [key]: _dropped, ...rest } = record;
+  return Object.keys(rest).length > 0 ? rest : undefined;
 };
 
 export const resolveConfigContext = (
@@ -94,10 +114,79 @@ export const resolveConfigContext = (
   try {
     return config.context();
   } catch (err) {
-    console.error('widget context getter threw; sending without context', err);
+    log.error('context getter threw; sending without context', err);
     return undefined;
   }
 };
+
+/** Wire shape of the per-embed feature toggles (`config.features`). */
+export type SendFeaturesBody = NonNullable<SendMessageDto['features']>;
+
+/**
+ * `config.features` (camelCase) → the snake_cased `features` field both send
+ * engines carry. Undefined when the embedder set nothing, so the body stays
+ * byte-identical to before for embeds that never touch the option.
+ */
+export const resolveSendFeatures = (
+  config: WidgetConfig,
+): SendFeaturesBody | undefined => {
+  const features = config.features;
+  if (!features) return undefined;
+  const body: SendFeaturesBody = {};
+  if (features.preamble !== undefined) body.preamble = features.preamble;
+  if (features.inlineUi !== undefined) body.inline_ui = features.inlineUi;
+  if (features.pageContext !== undefined) {
+    body.page_context = features.pageContext;
+  }
+  if (features.clientTools !== undefined) {
+    body.client_tools = features.clientTools;
+  }
+  return Object.keys(body).length > 0 ? body : undefined;
+};
+
+/**
+ * Everything one send carries on the wire — the SAME body for the blocking
+ * send and the streaming turn (both endpoints take `WidgetSendMessageInputDto`).
+ * Config is read at call time so function-form `context` and a refreshed
+ * embedder config are reflected on every request.
+ */
+export const buildSendMessageBody = ({
+  config,
+  input,
+  uuid,
+  sessionId,
+  content,
+  initialMessages,
+  sendsPageContext,
+}: {
+  config: WidgetConfig;
+  input: SendMessageInput;
+  /** The user message's wire id (a retry sends a fresh one). */
+  uuid: string;
+  sessionId: string;
+  /** The rendered user message text (extra collected data already prepended). */
+  content: string;
+  /** Persistent greetings riding a fresh conversation's first turn. */
+  initialMessages: readonly WidgetAiMessage[];
+  sendsPageContext: boolean;
+}): SendMessageDto => ({
+  uuid,
+  bot_token: config.token,
+  headers: config.headers,
+  query_params: config.queryParams,
+  body_properties: config.bodyProperties,
+  session_id: sessionId,
+  content,
+  attachments: input.attachments,
+  ...mergeSendContext(config, input, { sendsPageContext }),
+  language: config.language,
+  features: resolveSendFeatures(config),
+  exit_mode_prompt: input.exitModePrompt,
+  initial_messages:
+    initialMessages.length > 0
+      ? initialMessages.map((m) => ({ uuid: m.id, content: m.data.message }))
+      : undefined,
+});
 
 type MessageCtxState = {
   messages: WidgetMessageU[];
@@ -123,11 +212,18 @@ export class MessageCtx {
   });
 
   /**
-   * The embed is bound to an agents-platform agent — turns stream over the
-   * AI SDK `useChat` surface instead of the blocking send. A widget is
-   * agent-bound for its whole lifetime.
+   * The org's web channel runs the streaming engine — turns stream over the
+   * AI SDK `useChat` surface instead of the blocking send. Decided by the
+   * server at init and constant for the widget's whole lifetime.
    */
-  public readonly agentBound: boolean;
+  public readonly streaming: boolean;
+
+  /**
+   * `WidgetCtx.features.pageContext`: whether the widget's own page context
+   * (page marks, picked elements) rides along with each message. Off → the
+   * user bubble shows no page-mark chips either.
+   */
+  public readonly sendsPageContext: boolean;
 
   /** Registered by the headless agent engine for the WidgetProvider lifetime. */
   private agentHandlers: AgentChatHandlers | null = null;
@@ -157,19 +253,22 @@ export class MessageCtx {
     api,
     sessionCtx,
     contactCtx,
-    agentBound,
+    streaming,
+    sendsPageContext,
   }: {
     config: WidgetConfig;
     api: ApiCaller;
     sessionCtx: SessionCtx;
     contactCtx: ContactCtx;
-    agentBound: boolean;
+    streaming: boolean;
+    sendsPageContext: boolean;
   }) {
     this.config = config;
     this.api = api;
     this.sessionCtx = sessionCtx;
     this.contactCtx = contactCtx;
-    this.agentBound = agentBound;
+    this.streaming = streaming;
+    this.sendsPageContext = sendsPageContext;
   }
 
   reset = () => {
@@ -198,7 +297,7 @@ export class MessageCtx {
 
   /**
    * Wiring for the headless agent engine: WidgetProvider registers its useChat
-   * `send` here and clears it on unmount, so every agent-bound headless or
+   * `send` here and clears it on unmount, so every streaming headless or
    * styled consumer shares the same lifecycle. Imperative sends can arrive in
    * the render gap before registration; drain those in FIFO order once ready.
    */
@@ -207,15 +306,23 @@ export class MessageCtx {
     const buffered = this.bufferedAgentSends;
     this.bufferedAgentSends = [];
     buffered.forEach((input) => {
-      try {
-        void Promise.resolve(handlers.send(input)).catch((err: unknown) => {
-          console.error('[opencx] buffered agent-chat send failed', err);
-        });
-      } catch (err) {
-        console.error('[opencx] buffered agent-chat send failed', err);
-      }
+      MessageCtx.dispatchToEngine(handlers, input);
     });
   };
+
+  /** Hand a send to the streaming engine; its failure can never propagate. */
+  private static dispatchToEngine(
+    handlers: AgentChatHandlers,
+    input: SendMessageInput,
+  ): void {
+    try {
+      Promise.resolve(handlers.send(input)).catch((err: unknown) => {
+        log.error('streaming send failed', err);
+      });
+    } catch (err) {
+      log.error('streaming send failed', err);
+    }
+  }
 
   unregisterAgentHandlers = (handlers: AgentChatHandlers): void => {
     // Only clear if we still own them — guards a late unmount racing a remount.
@@ -286,10 +393,7 @@ export class MessageCtx {
   private ensureSessionId = async (): Promise<string | null> => {
     if (!this.sessionCtx.sessionState.get().session?.id) {
       const createdSession = await this.sessionCtx.createSession();
-      if (!createdSession) {
-        console.error('Failed to create session');
-        return null;
-      }
+      if (!createdSession) return null;
       void this.sessionCtx.refreshSessions();
     }
     return this.sessionCtx.sessionState.get().session?.id ?? null;
@@ -308,43 +412,41 @@ export class MessageCtx {
     }
   };
 
-  /** A consumer callback must never be able to break an accepted send. */
-  private notifySendAccepted = (input: SendMessageInput): void => {
+  /**
+   * Fire the caller's `onAccepted` once a send is validated, has a session,
+   * and is owned by an engine. A consumer callback must never be able to
+   * break an accepted send.
+   */
+  notifySendAccepted = (input: SendMessageInput): void => {
     try {
       input.onAccepted?.();
     } catch (error) {
-      console.error('[opencx] send acceptance callback failed', error);
+      log.error('send acceptance callback failed', error);
     }
   };
 
   /**
-   * Front-half of an agent-chat send, shared by the composer and every other
-   * send caller via the registered handler: validate, optimistically render
-   * the user message (plus any persistent initial messages on the first
-   * turn), and ensure a session exists. The `useAgentChat` hook then streams
-   * the reply through useChat. Returns `null` when there is nothing to send.
+   * The front half every send shares, whichever engine finishes it: validate,
+   * build the user message (plus the persistent greetings on a fresh
+   * conversation's first turn), render it optimistically, and make sure a
+   * session exists — rolling the optimistic rows back if it cannot. Returns
+   * `null` when there is nothing to send or no session could be created.
    */
-  beginAgentTurn = async (
+  stageUserTurn = async (
     input: SendMessageInput,
-  ): Promise<{
-    sessionId: string;
-    userMessage: WidgetUserMessage;
-    initialMessages?: WidgetAiMessage[];
-  } | null> => {
-    const userMessage = this.prepareAgentUserMessage(input);
-    if (!userMessage) return null;
+    { pending }: { pending: boolean },
+  ): Promise<StagedUserTurn | null> => {
+    const built = this.buildUserMessage(input);
+    if (!built) return null;
+    const userMessage = pending ? { ...built, pending: true } : built;
 
-    const insertableInitialMessages = this.buildPersistentInitialMessages();
+    const initialMessages = this.buildPersistentInitialMessages();
     const optimisticMessageIds = [
-      ...insertableInitialMessages.map((message) => message.id),
+      ...initialMessages.map((message) => message.id),
       userMessage.id,
     ];
     this.state.setPartial({
-      messages: [
-        ...insertableInitialMessages,
-        ...this.state.get().messages,
-        userMessage,
-      ],
+      messages: [...initialMessages, ...this.state.get().messages, userMessage],
     });
 
     let sessionId: string | null;
@@ -358,12 +460,7 @@ export class MessageCtx {
       this.rollbackOptimisticMessages(optimisticMessageIds);
       return null;
     }
-
-    return {
-      sessionId,
-      userMessage,
-      initialMessages: insertableInitialMessages,
-    };
+    return { sessionId, userMessage, initialMessages };
   };
 
   /**
@@ -378,50 +475,46 @@ export class MessageCtx {
   buildQueuedUserMessage = (
     input: SendMessageInput,
   ): { sessionId: string; userMessage: WidgetUserMessage } | null => {
-    const userMessage = this.prepareAgentUserMessage(input);
-    if (!userMessage) return null;
+    const built = this.buildUserMessage(input);
+    if (!built) return null;
     const sessionId = this.sessionCtx.sessionState.get().session?.id;
     if (!sessionId) return null;
-    return { sessionId, userMessage };
+    return { sessionId, userMessage: { ...built, pending: true } };
   };
 
-  /**
-   * Shared front-half of both agent-chat send paths: validate the input and build the
-   * user message, `pending` until the turn's answer starts streaming (the UI
-   * dims the bubble; the engine clears the flag via
-   * `markUserMessageDelivered`). Returns `null` when there is nothing to send.
-   */
-  private prepareAgentUserMessage = (
+  /** Validate the input and build its user message; `null` when empty. */
+  private buildUserMessage = (
     input: SendMessageInput,
   ): WidgetUserMessage | null => {
     if (
       !input.content.trim() &&
       (!input.attachments || input.attachments.length === 0)
     ) {
-      console.warn('Cannot send an empty message of no content or attachments');
+      log.warn('cannot send an empty message of no content or attachments');
       return null;
     }
-    return {
-      ...this.toUserMessage(
-        input.content.trim(),
-        input.attachments || undefined,
-        MessageCtx.markedElementNames(input.clientContext),
-      ),
-      pending: true,
-    };
+    return this.toUserMessage(
+      input.content.trim(),
+      input.attachments || undefined,
+      this.sendsPageContext
+        ? MessageCtx.markedElementNames(input.clientContext)
+        : undefined,
+    );
   };
 
   /**
-   * Defensive read of `clientContext.page_marks` → display names for the user
-   * bubble's context chips: each mark contributes the element it was placed
-   * on. Entries without a usable name are dropped.
+   * Defensive read of `clientContext.page_marks` → the user bubble's context
+   * chips: each mark contributes the element it was placed on, the note the
+   * visitor wrote, and a reference back to the mark itself (the UI renders
+   * the same presentation the composer showed, thumbnail included). Entries
+   * without a usable name are dropped.
    */
   private static markedElementNames(
     clientContext: Record<string, unknown> | undefined,
-  ): Array<{ name: string }> | undefined {
+  ): MarkedElementRef[] | undefined {
     const raw = clientContext?.['page_marks'];
     if (!Array.isArray(raw)) return undefined;
-    const names = raw.flatMap((mark: unknown): Array<{ name: string }> => {
+    const marked = raw.flatMap((mark: unknown): MarkedElementRef[] => {
       if (typeof mark !== 'object' || mark === null) return [];
       const elements: unknown = (mark as { elements?: unknown }).elements;
       const first = Array.isArray(elements) ? elements[0] : undefined;
@@ -429,9 +522,22 @@ export class MessageCtx {
         typeof first === 'object' && first !== null && 'name' in first
           ? (first as { name: unknown }).name
           : undefined;
-      return typeof name === 'string' && name.length > 0 ? [{ name }] : [];
+      if (typeof name !== 'string' || name.length === 0) return [];
+      const note: unknown = (mark as { note?: unknown }).note;
+      const snapshotUrl: unknown = (mark as { snapshotUrl?: unknown })
+        .snapshotUrl;
+      return [
+        {
+          name,
+          ...(typeof note === 'string' && note.length > 0 ? { note } : {}),
+          ...(typeof snapshotUrl === 'string' && snapshotUrl.length > 0
+            ? { snapshotUrl }
+            : {}),
+          mark,
+        },
+      ];
     });
-    return names.length > 0 ? names : undefined;
+    return marked.length > 0 ? marked : undefined;
   }
 
   /** Append a user message to the transcript once, ignoring a duplicate id. */
@@ -463,31 +569,21 @@ export class MessageCtx {
   };
 
   /**
-   * @deprecated Use `markUserMessageDelivered(messageId)` so delivery is tied
-   * to one turn. Kept for consumers compiled against the pre-v5 public class.
+   * The blocking engine refuses a send while the AI reply is pending unless
+   * the embed opted out. The streaming engine never blocks (it queues).
    */
-  markUserMessagesDelivered = (): void => {
-    const messages = this.state.get().messages;
-    if (
-      !messages.some((message) => message.type === 'USER' && message.pending)
-    ) {
-      return;
-    }
-    this.state.setPartial({
-      messages: messages.map((message) =>
-        message.type === 'USER' && message.pending
-          ? { ...message, pending: false }
-          : message,
-      ),
-    });
-  };
+  get blocksSendWhileAwaitingReply(): boolean {
+    return (
+      !this.streaming && this.config.disableSendingWhenAwaitingAIReply !== false
+    );
+  }
 
   sendMessage = async (input: SendMessageInput): Promise<void> => {
-    // Agent-bound: the headless useChat engine owns the whole turn lifecycle
+    // Streaming: the headless useChat engine owns the whole turn lifecycle
     // (optimistic render, streaming, interrupt-send, stop). An imperative
     // `newChat({ message })` can send before that surface's mount effect, so
     // retain the input until handlers register instead of dropping it.
-    if (this.agentBound) {
+    if (this.streaming) {
       if (!this.agentHandlers) {
         this.bufferedAgentSends.push(input);
         return;
@@ -499,18 +595,6 @@ export class MessageCtx {
     let localAbortController: AbortController | undefined;
     try {
       /* ------------------------------------------------------ */
-      /*         Prevent sending if there is no content         */
-      /* ------------------------------------------------------ */
-      if (
-        !input.content.trim() &&
-        (!input.attachments || input.attachments.length === 0)
-      ) {
-        console.warn(
-          'Cannot send an empty message of no content or attachments',
-        );
-        return;
-      }
-      /* ------------------------------------------------------ */
       /*        Prevent sending while waiting for AI res        */
       /* ------------------------------------------------------ */
       const session = this.sessionCtx.sessionState.get().session;
@@ -518,16 +602,14 @@ export class MessageCtx {
       const isAssignedToAI = assignee === 'ai';
       const isSendingToAI = this.state.get().isSendingMessageToAI;
       const lastMessage = this.state.get().messages.at(-1);
-      const blockWhileAwaitingAI =
-        this.config.disableSendingWhenAwaitingAIReply !== false;
 
       if (
-        blockWhileAwaitingAI &&
+        this.blocksSendWhileAwaitingReply &&
         (isSendingToAI ||
           // If last message is from user, then bot response did not arrive yet
           (isAssignedToAI && lastMessage?.type === 'USER'))
       ) {
-        console.warn('Cannot send messages while awaiting AI response');
+        log.warn('cannot send messages while awaiting AI response');
         return;
       }
 
@@ -545,63 +627,24 @@ export class MessageCtx {
         isSendingMessage: true,
         isSendingMessageToAI: !!isAssignedToAI || !session,
       });
-      /* ------------------------------------------------------ */
-      /*     Optimistically add message to rendered messages    */
-      /* ------------------------------------------------------ */
-      const insertableInitialMessages = this.buildPersistentInitialMessages();
-      const userMessage = this.toUserMessage(
-        input.content.trim(),
-        input.attachments || undefined,
-        MessageCtx.markedElementNames(input.clientContext),
-      );
-      const optimisticMessageIds = [
-        ...insertableInitialMessages.map((message) => message.id),
-        userMessage.id,
-      ];
-      this.state.setPartial({
-        messages: [
-          ...insertableInitialMessages,
-          ...this.state.get().messages,
-          userMessage,
-        ],
-      });
 
-      let sessionId: string | null;
-      try {
-        sessionId = await this.ensureSessionId();
-      } catch (error) {
-        this.rollbackOptimisticMessages(optimisticMessageIds);
-        throw error;
-      }
-      if (!sessionId) {
-        this.rollbackOptimisticMessages(optimisticMessageIds);
-        return;
-      }
+      const staged = await this.stageUserTurn(input, { pending: false });
+      if (!staged) return;
+      const { sessionId, userMessage, initialMessages } = staged;
       this.notifySendAccepted(input);
       /* ------------------------------------------------------ */
       /*             Send and wait for bot response             */
       /* ------------------------------------------------------ */
       const { data } = await this.api.sendMessage(
-        {
+        buildSendMessageBody({
+          config: this.config,
+          input,
           uuid: userMessage.id,
-          bot_token: this.config.token,
-          headers: this.config.headers,
-          query_params: this.config.queryParams,
-          body_properties: this.config.bodyProperties,
-          session_id: sessionId,
+          sessionId,
           content: userMessage.content,
-          attachments: input.attachments,
-          ...mergeSendContext(this.config, input),
-          language: this.config.language,
-          exit_mode_prompt: input.exitModePrompt,
-          initial_messages:
-            insertableInitialMessages.length > 0
-              ? insertableInitialMessages.map((m) => ({
-                  uuid: m.id,
-                  content: m.data.message,
-                }))
-              : undefined,
-        },
+          initialMessages,
+          sendsPageContext: this.sendsPageContext,
+        }),
         localAbortController.signal,
       );
 
@@ -636,8 +679,7 @@ export class MessageCtx {
         }
       } else {
         const errorMessage = this.toBotErrorMessage(
-          data?.error?.message ||
-            'Something went wrong. Please refresh the page or try again.',
+          data?.error?.message || translate(this.config, 'turn_failed_message'),
         );
         const currentMessages = this.state.get().messages;
         this.state.setPartial({
@@ -646,7 +688,7 @@ export class MessageCtx {
       }
     } catch (error) {
       if (!localAbortController?.signal.aborted) {
-        console.error('Failed to send message:', error);
+        log.error('failed to send message', error);
       }
     } finally {
       // If our local controller was aborted, a newer send has taken over —
@@ -663,7 +705,7 @@ export class MessageCtx {
   private toUserMessage = (
     content: string,
     attachments?: MessageAttachmentType[],
-    markedElements?: Array<{ name: string }>,
+    markedElements?: MarkedElementRef[],
   ): WidgetUserMessage => {
     const messageContent = (() => {
       const extraCollectedData = this.contactCtx.state.get().extraCollectedData;

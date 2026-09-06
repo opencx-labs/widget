@@ -211,3 +211,28 @@ describe('SpecRenderer', () => {
     expect(html.textContent).not.toContain('See');
   });
 });
+
+/**
+ * The tool-built phone-agent card: renders as a summary on its own, and only
+ * offers "Test via web" when the host embed supplied `onUiAction` and the
+ * agent runs on the testable pipeline.
+ */
+describe('SpecRenderer PhoneAgentCard', () => {
+  const card = (model: string | null) =>
+    oneElement('PhoneAgentCard', {
+      agentId: 'agent-1',
+      agentName: 'Support line',
+      model,
+    });
+
+  it('renders the agent name and no action without a host handler', () => {
+    const html = render(card('oppie-vox-livekit'));
+    expect(html.textContent).toContain('Support line');
+    expect(html.querySelector('button')).toBeNull();
+  });
+
+  it('degrades malformed props to an empty card instead of throwing', () => {
+    const html = render(oneElement('PhoneAgentCard', { agentName: 42 }));
+    expect(html.querySelector('button')).toBeNull();
+  });
+});

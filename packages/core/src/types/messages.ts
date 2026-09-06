@@ -10,6 +10,7 @@ export type LiteralWidgetComponentKey =
   | 'agent_message'
   | 'agent_chat_steps'
   | 'agent_chat_spec'
+  | 'agent_chat_questions'
   | 'loading'
   | 'fallback';
 export type WidgetComponentKey = StringOrLiteral<LiteralWidgetComponentKey>;
@@ -17,23 +18,41 @@ export type WidgetComponentKey = StringOrLiteral<LiteralWidgetComponentKey>;
 /* ------------------------------------------------------ */
 /*                      Message types                     */
 /* ------------------------------------------------------ */
+/**
+ * One page mark as the user bubble shows it. `mark` is the very object the
+ * composer put in `clientContext.page_marks` — passing the REFERENCE through
+ * (rather than a copy or an id) is what lets the UI layer find the mark's
+ * thumbnail again, which is keyed by object identity and deliberately never
+ * serialized into the send payload.
+ */
+export type MarkedElementRef = {
+  /** Display name of the element the mark was placed on. */
+  name: string;
+  /** The visitor's note, when they wrote one. */
+  note?: string;
+  /** The originating page-mark object, when the send carried one. */
+  mark?: object;
+  /** The marked region's uploaded image — what a reload shows instead of the name. */
+  snapshotUrl?: string;
+};
+
 export type WidgetUserMessage = {
   id: string;
   type: 'USER';
   content: string;
   /**
-   * Agent-bound embeds only: the message was rendered optimistically and its
+   * Streaming engine only: the message was rendered optimistically and its
    * turn's answer has not started streaming yet — the UI dims the bubble.
    * Cleared by the engine once the turn produces its first chunk (or ends).
    */
   pending?: boolean;
   attachments?: MessageAttachmentType[] | null;
   /**
-   * Display names of the host-page elements the visitor marked with this
-   * message — rendered as context chips on the user bubble. Set optimistically
-   * from the send input and re-hydrated from history.
+   * The host-page marks the visitor sent with this message — rendered as
+   * context chips on the user bubble. Set optimistically from the send input
+   * and re-hydrated from history.
    */
-  markedElements?: Array<{ name: string }>;
+  markedElements?: MarkedElementRef[];
   timestamp: string | null;
   user?: {
     name?: string;
@@ -62,12 +81,6 @@ export type WidgetAiMessage<TActionData = unknown> = {
   timestamp: string | null;
   agent?: Agent;
   attachments?: MessageAttachmentType[];
-  /**
-   * Agent-bound embeds: activity (reasoning/tool calls) that happened
-   * before this message within its turn — rendered as a collapsible steps
-   * trace above the message, identical for live and historical messages.
-   */
-  stepsBefore?: Array<{ kind: 'reasoning' | 'tool'; label: string }>;
 };
 
 export type WidgetAgentMessage = {

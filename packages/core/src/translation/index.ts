@@ -88,12 +88,43 @@ export function isSupportedLanguage(
   return LANGUAGES.includes(lang as Language);
 }
 
+/** Languages written right-to-left; the widget flips its layout for them. */
+const RTL_LANGUAGES: ReadonlySet<Language> = new Set<Language>(['ar', 'ur']);
+
+export function isRtlLanguage(lang: Language): boolean {
+  return RTL_LANGUAGES.has(lang);
+}
+
+/** The language the widget renders in: `config.language` when supported, else English. */
+export function resolveLanguage(lang: string | null | undefined): Language {
+  return isSupportedLanguage(lang) ? lang : 'en';
+}
+
 export function getTranslation(
   key: TranslationKeyU,
   lang: Language,
   overrides: WidgetConfig['translationOverrides'],
+  params?: Record<string, string | number>,
 ): string {
-  return overrides?.[lang]?.[key] || languages[lang][key];
+  const text = overrides?.[lang]?.[key] || languages[lang][key];
+  if (!params) return text;
+  return text.replace(/\{(\w+)\}/g, (match, name: string) =>
+    name in params ? String(params[name]) : match,
+  );
+}
+
+/** `getTranslation` for code that holds the config rather than a language. */
+export function translate(
+  config: Pick<WidgetConfig, 'language' | 'translationOverrides'>,
+  key: TranslationKeyU,
+  params?: Record<string, string | number>,
+): string {
+  return getTranslation(
+    key,
+    resolveLanguage(config.language),
+    config.translationOverrides,
+    params,
+  );
 }
 
 export type TranslationInterface = {
@@ -123,15 +154,25 @@ export type TranslationInterface = {
   companion_close: string;
   companion_history: string;
   companion_expand_chat: string;
+  companion_sidebar_dock_label: string;
+  companion_sidebar_side_label: string;
+  companion_sidebar_left: string;
+  companion_sidebar_right: string;
   companion_resize_chat: string;
   scroll_to_bottom: string;
   thinking: string;
   running: string;
   steps: string;
+  step_arguments: string;
+  step_result: string;
   attach_files: string;
   mark_page_active: string;
   mark_page: string;
   stop_response: string;
+  dictate: string;
+  stop_dictation: string;
+  dictation_mic_blocked: string;
+  dictation_unavailable: string;
   send_message: string;
   upload_failed: string;
   file_rejected: string;
@@ -141,6 +182,12 @@ export type TranslationInterface = {
   json_no_chart_data: string;
   json_unsupported: string;
   json_see_less: string;
+  /** Subtitle of a tool-built phone-agent card. */
+  json_phone_agent: string;
+  /** The phone-agent card's action, completed by the host page. */
+  json_phone_agent_test: string;
+  /** Dismisses the composer's page-context (entity) pill for one message. */
+  page_context_remove: string;
   json_see_more: string;
   page_mark_hint: string;
   page_mark_escape: string;
@@ -157,6 +204,7 @@ export type TranslationInterface = {
   page_mark_attach: string;
   page_mark_remove: string;
   page_mark_region: string;
+  page_mark_default_message: string;
   /** Header of the multi-send queue pill above the composer. */
   queued_label: string;
   /** Accessible label of the per-message remove button in the queue pill. */
@@ -165,5 +213,15 @@ export type TranslationInterface = {
   turn_failed_message: string;
   /** Retry action in the failed-turn error row. */
   turn_failed_retry: string;
+  /** Previous question in the agent's clarification card. */
+  questions_back: string;
+  /** Next question in the agent's clarification card. */
+  questions_next: string;
+  /** Submits every answer of the clarification card as one message. */
+  questions_send: string;
+  /** Escape from the offered chips into a free-text answer. */
+  questions_type_answer: string;
+  /** Placeholder of that free-text answer box. */
+  questions_answer_placeholder: string;
 };
 export type TranslationKeyU = keyof TranslationInterface;

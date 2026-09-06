@@ -10,6 +10,7 @@ import { Poller } from '../utils/Poller';
 import { runCatching } from '../utils/run-catching';
 import type { MessageCtx } from './message.ctx';
 import type { SessionCtx } from './session.ctx';
+import { log } from '../utils/log';
 
 export class ActiveSessionPollingCtx {
   private api: ApiCaller;
@@ -72,7 +73,7 @@ export class ActiveSessionPollingCtx {
           });
         } catch (error) {
           if (!this.fetchSessionAndFullHistoryAbortController.signal.aborted) {
-            console.error('Failed to fetch session and full history:', error);
+            log.error('failed to fetch session and full history', error);
           }
         }
       } else {
@@ -250,10 +251,6 @@ export class ActiveSessionPollingCtx {
               }
             : undefined,
         },
-        stepsBefore:
-          history.stepsBefore && history.stepsBefore.length > 0
-            ? history.stepsBefore
-            : undefined,
       };
     }
 

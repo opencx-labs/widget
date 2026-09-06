@@ -1,6 +1,6 @@
 import type { WidgetUserMessage } from '@opencx/widget-core';
-import { MousePointerClickIcon } from 'lucide-react';
 import React from 'react';
+import { SentMarkChip } from '../page-marks/SentMarkChip';
 import { dc } from '../utils/data-component';
 import { AttachmentPreview } from './AttachmentPreview';
 import { cn } from './lib/utils/cn';
@@ -27,19 +27,7 @@ export function UserMessage({
           className="w-full flex gap-1 flex-wrap justify-end"
         >
           {message.markedElements.map((el, i) => (
-            <span
-              key={`${el.name}-${i}`}
-              className={cn(
-                'inline-flex items-center gap-1.5 max-w-48',
-                'rounded-full py-1 ps-2 pe-2.5',
-                'bg-background ring-1 ring-border',
-                'text-xs text-foreground',
-              )}
-              title={el.name}
-            >
-              <MousePointerClickIcon className="size-3 shrink-0 text-primary" />
-              <span className="truncate">{el.name}</span>
-            </span>
+            <SentMarkChip key={`${el.name}-${i}`} element={el} />
           ))}
         </div>
       )}

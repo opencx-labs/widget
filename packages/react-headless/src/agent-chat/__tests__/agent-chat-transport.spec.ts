@@ -9,7 +9,7 @@ import {
 const options: AgentChatTransportOptions = {
   api: 'https://api.test/backend/widget/v5/chat/stream',
   reconnectApi: (id) => `https://api.test/backend/widget/v5/chat/${id}/stream`,
-  headers: { 'X-Bot-Token': 'tok', Authorization: 'Bearer user' },
+  headers: () => ({ 'X-Bot-Token': 'tok', Authorization: 'Bearer user' }),
 };
 
 describe('agentChatReconnectPreparer (resume wiring)', () => {
@@ -24,10 +24,8 @@ describe('agentChatReconnectPreparer (resume wiring)', () => {
 
 describe('buildAgentChatTransport', () => {
   it('constructs a DefaultChatTransport', () => {
-    const transport = buildAgentChatTransport({
-      options,
-      buildBody: ({ messages }) => ({ n: messages.length }),
-    });
-    expect(transport).toBeInstanceOf(DefaultChatTransport);
+    expect(buildAgentChatTransport(options)).toBeInstanceOf(
+      DefaultChatTransport,
+    );
   });
 });

@@ -33,15 +33,15 @@ function AssistantCard() {
             </div>
             <p className="mt-0.5 text-[13px] text-ink-3">
               The OpenCX Companion, embedded from a local build and wired to
-              your local OpenCX. Its token, agent and backend are baked into the
-              app (see <code>src/lib/widgetConfig.ts</code>).
+              your local OpenCX. Its token and backend are baked into the app
+              (see <code>src/lib/widgetConfig.ts</code>).
             </p>
           </div>
         </div>
 
         <dl className="mt-4 divide-y divide-border border-t border-border">
-          <KeyValue label="Agent">
-            <span className="font-mono">{cfg.agentId}</span>
+          <KeyValue label="Token">
+            <span className="font-mono">{cfg.token}</span>
           </KeyValue>
           <KeyValue label="Backend">
             <span className="font-mono">{cfg.apiUrl}</span>

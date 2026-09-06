@@ -3,6 +3,8 @@ import {
   type HeaderButtonU,
   type SafeExtract,
   type ScreenU,
+  type WidgetConfig,
+  log,
 } from '@opencx/widget-core';
 import {
   useConfig,
@@ -34,31 +36,38 @@ import { cn } from './lib/utils/cn';
 import { HeaderBottomComponent } from './custom-components/HeaderBottomComponent';
 import { HeaderTitleComponent } from './custom-components/HeaderTitleComponent';
 
+/**
+ * The header names the ORGANIZATION (v4 behavior) unless the embed overrides
+ * it per screen; the agent's name brands the reply bubbles (`useBot`), not
+ * the chrome.
+ */
+export function resolveHeaderTitle(
+  screen: ScreenU,
+  textContent: WidgetConfig['textContent'],
+  orgName: string,
+): string {
+  switch (screen) {
+    case 'chat':
+      return textContent?.chatScreen?.headerTitle ?? orgName;
+    case 'sessions':
+      return textContent?.sessionsScreen?.headerTitle ?? orgName;
+    case 'welcome':
+      return orgName;
+    default:
+      isExhaustive(screen, resolveHeaderTitle.name);
+      return orgName;
+  }
+}
+
 function useGetHeaderTitle() {
   const {
-    widgetCtx: { org, agent },
+    widgetCtx: { org },
   } = useWidget();
   const {
     routerState: { screen },
   } = useWidgetRouter();
   const { textContent } = useConfig();
-
-  const override = (() => {
-    switch (screen) {
-      case 'chat':
-        return textContent?.chatScreen?.headerTitle;
-      case 'sessions':
-        return textContent?.sessionsScreen?.headerTitle;
-      case 'welcome':
-        return undefined;
-      default:
-        isExhaustive(screen, useGetHeaderTitle.name);
-        return undefined;
-    }
-  })();
-
-  // Agent-bound embeds title the widget with the agent's name.
-  return override ?? agent?.name ?? org.name ?? 'Chat';
+  return resolveHeaderTitle(screen, textContent, org.name);
 }
 
 function useGetHeaderDataComponentProp(
@@ -235,7 +244,7 @@ function Header__Buttons__Item__ResolveSession({
     const { success, error } = await resolveSession();
     closeDialog();
     if (!success) {
-      console.error(error);
+      log.error('failed to resolve session', error);
       return false;
     }
 

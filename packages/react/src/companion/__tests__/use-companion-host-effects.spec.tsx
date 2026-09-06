@@ -36,13 +36,20 @@ describe('useCompanionHostEffects', () => {
     container.remove();
   });
 
-  function Harness() {
+  function Harness({
+    sidebarSide = 'right',
+    sidebarMode = 'floating',
+  }: {
+    sidebarSide?: 'left' | 'right';
+    sidebarMode?: 'docked' | 'floating';
+  }) {
     latest = useCompanionHostEffects({
       companion,
       layout: 'sidebar',
       state: 'chat',
       region: { width: 1000, height: 800 },
-      dir: 'ltr',
+      sidebarSide,
+      sidebarMode,
       cssVars: {},
       storage,
       resizeLabel: 'Resize sidebar',
@@ -50,11 +57,9 @@ describe('useCompanionHostEffects', () => {
     return null;
   }
 
-  it('keeps the last width and skips persistence when resize is cancelled', () => {
-    act(() => root.render(<Harness />));
-
+  const pointerTarget = () => {
     let captured = false;
-    const currentTarget = {
+    return {
       setPointerCapture: vi.fn(() => {
         captured = true;
       }),
@@ -63,12 +68,21 @@ describe('useCompanionHostEffects', () => {
         captured = false;
       }),
     };
-    const pointerEvent = (clientX: number) =>
+  };
+
+  const pointerEventsOn =
+    (currentTarget: ReturnType<typeof pointerTarget>) => (clientX: number) =>
       ({
         clientX,
         pointerId: 1,
         currentTarget,
       }) as unknown as React.PointerEvent<HTMLDivElement>;
+
+  it('keeps the last width and skips persistence when resize is cancelled', () => {
+    act(() => root.render(<Harness />));
+
+    const currentTarget = pointerTarget();
+    const pointerEvent = pointerEventsOn(currentTarget);
 
     act(() => {
       latest.resizeHandleProps.onPointerDown(pointerEvent(600));
@@ -82,5 +96,48 @@ describe('useCompanionHostEffects', () => {
     expect(latest.sidebarResizing).toBe(false);
     expect(currentTarget.releasePointerCapture).toHaveBeenCalledWith(1);
     expect(storage.setCompanionSidebarWidth).not.toHaveBeenCalled();
+  });
+
+  it("measures the drag width from the panel's own edge on a left sidebar", () => {
+    act(() => root.render(<Harness sidebarSide="left" />));
+
+    const pointerEvent = pointerEventsOn(pointerTarget());
+    act(() => {
+      latest.resizeHandleProps.onPointerDown(pointerEvent(0));
+      latest.resizeHandleProps.onPointerMove(pointerEvent(360));
+    });
+    // Left-docked: the width is the pointer's x, not innerWidth - x (which
+    // would have given 640 and clamped to the 600 max).
+    expect(latest.sidebarWidth).toBe(360);
+  });
+
+  it('grows toward the page, so the arrow that grows flips with the side', () => {
+    const keyEvent = (key: string) =>
+      ({
+        key,
+        preventDefault: vi.fn(),
+      }) as unknown as React.KeyboardEvent<HTMLDivElement>;
+
+    act(() => root.render(<Harness sidebarSide="right" />));
+    act(() => latest.resizeHandleProps.onKeyDown(keyEvent('ArrowLeft')));
+    expect(latest.sidebarWidth).toBe(416);
+
+    act(() => root.render(<Harness sidebarSide="left" />));
+    act(() => latest.resizeHandleProps.onKeyDown(keyEvent('ArrowRight')));
+    expect(latest.sidebarWidth).toBe(432);
+  });
+
+  it('mounts the host app frame only in docked mode', () => {
+    const framed = () =>
+      document.documentElement.hasAttribute('data-opencx-app-frame');
+
+    act(() => root.render(<Harness />));
+    expect(framed()).toBe(false);
+
+    act(() => root.render(<Harness sidebarMode="docked" />));
+    expect(framed()).toBe(true);
+
+    act(() => root.render(<Harness sidebarMode="floating" />));
+    expect(framed()).toBe(false);
   });
 });

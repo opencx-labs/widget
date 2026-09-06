@@ -22,11 +22,11 @@ export function ChatScreen() {
   const {
     messagesState: { isInitialFetchLoading },
   } = useMessages();
-  // Agent-bound embeds get the useChat-based streaming surface; others keep
-  // the blocking bot-chat engine. Agent binding is a per-instance constant,
+  // Streaming orgs get the useChat-based surface; others keep the blocking
+  // bot-chat engine. The server decides at init — a per-instance constant,
   // resolved before the chat renders.
   const { widgetCtx } = useWidget();
-  const isAgentBound = widgetCtx.isAgentBound;
+  const isStreamingEngine = widgetCtx.streaming;
   const {
     sessionState: { session },
   } = useSessions();
@@ -56,7 +56,7 @@ export function ChatScreen() {
         maxHeight: '100vh', // Relative to the iframe
       }}
     >
-      <div className="size-full justify-between flex flex-col">
+      <div className="relative size-full justify-between flex flex-col">
         <Header />
         <AnimatePresence mode="wait">
           {isInitialFetchLoading ? (
@@ -86,7 +86,7 @@ export function ChatScreen() {
                     theme.screens.chat.withCanvas.transitionDuration,
                 }}
               >
-                {isAgentBound ? <AgentChatMain /> : <ChatMain />}
+                {isStreamingEngine ? <AgentChatMain /> : <ChatMain />}
                 <ChatFooter />
               </div>
               <div

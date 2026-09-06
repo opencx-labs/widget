@@ -30,6 +30,15 @@ export type OpenCxComponentNameU =
   | 'chat/streaming_turn/steps'
   | 'chat/turn_failed/root'
   | 'chat/turn_failed/retry'
+  /* ------------- Agent clarification questions ------------ */
+  | 'chat/clarification_questions/root'
+  | 'chat/clarification_questions/prompt'
+  | 'chat/clarification_questions/option'
+  | 'chat/clarification_questions/manual_input'
+  | 'chat/clarification_questions/type_it'
+  | 'chat/clarification_questions/back'
+  | 'chat/clarification_questions/next'
+  | 'chat/clarification_questions/send'
   /* -------------------- Agent Message ------------------- */
   | 'chat/agent_msg_group/root'
   | 'chat/agent_msg_group/avatar_and_msgs/root'
@@ -48,14 +57,18 @@ export type OpenCxComponentNameU =
   /* --------------------- Chat Input --------------------- */
   | 'chat/input_box/root'
   | 'chat/input_box/inner_root'
+  /* Fused tray: attached context + the composer card, as one unit. */
+  | 'chat/input_box/attached_context_tray'
   | 'chat/input_box/textarea_and_attachments_container'
   | 'chat/input_box/textarea'
   | 'chat/input_box/attachments_container'
   /* Page marks (click an element, edit the mark, attach it as context) */
   | 'chat/input_box/page_mark_btn'
+  | 'chat/input_box/dictate_btn'
   | 'chat/input_box/page_marks_container'
   | 'chat/input_box/page_mark_pill'
-  /* Multi-send queue pill, docked above the composer (agent-bound embeds). */
+  | 'chat/input_box/page_context_pill'
+  /* Multi-send queue pill, docked above the composer (streaming engine). */
   | 'chat/queued_sends/root'
   | 'chat/queued_sends/header'
   | 'chat/queued_sends/list'
@@ -75,4 +88,6 @@ export type OpenCxComponentNameU =
   | 'companion/layout_picker/trigger'
   | 'companion/layout_picker/menu'
   | 'companion/layout_picker/option'
+  | 'companion/layout_picker/sidebar_options'
+  | 'companion/layout_picker/sidebar_option'
   | 'companion/close_btn';

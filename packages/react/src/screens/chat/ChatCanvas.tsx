@@ -5,6 +5,7 @@ import {
   useSessions,
 } from '@opencx/widget-react-headless';
 import { useComponentContext } from '../../hooks/useComponentContext';
+import { log } from '@opencx/widget-core';
 
 export function ChatCanvas() {
   const props = useComponentContext();
@@ -19,7 +20,7 @@ export function ChatCanvas() {
       setIsSendingMessage(true);
       await sendMessage(args);
     } catch (error) {
-      console.error(error);
+      log.error('mode component send failed', error);
     } finally {
       setIsSendingMessage(false);
     }

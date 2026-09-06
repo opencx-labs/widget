@@ -1,7 +1,11 @@
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { WidgetCtx, type WidgetConfig } from '@opencx/widget-core';
+import {
+  WidgetCtx,
+  type WidgetAgent,
+  type WidgetConfig,
+} from '@opencx/widget-core';
 import { WidgetProvider } from '../../WidgetProvider';
 import type { WidgetComponentType } from '../../types/components';
 import { useDisplayMode } from '../useDisplayMode';
@@ -28,22 +32,26 @@ function Probe() {
 
 /**
  * Minimal instanceof-correct ctx: the provider only stores it, and
- * `useDisplayMode` reads nothing beyond `agent` — no network, no timers.
+ * `useDisplayMode` reads nothing from it — the engine the server picked
+ * (`agent.streaming`) must NOT influence the shell.
  */
-function fakeCtx(agent?: {
-  id: string;
-  name: string;
-  avatarUrl: string | null;
-}): WidgetCtx {
+function fakeCtx(agent: WidgetAgent): WidgetCtx {
   const ctx: WidgetCtx = Object.create(WidgetCtx.prototype);
   return Object.assign(ctx, { agent });
 }
 
-const AGENT = {
-  id: 'e82b4a75-20d6-4258-ac1f-000000000001',
+const STREAMING: WidgetAgent = {
   name: 'Agent Two',
   avatarUrl: null,
+  streaming: true,
+  features: {
+    dictation: false,
+    attachments: false,
+    pageContext: false,
+    clientTools: false,
+  },
 };
+const BLOCKING: WidgetAgent = { ...STREAMING, streaming: false };
 
 describe('useDisplayMode', () => {
   let container: HTMLDivElement;
@@ -73,26 +81,23 @@ describe('useDisplayMode', () => {
     );
   }
 
-  it('agent-bound embed defaults to the companion shell', async () => {
-    await mount({ token: '', agentId: AGENT.id }, fakeCtx(AGENT));
-    expect(captured).toBe('companion');
-  });
-
-  it('unbound embed keeps the classic popover', async () => {
-    await mount({ token: '' }, fakeCtx());
+  it('defaults to the popover shell for a streaming org', async () => {
+    await mount({ token: '' }, fakeCtx(STREAMING));
     expect(captured).toBe('popover');
   });
 
-  it('explicit displayMode wins over the agent-bound default', async () => {
-    await mount(
-      { token: '', agentId: AGENT.id, displayMode: 'popover' },
-      fakeCtx(AGENT),
-    );
+  it('defaults to the popover shell for a non-streaming org', async () => {
+    await mount({ token: '' }, fakeCtx(BLOCKING));
     expect(captured).toBe('popover');
   });
 
-  it('explicit companion still works without an agent', async () => {
-    await mount({ token: '', displayMode: 'companion' }, fakeCtx());
+  it('explicit companion wins regardless of engine', async () => {
+    await mount({ token: '', displayMode: 'companion' }, fakeCtx(BLOCKING));
     expect(captured).toBe('companion');
+  });
+
+  it('explicit popover is honored on a streaming org', async () => {
+    await mount({ token: '', displayMode: 'popover' }, fakeCtx(STREAMING));
+    expect(captured).toBe('popover');
   });
 });

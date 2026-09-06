@@ -3,7 +3,7 @@ import {
   DOCK_FALLBACK_WIDTH,
   PANEL_HORIZONTAL_MARGIN,
   type Region,
-} from './companion-geometry.utils';
+} from './companion-geometry';
 
 const FALLBACK_VIEWPORT: Region = { width: 1440, height: 900 };
 

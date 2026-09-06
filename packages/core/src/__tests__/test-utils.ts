@@ -1,8 +1,25 @@
 import { vi } from 'vitest';
 import type { ApiCaller } from '../api/api-caller';
+import type { Dto } from '../api/client';
+
+type AgentFeaturesDto = Dto['WidgetAgentFeaturesDto'];
 import { genUuid } from '../utils/uuid';
 
+/** The config endpoint's `agent.features` with every feature off unless overridden. */
+export const agentFeatures = (
+  overrides: Partial<AgentFeaturesDto> = {},
+): AgentFeaturesDto => ({
+  preamble: false,
+  inline_ui: false,
+  dictation: false,
+  attachments: false,
+  page_context: false,
+  client_tools: false,
+  ...overrides,
+});
+
 export const TestUtils = {
+  agentFeatures,
   sleep: (ms: number) => new Promise((resolve) => setTimeout(resolve, ms)),
   mock: {
     ApiCaller: {
@@ -76,6 +93,7 @@ export const TestUtils = {
                       id: genUuid(),
                       mightSolveUserIssue: false,
                       completelyAndFullyCoveredUserIssue: false,
+                      assistMode: false,
                     },
                     ...returnValue?.data,
                   },
@@ -130,6 +148,12 @@ export const TestUtils = {
               sessionsPollingIntervalSeconds: 60,
               sessionPollingIntervalSeconds: 10,
               modes: [],
+              agent: {
+                name: 'some-agent',
+                avatar_url: null,
+                streaming: false,
+                features: agentFeatures(),
+              },
               ...returnValue?.data,
             },
           });
@@ -214,6 +238,16 @@ export const TestUtils = {
           .fn(target.prototype.getAgentTurnMessages)
           .mockResolvedValue({
             turns: [],
+            ...(returnValue ?? {}),
+          });
+      },
+      createDictationSession(target, returnValue) {
+        target.prototype.createDictationSession = vi
+          .fn(target.prototype.createDictationSession)
+          .mockResolvedValue({
+            token: 'ek_test',
+            expiresAt: new Date(Date.now() + 120_000).toISOString(),
+            model: 'test-model',
             ...(returnValue ?? {}),
           });
       },

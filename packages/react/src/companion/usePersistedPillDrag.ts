@@ -1,24 +1,14 @@
 import type { WidgetCompanionLayoutU, WidgetCtx } from '@opencx/widget-core';
 import { animate, useMotionValue } from 'framer-motion';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { PILL_SIZE, VIEWPORT_EDGE_PADDING } from './companion-geometry.utils';
-import { EASE_OUT, MORPH_SPRING } from './materials';
+import { clamp, VIEWPORT_EDGE_PADDING } from './companion-geometry';
+import { MORPH_SPRING, QUICK_TWEEN } from '../motion';
 import type { PanelState } from './types';
-
-const PILL_SETTLE_TRANSITION = { duration: 0.15, ease: EASE_OUT } as const;
 
 type PillOffsetStorage = Pick<
   NonNullable<WidgetCtx['storageCtx']>,
   'getCompanionPillOffsetX' | 'setCompanionPillOffsetX'
 >;
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
-}
-
-function currentViewportWidth(): number {
-  return typeof window === 'undefined' ? 1440 : window.innerWidth;
-}
 
 /**
  * Owns the launcher pill's motion value, persisted resting offset, viewport
@@ -53,13 +43,10 @@ export function usePersistedPillDrag({
       .getCompanionPillOffsetX()
       .then((saved) => {
         if (cancelled || saved === null) return;
-        const bound = Math.max(
-          0,
-          currentViewportWidth() / 2 - PILL_SIZE / 2 - VIEWPORT_EDGE_PADDING,
-        );
-        const offset = clamp(saved, -bound, bound);
-        setPillOffsetX(offset);
-        dragX.set(offset);
+        // The saved offset is clamped to the CURRENT viewport by the bounds
+        // effect below; here it only has to land somewhere sane.
+        setPillOffsetX(saved);
+        dragX.set(saved);
       })
       .catch(() => {});
 
@@ -69,7 +56,7 @@ export function usePersistedPillDrag({
   }, [dragX, storage]);
 
   useEffect(() => {
-    const settle = shouldReduceMotion ? PILL_SETTLE_TRANSITION : MORPH_SPRING;
+    const settle = shouldReduceMotion ? QUICK_TWEEN : MORPH_SPRING;
     if (state === 'pill') {
       const bound = Math.max(
         0,
