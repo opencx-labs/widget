@@ -12,11 +12,8 @@ export function caretPositionInTextarea(
   const doc = textarea.ownerDocument;
   const view = doc.defaultView;
   if (!view) return null;
-  const style = view.getComputedStyle(textarea);
   const mirror = doc.createElement('div');
-  for (const prop of MIRRORED_STYLES) {
-    mirror.style.setProperty(prop, style.getPropertyValue(prop));
-  }
+  copyTextLayoutStyles(textarea, mirror);
   Object.assign(mirror.style, {
     position: 'absolute',
     visibility: 'hidden',
@@ -37,6 +34,24 @@ export function caretPositionInTextarea(
   const top = marker.offsetTop - textarea.scrollTop;
   mirror.remove();
   return { left, top };
+}
+
+/**
+ * Give `target` the font, spacing and padding `textarea` resolved to — the
+ * embedder's `cssOverrides` included — so text laid out in it lands where
+ * the textarea lays it out. The composer's mention mirror needs this on every
+ * render, the caret probe once.
+ */
+export function copyTextLayoutStyles(
+  textarea: HTMLTextAreaElement,
+  target: HTMLElement,
+): void {
+  const view = textarea.ownerDocument.defaultView;
+  if (!view) return;
+  const style = view.getComputedStyle(textarea);
+  for (const prop of MIRRORED_STYLES) {
+    target.style.setProperty(prop, style.getPropertyValue(prop));
+  }
 }
 
 const MIRRORED_STYLES = [

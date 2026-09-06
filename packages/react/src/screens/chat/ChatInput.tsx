@@ -17,7 +17,7 @@ import {
   PaperclipIcon,
   SquareIcon,
 } from 'lucide-react';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { MotionDiv } from '../../components/lib/MotionDiv';
 import { MotionDiv__VerticalReveal } from '../../components/lib/MotionDiv__VerticalReveal';
@@ -51,6 +51,7 @@ import { QueuedSendsPill } from './agent/QueuedSendsPill';
 import { DictationMicButton } from './DictationMicButton';
 import { MentionPicker } from './MentionPicker';
 import { MentionText } from './MentionText';
+import { copyTextLayoutStyles } from './caret-position';
 import { useMentions } from './useMentions';
 import { usePageMarkComposer } from './usePageMarkComposer';
 import { useSentTextRecall } from './useSentTextRecall';
@@ -126,6 +127,15 @@ export function ChatInput({
     inputRef,
   });
   const hasMentionsInDraft = mentions.picked.length > 0;
+  // The mirror wears the textarea's resolved font and padding, not the
+  // classes it was written with: an embedder's `cssOverrides` on the
+  // textarea (a 13px composer, say) must move the highlight with the text.
+  useLayoutEffect(() => {
+    const input = inputRef.current;
+    const mirror = mirrorRef.current;
+    if (!input || !mirror) return;
+    copyTextLayoutStyles(input, mirror);
+  }, [hasMentionsInDraft, inputText]);
   const [pageEntityDismissed, setPageEntityDismissed] = useState(false);
   const [fileSelectionError, setFileSelectionError] = useState<string | null>(
     null,
