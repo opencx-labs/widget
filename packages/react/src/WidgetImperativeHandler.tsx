@@ -1,13 +1,14 @@
+import { log } from '@opencx/widget-core';
 import React from 'react';
 import {
   useContact,
   useMessages,
-  useWidget,
   useWidgetRouter,
   useWidgetTrigger,
 } from '@opencx/widget-react-headless';
 
 export type WidgetRef = {
+  /** Open the widget on a fresh conversation, optionally sending its first message. */
   newChat: (options?: { message?: string }) => Promise<void>;
 };
 
@@ -16,13 +17,9 @@ export function WidgetImperativeHandler({
 }: {
   widgetRef: React.Ref<WidgetRef>;
 }) {
-  const { widgetCtx } = useWidget();
   const { contactState } = useContact();
-  const { setIsOpen, isOpen } = useWidgetTrigger();
-  const {
-    toChatScreen,
-    routerState: { screen },
-  } = useWidgetRouter();
+  const { setIsOpen } = useWidgetTrigger();
+  const { toChatScreen } = useWidgetRouter();
   const { sendMessage } = useMessages();
 
   React.useImperativeHandle(
@@ -30,28 +27,16 @@ export function WidgetImperativeHandler({
     () => ({
       newChat: async (options) => {
         if (!contactState.contact?.token) {
-          console.warn('Cannot start a new chat: contact not yet initialized.');
+          log.warn('cannot start a new chat: contact not yet initialized');
           return;
         }
-
-        console.log({ isOpen });
-        if (!isOpen) setIsOpen(true);
-
-        if (screen === 'chat') widgetCtx.resetChat();
-
+        setIsOpen(true);
+        // `toChatScreen` resets the current conversation on its way in.
         toChatScreen();
-        if (options?.message) sendMessage({ content: options.message });
+        if (options?.message) await sendMessage({ content: options.message });
       },
     }),
-    [
-      widgetCtx,
-      contactState,
-      setIsOpen,
-      isOpen,
-      screen,
-      toChatScreen,
-      sendMessage,
-    ],
+    [contactState, setIsOpen, toChatScreen, sendMessage],
   );
 
   return null;

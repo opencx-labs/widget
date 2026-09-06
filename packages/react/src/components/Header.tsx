@@ -3,6 +3,8 @@ import {
   type HeaderButtonU,
   type SafeExtract,
   type ScreenU,
+  type WidgetConfig,
+  log,
 } from '@opencx/widget-core';
 import {
   useConfig,
@@ -11,7 +13,6 @@ import {
   useWidgetRouter,
   useWidgetTrigger,
 } from '@opencx/widget-react-headless';
-import { AnimatePresence } from 'framer-motion';
 import { ChevronLeftIcon } from 'lucide-react';
 import React, { useState } from 'react';
 import { useComponentContext } from '../hooks/useComponentContext';
@@ -35,6 +36,29 @@ import { cn } from './lib/utils/cn';
 import { HeaderBottomComponent } from './custom-components/HeaderBottomComponent';
 import { HeaderTitleComponent } from './custom-components/HeaderTitleComponent';
 
+/**
+ * The header names the ORGANIZATION (v4 behavior) unless the embed overrides
+ * it per screen; the agent's name brands the reply bubbles (`useBot`), not
+ * the chrome.
+ */
+export function resolveHeaderTitle(
+  screen: ScreenU,
+  textContent: WidgetConfig['textContent'],
+  orgName: string,
+): string {
+  switch (screen) {
+    case 'chat':
+      return textContent?.chatScreen?.headerTitle ?? orgName;
+    case 'sessions':
+      return textContent?.sessionsScreen?.headerTitle ?? orgName;
+    case 'welcome':
+      return orgName;
+    default:
+      isExhaustive(screen, resolveHeaderTitle.name);
+      return orgName;
+  }
+}
+
 function useGetHeaderTitle() {
   const {
     widgetCtx: { org },
@@ -43,22 +67,7 @@ function useGetHeaderTitle() {
     routerState: { screen },
   } = useWidgetRouter();
   const { textContent } = useConfig();
-
-  const override = (() => {
-    switch (screen) {
-      case 'chat':
-        return textContent?.chatScreen?.headerTitle;
-      case 'sessions':
-        return textContent?.sessionsScreen?.headerTitle;
-      case 'welcome':
-        return undefined;
-      default:
-        isExhaustive(screen, useGetHeaderTitle.name);
-        return undefined;
-    }
-  })();
-
-  return override ?? org.name ?? 'Chat';
+  return resolveHeaderTitle(screen, textContent, org.name);
 }
 
 function useGetHeaderDataComponentProp(
@@ -235,7 +244,7 @@ function Header__Buttons__Item__ResolveSession({
     const { success, error } = await resolveSession();
     closeDialog();
     if (!success) {
-      console.error(error);
+      log.error('failed to resolve session', error);
       return false;
     }
 

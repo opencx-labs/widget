@@ -1,4 +1,12 @@
 {
   "extends": "@opencx/tsconfig/tsconfig.base.json",
-  "exclude": ["node_modules", "dist", "dist-embed"]
+  "include": ["**/*.ts", "**/*.tsx", "package.json"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "dist-embed",
+    "index.dev.tsx",
+    "app.dev.tsx",
+    "app.dev.example.tsx"
+  ]
 }

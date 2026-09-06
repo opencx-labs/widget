@@ -1,5 +1,7 @@
 import type { WidgetUserMessage } from '@opencx/widget-core';
 import React from 'react';
+import { SentMarkChip } from '../page-marks/SentMarkChip';
+import { MentionText } from '../screens/chat/MentionText';
 import { dc } from '../utils/data-component';
 import { AttachmentPreview } from './AttachmentPreview';
 import { cn } from './lib/utils/cn';
@@ -20,6 +22,16 @@ export function UserMessage({
       {...dc('chat/user_msg/root')}
       className="w-5/6 flex flex-col items-end gap-1"
     >
+      {message.markedElements && message.markedElements.length > 0 && (
+        <div
+          {...dc('chat/user_msg/marked_elements')}
+          className="w-full flex gap-1 flex-wrap justify-end"
+        >
+          {message.markedElements.map((el, i) => (
+            <SentMarkChip key={`${el.name}-${i}`} element={el} />
+          ))}
+        </div>
+      )}
       {message.attachments && message.attachments.length > 0 && (
         <div className="w-full flex gap-1 flex-wrap justify-end">
           {message.attachments?.map((attachment) => (
@@ -34,10 +46,13 @@ export function UserMessage({
           data-first={isFirstInGroup}
           data-last={isLastInGroup}
           data-alone={isAloneInGroup}
+          data-pending={message.pending === true}
           className={cn(
             'transition-all',
             'w-fit py-3 px-4 rounded-3xl text-sm',
             'bg-primary text-primary-foreground',
+            // Pending: sent but its answer hasn't started streaming yet.
+            message.pending && 'opacity-60',
             'break-words [word-break:break-word]', // `[word-break:break-word]` is deprecated but works in the browser, while `break-words` which is `[overflow-wrap: break-word]` does not work
             'whitespace-pre-wrap',
 
@@ -50,7 +65,11 @@ export function UserMessage({
               'rounded-r-md',
           )}
         >
-          {message.content}
+          <MentionText
+            text={message.content}
+            mentions={message.mentions}
+            tokenClassName="bg-primary-foreground/20 font-medium"
+          />
         </div>
       )}
     </div>

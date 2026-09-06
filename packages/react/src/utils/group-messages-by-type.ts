@@ -2,7 +2,6 @@ import {
   type WidgetAgentMessage,
   type WidgetAiMessage,
   type WidgetMessageU,
-  type WidgetSystemMessageU,
   type WidgetUserMessage,
 } from '@opencx/widget-core';
 
@@ -48,10 +47,4 @@ export function isAgentMessageGroup(
   messages: WidgetMessageU[],
 ): messages is WidgetAgentMessage[] {
   return messages?.[0]?.type === 'AGENT';
-}
-
-export function isSystemMessageGroup(
-  messages: WidgetMessageU[],
-): messages is WidgetSystemMessageU[] {
-  return messages?.[0]?.type === 'SYSTEM';
 }

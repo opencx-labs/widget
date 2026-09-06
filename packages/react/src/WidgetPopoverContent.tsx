@@ -2,63 +2,57 @@ import * as PopoverPrimitive from '@radix-ui/react-popover';
 import IFrame from '@uiw/react-iframe';
 import { motion } from 'framer-motion';
 import React from 'react';
-import styles from '../index.css?inline.css';
 import {
   useConfig,
   useDocumentDir,
   useWidget,
   useWidgetTrigger,
 } from '@opencx/widget-react-headless';
-import { TooltipProvider } from './components/lib/tooltip';
-import { cn } from './components/lib/utils/cn';
+import {
+  buildFrameHtml,
+  FrameDocument,
+  WIDGET_FRAME_TITLE,
+} from './components/FrameDocument';
+import { MORPH_SPRING } from './motion';
 import { useTheme } from './hooks/useTheme';
 import { RootScreen } from './screens';
-import { useTranslation } from './hooks/useTranslation';
-import { version } from '../package.json';
-import { DialogerProvider } from './components/Dialoger';
 
-const initialContent = `<!DOCTYPE html>
-<html>
-<head>
-<style>
-${styles}
-html, body {
-    height: 100%;
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    font-size: 16px;
-}
-</style>
-<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
-</head>
-<body>
-</body>
-</html>`;
+const initialContent = buildFrameHtml();
 
 export function WidgetContent() {
   const { isOpen } = useWidgetTrigger();
   const { contentIframeRef } = useWidget();
-  const { cssOverrides, inline } = useConfig();
-  const { theme, cssVars, computed } = useTheme();
-  const { dir } = useTranslation();
+  const { inline } = useConfig();
+  const { theme, computed } = useTheme();
 
   return (
     <motion.div
       animate={isOpen ? 'visible' : 'hidden'}
       initial="hidden"
+      // Grow out of the FAB corner (bottom-right, where the trigger sits) so
+      // the panel reads as emerging from the button — the companion morph
+      // feel. Inline mode keeps its origin (no floating trigger to grow from).
+      style={{ transformOrigin: inline ? undefined : 'bottom right' }}
       variants={{
         hidden: {
           opacity: 0,
+          // The visible travel: scale up from the corner. Curve-only (opacity
+          // + 8px) was imperceptible — the spring needs real distance to feel.
+          scale: inline ? 1 : 0.9,
           y: 8,
           transitionEnd: { display: 'none' },
-          transition: { duration: 0.15 },
+          transition: MORPH_SPRING,
         },
         visible: {
           opacity: 1,
+          scale: 1,
           y: 0,
           display: 'block',
           height: inline ? '100%' : undefined,
+          // Spring the morph (opacity + scale + y); snap the inline
+          // `height: 100%` — a percentage height has no numeric baseline to
+          // spring from and would warn / jump. Matches prior height behavior.
+          transition: { ...MORPH_SPRING, height: { duration: 0 } },
         },
       }}
     >
@@ -66,7 +60,7 @@ export function WidgetContent() {
         ref={contentIframeRef}
         initialContent={initialContent}
         allowFullScreen
-        title="OpenCX Live Chat"
+        title={WIDGET_FRAME_TITLE}
         style={{
           // @ts-expect-error this is a valid css variable
           '--opencx-widget-width': computed.minWidth,
@@ -96,28 +90,9 @@ export function WidgetContent() {
           borderWidth: '0px',
         }}
       >
-        {cssOverrides && <style>{cssOverrides}</style>}
-        <div
-          style={{
-            ...cssVars,
-            zIndex: theme.widgetContentContainer.zIndex,
-          }}
-          data-version={version}
-          className={cn(
-            'antialiased font-sans size-full overflow-hidden relative text-secondary-foreground isolate',
-          )}
-          dir={dir}
-        >
-          <TooltipProvider
-            delayDuration={200}
-            // this is important, because without it, the tooltip remains even after moving the mouse away from trigger
-            disableHoverableContent
-          >
-            <DialogerProvider>
-              <RootScreen />
-            </DialogerProvider>
-          </TooltipProvider>
-        </div>
+        <FrameDocument style={{ zIndex: theme.widgetContentContainer.zIndex }}>
+          <RootScreen />
+        </FrameDocument>
       </IFrame>
     </motion.div>
   );
@@ -131,10 +106,11 @@ export function WidgetPopoverContent() {
   // computed direction (inherited from the host page via the portal): on an RTL
   // host, 'end' means the physical LEFT edge. Map the resolved physical side
   // back to the logical align so the box always opens on the trigger's side.
-  const align =
-    (hostDocumentDir === 'rtl' ? triggerSide === 'left' : triggerSide === 'right')
-      ? 'end'
-      : 'start';
+  const align = (
+    hostDocumentDir === 'rtl' ? triggerSide === 'left' : triggerSide === 'right'
+  )
+    ? 'end'
+    : 'start';
 
   return (
     <PopoverPrimitive.Content
