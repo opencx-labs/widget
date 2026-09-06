@@ -169,6 +169,8 @@ export type TranslationInterface = {
   mark_page_active: string;
   mark_page: string;
   stop_response: string;
+  copy_reply: string;
+  copied: string;
   dictate: string;
   stop_dictation: string;
   dictation_mic_blocked: string;

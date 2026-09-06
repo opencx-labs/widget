@@ -45,6 +45,8 @@ export const FilipinoLanguage: TranslationInterface = {
     'Mag-click ng kahit ano sa page para markahan ito — Esc para kanselahin',
   mark_page: 'Markahan ang isang bagay sa page para magtanong tungkol dito',
   stop_response: 'Ihinto ang sagot',
+  copy_reply: 'Kopyahin ang sagot',
+  copied: 'Nakopya',
   send_message: 'Ipadala ang mensahe',
   upload_failed: 'Hindi na-upload: {error}',
   remove_attachment: 'Alisin ang attachment',

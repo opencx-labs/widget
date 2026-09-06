@@ -45,6 +45,8 @@ export const GreekLanguage: TranslationInterface = {
     'Κάντε κλικ σε οτιδήποτε στη σελίδα για να το επισημάνετε — Esc για ακύρωση',
   mark_page: 'Επισημάνετε κάτι στη σελίδα για να ρωτήσετε σχετικά με αυτό',
   stop_response: 'Διακοπή απάντησης',
+  copy_reply: 'Αντιγραφή απάντησης',
+  copied: 'Αντιγράφηκε',
   send_message: 'Αποστολή μηνύματος',
   upload_failed: 'Η μεταφόρτωση απέτυχε: {error}',
   remove_attachment: 'Αφαίρεση συνημμένου',

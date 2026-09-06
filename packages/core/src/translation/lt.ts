@@ -45,6 +45,8 @@ export const LithuanianLanguage: TranslationInterface = {
     'Spustelėkite ką nors puslapyje, kad pažymėtumėte — Esc atšaukti',
   mark_page: 'Pažymėkite ką nors puslapyje, kad galėtumėte apie tai paklausti',
   stop_response: 'Stabdyti atsakymą',
+  copy_reply: 'Kopijuoti atsakymą',
+  copied: 'Nukopijuota',
   send_message: 'Siųsti žinutę',
   upload_failed: 'Įkelti nepavyko: {error}',
   remove_attachment: 'Pašalinti priedą',

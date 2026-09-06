@@ -43,6 +43,8 @@ export const JapaneseLanguage: TranslationInterface = {
   mark_page_active: 'ページ上の項目をクリックしてマーク — Esc でキャンセル',
   mark_page: '質問したいページ上の項目をマーク',
   stop_response: '回答を停止',
+  copy_reply: '返信をコピー',
+  copied: 'コピーしました',
   send_message: 'メッセージを送信',
   upload_failed: 'アップロードに失敗しました: {error}',
   remove_attachment: '添付ファイルを削除',

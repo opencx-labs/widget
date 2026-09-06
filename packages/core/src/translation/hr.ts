@@ -45,6 +45,8 @@ export const CroatianLanguage: TranslationInterface = {
     'Kliknite bilo što na stranici da biste to označili — Esc za odustajanje',
   mark_page: 'Označite nešto na stranici da biste pitali o tome',
   stop_response: 'Zaustavi odgovor',
+  copy_reply: 'Kopiraj odgovor',
+  copied: 'Kopirano',
   send_message: 'Pošalji poruku',
   upload_failed: 'Prijenos nije uspio: {error}',
   remove_attachment: 'Ukloni privitak',

@@ -45,6 +45,8 @@ export const FinnishLanguage: TranslationInterface = {
     'Merkitse sivulta jotain napsauttamalla sitä — peruuta Esc-näppäimellä',
   mark_page: 'Merkitse sivulta jotain kysyäksesi siitä',
   stop_response: 'Pysäytä vastaus',
+  copy_reply: 'Kopioi vastaus',
+  copied: 'Kopioitu',
   send_message: 'Lähetä viesti',
   upload_failed: 'Lataus epäonnistui: {error}',
   remove_attachment: 'Poista liite',

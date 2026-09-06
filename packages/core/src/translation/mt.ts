@@ -45,6 +45,8 @@ export const MalteseLanguage: TranslationInterface = {
     'Ikklikkja xi ħaġa fil-paġna biex timmarkaha — Esc biex tikkanċella',
   mark_page: 'Immarka xi ħaġa fil-paġna biex tistaqsi dwarha',
   stop_response: 'Waqqaf it-tweġiba',
+  copy_reply: 'Ikkopja t-tweġiba',
+  copied: 'Ikkupjat',
   send_message: 'Ibgħat messaġġ',
   upload_failed: 'It-tlugħ falla: {error}',
   remove_attachment: 'Neħħi s-sekwestru',

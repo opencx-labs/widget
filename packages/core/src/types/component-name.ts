@@ -41,6 +41,8 @@ export type OpenCxComponentNameU =
   | 'chat/clarification_questions/send'
   /* -------------------- Agent Message ------------------- */
   | 'chat/agent_msg_group/root'
+  | 'chat/agent_msg_group/actions'
+  | 'chat/agent_msg_group/actions/copy'
   | 'chat/agent_msg_group/avatar_and_msgs/root'
   | 'chat/agent_msg_group/avatar_and_msgs/avatar'
   | 'chat/agent_msg_group/avatar_and_msgs/msgs'

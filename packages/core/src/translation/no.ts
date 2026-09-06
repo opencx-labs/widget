@@ -45,6 +45,8 @@ export const NorwegianLanguage: TranslationInterface = {
     'Klikk på noe på siden for å markere det — Esc for å avbryte',
   mark_page: 'Marker noe på siden for å spørre om det',
   stop_response: 'Stopp svar',
+  copy_reply: 'Kopier svar',
+  copied: 'Kopiert',
   send_message: 'Send melding',
   upload_failed: 'Opplasting mislyktes: {error}',
   remove_attachment: 'Fjern vedlegg',

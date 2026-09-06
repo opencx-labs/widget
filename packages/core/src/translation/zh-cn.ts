@@ -43,6 +43,8 @@ export const ChineseSimplifiedLanguage: TranslationInterface = {
   mark_page_active: '点击页面上的任意内容进行标记 — 按 Esc 取消',
   mark_page: '标记页面上的内容以便就此提问',
   stop_response: '停止回答',
+  copy_reply: '复制回复',
+  copied: '已复制',
   send_message: '发送消息',
   upload_failed: '上传失败：{error}',
   remove_attachment: '移除附件',

@@ -45,6 +45,8 @@ export const TurkishLanguage: TranslationInterface = {
     "İşaretlemek için sayfadaki bir öğeye tıklayın — iptal etmek için Esc'ye basın",
   mark_page: 'Hakkında soru sormak için sayfadaki bir öğeyi işaretleyin',
   stop_response: 'Yanıtı durdur',
+  copy_reply: 'Yanıtı kopyala',
+  copied: 'Kopyalandı',
   send_message: 'Mesaj gönder',
   upload_failed: 'Yükleme başarısız: {error}',
   remove_attachment: 'Eki kaldır',

@@ -45,6 +45,8 @@ export const BengaliLanguage: TranslationInterface = {
     'চিহ্নিত করতে পৃষ্ঠার যেকোনো কিছুতে ক্লিক করুন — বাতিল করতে Esc চাপুন',
   mark_page: 'পৃষ্ঠার কোনো কিছু সম্পর্কে জিজ্ঞাসা করতে সেটি চিহ্নিত করুন',
   stop_response: 'উত্তর থামান',
+  copy_reply: 'উত্তর কপি করুন',
+  copied: 'কপি করা হয়েছে',
   send_message: 'বার্তা পাঠান',
   upload_failed: 'আপলোড ব্যর্থ হয়েছে: {error}',
   remove_attachment: 'সংযুক্তি সরান',

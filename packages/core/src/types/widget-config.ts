@@ -990,6 +990,19 @@ export interface WidgetConfig {
   };
 
   /**
+   * Actions offered under each AI reply.
+   */
+  messageActions?: {
+    /**
+     * A "Copy" button that copies the reply as text. Revealed on hover
+     * (always visible on touch screens).
+     * @default true in the `companion` display mode, false in the `popover`
+     * (so a v4 embed looks the same after upgrading)
+     */
+    copy?: boolean;
+  };
+
+  /**
    * Accessibility options.
    */
   accessibility?: {

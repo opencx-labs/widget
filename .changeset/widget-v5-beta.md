@@ -15,7 +15,7 @@ Widget v5 — the streaming agent release.
 - `context` accepts a function, resolved at every send, and two well-known keys — `page` and `entity` — the agent reads as "here" and "this"; the entity shows as a removable pill in the composer.
 - Page marks (+ `pageMarkHighlightDurationMs`): when the organization enables it, the visitor marks anything on the host page and the agent can point back at it; an embed opts out with `features.pageContext: false` / `features.clientTools: false`.
 - Voice dictation in the composer, clarification questionnaires that replace the composer while the agent waits on an answer, ↑/↓ recall of sent text.
-- `router.restoreLastSession`, `onUiAction`, `showStepToolIO`, and an `errorComponent` prop on `Widget` / `WidgetProvider`.
+- `messageActions.copy`: a Copy button under each AI reply (on by default in the companion, off in the popover so a v4 embed looks the same after upgrading), `router.restoreLastSession`, `onUiAction`, `showStepToolIO`, and an `errorComponent` prop on `Widget` / `WidgetProvider`.
 - `components` keys `agent_chat_steps`, `agent_chat_spec`, `agent_chat_questions`; headless `useAgentChatUi`, `useBot`, `useDisplayMode`, `useDictation`, `useWidgetLayout`; React `HostedSpecRenderer` and `segmentContent` for host pages that show widget transcripts.
 - Around 70 new translation keys in all 38 locales.
 

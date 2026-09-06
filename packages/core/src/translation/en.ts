@@ -44,6 +44,8 @@ export const EnglishLanguage: TranslationInterface = {
   mark_page_active: 'Click anything on the page to mark it — Esc to cancel',
   mark_page: 'Mark something on the page to ask about it',
   stop_response: 'Stop response',
+  copy_reply: 'Copy reply',
+  copied: 'Copied',
   send_message: 'Send message',
   upload_failed: 'Failed to upload: {error}',
   remove_attachment: 'Remove attachment',

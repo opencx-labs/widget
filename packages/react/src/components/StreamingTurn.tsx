@@ -65,6 +65,7 @@ export function StreamingTurn({
               },
             ]}
             agent={agent}
+            actions={!turn.active}
           />
         ) : item.kind === 'spec' ? (
           SpecComponent && (

@@ -45,6 +45,8 @@ export const SwedishLanguage: TranslationInterface = {
     'Klicka på något på sidan för att markera det — Esc för att avbryta',
   mark_page: 'Markera något på sidan för att fråga om det',
   stop_response: 'Stoppa svaret',
+  copy_reply: 'Kopiera svar',
+  copied: 'Kopierat',
   send_message: 'Skicka meddelande',
   upload_failed: 'Uppladdningen misslyckades: {error}',
   remove_attachment: 'Ta bort bilaga',

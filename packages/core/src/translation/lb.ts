@@ -45,6 +45,8 @@ export const LuxembourgishLanguage: TranslationInterface = {
     'Klickt op eppes op der Säit, fir et ze markéieren — Esc fir ofzebriechen',
   mark_page: 'Markéiert eppes op der Säit, fir doriwwer ze froen',
   stop_response: 'Äntwert stoppen',
+  copy_reply: 'Äntwert kopéieren',
+  copied: 'Kopéiert',
   send_message: 'Noriicht schécken',
   upload_failed: 'Eroplueden net gelongen: {error}',
   remove_attachment: 'Unhang ewechhuelen',

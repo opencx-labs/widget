@@ -45,6 +45,8 @@ export const HindiLanguage: TranslationInterface = {
     'चिह्नित करने के लिए पेज पर किसी भी चीज़ पर क्लिक करें — रद्द करने के लिए Esc दबाएँ',
   mark_page: 'पेज पर किसी चीज़ के बारे में पूछने के लिए उसे चिह्नित करें',
   stop_response: 'जवाब रोकें',
+  copy_reply: 'उत्तर कॉपी करें',
+  copied: 'कॉपी हो गया',
   send_message: 'संदेश भेजें',
   upload_failed: 'अपलोड विफल: {error}',
   remove_attachment: 'अटैचमेंट हटाएँ',

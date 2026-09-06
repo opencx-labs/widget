@@ -45,6 +45,8 @@ export const PolishLanguage: TranslationInterface = {
     'Kliknij coś na stronie, aby to oznaczyć — Esc, aby anulować',
   mark_page: 'Oznacz coś na stronie, aby o to zapytać',
   stop_response: 'Zatrzymaj odpowiedź',
+  copy_reply: 'Kopiuj odpowiedź',
+  copied: 'Skopiowano',
   send_message: 'Wyślij wiadomość',
   upload_failed: 'Przesyłanie nie powiodło się: {error}',
   remove_attachment: 'Usuń załącznik',

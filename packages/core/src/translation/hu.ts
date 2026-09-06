@@ -45,6 +45,8 @@ export const HungarianLanguage: TranslationInterface = {
     'Kattintson valamire az oldalon a megjelöléséhez — Esc a megszakításhoz',
   mark_page: 'Jelöljön meg valamit az oldalon, hogy kérdezhessen róla',
   stop_response: 'Válasz leállítása',
+  copy_reply: 'Válasz másolása',
+  copied: 'Másolva',
   send_message: 'Üzenet küldése',
   upload_failed: 'A feltöltés sikertelen: {error}',
   remove_attachment: 'Melléklet eltávolítása',

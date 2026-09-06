@@ -45,6 +45,8 @@ export const UrduLanguage: TranslationInterface = {
     'نشان لگانے کے لیے صفحے پر کسی چیز پر کلک کریں — منسوخ کرنے کے لیے Esc دبائیں',
   mark_page: 'صفحے پر کسی چیز کے بارے میں پوچھنے کے لیے اس پر نشان لگائیں',
   stop_response: 'جواب روکیں',
+  copy_reply: 'جواب کاپی کریں',
+  copied: 'کاپی ہو گیا',
   send_message: 'پیغام بھیجیں',
   upload_failed: 'اپ لوڈ ناکام: {error}',
   remove_attachment: 'منسلکہ ہٹائیں',

@@ -45,6 +45,8 @@ export const SpanishLanguage: TranslationInterface = {
     'Haz clic en cualquier elemento de la página para marcarlo — Esc para cancelar',
   mark_page: 'Marca algo de la página para preguntar sobre ello',
   stop_response: 'Detener respuesta',
+  copy_reply: 'Copiar respuesta',
+  copied: 'Copiado',
   send_message: 'Enviar mensaje',
   upload_failed: 'Error al subir: {error}',
   remove_attachment: 'Quitar archivo adjunto',

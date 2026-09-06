@@ -45,6 +45,8 @@ export const DanishLanguage: TranslationInterface = {
     'Klik på noget på siden for at markere det — Esc annullerer',
   mark_page: 'Markér noget på siden for at spørge om det',
   stop_response: 'Stop svar',
+  copy_reply: 'Kopiér svar',
+  copied: 'Kopieret',
   send_message: 'Send besked',
   upload_failed: 'Upload mislykkedes: {error}',
   remove_attachment: 'Fjern vedhæftning',

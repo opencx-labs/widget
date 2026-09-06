@@ -45,6 +45,8 @@ export const LatvianLanguage: TranslationInterface = {
     'Noklikšķiniet uz kaut kā lapā, lai to atzīmētu — Esc, lai atceltu',
   mark_page: 'Atzīmējiet kaut ko lapā, lai par to pajautātu',
   stop_response: 'Apturēt atbildi',
+  copy_reply: 'Kopēt atbildi',
+  copied: 'Nokopēts',
   send_message: 'Sūtīt ziņu',
   upload_failed: 'Augšupielāde neizdevās: {error}',
   remove_attachment: 'Noņemt pielikumu',

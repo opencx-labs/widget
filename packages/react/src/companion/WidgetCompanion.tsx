@@ -48,6 +48,7 @@ import { useCompanionHostEffects } from './useCompanionHostEffects';
 import { useCompanionMeasurements } from './useCompanionMeasurements';
 import { useHostPortal } from './useHostPortal';
 import { usePersistedPillDrag } from './usePersistedPillDrag';
+import { pageClickDismisses } from './companion-dismissal';
 import {
   handleCompanionHostKeyDown,
   resolveEscapeAction,
@@ -368,21 +369,23 @@ export function WidgetCompanion() {
   // see e.target retargeted to the shadow HOST — contains() would report
   // every in-panel click as outside and instantly close the panel.
   useEffect(() => {
-    // The docked sidebar is meant to coexist with the page (the whole point of
-    // the app-frame), so page clicks must NOT close it — only its X / Escape do.
-    if (state === 'pill' || isSidebar) return;
+    if (
+      !pageClickDismisses({
+        state,
+        layout: panelLayout,
+        sidebarMode,
+        isPageMarkModeArmed,
+      })
+    )
+      return;
     function handleClick(e: MouseEvent) {
-      // While mark mode is armed, host-page interactions ARE the feature
-      // (placing/moving marks, the host-rendered note card) — closing the
-      // panel would unmount the composer and destroy the draft mark.
-      if (isPageMarkModeArmed) return;
       const container = containerRef.current;
       if (!container) return;
       if (!e.composedPath().includes(container)) closePanel();
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [closePanel, state, isSidebar, isPageMarkModeArmed]);
+  }, [closePanel, state, panelLayout, sidebarMode, isPageMarkModeArmed]);
 
   // The quick-ask composer IS the stock composer — it already dispatched the
   // message into the CURRENT session context (creating the session if needed).

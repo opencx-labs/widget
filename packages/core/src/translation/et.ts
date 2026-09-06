@@ -45,6 +45,8 @@ export const EstonianLanguage: TranslationInterface = {
     'Märkimiseks klõpsa lehel ükskõik millel — tühistamiseks vajuta Esc',
   mark_page: 'Märgi lehel midagi, et selle kohta küsida',
   stop_response: 'Peata vastus',
+  copy_reply: 'Kopeeri vastus',
+  copied: 'Kopeeritud',
   send_message: 'Saada sõnum',
   upload_failed: 'Üleslaadimine nurjus: {error}',
   remove_attachment: 'Eemalda manus',

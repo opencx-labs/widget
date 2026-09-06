@@ -11,20 +11,36 @@ import { Tooltippy } from './lib/tooltip';
 import { cn } from './lib/utils/cn';
 import { SuggestedReplyButton } from './SuggestedReplyButton';
 import { GroupTimestamp } from './GroupTimestamp';
+import { MessageActions, useShowsCopyAction } from './MessageActions';
+
+/** Reply actions apply to the AI's replies, not a human agent's. */
+function isAiMessage(
+  message: WidgetAiMessage | WidgetAgentMessage,
+): message is WidgetAiMessage {
+  return message.type === 'AI' && message.data.variant !== 'error';
+}
 
 export function AgentMessageGroup({
   messages,
   agent,
   suggestedReplies,
+  actions = true,
 }: {
   messages: WidgetAiMessage[] | WidgetAgentMessage[];
   agent: Agent | undefined;
   suggestedReplies?: string[];
+  /**
+   * Offer the reply actions (copy). Off for a reply that is still streaming:
+   * its text is not final yet.
+   */
+  actions?: boolean;
 }) {
+  const showsCopy = useShowsCopyAction();
+  const aiMessages = messages.filter(isAiMessage);
   return (
     <div
       {...dc('chat/agent_msg_group/root')}
-      className={cn('flex items-end gap-2')}
+      className={cn('group flex items-end gap-2')}
     >
       <Tooltippy content={agent?.name} side="right" align="end">
         <AgentAvatar
@@ -59,6 +75,9 @@ export function AgentMessageGroup({
               />
             ))}
             <GroupTimestamp messages={messages} />
+            {actions && showsCopy && aiMessages.length > 0 && (
+              <MessageActions messages={aiMessages} />
+            )}
           </div>
         </div>
 

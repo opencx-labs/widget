@@ -45,6 +45,8 @@ export const RomanianLanguage: TranslationInterface = {
     'Dă clic pe ceva din pagină pentru a-l marca — Esc pentru anulare',
   mark_page: 'Marchează ceva din pagină pentru a întreba despre acel element',
   stop_response: 'Oprește răspunsul',
+  copy_reply: 'Copiază răspunsul',
+  copied: 'Copiat',
   send_message: 'Trimite mesajul',
   upload_failed: 'Încărcarea a eșuat: {error}',
   remove_attachment: 'Elimină atașamentul',

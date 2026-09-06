@@ -45,6 +45,8 @@ export const DutchLanguage: TranslationInterface = {
     'Klik op iets op de pagina om het te markeren — Esc om te annuleren',
   mark_page: 'Markeer iets op de pagina om er een vraag over te stellen',
   stop_response: 'Antwoord stoppen',
+  copy_reply: 'Antwoord kopiëren',
+  copied: 'Gekopieerd',
   send_message: 'Bericht verzenden',
   upload_failed: 'Uploaden mislukt: {error}',
   remove_attachment: 'Bijlage verwijderen',

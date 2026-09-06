@@ -44,6 +44,8 @@ export const KoreanLanguage: TranslationInterface = {
     '페이지에서 표시할 항목을 클릭하세요 — 취소하려면 Esc를 누르세요',
   mark_page: '질문할 페이지의 항목을 표시하세요',
   stop_response: '응답 중지',
+  copy_reply: '답변 복사',
+  copied: '복사됨',
   send_message: '메시지 보내기',
   upload_failed: '업로드 실패: {error}',
   remove_attachment: '첨부 파일 삭제',

@@ -45,6 +45,8 @@ export const SlovakLanguage: TranslationInterface = {
     'Kliknutím na čokoľvek na stránke to označíte — klávesom Esc akciu zrušíte',
   mark_page: 'Označte niečo na stránke a opýtajte sa na to',
   stop_response: 'Zastaviť odpoveď',
+  copy_reply: 'Kopírovať odpoveď',
+  copied: 'Skopírované',
   send_message: 'Odoslať správu',
   upload_failed: 'Nahrávanie zlyhalo: {error}',
   remove_attachment: 'Odstrániť prílohu',

@@ -45,6 +45,8 @@ export const GermanLanguage: TranslationInterface = {
     'Klicken Sie auf etwas auf der Seite, um es zu markieren — Esc zum Abbrechen',
   mark_page: 'Markieren Sie etwas auf der Seite, um danach zu fragen',
   stop_response: 'Antwort stoppen',
+  copy_reply: 'Antwort kopieren',
+  copied: 'Kopiert',
   send_message: 'Nachricht senden',
   upload_failed: 'Upload fehlgeschlagen: {error}',
   remove_attachment: 'Anhang entfernen',

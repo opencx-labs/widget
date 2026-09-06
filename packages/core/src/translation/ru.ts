@@ -45,6 +45,8 @@ export const RussianLanguage: TranslationInterface = {
     'Нажмите на элемент страницы, чтобы отметить его — Esc для отмены',
   mark_page: 'Отметьте элемент на странице, чтобы задать вопрос о нём',
   stop_response: 'Остановить ответ',
+  copy_reply: 'Скопировать ответ',
+  copied: 'Скопировано',
   send_message: 'Отправить сообщение',
   upload_failed: 'Не удалось загрузить: {error}',
   remove_attachment: 'Удалить вложение',
