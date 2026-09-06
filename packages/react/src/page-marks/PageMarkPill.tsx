@@ -8,11 +8,13 @@ import { MarkThumbnail } from './MarkThumbnail';
 import { useMarkThumbnail } from './useMarkThumbnail';
 
 /**
- * One page-mark pill in the composer. Shows the region's actual pixels
- * (the focus element's snapshot, rasterized at commit) the moment it lands,
- * with the visitor's note captioned over it; until then — and whenever a
- * snapshot isn't possible — it stays the compact text pill. Removing it
- * un-draws the mark from the host page.
+ * One page mark previewed in the composer's attachment row — the same square
+ * tile a file gets, because a mark IS a picture the message carries. Shows
+ * the region's actual pixels (the focus element's snapshot, rasterized at
+ * commit) the moment it lands, with the visitor's note captioned over them;
+ * until then — and whenever a snapshot isn't possible — the pen glyph stands
+ * in, with the label captioned the same way so the tile still says what it
+ * is. Removing it un-draws the mark from the host page.
  */
 export function PageMarkPill({
   mark,

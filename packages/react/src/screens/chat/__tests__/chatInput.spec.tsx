@@ -108,6 +108,9 @@ vi.mock('@opencx/widget-react-headless', () => ({
 }));
 
 vi.mock('../../../page-marks/mark-thumbnail', () => ({
+  // The pill draws a lone mark's own pixels, so it reads the thumbnail store
+  // as well as the snapshot upload. No capture happens under jsdom.
+  getThumbnail: () => undefined,
   awaitSnapshotUrl: (mark: { snapshotUrl?: string }, maxWaitMs: number) => {
     if (mark.snapshotUrl) return Promise.resolve(mark.snapshotUrl);
     const pending = pendingSnapshots.get(mark);

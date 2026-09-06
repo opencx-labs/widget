@@ -13,9 +13,8 @@ import type { PageEntity } from './usePageEntity';
  * about it.
  *
  * Flat, with no surface of its own: it sits in the composer's attached-context
- * tray, and the tray is already a surface. A chip's own background and ring on
- * top of that read as a second card and broke the "one unit" the tray exists
- * to make. Mark pills keep their frame — those carry an image.
+ * tray, and the tray is already a surface. Marks are not here — they are
+ * pictures, so they preview with the files.
  */
 export function PageContextPill({
   entity,

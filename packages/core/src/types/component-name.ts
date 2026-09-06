@@ -70,7 +70,6 @@ export type OpenCxComponentNameU =
   | 'chat/input_box/dictate_btn'
   | 'chat/input_box/page_context_container'
   | 'chat/input_box/page_mark_pill'
-  | 'chat/input_box/page_marks_toggle'
   | 'chat/input_box/page_context_pill'
   /* @-mentions: the menu above the composer, and the highlighted `@Title` in
      the composer's text and the sent bubble. */

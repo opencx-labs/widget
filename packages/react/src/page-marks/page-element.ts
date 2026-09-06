@@ -41,7 +41,27 @@ function cleanText(el: HTMLElement): string {
   return (el.textContent ?? '').replace(/\s+/g, ' ').trim();
 }
 
-/** First class name that looks authored (not a hash, not a 1-2 char utility). */
+/**
+ * A utility class says nothing about what a thing IS — `p-0!` and `flex-1`
+ * are how it is drawn. They surfaced as the visitor-facing name of a marked
+ * region ("p-0!" in the composer pill), so anything shaped like one is
+ * rejected here and the caller falls back to the tag.
+ */
+function isUtilityClass(cls: string): boolean {
+  return (
+    // Tailwind's important suffix, arbitrary values, variants, opacity:
+    // `p-0!`, `w-[32px]`, `hover:bg-red`, `bg-black/50`.
+    /[!/[\]():]/.test(cls) ||
+    // A short prefix plus a size/scale token: `p-0`, `gap-1.5`, `mt-12`.
+    /^-?[a-z]{1,6}-\d/.test(cls) ||
+    // The bare layout vocabulary.
+    /^(flex|grid|block|inline|hidden|absolute|relative|fixed|sticky|static|truncate|container)$/.test(
+      cls,
+    )
+  );
+}
+
+/** First class name that looks authored (not a hash, not a utility). */
 function meaningfulClass(el: HTMLElement): string | null {
   const className = el.getAttribute('class');
   if (!className) return null;
@@ -49,7 +69,11 @@ function meaningfulClass(el: HTMLElement): string | null {
     .split(/\s+/)
     .map((c) => c.replace(/[_-][a-zA-Z0-9]{5,}.*$/, ''))
     .find(
-      (c) => c.length > 2 && !/^[a-z]{1,2}$/.test(c) && !/[A-Z0-9]{5,}/.test(c),
+      (c) =>
+        c.length > 2 &&
+        !/^[a-z]{1,2}$/.test(c) &&
+        !/[A-Z0-9]{5,}/.test(c) &&
+        !isUtilityClass(c),
     );
   return cls ?? null;
 }
