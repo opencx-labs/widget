@@ -46,6 +46,8 @@ export const SwedishLanguage: TranslationInterface = {
   mark_page: 'Markera något på sidan för att fråga om det',
   stop_response: 'Stoppa svaret',
   copy_reply: 'Kopiera svar',
+  mentions_empty: 'Inga träffar',
+  mention_remove: 'Ta bort omnämnande av {label}',
   copied: 'Kopierat',
   send_message: 'Skicka meddelande',
   upload_failed: 'Uppladdningen misslyckades: {error}',

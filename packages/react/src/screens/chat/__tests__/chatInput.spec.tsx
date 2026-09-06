@@ -21,6 +21,14 @@ let queuedUserMessages: Array<{ id: string; content: string }> = [];
 let canAttach = true;
 let sendsPageContext = true;
 let configContext: Record<string, unknown> | undefined;
+const mentionSearch = vi.fn(async () => [
+  {
+    type: 'workflow',
+    id: 'wf_1',
+    title: 'PostgreSQL Backup',
+    icon: 'https://cdn/wf.svg',
+  },
+]);
 let capturedInput: SendMessageInput | null = null;
 let marks: Array<{
   shape: string;
@@ -50,7 +58,10 @@ vi.mock('@opencx/widget-react-headless', () => ({
     // have none, so the input renders as before.
     pendingClarification: null,
   }),
-  useConfig: () => ({ context: configContext }),
+  useConfig: () => ({
+    context: configContext,
+    mentions: { search: mentionSearch },
+  }),
   useDictation: () => ({
     enabled: dictationEnabled,
     status: 'idle',
@@ -651,6 +662,49 @@ describe('ChatInput send acceptance', () => {
     expect(
       container.querySelector('button[aria-label="mark_page"]'),
     ).not.toBeNull();
+  });
+
+  it('@ opens the mention picker; a pick adds a chip and the send carries the mention', async () => {
+    vi.useFakeTimers();
+    try {
+      const { textarea } = await renderInput();
+      await act(async () => setTextareaValue(textarea, 'deploy @Post'));
+      textarea.setSelectionRange(12, 12);
+      await act(async () =>
+        textarea.dispatchEvent(new MouseEvent('click', { bubbles: true })),
+      );
+      await act(async () => {
+        vi.advanceTimersByTime(200);
+      });
+      const option = container.querySelector<HTMLButtonElement>(
+        '[data-component="chat/input_box/mention_picker/option"]',
+      );
+      expect(option?.textContent).toContain('PostgreSQL Backup');
+
+      await act(async () => option?.click());
+      expect(textarea.value).toBe('deploy @PostgreSQL Backup ');
+      expect(
+        container.querySelector(
+          '[data-component="chat/input_box/mention_pill"]',
+        ),
+      ).not.toBeNull();
+
+      const button = container.querySelector<HTMLButtonElement>(
+        'button[aria-label="send_message"]',
+      );
+      await act(async () => button?.click());
+      expect(capturedInput?.content).toBe('deploy @PostgreSQL Backup');
+      expect(capturedInput?.mentions).toEqual([
+        {
+          type: 'workflow',
+          id: 'wf_1',
+          title: 'PostgreSQL Backup',
+          icon: 'https://cdn/wf.svg',
+        },
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('shows the page-mark button and the entity pill when page context is on', async () => {

@@ -46,6 +46,8 @@ export const NorwegianBokmalLanguage: TranslationInterface = {
   mark_page: 'Marker noe på siden for å spørre om det',
   stop_response: 'Stopp svar',
   copy_reply: 'Kopier svar',
+  mentions_empty: 'Ingen treff',
+  mention_remove: 'Fjern omtale av {label}',
   copied: 'Kopiert',
   send_message: 'Send melding',
   upload_failed: 'Opplasting mislyktes: {error}',

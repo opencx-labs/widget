@@ -46,6 +46,8 @@ export const HindiLanguage: TranslationInterface = {
   mark_page: 'पेज पर किसी चीज़ के बारे में पूछने के लिए उसे चिह्नित करें',
   stop_response: 'जवाब रोकें',
   copy_reply: 'उत्तर कॉपी करें',
+  mentions_empty: 'कोई मेल नहीं',
+  mention_remove: '{label} का उल्लेख हटाएँ',
   copied: 'कॉपी हो गया',
   send_message: 'संदेश भेजें',
   upload_failed: 'अपलोड विफल: {error}',

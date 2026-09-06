@@ -1,5 +1,5 @@
 import { ApiCaller } from '../api/api-caller';
-import type { WidgetConfig } from '../types/widget-config';
+import type { WidgetConfig, WidgetMention } from '../types/widget-config';
 import {
   type MarkedElementRef,
   type WidgetAiMessage,
@@ -28,6 +28,11 @@ export type SendMessageInput = {
    * merged over the config-level `context` on the wire.
    */
   clientContext?: Record<string, unknown>;
+  /**
+   * What the visitor @-mentioned (host items picked through
+   * `config.mentions.search`). Sent as `clientContext.mentions`.
+   */
+  mentions?: WidgetMention[];
   /**
    * False when the visitor dismissed the page's entity pill for this message:
    * the send goes out without `context.entity`, everything else intact.
@@ -83,9 +88,13 @@ export const mergeSendContext = (
   custom_data: Record<string, unknown>;
 } => {
   const configContext = resolveConfigContext(config);
+  const mentions =
+    sendsPageContext && input.mentions && input.mentions.length > 0
+      ? { mentions: input.mentions.map(mentionOnTheWire) }
+      : undefined;
   const merged =
-    sendsPageContext && input.clientContext
-      ? { ...configContext, ...input.clientContext }
+    sendsPageContext && (input.clientContext || mentions)
+      ? { ...configContext, ...input.clientContext, ...mentions }
       : configContext;
   return {
     clientContext:
@@ -98,6 +107,14 @@ export const mergeSendContext = (
     },
   };
 };
+
+/** A mention as the agent reads it: what identifies it, never the icon. */
+const mentionOnTheWire = ({ type, id, title, meta }: WidgetMention) => ({
+  type,
+  id,
+  title,
+  ...(meta ? { meta } : {}),
+});
 
 const withoutKey = (
   record: Record<string, unknown>,
@@ -499,6 +516,9 @@ export class MessageCtx {
       this.sendsPageContext
         ? MessageCtx.markedElementNames(input.clientContext)
         : undefined,
+      this.sendsPageContext && input.mentions?.length
+        ? input.mentions
+        : undefined,
     );
   };
 
@@ -706,6 +726,7 @@ export class MessageCtx {
     content: string,
     attachments?: MessageAttachmentType[],
     markedElements?: MarkedElementRef[],
+    mentions?: WidgetMention[],
   ): WidgetUserMessage => {
     const messageContent = (() => {
       const extraCollectedData = this.contactCtx.state.get().extraCollectedData;
@@ -731,6 +752,7 @@ export class MessageCtx {
       content: messageContent,
       attachments,
       markedElements,
+      mentions,
       timestamp: new Date().toISOString(),
     };
   };

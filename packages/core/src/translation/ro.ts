@@ -46,6 +46,8 @@ export const RomanianLanguage: TranslationInterface = {
   mark_page: 'Marchează ceva din pagină pentru a întreba despre acel element',
   stop_response: 'Oprește răspunsul',
   copy_reply: 'Copiază răspunsul',
+  mentions_empty: 'Niciun rezultat',
+  mention_remove: 'Elimină mențiunea {label}',
   copied: 'Copiat',
   send_message: 'Trimite mesajul',
   upload_failed: 'Încărcarea a eșuat: {error}',

@@ -46,6 +46,8 @@ export const DutchLanguage: TranslationInterface = {
   mark_page: 'Markeer iets op de pagina om er een vraag over te stellen',
   stop_response: 'Antwoord stoppen',
   copy_reply: 'Antwoord kopiëren',
+  mentions_empty: 'Geen resultaten',
+  mention_remove: 'Vermelding van {label} verwijderen',
   copied: 'Gekopieerd',
   send_message: 'Bericht verzenden',
   upload_failed: 'Uploaden mislukt: {error}',

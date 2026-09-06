@@ -46,6 +46,8 @@ export const EstonianLanguage: TranslationInterface = {
   mark_page: 'Märgi lehel midagi, et selle kohta küsida',
   stop_response: 'Peata vastus',
   copy_reply: 'Kopeeri vastus',
+  mentions_empty: 'Vasteid pole',
+  mention_remove: 'Eemalda mainimine {label}',
   copied: 'Kopeeritud',
   send_message: 'Saada sõnum',
   upload_failed: 'Üleslaadimine nurjus: {error}',

@@ -170,6 +170,8 @@ export type TranslationInterface = {
   mark_page: string;
   stop_response: string;
   copy_reply: string;
+  mentions_empty: string;
+  mention_remove: string;
   copied: string;
   dictate: string;
   stop_dictation: string;

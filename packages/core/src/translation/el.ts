@@ -46,6 +46,8 @@ export const GreekLanguage: TranslationInterface = {
   mark_page: 'Επισημάνετε κάτι στη σελίδα για να ρωτήσετε σχετικά με αυτό',
   stop_response: 'Διακοπή απάντησης',
   copy_reply: 'Αντιγραφή απάντησης',
+  mentions_empty: 'Δεν βρέθηκαν αποτελέσματα',
+  mention_remove: 'Αφαίρεση αναφοράς {label}',
   copied: 'Αντιγράφηκε',
   send_message: 'Αποστολή μηνύματος',
   upload_failed: 'Η μεταφόρτωση απέτυχε: {error}',

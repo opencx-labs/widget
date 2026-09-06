@@ -46,6 +46,8 @@ export const CzechLanguage: TranslationInterface = {
   mark_page: 'Označte něco na stránce a zeptejte se na to',
   stop_response: 'Zastavit odpověď',
   copy_reply: 'Kopírovat odpověď',
+  mentions_empty: 'Žádné shody',
+  mention_remove: 'Odebrat zmínku {label}',
   copied: 'Zkopírováno',
   send_message: 'Odeslat zprávu',
   upload_failed: 'Nahrání se nezdařilo: {error}',

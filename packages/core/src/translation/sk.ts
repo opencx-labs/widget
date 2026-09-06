@@ -46,6 +46,8 @@ export const SlovakLanguage: TranslationInterface = {
   mark_page: 'Označte niečo na stránke a opýtajte sa na to',
   stop_response: 'Zastaviť odpoveď',
   copy_reply: 'Kopírovať odpoveď',
+  mentions_empty: 'Žiadne zhody',
+  mention_remove: 'Odstrániť zmienku {label}',
   copied: 'Skopírované',
   send_message: 'Odoslať správu',
   upload_failed: 'Nahrávanie zlyhalo: {error}',

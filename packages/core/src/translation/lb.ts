@@ -46,6 +46,8 @@ export const LuxembourgishLanguage: TranslationInterface = {
   mark_page: 'Markéiert eppes op der Säit, fir doriwwer ze froen',
   stop_response: 'Äntwert stoppen',
   copy_reply: 'Äntwert kopéieren',
+  mentions_empty: 'Keng Treffer',
+  mention_remove: 'Erwänung vun {label} ewechhuelen',
   copied: 'Kopéiert',
   send_message: 'Noriicht schécken',
   upload_failed: 'Eroplueden net gelongen: {error}',

@@ -1,6 +1,7 @@
 import type { WidgetUserMessage } from '@opencx/widget-core';
 import React from 'react';
 import { SentMarkChip } from '../page-marks/SentMarkChip';
+import { MentionPill } from '../screens/chat/MentionPill';
 import { dc } from '../utils/data-component';
 import { AttachmentPreview } from './AttachmentPreview';
 import { cn } from './lib/utils/cn';
@@ -28,6 +29,16 @@ export function UserMessage({
         >
           {message.markedElements.map((el, i) => (
             <SentMarkChip key={`${el.name}-${i}`} element={el} />
+          ))}
+        </div>
+      )}
+      {message.mentions && message.mentions.length > 0 && (
+        <div
+          {...dc('chat/user_msg/mentions')}
+          className="w-full flex gap-1 flex-wrap justify-end"
+        >
+          {message.mentions.map((item) => (
+            <MentionPill key={`${item.type}:${item.id}`} item={item} />
           ))}
         </div>
       )}

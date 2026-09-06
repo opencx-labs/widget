@@ -44,6 +44,8 @@ export const ChineseSimplifiedLanguage: TranslationInterface = {
   mark_page: '标记页面上的内容以便就此提问',
   stop_response: '停止回答',
   copy_reply: '复制回复',
+  mentions_empty: '没有匹配项',
+  mention_remove: '移除对 {label} 的提及',
   copied: '已复制',
   send_message: '发送消息',
   upload_failed: '上传失败：{error}',

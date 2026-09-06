@@ -46,6 +46,8 @@ export const CroatianLanguage: TranslationInterface = {
   mark_page: 'Označite nešto na stranici da biste pitali o tome',
   stop_response: 'Zaustavi odgovor',
   copy_reply: 'Kopiraj odgovor',
+  mentions_empty: 'Nema rezultata',
+  mention_remove: 'Ukloni spominjanje {label}',
   copied: 'Kopirano',
   send_message: 'Pošalji poruku',
   upload_failed: 'Prijenos nije uspio: {error}',

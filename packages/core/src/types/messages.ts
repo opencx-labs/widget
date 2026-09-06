@@ -1,6 +1,7 @@
 import type { MessageAttachmentType } from './dtos';
 import type { SafeExtract, StringOrLiteral } from './helpers';
 import type { Agent } from './agent';
+import type { WidgetMention } from './widget-config';
 
 /* ------------------------------------------------------ */
 /*                 Component-related types                */
@@ -53,6 +54,8 @@ export type WidgetUserMessage = {
    * and re-hydrated from history.
    */
   markedElements?: MarkedElementRef[];
+  /** What the visitor @-mentioned in this message — rendered as chips on the bubble. */
+  mentions?: WidgetMention[];
   timestamp: string | null;
   user?: {
     name?: string;

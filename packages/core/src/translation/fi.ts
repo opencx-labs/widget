@@ -46,6 +46,8 @@ export const FinnishLanguage: TranslationInterface = {
   mark_page: 'Merkitse sivulta jotain kysyäksesi siitä',
   stop_response: 'Pysäytä vastaus',
   copy_reply: 'Kopioi vastaus',
+  mentions_empty: 'Ei osumia',
+  mention_remove: 'Poista maininta {label}',
   copied: 'Kopioitu',
   send_message: 'Lähetä viesti',
   upload_failed: 'Lataus epäonnistui: {error}',

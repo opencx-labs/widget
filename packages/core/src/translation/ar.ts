@@ -45,6 +45,8 @@ export const ArabicLanguage: TranslationInterface = {
   mark_page: 'حدّد شيئًا في الصفحة لطرح سؤال عنه',
   stop_response: 'إيقاف الرد',
   copy_reply: 'نسخ الرد',
+  mentions_empty: 'لا توجد نتائج',
+  mention_remove: 'إزالة الإشارة إلى {label}',
   copied: 'تم النسخ',
   send_message: 'إرسال الرسالة',
   upload_failed: 'فشل الرفع: {error}',

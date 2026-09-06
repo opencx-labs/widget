@@ -47,6 +47,8 @@ export const FrenchLanguage: TranslationInterface = {
     'Marquez un élément de la page pour poser une question à son sujet',
   stop_response: 'Arrêter la réponse',
   copy_reply: 'Copier la réponse',
+  mentions_empty: 'Aucun résultat',
+  mention_remove: 'Retirer la mention de {label}',
   copied: 'Copié',
   send_message: 'Envoyer le message',
   upload_failed: 'Échec du téléversement : {error}',

@@ -46,6 +46,8 @@ export const BulgarianLanguage: TranslationInterface = {
   mark_page: 'Маркирайте нещо на страницата, за да попитате за него',
   stop_response: 'Спиране на отговора',
   copy_reply: 'Копирай отговора',
+  mentions_empty: 'Няма съвпадения',
+  mention_remove: 'Премахни споменаването на {label}',
   copied: 'Копирано',
   send_message: 'Изпращане на съобщение',
   upload_failed: 'Неуспешно качване: {error}',

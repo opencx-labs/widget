@@ -47,6 +47,8 @@ export const ItalianLanguage: TranslationInterface = {
     'Contrassegna un elemento della pagina per fare una domanda al riguardo',
   stop_response: 'Interrompi risposta',
   copy_reply: 'Copia risposta',
+  mentions_empty: 'Nessun risultato',
+  mention_remove: 'Rimuovi menzione di {label}',
   copied: 'Copiato',
   send_message: 'Invia messaggio',
   upload_failed: 'Caricamento non riuscito: {error}',

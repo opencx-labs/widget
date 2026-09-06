@@ -46,6 +46,8 @@ export const HungarianLanguage: TranslationInterface = {
   mark_page: 'Jelöljön meg valamit az oldalon, hogy kérdezhessen róla',
   stop_response: 'Válasz leállítása',
   copy_reply: 'Válasz másolása',
+  mentions_empty: 'Nincs találat',
+  mention_remove: '{label} említésének eltávolítása',
   copied: 'Másolva',
   send_message: 'Üzenet küldése',
   upload_failed: 'A feltöltés sikertelen: {error}',

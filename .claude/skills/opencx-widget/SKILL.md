@@ -58,6 +58,7 @@ concatenate numbers and words in JSX. Core code uses `translate(config, key)`.
 - Companion shell: `packages/react/src/companion/` — `WidgetCompanion.tsx` (state machine pill/input/chat + isOpen sync), `CompanionContent.tsx`, `LayoutPicker.tsx`, `useCompanionHostEffects.ts` (sidebar app-frame + scroll lock, leased), `companion-geometry.ts`. Layout state: headless `useWidgetLayout` + core `companion-layout.ts` (normalization) + `StorageCtx` (visitor preferences).
 - Inline UI: `packages/react/src/json-render/` — `catalog.ts` (the component vocabulary), `registry.tsx` (renderers), `props.ts` (zod props), `SpecRenderer.tsx`, `ui-prompt.ts` (CODEGEN ONLY: `pnpm -F @opencx/widget-react gen:ui-prompt` writes the prompt into the backend repo).
 - Page marks: `packages/react/src/page-marks/` (visitor marks) and `agent-mark.ts` (the agent's `highlight_element` tool, driven by `AgentChatPageEffects`).
+- Mentions: `packages/react/src/screens/chat/useMentions.ts` (the `@query` detection, host search, picked list kept in step with the text), `MentionPicker.tsx`, `MentionPill.tsx`; the wire shape is `clientContext.mentions` (`mergeSendContext`), gated like page context.
 - Dictation: core `dictation/` + `DictationCtx`; headless `useDictation`; react `DictationMicButton`.
 - Backend contract: `packages/core/src/api/schema.ts` is GENERATED (`pnpm gen:sdk` against a local backend at `http://localhost:8080`). Never hand-edit. Use `this.client.GET/POST(...)` for endpoints; only the two stream URLs are built by hand (the AI SDK transport needs raw URLs).
 

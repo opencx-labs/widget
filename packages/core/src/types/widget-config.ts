@@ -314,6 +314,25 @@ export type WidgetPageContext = {
 /** `WidgetConfig.context`: the well-known page keys plus free-form host data. */
 export type WidgetContext = WidgetPageContext & Record<string, unknown>;
 
+/**
+ * Something on the host the visitor can @-mention in a message — the same
+ * shape as `context.entity`, so the agent has one vocabulary for "this" (the
+ * entity pill) and "these" (mentions).
+ */
+export type WidgetMention = {
+  /** Host vocabulary, e.g. `workflow`, `integration`, `order`. */
+  type: string;
+  id: string;
+  /** What the picker and the chip show, and what the agent calls it. */
+  title: string;
+  /** One line under the title in the picker. */
+  description?: string;
+  /** Icon URL shown in the picker and on the chip. */
+  icon?: string;
+  /** Anything the agent needs to act on it that is not in `id`. */
+  meta?: Record<string, unknown>;
+};
+
 export interface WidgetConfig {
   /**
    * Your organization's widget token.
@@ -736,6 +755,23 @@ export interface WidgetConfig {
    * @default undefined
    */
   context?: WidgetContext | (() => WidgetContext);
+
+  /**
+   * Let the visitor @-mention things on your site in a message. Typing `@`
+   * in the composer opens a picker fed by `search`; a picked item shows as
+   * `@Title` in the text and as a removable chip beside the composer, and
+   * rides the send as `clientContext.mentions` (type, id, title, meta) so
+   * the agent can resolve it. Only available when your organization enabled
+   * "sees the page".
+   */
+  mentions?: {
+    /**
+     * Called as the visitor types after `@` (debounced), with the text so
+     * far — empty right after the `@` — and must return the items to offer,
+     * best first. Keep it short; the picker shows the first eight.
+     */
+    search: (query: string) => WidgetMention[] | Promise<WidgetMention[]>;
+  };
 
   /**
    * Receives actions the visitor takes on agent-rendered inline UI that the

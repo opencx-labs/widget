@@ -46,6 +46,8 @@ export const FilipinoLanguage: TranslationInterface = {
   mark_page: 'Markahan ang isang bagay sa page para magtanong tungkol dito',
   stop_response: 'Ihinto ang sagot',
   copy_reply: 'Kopyahin ang sagot',
+  mentions_empty: 'Walang tugma',
+  mention_remove: 'Alisin ang pagbanggit sa {label}',
   copied: 'Nakopya',
   send_message: 'Ipadala ang mensahe',
   upload_failed: 'Hindi na-upload: {error}',

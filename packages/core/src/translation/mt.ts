@@ -46,6 +46,8 @@ export const MalteseLanguage: TranslationInterface = {
   mark_page: 'Immarka xi ħaġa fil-paġna biex tistaqsi dwarha',
   stop_response: 'Waqqaf it-tweġiba',
   copy_reply: 'Ikkopja t-tweġiba',
+  mentions_empty: 'L-ebda riżultat',
+  mention_remove: 'Neħħi r-referenza għal {label}',
   copied: 'Ikkupjat',
   send_message: 'Ibgħat messaġġ',
   upload_failed: 'It-tlugħ falla: {error}',

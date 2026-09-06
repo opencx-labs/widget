@@ -45,6 +45,8 @@ export const ThaiLanguage: TranslationInterface = {
   mark_page: 'ทำเครื่องหมายสิ่งที่อยู่บนหน้าเพื่อถามเกี่ยวกับสิ่งนั้น',
   stop_response: 'หยุดการตอบ',
   copy_reply: 'คัดลอกคำตอบ',
+  mentions_empty: 'ไม่พบรายการ',
+  mention_remove: 'นำการกล่าวถึง {label} ออก',
   copied: 'คัดลอกแล้ว',
   send_message: 'ส่งข้อความ',
   upload_failed: 'อัปโหลดไม่สำเร็จ: {error}',

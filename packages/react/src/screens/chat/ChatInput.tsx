@@ -48,6 +48,9 @@ import {
 } from './UploadPreview';
 import { QueuedSendsPill } from './agent/QueuedSendsPill';
 import { DictationMicButton } from './DictationMicButton';
+import { MentionPicker } from './MentionPicker';
+import { MentionPill } from './MentionPill';
+import { useMentions } from './useMentions';
 import { usePageMarkComposer } from './usePageMarkComposer';
 import { useSentTextRecall } from './useSentTextRecall';
 
@@ -105,6 +108,12 @@ export function ChatInput({
   // The host page's entity ("this" to the agent). Dismissing the pill drops
   // it from the NEXT send only; it comes back for the message after.
   const pageEntity = usePageEntity();
+  // @-mentions: things on the host the visitor names in the message.
+  const mentions = useMentions({
+    text: inputText,
+    setText: setInputText,
+    inputRef,
+  });
   const [pageEntityDismissed, setPageEntityDismissed] = useState(false);
   const [fileSelectionError, setFileSelectionError] = useState<string | null>(
     null,
@@ -182,7 +191,9 @@ export function ChatInput({
   // Something is riding along with the next message — the page the visitor is
   // on, or regions they drew on it. Drives the fused context tray below.
   const hasAttachedContext =
-    marks.length > 0 || (pageEntity !== null && !pageEntityDismissed);
+    marks.length > 0 ||
+    (pageEntity !== null && !pageEntityDismissed) ||
+    mentions.picked.length > 0;
 
   const cannotSend =
     !inputText.trim() && successFiles.length === 0 && marks.length === 0;
@@ -252,11 +263,13 @@ export function ChatInput({
         ? (markNotes(submittedMarks) ?? t('page_mark_default_message'))
         : '');
     let didAccept = false;
+    const submittedMentions = mentions.picked;
 
     // Do not await this
     void sendMessage({
       content: trimmed,
       withPageEntity: !pageEntityDismissed,
+      mentions: submittedMentions.length > 0 ? submittedMentions : undefined,
       attachments: submittedFiles.flatMap((f) =>
         f.fileUrl
           ? [
@@ -294,6 +307,7 @@ export function ChatInput({
         if (!mountedRef.current) return;
         recall.onSent();
         setPageEntityDismissed(false);
+        mentions.reset();
         setInputText((current) => (current === submittedText ? '' : current));
       },
     }).catch((error: unknown) => {
@@ -351,6 +365,15 @@ export function ChatInput({
       {...dropzone__getRootProps()}
     >
       <input {...dropzone__getInputProps()} />
+      {mentions.isOpen && (
+        <MentionPicker
+          results={mentions.results}
+          searching={mentions.searching}
+          highlighted={mentions.highlighted}
+          onHighlight={mentions.setHighlighted}
+          onPick={mentions.pick}
+        />
+      )}
       {/* Mark-mode visuals (hint bar + hover frame + region editor) —
           portaled to the HOST page, not this iframe. */}
       {pageMarkingEnabled && (
@@ -451,6 +474,14 @@ export function ChatInput({
                       <PageMarkPill mark={mark} onRemove={() => detach(mark)} />
                     </MotionDiv>
                   ))}
+                  {mentions.picked.map((item) => (
+                    <MotionDiv key={`mention-${item.type}:${item.id}`} snapExit>
+                      <MentionPill
+                        item={item}
+                        onRemove={() => mentions.remove(item)}
+                      />
+                    </MotionDiv>
+                  ))}
                 </AnimatePresence>
               </div>
             </MotionDiv__VerticalReveal>
@@ -522,8 +553,14 @@ export function ChatInput({
                 recall.onEdit();
                 setInputText(e.target.value);
               }}
+              onClick={mentions.onCaretMove}
+              onKeyUp={(event) => {
+                if (event.key.startsWith('Arrow')) mentions.onCaretMove();
+              }}
               onKeyDown={(event) => {
                 if (event.nativeEvent.isComposing) return;
+                // An open mention picker owns ↑/↓/Enter/Tab/Escape.
+                if (mentions.onKeyDown(event)) return;
                 // Mod+Enter sends too — muscle memory from every other
                 // composer; plain Shift+Enter stays a newline.
                 if (

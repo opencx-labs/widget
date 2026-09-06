@@ -46,6 +46,8 @@ export const LithuanianLanguage: TranslationInterface = {
   mark_page: 'Pažymėkite ką nors puslapyje, kad galėtumėte apie tai paklausti',
   stop_response: 'Stabdyti atsakymą',
   copy_reply: 'Kopijuoti atsakymą',
+  mentions_empty: 'Atitikmenų nėra',
+  mention_remove: 'Pašalinti {label} paminėjimą',
   copied: 'Nukopijuota',
   send_message: 'Siųsti žinutę',
   upload_failed: 'Įkelti nepavyko: {error}',

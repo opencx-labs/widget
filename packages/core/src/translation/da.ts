@@ -46,6 +46,8 @@ export const DanishLanguage: TranslationInterface = {
   mark_page: 'Markér noget på siden for at spørge om det',
   stop_response: 'Stop svar',
   copy_reply: 'Kopiér svar',
+  mentions_empty: 'Ingen resultater',
+  mention_remove: 'Fjern omtale af {label}',
   copied: 'Kopieret',
   send_message: 'Send besked',
   upload_failed: 'Upload mislykkedes: {error}',

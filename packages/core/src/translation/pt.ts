@@ -46,6 +46,8 @@ export const PortugueseLanguage: TranslationInterface = {
   mark_page: 'Marque algo na página para perguntar sobre isso',
   stop_response: 'Parar resposta',
   copy_reply: 'Copiar resposta',
+  mentions_empty: 'Sem resultados',
+  mention_remove: 'Remover menção a {label}',
   copied: 'Copiado',
   send_message: 'Enviar mensagem',
   upload_failed: 'Falha no carregamento: {error}',

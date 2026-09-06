@@ -46,6 +46,8 @@ export const VietnameseLanguage: TranslationInterface = {
   mark_page: 'Đánh dấu nội dung trên trang để hỏi về nội dung đó',
   stop_response: 'Dừng trả lời',
   copy_reply: 'Sao chép câu trả lời',
+  mentions_empty: 'Không có kết quả',
+  mention_remove: 'Xóa nhắc đến {label}',
   copied: 'Đã sao chép',
   send_message: 'Gửi tin nhắn',
   upload_failed: 'Tải lên không thành công: {error}',

@@ -46,6 +46,8 @@ export const IcelandicLanguage: TranslationInterface = {
   mark_page: 'Merktu eitthvað á síðunni til að spyrja um það',
   stop_response: 'Stöðva svar',
   copy_reply: 'Afrita svar',
+  mentions_empty: 'Engar niðurstöður',
+  mention_remove: 'Fjarlægja tilvísun í {label}',
   copied: 'Afritað',
   send_message: 'Senda skilaboð',
   upload_failed: 'Upphleðsla mistókst: {error}',

@@ -46,6 +46,8 @@ export const TurkishLanguage: TranslationInterface = {
   mark_page: 'Hakkında soru sormak için sayfadaki bir öğeyi işaretleyin',
   stop_response: 'Yanıtı durdur',
   copy_reply: 'Yanıtı kopyala',
+  mentions_empty: 'Eşleşme yok',
+  mention_remove: '{label} bahsini kaldır',
   copied: 'Kopyalandı',
   send_message: 'Mesaj gönder',
   upload_failed: 'Yükleme başarısız: {error}',

@@ -46,6 +46,8 @@ export const PolishLanguage: TranslationInterface = {
   mark_page: 'Oznacz coś na stronie, aby o to zapytać',
   stop_response: 'Zatrzymaj odpowiedź',
   copy_reply: 'Kopiuj odpowiedź',
+  mentions_empty: 'Brak wyników',
+  mention_remove: 'Usuń wzmiankę o {label}',
   copied: 'Skopiowano',
   send_message: 'Wyślij wiadomość',
   upload_failed: 'Przesyłanie nie powiodło się: {error}',

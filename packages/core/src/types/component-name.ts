@@ -57,6 +57,7 @@ export type OpenCxComponentNameU =
   | 'chat/user_msg/root'
   | 'chat/user_msg/msg'
   | 'chat/user_msg/marked_elements'
+  | 'chat/user_msg/mentions'
   /* --------------------- Chat Input --------------------- */
   | 'chat/input_box/root'
   | 'chat/input_box/inner_root'
@@ -72,6 +73,9 @@ export type OpenCxComponentNameU =
   | 'chat/input_box/page_mark_pill'
   | 'chat/input_box/page_marks_toggle'
   | 'chat/input_box/page_context_pill'
+  | 'chat/input_box/mention_pill'
+  | 'chat/input_box/mention_picker'
+  | 'chat/input_box/mention_picker/option'
   /* Multi-send queue pill, docked above the composer (streaming engine). */
   | 'chat/queued_sends/root'
   | 'chat/queued_sends/header'
