@@ -1,6 +1,6 @@
 import type { WidgetMention } from '@opencx/widget-core';
-import { AtSignIcon } from 'lucide-react';
 import React from 'react';
+import { DynamicIcon } from '../../components/lib/DynamicIcon';
 import { cn } from '../../components/lib/utils/cn';
 import { useTranslation } from '../../hooks/useTranslation';
 import { dc } from '../../utils/data-component';
@@ -77,6 +77,7 @@ export function MentionPicker({
   );
 }
 
+/** A mention's icon: the host's URL, else a built-in name, else the @ glyph. */
 export function MentionIcon({
   item,
   className,
@@ -84,13 +85,19 @@ export function MentionIcon({
   item: WidgetMention;
   className?: string;
 }) {
-  return item.icon ? (
-    <img
-      src={item.icon}
-      alt=""
-      className={cn('size-4 shrink-0 rounded-sm object-contain', className)}
+  if (item.icon) {
+    return (
+      <img
+        src={item.icon}
+        alt=""
+        className={cn('size-4 shrink-0 rounded-sm object-contain', className)}
+      />
+    );
+  }
+  return (
+    <DynamicIcon
+      name={item.iconName ?? 'AtSign'}
+      className={cn('size-3.5 shrink-0 text-primary', className)}
     />
-  ) : (
-    <AtSignIcon className={cn('size-3.5 shrink-0 text-primary', className)} />
   );
 }

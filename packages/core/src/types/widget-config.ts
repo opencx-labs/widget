@@ -327,8 +327,10 @@ export type WidgetMention = {
   title: string;
   /** One line under the title in the picker. */
   description?: string;
-  /** Icon URL shown in the picker and on the chip. */
+  /** Icon URL shown in the picker and on the chip. Wins over `iconName`. */
   icon?: string;
+  /** A built-in icon instead of a URL. See {@link IconNameU}. */
+  iconName?: IconNameU;
   /** Anything the agent needs to act on it that is not in `id`. */
   meta?: Record<string, unknown>;
 };

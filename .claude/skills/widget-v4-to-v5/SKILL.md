@@ -85,7 +85,7 @@ initOpenScript({
   // fixed list the widget filters, or your own (async) search. Needs the
   // org's "sees the page" switch.
   mentions: {
-    items: [{ type: 'plan', id: 'pro', title: 'Pro plan' }],
+    items: [{ type: 'plan', id: 'pro', title: 'Pro plan', iconName: 'CreditCard' }],
     // or: search: async (query) => (await api.search(query)).map(toMention),
   },
   router: { restoreLastSession: true },
