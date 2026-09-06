@@ -1,7 +1,7 @@
 {
   "name": "@opencx/widget",
   "private": false,
-  "version": "4.0.62",
+  "version": "5.0.0-beta.0",
   "type": "module",
   "repository": {
     "type": "git",
@@ -10,23 +10,24 @@
   "scripts": {
     "clean": "rm -rf node_modules dist-embed .turbo",
     "clean:dist": "rm -rf dist-embed .turbo",
-    "build": "vite build -c vite.config.ts",
+    "build": "vite build -c vite.config.ts && vite build -c vite.loader.config.ts",
     "test": "vitest run",
     "type-check": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
   "files": [
-    "dist-embed"
+    "dist-embed",
+    "!dist-embed/**/*.map"
   ],
   "devDependencies": {
     "@opencx/eslint-config": "workspace:*",
     "@opencx/tsconfig": "workspace:*",
     "@opencx/widget-core": "workspace:*",
     "@opencx/widget-react": "workspace:*",
-    "@types/react": ">=18 <20",
-    "@types/react-dom": ">=18 <20",
-    "react": ">=18 <20",
-    "react-dom": ">=18 <20"
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   }
 }
