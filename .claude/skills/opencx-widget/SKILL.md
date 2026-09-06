@@ -88,9 +88,22 @@ pointing at 4.0.x until pre mode is exited.
 pnpm cs:pre           # once per pre-release line: changeset pre enter beta
 pnpm cs               # changeset: pick ALL FOUR packages, write a real summary
 pnpm csv              # apply → bumps versions + CHANGELOGs (fixed group keeps them equal)
-pnpm csp              # pnpm x then changeset publish
 git commit -am "chore(release): vX" && git push --follow-tags
+pnpm x                                       # the gate
+pnpm publish -r --tag beta --no-git-checks   # the publish
 ```
+
+**Publish with `pnpm publish -r`, not `csp`, while the account has 2FA on
+writes.** `csp`'s `changeset publish` fires all four in parallel; with
+two-factor set to "authorization and writes" each authenticates separately
+and npm rate-limits the OTP endpoint (`E429 ... rate limited otp`, nothing
+published). `-r` publishes the same four sequentially, skips the `private`
+tooling packages, and converts `workspace:*` to the real version. Always
+pass `--tag`: an untagged publish goes to `latest` even for a `-beta.N`.
+Never pass `--otp` — `-r` ignores it and prompts, and a pre-generated code
+expires during packing; wait for `Enter OTP:` then read a fresh one.
+Re-running skips what already published, so a partial publish just needs
+the same command again.
 
 `pnpm cs:pre:exit` leaves pre mode; the next `csv` + `csp` then cuts the final `5.0.0`
 to `latest`. Always commit the version bump after publishing — an uncommitted bump once
