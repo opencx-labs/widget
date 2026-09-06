@@ -15,8 +15,8 @@ const DETAIL_WIDTH = 260;
 const GAP = 8;
 
 /**
- * The @-mention menu, floating above the composer and starting under the
- * `@` it belongs to: results grouped by type under a small header, one line
+ * The @-mention menu, sitting right above the `@` it belongs to (its start
+ * edge on the `@`, its bottom edge on that line): results grouped by type under a small header, one line
  * per item (icon + title), a "See N more" row where a group is cut, and —
  * when `mentions.preview` is on and the frame is wide enough — the
  * highlighted item's description in a card beside the menu. Keyboard-driven
@@ -86,14 +86,16 @@ export function MentionPicker({
         input && anchorIndex !== null
           ? caretPositionInTextarea(input, anchorIndex)
           : null;
-      const wanted = at
-        ? input!.getBoundingClientRect().left + at.left
-        : rect.left + 8;
+      const inputRect = input?.getBoundingClientRect();
+      const wanted = at && inputRect ? inputRect.left + at.left : rect.left + 8;
       const left = Math.max(8, Math.min(wanted, frameWidth - 8 - width));
+      // Its bottom edge hugs the line the `@` is on — not the composer card,
+      // whose context tray would otherwise hold the menu a row too high.
+      const top = at && inputRect ? inputRect.top + at.top - 4 : rect.top - 4;
       setPlacement({
         left,
         width,
-        top: rect.top - 4,
+        top,
         detailBeside:
           preview && left + width + GAP + DETAIL_WIDTH <= frameWidth - 8,
       });
