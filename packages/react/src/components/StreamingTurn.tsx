@@ -1,6 +1,7 @@
 import type { WidgetAiMessage } from '@opencx/widget-core';
 import type {
   SpecDataPart,
+  StreamingTurnItem,
   StreamingTurnState,
 } from '@opencx/widget-react-headless';
 import { useWidget } from '@opencx/widget-react-headless';
@@ -8,6 +9,7 @@ import React, { useMemo, useState } from 'react';
 import { buildSpec, SpecRenderer } from '../json-render';
 import { dc } from '../utils/data-component';
 import { AgentMessageGroup } from './AgentMessageGroup';
+import { BrailleSpinner } from './lib/BrailleSpinner';
 
 /**
  * The live streamed turn (streaming engine): rendered in STREAM ORDER —
@@ -81,8 +83,26 @@ export function StreamingTurn({
           )
         ),
       )}
+      {/* "Still working": a turn that has shown something and is still
+          streaming keeps a spinner at its tail — a slow tool call or a large
+          UI spec can take seconds with no new text, and silence reads as a
+          stall. A running steps group carries its own loader, so the tail
+          stays quiet while one is the last item. */}
+      {turn.active && !endsWithRunningSteps(turn.items) && (
+        <div
+          {...dc('chat/streaming_turn/working')}
+          className="flex h-5 items-center ps-1"
+        >
+          <BrailleSpinner className="text-[14px] leading-none text-primary/70" />
+        </div>
+      )}
     </div>
   );
+}
+
+function endsWithRunningSteps(items: readonly StreamingTurnItem[]): boolean {
+  const last = items.at(-1);
+  return last?.kind === 'steps' && last.steps.some((step) => !step.done);
 }
 
 /**

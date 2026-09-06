@@ -28,6 +28,7 @@ export type OpenCxComponentNameU =
   | 'chat/msgs/scroll-to-bottom'
   | 'chat/streaming_turn/root'
   | 'chat/streaming_turn/steps'
+  | 'chat/streaming_turn/working'
   | 'chat/turn_failed/root'
   | 'chat/turn_failed/retry'
   /* ------------- Agent clarification questions ------------ */
@@ -69,6 +70,7 @@ export type OpenCxComponentNameU =
   | 'chat/input_box/dictate_btn'
   | 'chat/input_box/page_marks_container'
   | 'chat/input_box/page_mark_pill'
+  | 'chat/input_box/page_marks_toggle'
   | 'chat/input_box/page_context_pill'
   /* Multi-send queue pill, docked above the composer (streaming engine). */
   | 'chat/queued_sends/root'

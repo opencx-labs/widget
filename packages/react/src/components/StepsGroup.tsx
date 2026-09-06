@@ -5,6 +5,7 @@ import { dc } from '../utils/data-component';
 import { useTranslation } from '../hooks/useTranslation';
 import { stripInlineMarkdown } from '../utils/strip-inline-markdown';
 import { RichText } from './RichText';
+import { BrailleSpinner } from './lib/BrailleSpinner';
 import { cn } from './lib/utils/cn';
 
 /**
@@ -53,24 +54,6 @@ function PixelLoader({ className }: { className?: string }) {
         />
       ))}
     </div>
-  );
-}
-
-const SNAKE_FRAMES = ['⠏', '⠗', '⠧', '⠷', '⠾', '⠽', '⠻', '⠟'];
-
-function BrailleSpinner({ className }: { className?: string }) {
-  const [frame, setFrame] = useState(0);
-  useEffect(() => {
-    const id = setInterval(
-      () => setFrame((f) => (f + 1) % SNAKE_FRAMES.length),
-      80,
-    );
-    return () => clearInterval(id);
-  }, []);
-  return (
-    <span className={cn('select-none', className)} aria-hidden>
-      {SNAKE_FRAMES[frame]}
-    </span>
   );
 }
 
