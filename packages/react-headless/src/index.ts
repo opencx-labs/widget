@@ -4,10 +4,26 @@ export type {
 } from './types/components';
 
 export { WidgetProvider, useWidget } from './WidgetProvider';
+export { useAgentChatUi } from './agent-chat/AgentChatContext';
+export type {
+  SpecDataPart,
+  StreamingStep,
+  StreamingTurnState,
+  StreamingTurnItem,
+} from './agent-chat/agent-chat-stream';
+export type { TurnRenderSource } from './agent-chat/agent-turn-sources';
+export { formatAskQuestionsAnswers } from './agent-chat/ask-questions';
+export type { AskQuestionsRequest } from './agent-chat/ask-questions';
 
+export { useBot } from './hooks/useBot';
 export { useConfig } from './hooks/useConfig';
+export { useDisplayMode } from './hooks/useDisplayMode';
 export { useContact } from './hooks/useContact';
 export { useDocumentDir } from './hooks/useDocumentDir';
+export {
+  HOST_CONTEXT_CHANGED_EVENT,
+  useHostLocation,
+} from './hooks/useHostLocation';
 export { useIsAwaitingBotReply } from './hooks/useIsAwaitingBotReply';
 export { useMessages } from './hooks/useMessages';
 export { usePrimitiveState } from './hooks/usePrimitiveState';
@@ -18,5 +34,7 @@ export {
   useWidgetTrigger,
   WidgetTriggerProvider,
 } from './hooks/useWidgetTrigger';
+export { useWidgetLayout, WidgetLayoutProvider } from './hooks/useWidgetLayout';
 export { useModes } from './hooks/useModes';
 export { useCsat } from './hooks/useCsat';
+export { useDictation } from './hooks/useDictation';

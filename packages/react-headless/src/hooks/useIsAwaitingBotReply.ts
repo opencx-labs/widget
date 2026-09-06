@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { useMessages } from './useMessages';
 import { useSessions } from './useSessions';
 

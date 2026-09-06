@@ -10,7 +10,10 @@ export default defineConfig({
     tsconfigPaths(),
     dts({
       insertTypesEntry: true,
-      include: ['src'],
+      // WidgetProvider reads the package version at runtime. Keep the JSON in
+      // the declaration program so composite-style file checks do not report
+      // the import as outside the d.ts build.
+      include: ['src', 'package.json'],
     }),
     externalizeDeps(),
   ],
