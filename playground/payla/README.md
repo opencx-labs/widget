@@ -74,6 +74,11 @@ Try:
 - "What's my available balance?"
 - "Show me failed payments this week."
 - "Refund €5 on payment `tr_…`." (it'll confirm, then actually do it)
+- Type `@` in the composer to mention a payment or customer by name (`mentions.search`
+  in `CompanionWidget.tsx` searches the demo's own API); open a payment page and the
+  composer shows it as a context pill ("this" to the agent).
+- Copy any reply with the button under it; reload the page and the conversation is
+  still open (`router.restoreLastSession`).
 - "Do I have any open disputes?"
 
 ## Configuration

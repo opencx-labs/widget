@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useSettings } from '../lib/queries.ts';
 import { getWidgetConfig } from '../lib/widgetConfig.ts';
+import { currentEntity, searchMentions } from '../lib/widgetMentions.ts';
 import {
   WIDGET_CSS_OVERRIDES,
   WIDGET_INK,
@@ -98,6 +99,18 @@ export function CompanionWidget({
               },
             }
           : {}),
+        ...(variant === 'companion'
+          ? {
+              // "@" in the composer searches the merchant's own payments and
+              // customers; a pick rides the send as `clientContext.mentions`.
+              mentions: { search: searchMentions },
+              // A reload lands back in the conversation that was open.
+              router: { restoreLastSession: true },
+              // The companion has the copy button by default; keep it visible
+              // rather than hover-only so the demo shows it.
+              messageActions: { copy: true, display: 'always' },
+            }
+          : {}),
         // Function form: resolved fresh at every send, so the SPA's current
         // page rides along instead of the page the widget booted on.
         context: () => ({
@@ -109,6 +122,11 @@ export function CompanionWidget({
             url: window.location.href,
             title: document.title,
           },
+          // "This": the payment / customer / settlement the page shows. The
+          // composer shows it as a removable pill; the agent resolves it.
+          ...(variant === 'companion'
+            ? { entity: currentEntity(window.location.pathname) }
+            : {}),
           // Customer-facing support chats must not carry internal merchant context.
           ...(variant === 'companion' && settings
             ? {
