@@ -17,13 +17,16 @@ attachments on, nothing page-aware. A failed fetch throws `WidgetInitializationE
 
 1. Caller invokes `messageCtx.sendMessage(input)` (composer, `newChat`, mode components).
 2. `stageUserTurn` validates, builds the user message (extra collected data prepended on
-   the first message; page-mark chips from `input.clientContext.page_marks` when
-   `sendsPageContext`), inserts it optimistically along with persistent greetings, and
-   ensures a session (rolling back on failure).
+   the first message; when `sendsPageContext`, page-mark chips from
+   `input.clientContext.page_marks` and the picked `input.mentions`, which the bubble
+   highlights where each `@Title` sits in the content), inserts it optimistically along
+   with persistent greetings, and ensures a session (rolling back on failure).
 3. `notifySendAccepted(input)` fires `onAccepted` — the composer clears here, never earlier.
 4. The body is `buildSendMessageBody(...)`: config-level headers/query/body properties,
-   `clientContext` (`mergeSendContext`: host `context` always, widget page context only
-   when `sendsPageContext`), `custom_data`, `language`, `features`, `initial_messages`.
+   `clientContext` (`mergeSendContext`: host `context` always; the widget's own page
+   context and `mentions` only when `sendsPageContext`; `entity` dropped when
+   `input.withPageEntity === false`), `custom_data`, `language`, `features`
+   (`resolveSendFeatures`), `initial_messages`.
 5. Classic: `POST /widget/v2/chat/send`, reply appended, polling reconciles.
    Streaming: the registered handler (`useAgentChat.send`) takes over.
 

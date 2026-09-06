@@ -1,6 +1,6 @@
 ---
 name: opencx-widget
-description: Working in the OpenCX widget monorepo (@opencx/widget-core, widget-react-headless, widget-react, widget). Use when adding or changing a widget configuration option, a custom component slot, a translation, the companion shell, the streaming agent engine, page marks, dictation, the embed loader, or when releasing. Encodes the package boundaries, the "how Ali adds a config feature" convention, the feature-narrowing rule, and the release flow.
+description: Working in the OpenCX widget monorepo (@opencx/widget-core, widget-react-headless, widget-react, widget). Use when adding or changing a widget configuration option, a custom component slot, a translation, the companion shell, the streaming agent engine and its multi-send queue, page marks, @-mentions, dictation, the embed loader, or when releasing. Encodes the package boundaries, the "how Ali adds a config feature" convention, the feature-narrowing rule, and the release flow.
 ---
 
 # OpenCX widget
@@ -23,7 +23,7 @@ Tooling packages `@opencx/tsconfig` and `@opencx/eslint-config` version independ
 - **Dependency direction**: core ← headless ← react ← embed. Core never imports React at runtime; react never reaches into headless internals — only the barrels.
 - **One log prefix**: `import { log } from '@opencx/widget-core'`; never `console.*` in library code. The widget runs inside customers' pages.
 - **One engine switch**: `widgetCtx.streaming` (server-decided from `/widget/v2/config` → `agent.streaming`). `ChatScreen` picks `AgentChatMain` or `ChatMain`; `MessageCtx.sendMessage` routes to the registered streaming handler or the blocking send. Do not add a second flag.
-- **Feature narrowing** (`packages/core/src/context/widget-agent.ts`): the org's effective features come from the backend; `config.features.*` can only switch one OFF. Read the resolved answers from `widgetCtx.features` (`dictation`, `attachments`, `pageContext`, `clientTools`), never the raw flags. An org switch alone turns a feature on for every embed; `enablePageMarks`-style opt-ins do not exist.
+- **Feature narrowing** (`packages/core/src/context/widget-agent.ts`): the org's effective features come from the backend; `config.features.*` can only switch one OFF. Read the resolved answers from `widgetCtx.features` (`dictation`, `attachments`, `pageContext`, `clientTools`), never the raw flags. An org switch alone turns a feature on for every embed; `enablePageMarks`-style opt-ins do not exist. The narrowing (`narrowFeature`, module-private) applies to `dictation`, `pageContext`, `clientTools`; `attachments` has no embed toggle at all. The other two `config.features` keys, `preamble` and `inlineUi`, are backend-only — no `widgetCtx.features` entry; `resolveSendFeatures` just snake-cases the whole toggle block onto every send (`preamble`, `inline_ui`, `page_context`, `client_tools`).
 - **Host context always rides**: `config.context` (object or function, resolved at send time) is sent with every message on both engines, as in v4. `features.pageContext` gates only the widget-made page context (page marks, picked elements) and its affordances.
 - **Context follows the page, on us**: pass `context` as a function (the send resolves it fresh) and the entity pill re-reads it when the host URL changes — `useHostLocation` in headless watches `popstate`/`hashchange` and polls `location.href` for silent `pushState` routers. For a change with no URL change the host fires `window.dispatchEvent(new Event('opencx:context-changed'))` (`HOST_CONTEXT_CHANGED_EVENT`). The React embed needs neither: a new `context` prop re-renders. Never ask hosts to re-init the widget on navigation.
 - **One wire body**: `buildSendMessageBody` in `message.ctx.ts` builds the request for both the blocking send and the stream. Both endpoints take `WidgetSendMessageInputDto`.
@@ -59,7 +59,7 @@ concatenate numbers and words in JSX. Core code uses `translate(config, key)`.
 - Companion shell: `packages/react/src/companion/` — `WidgetCompanion.tsx` (state machine pill/input/chat + isOpen sync), `CompanionContent.tsx`, `LayoutPicker.tsx`, `useCompanionHostEffects.ts` (sidebar app-frame + scroll lock, leased), `companion-geometry.ts`. Layout state: headless `useWidgetLayout` + core `companion-layout.ts` (normalization) + `StorageCtx` (visitor preferences).
 - Inline UI: `packages/react/src/json-render/` — `catalog.ts` (the component vocabulary), `registry.tsx` (renderers), `props.ts` (zod props), `SpecRenderer.tsx`, `ui-prompt.ts` (CODEGEN ONLY: `pnpm -F @opencx/widget-react gen:ui-prompt` writes the prompt into the backend repo).
 - Page marks: `packages/react/src/page-marks/` (visitor marks) and `agent-mark.ts` (the agent's `highlight_element` tool, driven by `AgentChatPageEffects`).
-- Mentions: `packages/react/src/screens/chat/useMentions.ts` (the `@query` detection, host search, grouping, picked list kept in step with the text), `MentionPicker.tsx` (grouped menu + detail card, portaled to the themed frame root), `MentionText.tsx` (the inline `@Title` highlight, also the composer's mirror layer); the wire shape is `clientContext.mentions` (`mergeSendContext`), gated like page context.
+- Mentions: `packages/react/src/screens/chat/useMentions.ts` (the `@query` at the caret, host `search` or in-widget filter of `items`, grouping — three per `type` behind a "see more" — the picked list kept in step with the text, and the caret/Backspace rules that make an `@Title` one unit), `MentionPicker.tsx` (grouped menu + preview card, portaled to the frame's themed root via `closest('[data-version]')` because the footer clips overflow), `MentionText.tsx` (the `@Title` highlight, rendered both in `ChatInput`'s mirror layer under the textarea and in `components/UserMessage.tsx`'s sent bubble), `caret-position.ts` (caret geometry + the mirror's layout copy); the wire shape is `clientContext.mentions` (`mergeSendContext`), gated by `features.pageContext` like page context.
 - Dictation: core `dictation/` + `DictationCtx`; headless `useDictation`; react `DictationMicButton`.
 - Backend contract: `packages/core/src/api/schema.ts` is GENERATED (`pnpm gen:sdk` against a local backend at `http://localhost:8080`). Never hand-edit. Use `this.client.GET/POST(...)` for endpoints; only the two stream URLs are built by hand (the AI SDK transport needs raw URLs).
 
@@ -71,7 +71,7 @@ pnpm build            # turbo, all packages (headless/react type-check against b
 pnpm type-check
 pnpm lint
 pnpm test             # vitest per package
-pnpm x                # clean + build + lint + type-check + test (the publish gate)
+pnpm x                # clean:dist + build + lint + type-check + test (the publish gate)
 pnpm -F @opencx/widget-react test -- --run src/companion
 ```
 
