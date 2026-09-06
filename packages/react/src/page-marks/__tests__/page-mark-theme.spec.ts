@@ -18,9 +18,9 @@ describe('resolvePageMarkTheme', () => {
       accent: 'rebeccapurple',
       surface: 'hsl(0 0% 98%)',
       foreground: 'hsl(0 0% 9%)',
-      inkZIndex: 43,
-      chromeZIndex: 44,
-      editorZIndex: 45,
+      inkZIndex: 40,
+      chromeZIndex: 41,
+      editorZIndex: 43,
     });
   });
 });

@@ -6,6 +6,13 @@ export type PageMarkTheme = {
   foreground: string;
   mutedForeground: string;
   border: string;
+  /**
+   * Document layers, relative to the widget's own. Drawn marks and the hover
+   * frame sit just UNDER the widget: they belong to the page, and a mark
+   * that runs beneath the panel reads as the page being marked, not as
+   * scribble on the chat. The note editor alone sits above, so it can be
+   * typed into wherever the mark landed.
+   */
   inkZIndex: number;
   chromeZIndex: number;
   editorZIndex: number;
@@ -40,8 +47,8 @@ export function resolvePageMarkTheme({
     foreground: readColor(cssVars, '--opencx-foreground'),
     mutedForeground: readColor(cssVars, '--opencx-muted-foreground'),
     border: readColor(cssVars, '--opencx-border'),
-    inkZIndex: contentZIndex + 1,
-    chromeZIndex: contentZIndex + 2,
-    editorZIndex: contentZIndex + 3,
+    inkZIndex: contentZIndex - 2,
+    chromeZIndex: contentZIndex - 1,
+    editorZIndex: contentZIndex + 1,
   };
 }

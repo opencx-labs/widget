@@ -99,7 +99,8 @@ describe('AgentChatPageEffects', () => {
     );
     expect(callout?.style.background).toBe('rgb(255, 255, 255)');
     expect(callout?.style.color).toBe('rgb(26, 26, 26)');
-    expect(callout?.style.zIndex).toBe('102');
+    // Ink sits two under the widget (100); the callout one above the ink.
+    expect(callout?.style.zIndex).toBe('99');
 
     pageEffects = [...pageEffects];
     await render();
