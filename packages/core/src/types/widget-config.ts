@@ -349,16 +349,19 @@ export interface WidgetConfig {
     dictation?: boolean;
 
     /**
-     * Whether the agent sees the page you are on (the `context` you pass,
-     * page marks, picked elements). Only available when your organization
-     * enabled it.
+     * Whether the visitor can mark things on your page from the composer
+     * and the agent reads them, along with the well-known `page` / `entity`
+     * keys of the `context` you pass. Only available when your organization
+     * enabled it. Switch it off for an embed on a page the visitor should
+     * not be able to mark.
      * @default org setting
      */
     pageContext?: boolean;
 
     /**
-     * Whether the agent may act on the page (highlight elements) as part of
-     * its reply. Only available when your organization enabled it.
+     * Whether the agent may act on your page (highlight elements) as part of
+     * its reply. Only available when your organization enabled it. Switch it
+     * off for an embed on a page the agent should never draw on.
      * @default org setting
      */
     clientTools?: boolean;
@@ -735,17 +738,6 @@ export interface WidgetConfig {
   context?: WidgetContext | (() => WidgetContext);
 
   /**
-   * Show the page-mark button in the composer: the visitor clicks anything on
-   * the host page, a hand-drawn mark lands on it (movable, resizable,
-   * reshapeable, with an optional note), and it rides their message as
-   * context (`page_marks`: shape, note, region, covered elements) the AI can
-   * reason about — and point back at via the `highlight_element` tool. Meant
-   * for product/dashboard-style embeds.
-   * @default false
-   */
-  enablePageMarks?: boolean;
-
-  /**
    * Receives actions the visitor takes on agent-rendered inline UI that the
    * widget cannot complete on its own — today only `test-phone-agent`, the
    * "Test via web" button on a phone-agent card. Meant for the OpenCX
@@ -765,8 +757,7 @@ export interface WidgetConfig {
 
   /**
    * How long an agent-requested page highlight remains visible, in
-   * milliseconds. Agent page effects are disabled entirely unless
-   * `enablePageMarks` is true.
+   * milliseconds (the `clientTools` feature).
    * @default 8000
    */
   pageMarkHighlightDurationMs?: number;

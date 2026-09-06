@@ -56,7 +56,6 @@ vi.mock('@opencx/widget-react-headless', async () => {
           dictation: false,
           attachments: true,
           pageContext: false,
-          pageMarks: false,
           clientTools: false,
         },
         messageCtx: { blocksSendWhileAwaitingReply: false },

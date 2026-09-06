@@ -98,14 +98,6 @@ export function CompanionWidget({
               },
             }
           : {}),
-        // Element picker + agent highlights. `enablePageMarks` is the real
-        // option name — this demo used to pass `enableElementPicker`, which
-        // the widget ignores, so the composer button never appeared AND
-        // `highlight_element` silently no-op'd (AgentChatPageEffects bails
-        // when the flag is off) while the agent still claimed it highlighted.
-        // The visitor can click any element on the Payla page to attach it as
-        // context; the agent reasons about it and can point back at it.
-        enablePageMarks: true,
         // Function form: resolved fresh at every send, so the SPA's current
         // page rides along instead of the page the widget booted on.
         context: () => ({

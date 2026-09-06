@@ -55,12 +55,11 @@ suite('WidgetCtx.features (server-enabled, embed-narrowed)', () => {
 
   test('org on + embed silent → every feature is on', async () => {
     serverFeatures(everythingOn);
-    const ctx = await init({ enablePageMarks: true });
+    const ctx = await init();
     expect(ctx.features).toEqual({
       dictation: true,
       attachments: true,
       pageContext: true,
-      pageMarks: true,
       clientTools: true,
     });
     expect(ctx.messageCtx.sendsPageContext).toBe(true);
@@ -69,7 +68,6 @@ suite('WidgetCtx.features (server-enabled, embed-narrowed)', () => {
   test('org on + embed `false` → off (narrowing)', async () => {
     serverFeatures(everythingOn);
     const ctx = await init({
-      enablePageMarks: true,
       features: {
         preamble: false,
         inlineUi: false,
@@ -83,7 +81,6 @@ suite('WidgetCtx.features (server-enabled, embed-narrowed)', () => {
       // Attachments have no embed toggle: the org decides alone.
       attachments: true,
       pageContext: false,
-      pageMarks: false,
       clientTools: false,
     });
     expect(ctx.messageCtx.sendsPageContext).toBe(false);
@@ -92,7 +89,6 @@ suite('WidgetCtx.features (server-enabled, embed-narrowed)', () => {
   test('org off + embed `true` → still off (never widens)', async () => {
     serverFeatures({});
     const ctx = await init({
-      enablePageMarks: true,
       features: {
         preamble: true,
         inlineUi: true,
@@ -105,7 +101,6 @@ suite('WidgetCtx.features (server-enabled, embed-narrowed)', () => {
       dictation: false,
       attachments: false,
       pageContext: false,
-      pageMarks: false,
       clientTools: false,
     });
   });
@@ -113,19 +108,10 @@ suite('WidgetCtx.features (server-enabled, embed-narrowed)', () => {
   test('each embed toggle narrows only its own feature', async () => {
     serverFeatures({ page_context: true, client_tools: true, dictation: true });
     const ctx = await init({
-      enablePageMarks: true,
       features: { pageContext: false },
     });
     expect(ctx.features.pageContext).toBe(false);
     expect(ctx.features.clientTools).toBe(true);
     expect(ctx.features.dictation).toBe(true);
-  });
-
-  test('page marks and client tools need the embed to opt in (enablePageMarks)', async () => {
-    serverFeatures({ page_context: true, client_tools: true });
-    const ctx = await init();
-    expect(ctx.features.pageContext).toBe(true);
-    expect(ctx.features.pageMarks).toBe(false);
-    expect(ctx.features.clientTools).toBe(false);
   });
 });

@@ -95,7 +95,6 @@ const fakeWidgetCtx = {
       dictation: false,
       attachments: true,
       pageContext: features.pageContext,
-      pageMarks: features.pageContext,
       clientTools: features.clientTools,
     };
   },

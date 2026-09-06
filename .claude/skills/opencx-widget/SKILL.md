@@ -23,7 +23,7 @@ Tooling packages `@opencx/tsconfig` and `@opencx/eslint-config` version independ
 - **Dependency direction**: core ← headless ← react ← embed. Core never imports React at runtime; react never reaches into headless internals — only the barrels.
 - **One log prefix**: `import { log } from '@opencx/widget-core'`; never `console.*` in library code. The widget runs inside customers' pages.
 - **One engine switch**: `widgetCtx.streaming` (server-decided from `/widget/v2/config` → `agent.streaming`). `ChatScreen` picks `AgentChatMain` or `ChatMain`; `MessageCtx.sendMessage` routes to the registered streaming handler or the blocking send. Do not add a second flag.
-- **Feature narrowing** (`packages/core/src/context/widget-agent.ts`): the org's effective features come from the backend; `config.features.*` can only switch one OFF. Read the resolved answers from `widgetCtx.features` (`dictation`, `attachments`, `pageContext`, `pageMarks`, `clientTools`), never the raw flags. `pageMarks`/`clientTools` also need the embed's `enablePageMarks` opt-in.
+- **Feature narrowing** (`packages/core/src/context/widget-agent.ts`): the org's effective features come from the backend; `config.features.*` can only switch one OFF. Read the resolved answers from `widgetCtx.features` (`dictation`, `attachments`, `pageContext`, `clientTools`), never the raw flags. An org switch alone turns a feature on for every embed; `enablePageMarks`-style opt-ins do not exist.
 - **Host context always rides**: `config.context` (object or function, resolved at send time) is sent with every message on both engines, as in v4. `features.pageContext` gates only the widget-made page context (page marks, picked elements) and its affordances.
 - **One wire body**: `buildSendMessageBody` in `message.ctx.ts` builds the request for both the blocking send and the stream. Both endpoints take `WidgetSendMessageInputDto`.
 - **Companion defaults live at the use site** with a matching `@default` in the `WidgetConfig` JSDoc — the repo convention (below), not a defaults table.
@@ -34,7 +34,7 @@ Tooling packages `@opencx/tsconfig` and `@opencx/eslint-config` version independ
 
 Follow the pattern of `accessibility.widgetTriggerButton.label`, `hooks.onMessageReceived`, `customComponents['message::after']`:
 
-1. Declare it ONCE in `packages/core/src/types/widget-config.ts` inside `WidgetConfig`, with a JSDoc that says what it does for the product and carries `@default`. Group related knobs under a noun (`router.*`, `companion.sidebar.*`, `features.*`); a single switch stays flat (`inline`, `enablePageMarks`).
+1. Declare it ONCE in `packages/core/src/types/widget-config.ts` inside `WidgetConfig`, with a JSDoc that says what it does for the product and carries `@default`. Group related knobs under a noun (`router.*`, `companion.sidebar.*`, `features.*`); a single switch stays flat (`inline`, `collectUserData`).
 2. Read it where it is used via `useConfig()` and apply the default there: `const label = accessibility?.widgetTriggerButton?.label ?? 'Chat with us'`. If core needs it, read `this.config` in the context that owns the behavior.
 3. Render slots go under `customComponents` and receive `{ react: typeof React, ...ComponentContext }` so host code renders with the widget's React. Lifecycle callbacks go under `hooks`. Replaceable internals go through the `components` prop keys (`LiteralWidgetComponentKey`).
 4. Test the behavior (a `*.spec.ts(x)` beside the code, in `__tests__/`), not the option's existence.
@@ -42,7 +42,7 @@ Follow the pattern of `accessibility.widgetTriggerButton.label`, `hooks.onMessag
 
 Before renaming or removing any public option or export, grep the dashboard in the
 sibling `opencx` repo (`dashboard/apps/dashboard/app`) — it consumes `displayMode`,
-`enablePageMarks`, `context`, `onUiAction`, `showStepToolIO`, `HostedSpecRenderer`,
+`context`, `onUiAction`, `showStepToolIO`, `HostedSpecRenderer`,
 `segmentContent`, and `customComponents['message::after']`.
 
 ## Adding a translation key

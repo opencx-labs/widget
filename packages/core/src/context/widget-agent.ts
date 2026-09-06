@@ -87,37 +87,29 @@ export function resolveClientFeatures(
   /** The composer offers the attachment/upload affordance. */
   attachments: boolean;
   /**
-   * Widget-made page context (page marks, picked elements) rides along with
-   * each message. The host's own `config.context` is unaffected — it always
-   * rides along, as it did in v4.
+   * The visitor can mark the page (the composer's page-mark button) and the
+   * widget's own page context rides along with each message. The host's
+   * `config.context` is unaffected — it always rides along, as it did in v4.
    */
   pageContext: boolean;
   /**
-   * The composer offers the page-mark button. Needs the embed's opt-in
-   * (`enablePageMarks`) on top of the org's page-context feature.
-   */
-  pageMarks: boolean;
-  /**
    * The widget performs the agent's client tools (highlight an element on
-   * the host page). Same opt-in as page marks — a plain chat popover never
-   * touches the host page.
+   * the host page).
    */
   clientTools: boolean;
 } {
   const toggles = config.features;
-  const pageContext = narrowFeature(
-    agent.features.pageContext,
-    toggles?.pageContext,
-  );
-  const pageMarksOptIn = config.enablePageMarks === true;
   return {
     dictation: narrowFeature(agent.features.dictation, toggles?.dictation),
     attachments: agent.features.attachments,
-    pageContext,
-    pageMarks: pageMarksOptIn && pageContext,
-    clientTools:
-      pageMarksOptIn &&
-      narrowFeature(agent.features.clientTools, toggles?.clientTools),
+    pageContext: narrowFeature(
+      agent.features.pageContext,
+      toggles?.pageContext,
+    ),
+    clientTools: narrowFeature(
+      agent.features.clientTools,
+      toggles?.clientTools,
+    ),
   };
 }
 

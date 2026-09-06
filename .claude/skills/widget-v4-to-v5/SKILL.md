@@ -33,7 +33,7 @@ on `zod` v4 (they used v3); nothing changes unless you pinned zod v3 through the
 | `WidgetUserMessage.deliveredAt` was removed; `pending?` and `markedElements?` were added. | `customComponents['message::after']`, `components` overrides, headless consumers reading user messages. | Use `timestamp` (same instant). Type-only change. |
 | A failed initialization renders nothing instead of leaving the loading state mounted. | Everyone. | Optional: pass `errorComponent={(error) => …}` to `Widget` / `WidgetProvider` to show your own failure surface. Nothing is thrown into your React tree. |
 | The composer card has a hairline border and follows the theme background; the popover opens with a short spring; OS reduced-motion is honored. | Pixel-level `cssOverrides` on the composer. | Re-check `[data-component="chat/input_box/*"]` overrides. |
-| Streaming needs a backend that returns the `agent` block from `/widget/v2/config`. | Self-hosted or pinned backends. | Against an older backend the widget runs the classic engine exactly as v4. Upgrade the backend to stream. |
+| Streaming, dictation, page marks and highlights are switched on per organization in the dashboard and need a backend that returns the `agent` block from `/widget/v2/config`; an embed can only switch them off (`features.*`). | Self-hosted or pinned backends. | Against an older backend the widget runs the classic engine exactly as v4. Upgrade the backend to stream. |
 | Sessions list: the AI assignee's name/avatar default to the organization's agent branding from the backend (was the literal "AI Support Agent"). | Embeds without `bot.name`. | Set `bot: { name, avatarUrl }` to override, as before. |
 
 Not breaking, but new defaults worth knowing: `bot.avatarUrl` now defaults to the
@@ -77,8 +77,8 @@ initOpenScript({
     entity: { type: 'order', id: currentOrder.id, title: `#${currentOrder.number}` },
     plan: 'pro',
   }),
-  // The visitor can mark anything on the page; the agent can point back at it.
-  enablePageMarks: true,
+  // Page marks and highlights follow the organization's switches; this only
+  // tunes how long an agent highlight stays.
   pageMarkHighlightDurationMs: 8000,
   router: { restoreLastSession: true },
 });

@@ -167,7 +167,6 @@ describe('WidgetProvider agent-chat ownership', () => {
         dictation: false,
         attachments: true,
         pageContext: true,
-        pageMarks: true,
         clientTools: true,
       },
     } as unknown as WidgetCtx;

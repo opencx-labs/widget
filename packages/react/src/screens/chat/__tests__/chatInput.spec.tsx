@@ -17,7 +17,6 @@ let dictationEnabled = false;
 let dictationError: 'microphone' | 'unavailable' | null = null;
 let isStreaming = false;
 let queuedUserMessages: Array<{ id: string; content: string }> = [];
-let enablePageMarks = true;
 /** `WidgetCtx.features`: the org's features narrowed by the embed. */
 let canAttach = true;
 let sendsPageContext = true;
@@ -51,7 +50,7 @@ vi.mock('@opencx/widget-react-headless', () => ({
     // have none, so the input renders as before.
     pendingClarification: null,
   }),
-  useConfig: () => ({ enablePageMarks, context: configContext }),
+  useConfig: () => ({ context: configContext }),
   useDictation: () => ({
     enabled: dictationEnabled,
     status: 'idle',
@@ -85,7 +84,6 @@ vi.mock('@opencx/widget-react-headless', () => ({
         dictation: dictationEnabled,
         attachments: canAttach,
         pageContext: sendsPageContext,
-        pageMarks: enablePageMarks && sendsPageContext,
         clientTools: false,
       },
       messageCtx: { blocksSendWhileAwaitingReply: false },
@@ -220,7 +218,6 @@ describe('ChatInput send acceptance', () => {
     vi.resetAllMocks();
     isStreaming = false;
     queuedUserMessages = [];
-    enablePageMarks = true;
     canAttach = true;
     sendsPageContext = true;
     dictationEnabled = false;

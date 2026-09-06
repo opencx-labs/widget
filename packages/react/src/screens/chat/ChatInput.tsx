@@ -94,7 +94,7 @@ export function ChatInput({
   const { widgetCtx, componentStore } = useWidget();
   // Org features narrowed by the embed: no attachments → no paperclip, no
   // drop, no paste; no page marks → no mark button.
-  const { attachments: canAttach, pageMarks: pageMarksEnabled } =
+  const { attachments: canAttach, pageContext: pageMarksEnabled } =
     widgetCtx.features;
   // Agent-chat streaming state — no-op defaults for bot-chat embeds.
   const { isStreaming, stop, queuedUserMessages, pendingClarification } =

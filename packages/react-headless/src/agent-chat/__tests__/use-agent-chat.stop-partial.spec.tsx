@@ -148,7 +148,6 @@ const fakeWidgetCtx = {
     dictation: false,
     attachments: true,
     pageContext: true,
-    pageMarks: true,
     clientTools: true,
   },
 } as unknown as WidgetCtx;

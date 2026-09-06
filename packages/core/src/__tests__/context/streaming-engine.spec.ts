@@ -78,9 +78,7 @@ suite('streaming engine selection (server-decided)', () => {
         agent: undefined as never,
       },
     });
-    const widgetCtx = await WidgetCtx.initialize({
-      config: { token: '', enablePageMarks: true },
-    });
+    const widgetCtx = await WidgetCtx.initialize({ config: { token: '' } });
 
     expect(widgetCtx.agent).toEqual({
       name: 'Org One',
@@ -95,7 +93,7 @@ suite('streaming engine selection (server-decided)', () => {
     });
     expect(widgetCtx.streaming).toBe(false);
     expect(widgetCtx.features.attachments).toBe(true);
-    expect(widgetCtx.features.pageMarks).toBe(false);
+    expect(widgetCtx.features.pageContext).toBe(false);
   });
 
   test('a failed config fetch surfaces as a coded initialization error', async () => {
