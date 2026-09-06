@@ -1,0 +1,34 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "payla",
+  "main": "worker/index.ts",
+  "compatibility_date": "2025-04-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  // Static SPA assets (built by Vite to ./dist/client). Anything under /api/* runs
+  // the Worker first; everything else is served as a single-page app (index.html fallback).
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./dist/client",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api", "/api/*", "/openapi.json", "/health"],
+  },
+  // Local-only demo: served by the Vite Cloudflare plugin with a local (miniflare) D1.
+  // The database_id is only used for a remote deploy, which this demo does not do.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "payla",
+      "database_id": "local",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "vars": {
+    // Merchant identity shown in the dashboard + returned by the API/actions.
+    "MERCHANT_NAME": "Mo's Coffee Roasters",
+    "MERCHANT_ID": "org_payla_demo",
+    // When set, write actions (refunds, payment links) require this bearer token.
+    // Left empty to keep the local demo open.
+    "PAYLA_API_KEY": "",
+  },
+}
