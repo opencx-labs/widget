@@ -384,8 +384,11 @@ export function ChatInput({
           floating above it. The tray only exists when something is attached —
           with nothing to show it collapses to the bare composer, unchanged.
 
-          Concentric radii by calc so the two frames can never drift: the
-          tray's radius is the composer's plus the tray padding. `ps-3` puts
+          Concentric radii by calc so no frame can drift from the one outside
+          it: the composer's radius is the SHELL's minus this root's padding
+          (`--opencx-shell-radius` − 8px, floored at 12px so a square-cornered
+          small-screen shell still gets a soft card), and the tray's is the
+          composer's plus the tray padding. `ps-3` puts
           the context title on the composer's TEXT inset (4px tray + 12px =
           the composer's 8px padding + the textarea's 8px), not on its edge.
 
@@ -395,7 +398,11 @@ export function ChatInput({
       <div
         {...dc('chat/input_box/attached_context_tray')}
         style={
-          { '--cx-r': '1.5rem', '--cx-p': '0.25rem' } as React.CSSProperties
+          {
+            '--cx-r':
+              'max(0.75rem, calc(var(--opencx-shell-radius, 2rem) - 0.5rem))',
+            '--cx-p': '0.25rem',
+          } as React.CSSProperties
         }
         className={cn(
           'flex flex-col',
@@ -468,7 +475,7 @@ export function ChatInput({
             // "keyboard-only" ring on a textarea is the same always-on ring by
             // another name. A text field already indicates focus — the caret.
             'border border-border',
-            'relative rounded-3xl flex flex-col gap-2 p-2',
+            'relative rounded-[var(--cx-r)] flex flex-col gap-2 p-2',
           )}
         >
           <div

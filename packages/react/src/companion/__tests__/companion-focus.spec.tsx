@@ -79,6 +79,7 @@ describe('companion composer focus', () => {
         <CompanionContent
           state={state}
           layout="compact"
+          shellRadius={20}
           onMinimize={() => {}}
           onDismiss={() => {}}
           onToggleFullscreen={() => {}}

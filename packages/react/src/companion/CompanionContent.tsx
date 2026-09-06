@@ -94,6 +94,7 @@ const companionLayoutOverrides = `
 export function CompanionContent({
   state,
   layout,
+  shellRadius,
   onMinimize,
   onDismiss,
   onToggleFullscreen,
@@ -107,6 +108,8 @@ export function CompanionContent({
 }: {
   state: 'input' | 'chat';
   layout: WidgetCompanionLayoutU;
+  /** The panel's current corner radius in px — nested corners follow it. */
+  shellRadius: number;
   /** Quick-ask composer placeholder (e.g. "Follow up…" while continuing) */
   placeholder: string;
   /** Hide attach + page-mark tools on the quick-ask composer (default UX:
@@ -212,7 +215,11 @@ export function CompanionContent({
   }, [state]);
 
   return (
-    <FrameDocument overrides={overrides} rootRef={rootRef}>
+    <FrameDocument
+      overrides={overrides}
+      rootRef={rootRef}
+      shellRadius={`${shellRadius}px`}
+    >
       {/* Exactly ONE pane is mounted at a time. A hidden-but-mounted
           chat screen runs focus/measure logic against display:none
           elements, which can spin into update loops the moment it is

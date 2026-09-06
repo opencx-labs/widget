@@ -695,6 +695,7 @@ export function WidgetCompanion() {
                 <CompanionContent
                   state={state === 'chat' ? 'chat' : 'input'}
                   layout={panelLayout}
+                  shellRadius={currentDims.borderRadius}
                   onMinimize={closePanel}
                   onDismiss={dismissPanel}
                   onToggleFullscreen={handleToggleFullscreen}

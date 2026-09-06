@@ -49,17 +49,29 @@ export function FrameDocument({
   overrides,
   rootRef,
   style,
+  shellRadius,
   children,
 }: {
   /** Mode-specific restyle of the stock screens; `cssOverrides` inject after */
   overrides?: string;
   rootRef?: React.Ref<HTMLDivElement>;
   style?: React.CSSProperties;
+  /**
+   * The outer corner radius of the shell this document fills, as a CSS
+   * length. Nested surfaces (the composer card) derive their own radius from
+   * it so corners stay concentric: inner = outer − the gap between the edges.
+   * @default the popover container's radius
+   */
+  shellRadius?: string;
   children: React.ReactNode;
 }) {
   const { cssOverrides } = useConfig();
-  const { cssVars } = useTheme();
+  const { cssVars, theme } = useTheme();
   const { dir } = useTranslation();
+  const shellRadiusVar = {
+    ['--opencx-shell-radius' as string]:
+      shellRadius ?? theme.widgetContentContainer.borderRadius,
+  };
 
   return (
     <>
@@ -67,7 +79,7 @@ export function FrameDocument({
       {cssOverrides ? <style>{cssOverrides}</style> : null}
       <div
         ref={rootRef}
-        style={{ ...cssVars, ...style }}
+        style={{ ...cssVars, ...shellRadiusVar, ...style }}
         data-version={version}
         dir={dir}
         className={cn(

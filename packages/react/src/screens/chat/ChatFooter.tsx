@@ -46,7 +46,9 @@ function SessionClosedSection() {
 
   return (
     <div className="p-2">
-      <div className="p-2 bg-muted rounded-3xl">
+      {/* Same concentric rule as the composer: the shell's radius minus this
+          section's 8px padding. */}
+      <div className="p-2 bg-muted rounded-[max(0.75rem,calc(var(--opencx-shell-radius,2rem)-0.5rem))]">
         <AnimatePresence mode="wait">
           {isCsatRequested || isCsatSubmitted ? (
             <MotionDiv__VerticalReveal key="csat">
