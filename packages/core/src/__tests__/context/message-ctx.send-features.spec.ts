@@ -128,6 +128,24 @@ suite('MessageCtx bot-chat send — features on the wire', () => {
     return Object.fromEntries(Object.entries(parsed));
   };
 
+  test('declares renderer support only when the client configured it', async () => {
+    for (const structuredQuestions of [true, false, undefined]) {
+      requests = [];
+      const messageCtx = buildCtx({
+        token: 'tok',
+        capabilities: { structuredQuestions },
+      });
+      await messageCtx.sendMessage({ content: 'hello' });
+      if (structuredQuestions === undefined) {
+        expect(lastSendBody()).not.toHaveProperty('capabilities');
+      } else {
+        expect(lastSendBody().capabilities).toEqual({
+          structured_questions: structuredQuestions,
+        });
+      }
+    }
+  });
+
   test('sends `features` snake_cased when configured', async () => {
     const messageCtx = buildCtx({
       token: 'tok',

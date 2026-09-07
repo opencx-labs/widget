@@ -198,6 +198,10 @@ export const buildSendMessageBody = ({
   ...mergeSendContext(config, input, { sendsPageContext }),
   language: config.language,
   features: resolveSendFeatures(config),
+  capabilities:
+    config.capabilities?.structuredQuestions === undefined
+      ? undefined
+      : { structured_questions: config.capabilities.structuredQuestions },
   exit_mode_prompt: input.exitModePrompt,
   initial_messages:
     initialMessages.length > 0

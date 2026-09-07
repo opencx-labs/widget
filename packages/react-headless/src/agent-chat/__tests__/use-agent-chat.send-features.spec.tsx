@@ -1,3 +1,4 @@
+import type { ChatStatus } from 'ai';
 import type {
   SendMessageInput,
   StagedUserTurn,
@@ -15,10 +16,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  * the same wire body the blocking engine sends (`buildSendMessageBody`).
  */
 
+const chatState = vi.hoisted((): { status: ChatStatus } => ({
+  status: 'ready',
+}));
 const sendMessageSpy = vi.fn();
 vi.mock('@ai-sdk/react', () => ({
   useChat: () => ({
-    status: 'ready',
+    status: chatState.status,
     messages: [],
     sendMessage: sendMessageSpy,
     stop: vi.fn(),
@@ -93,6 +97,7 @@ describe('useAgentChat stream body — features', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    chatState.status = 'ready';
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -118,6 +123,25 @@ describe('useAgentChat stream body — features', () => {
     expect(sendMessageSpy).toHaveBeenCalledTimes(1);
     return sendMessageSpy.mock.calls[0]?.[1]?.body;
   }
+
+  it('defaults headless clients to no question renderer and rereads support on every send', async () => {
+    let config: WidgetConfig = { token: 't' };
+    const undeclared = await bodyFor(config);
+    expect(undeclared.capabilities).toBeUndefined();
+    for (const structuredQuestions of [true, false]) {
+      // Complete the preceding stream so the next send starts a new turn.
+      for (const status of ['streaming', 'ready'] as const) {
+        chatState.status = status;
+        await act(async () => root.render(<Probe config={config} />));
+      }
+      sendMessageSpy.mockClear();
+      config = { token: 't', capabilities: { structuredQuestions } };
+      const body = await bodyFor(config);
+      expect(body.capabilities).toEqual({
+        structured_questions: structuredQuestions,
+      });
+    }
+  });
 
   it('sends `features` snake_cased when configured', async () => {
     const body = await bodyFor({
