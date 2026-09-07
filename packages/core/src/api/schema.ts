@@ -903,7 +903,11 @@ export interface components {
       clientContext?: {
         [key: string]: unknown;
       } | null;
-      /** @description Per-embed feature narrowing: each flag can only switch OFF a feature the organization enabled for its agent (preamble = a heads-up line before tool work; inline_ui = inline rendered components in replies; page_context = the agent sees the page context sent with the message; client_tools = the agent may act on the page). Absent = the organization settings apply. */
+      /** @description What the receiving client can render. Set structured_questions to true only when it renders selectable questions from the streaming response. Missing or false disables the structured question tool; this never enables an organization feature. */
+      capabilities?: {
+        structured_questions?: boolean;
+      } | null;
+      /** @description Per-embed feature narrowing: each flag can only switch OFF a feature the organization enabled for its agent (preamble = progress updates before and during longer tasks; inline_ui = inline rendered components in replies; page_context = the agent sees the page context sent with the message; client_tools = the agent may act on the page). Absent = the organization settings apply. */
       features?: {
         preamble?: boolean;
         inline_ui?: boolean;
@@ -997,6 +1001,9 @@ export interface components {
       | 'ai_assumed_the_session_resolved'
       | 'ai_decided_to_not_reply'
       | 'ai_decided_to_resolve_the_issue'
+      | 'ai_follow_up_cancelled'
+      | 'ai_follow_up_fired'
+      | 'ai_follow_up_scheduled'
       | 'ai_reopened_session'
       | 'ai_response_cancelled'
       | 'ai_resumed_by_system'
@@ -1018,6 +1025,7 @@ export interface components {
       | 'email_draft_message'
       | 'handoff'
       | 'handoff_to_salesforce_miaw'
+      | 'handoff_to_third_party_failed'
       | 'handoff_to_zendesk'
       | 'integration_reopened_session'
       | 'message'
@@ -1263,7 +1271,9 @@ export interface components {
             | 'skipping_unuseful_response'
             | 'duplicate_message_ignored'
             | 'ai_response_skipped_by_workflow'
-            | 'ai_skipped_spam';
+            | 'ai_skipped_spam'
+            | 'steered_into_live_turn'
+            | 'session_busy';
           autopilotResponse?: {
             /** @constant */
             type: 'text';

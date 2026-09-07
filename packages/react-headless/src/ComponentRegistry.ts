@@ -19,10 +19,11 @@ export class ComponentRegistry {
     }
   }
 
-  // TODO test that this registers or replaces the component
   register(component: WidgetComponentType) {
-    // Replace the key if it already exists
-    const index = this.components.findIndex((c) => c.key === component.key);
+    // Use the same key matching as lookup so the latest renderer is selected.
+    const index = this.components.findIndex(
+      (c) => c.key.toUpperCase() === component.key.toUpperCase(),
+    );
     if (index !== -1) {
       this.components[index] = component;
     } else {

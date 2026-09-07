@@ -80,12 +80,14 @@ export class WidgetCtx {
   private constructor({
     config,
     storage,
+    getClientCapabilities,
     modes,
     org,
     agent,
   }: {
     config: WidgetConfig;
     storage?: ExternalStorage;
+    getClientCapabilities?: () => WidgetConfig['capabilities'];
     modes: ModeDto[];
     org: {
       id: string;
@@ -132,6 +134,7 @@ export class WidgetCtx {
       // the blocking bot-chat send.
       streaming: this.streaming,
       sendsPageContext: this.features.pageContext,
+      getClientCapabilities,
     });
 
     this.csatCtx = new CsatCtx({
@@ -164,9 +167,11 @@ export class WidgetCtx {
   static initialize = async ({
     config,
     storage,
+    getClientCapabilities,
   }: {
     config: WidgetConfig;
     storage?: ExternalStorage;
+    getClientCapabilities?: () => WidgetConfig['capabilities'];
   }) => {
     const externalConfig = await new ApiCaller({
       config,
@@ -190,6 +195,7 @@ export class WidgetCtx {
     return new WidgetCtx({
       config,
       storage,
+      getClientCapabilities,
       modes: externalConfig.data.modes || [],
       org: {
         id: externalConfig.data.org.id,

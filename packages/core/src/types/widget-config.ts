@@ -374,6 +374,16 @@ export interface WidgetConfig {
    */
   token: string;
 
+  capabilities?: {
+    /**
+     * Whether this client renders selectable question parts and submits answers.
+     * The built-in Widget declares support for its default question renderer.
+     * Headless clients must explicitly declare support after implementing it.
+     * This does not enable the organization's feature. Omitted means unsupported.
+     */
+    structuredQuestions?: boolean;
+  };
+
   /**
    * Per-embed feature toggles. Each one can only NARROW what your
    * organization enabled server-side — `true` (or omitted) leaves the org

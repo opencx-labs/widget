@@ -198,6 +198,10 @@ export const buildSendMessageBody = ({
   ...mergeSendContext(config, input, { sendsPageContext }),
   language: config.language,
   features: resolveSendFeatures(config),
+  capabilities:
+    config.capabilities?.structuredQuestions === undefined
+      ? undefined
+      : { structured_questions: config.capabilities.structuredQuestions },
   exit_mode_prompt: input.exitModePrompt,
   initial_messages:
     initialMessages.length > 0
@@ -216,6 +220,7 @@ type MessageCtxState = {
 
 export class MessageCtx {
   private config: WidgetConfig;
+  private readonly getClientCapabilities: () => WidgetConfig['capabilities'];
   private api: ApiCaller;
   private contactCtx: ContactCtx;
   private sessionCtx: SessionCtx;
@@ -272,6 +277,7 @@ export class MessageCtx {
     contactCtx,
     streaming,
     sendsPageContext,
+    getClientCapabilities,
   }: {
     config: WidgetConfig;
     api: ApiCaller;
@@ -279,8 +285,12 @@ export class MessageCtx {
     contactCtx: ContactCtx;
     streaming: boolean;
     sendsPageContext: boolean;
+    /** Read renderer support at send time; React options may change after initialization. */
+    getClientCapabilities?: () => WidgetConfig['capabilities'];
   }) {
     this.config = config;
+    this.getClientCapabilities =
+      getClientCapabilities ?? (() => this.config.capabilities);
     this.api = api;
     this.sessionCtx = sessionCtx;
     this.contactCtx = contactCtx;
@@ -657,7 +667,10 @@ export class MessageCtx {
       /* ------------------------------------------------------ */
       const { data } = await this.api.sendMessage(
         buildSendMessageBody({
-          config: this.config,
+          config: {
+            ...this.config,
+            capabilities: this.getClientCapabilities(),
+          },
           input,
           uuid: userMessage.id,
           sessionId,

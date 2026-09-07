@@ -136,7 +136,17 @@ const Widget = React.forwardRef<
     <MotionConfig reducedMotion="user">
       <WidgetProvider
         components={[...defaultComponents, ...components]}
-        options={options}
+        options={{
+          ...options,
+          capabilities: {
+            ...options.capabilities,
+            structuredQuestions:
+              options.capabilities?.structuredQuestions ??
+              !components.some(
+                ({ key }) => key.toUpperCase() === 'AGENT_CHAT_QUESTIONS',
+              ),
+          },
+        }}
         storage={storage}
         loadingComponent={loadingComponent}
         errorComponent={errorComponent}
