@@ -142,7 +142,9 @@ const Widget = React.forwardRef<
             ...options.capabilities,
             structuredQuestions:
               options.capabilities?.structuredQuestions ??
-              !components.some(({ key }) => key === 'agent_chat_questions'),
+              !components.some(
+                ({ key }) => key.toUpperCase() === 'AGENT_CHAT_QUESTIONS',
+              ),
           },
         }}
         storage={storage}

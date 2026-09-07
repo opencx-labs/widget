@@ -53,6 +53,8 @@ export function WidgetProvider({
    */
   errorComponent?: (error: Error) => React.ReactNode;
 }): React.ReactElement | null {
+  const configRef = useRef(config);
+  configRef.current = config;
   const contentIframeRef = useRef<HTMLIFrameElement | null>(null);
   const initializationRef = useRef<Promise<WidgetCtx> | null>(null);
   const [initialization, setInitialization] = useState<
@@ -72,7 +74,11 @@ export function WidgetProvider({
   useEffect(() => {
     const request =
       initializationRef.current ??
-      (initializationRef.current = WidgetCtx.initialize({ config, storage }));
+      (initializationRef.current = WidgetCtx.initialize({
+        config,
+        storage,
+        getClientCapabilities: () => configRef.current.capabilities,
+      }));
     let active = true;
     void request.then(
       (widgetCtx) => {

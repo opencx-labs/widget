@@ -18,6 +18,28 @@ vi.mock('@opencx/widget-react-headless', async (importOriginal) => ({
 import { Widget } from '../index';
 
 describe('Widget receiving question renderer', () => {
+  it('recognizes custom question keys regardless of casing', () => {
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    try {
+      act(() => root.render(<Widget options={{ token: 't' }} />));
+      expect(captured.options?.capabilities?.structuredQuestions).toBe(true);
+      act(() =>
+        root.render(
+          <Widget
+            options={{ token: 't' }}
+            components={[
+              { key: 'AGENT_CHAT_QUESTIONS', component: () => null },
+            ]}
+          />,
+        ),
+      );
+      expect(captured.options?.capabilities?.structuredQuestions).toBe(false);
+    } finally {
+      act(() => root.unmount());
+    }
+  });
+
   it('declares the default renderer, respects opt-outs, and requires custom renderers to opt in', () => {
     const container = document.createElement('div');
     const root = createRoot(container);
