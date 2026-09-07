@@ -1,5 +1,13 @@
 # @opencx/widget-react-headless
 
+## 5.0.0-beta.1
+
+### Patch Changes
+
+- 305e0ab: Declare support for selectable questions on each request. The built-in widget declares support automatically; headless clients and custom question components declare support with `capabilities.structuredQuestions` after implementing question rendering and answer submission.
+- Updated dependencies [305e0ab]
+  - @opencx/widget-core@5.0.0-beta.1
+
 ## 5.0.0-beta.0
 
 ### Major Changes
@@ -11,6 +19,7 @@
   - The streaming engine, selected by the backend per org: replies stream live with a steps trace and inline rendered UI, can be stopped mid-reply, queue messages sent mid-turn, steer a follow-up into the live turn, retry a failed turn, reconnect after a disconnect, and re-render settled turns faithfully after a reload.
   - `features`: per-embed toggles (`preamble`, `inlineUi`, `dictation`, `pageContext`, `clientTools`) that can only narrow what the organization enabled.
   - `context` accepts a function, resolved at every send, and two well-known keys — `page` and `entity` — the agent reads as "here" and "this"; the entity shows as a removable pill in the composer.
+
 - `context` as a function now also drives the composer's entity pill live: the widget re-reads it on host navigation (`popstate`, `hashchange`, silent `pushState`) and on a host-fired `opencx:context-changed` event.
 - `mentions.search`: the visitor types `@` and picks from the host's own items; the menu opens beside the `@`, grouped by type with a preview card (`mentions.preview`); each rides the send as `clientContext.mentions` and lives in the text as one highlighted `@Title` unit (caret skips it, Backspace removes it whole), in the composer and the sent bubble.
   - Page marks (+ `pageMarkHighlightDurationMs`): when the organization enables it, the visitor marks anything on the host page and the agent can point back at it; an embed opts out with `features.pageContext: false` / `features.clientTools: false`.
