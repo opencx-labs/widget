@@ -120,6 +120,7 @@ const fakeApi = {
 };
 
 const fakeWidgetCtx = {
+  agent: {},
   api: fakeApi,
   messageCtx: fakeMessageCtx,
   reconcileAfterStream: fakeReconcileAfterStream,

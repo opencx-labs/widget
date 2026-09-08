@@ -15,6 +15,8 @@ export type WidgetAgent = {
    * means the classic blocking send.
    */
   streaming: boolean;
+  /** Optional on older backends; controls the maximum visible tool detail. */
+  presentation?: Dto['WidgetPresentationDto'];
   /** The org's EFFECTIVE features (entitlements already applied). */
   features: {
     dictation: boolean;
@@ -29,10 +31,8 @@ type ServerAgent = Dto['WidgetAgentDto'];
 /**
  * snake_case (backend DTO) → camelCase (widget types) at the boundary.
  *
- * A backend that predates widget v5 — OpenCX main today, until the companion
- * service lands there — returns no `agent` block at all. That is the classic
- * widget: blocking send, attachments on, nothing page-aware — the exact v4
- * behavior, so an embed upgraded ahead of its backend keeps working.
+ * A backend that predates widget v5 returns no `agent` block. Preserve its
+ * blocking send and attachment support when an embed is upgraded first.
  */
 export function resolveWidgetAgent({
   org,
@@ -58,6 +58,7 @@ export function resolveWidgetAgent({
     name: agent.name,
     avatarUrl: agent.avatar_url,
     streaming: agent.streaming,
+    ...(agent.presentation ? { presentation: agent.presentation } : {}),
     features: {
       dictation: agent.features.dictation,
       attachments: agent.features.attachments,

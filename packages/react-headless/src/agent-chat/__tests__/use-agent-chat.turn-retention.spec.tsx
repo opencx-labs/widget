@@ -1,6 +1,7 @@
 import type {
   AgentTurnMessagesDto,
   WidgetConfig,
+  WidgetAgent,
   SendMessageInput,
   StagedUserTurn,
   WidgetCtx,
@@ -122,7 +123,13 @@ function registeredSend(): (input: SendMessageInput) => Promise<void> | void {
 
 // Stable, module-level widgetCtx — the production `WidgetCtx.api` is created
 // once, and the hook's effects rightly assume a stable identity.
+let orgPresentation: WidgetAgent['presentation'];
 const fakeWidgetCtx = {
+  agent: {
+    get presentation() {
+      return orgPresentation;
+    },
+  },
   api: {
     getStreamTransportOptions: () => ({
       api: 'http://test/chat',
@@ -195,6 +202,7 @@ describe('useAgentChat turn retention', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    orgPresentation = undefined;
     getAgentTurnMessages.mockImplementation(async () => null);
     container = document.createElement('div');
     document.body.appendChild(container);
@@ -208,6 +216,67 @@ describe('useAgentChat turn retention', () => {
   afterEach(() => {
     act(() => root.unmount());
     container.remove();
+  });
+
+  it('applies org limits to live and retained activity when the embed requests details', async () => {
+    const presentation = { toolActivity: 'details', reasoning: true } as const;
+    orgPresentation = { streaming: true, ...presentation };
+    await act(async () => root.render(<Probe presentation={presentation} />));
+    await act(async () => {
+      await registeredSend()({ content: 'hey' });
+    });
+    const messages = [
+      {
+        role: 'assistant',
+        parts: [
+          ...ASSISTANT_PARTS,
+          {
+            type: 'data-turn-settled',
+            data: { turn_id: 'T1', message_uuids: ['r-a1'] },
+          },
+          { type: 'reasoning', text: 'reasoning-canary', state: 'done' },
+        ],
+      },
+    ];
+    await act(async () => {
+      setTranscript([{ id: 'u1', type: 'USER' }]);
+      setChatState({ status: 'streaming', messages });
+    });
+    expect(JSON.stringify(hookValue?.liveItems)).toContain('"count":42');
+    expect(JSON.stringify(hookValue?.liveItems)).toContain('reasoning-canary');
+    orgPresentation = {
+      streaming: true,
+      toolActivity: 'status',
+      reasoning: false,
+    };
+    await act(async () => root.render(<Probe presentation={presentation} />));
+    expect(JSON.stringify(hookValue?.liveItems)).toContain('count_sessions');
+    expect(JSON.stringify(hookValue?.liveItems)).not.toContain('"count":42');
+    expect(JSON.stringify(hookValue?.liveItems)).not.toContain(
+      'reasoning-canary',
+    );
+    await act(async () => setChatState({ status: 'ready', messages }));
+    await act(async () =>
+      setTranscript([
+        { id: 'u1', type: 'USER' },
+        { id: 'r-a1', type: 'AI' },
+      ]),
+    );
+    expect(hookValue?.turnSources).toHaveLength(1);
+    expect(JSON.stringify(hookValue?.turnSources)).toContain('count_sessions');
+    expect(JSON.stringify(hookValue?.turnSources)).not.toContain('"count":42');
+    expect(JSON.stringify(hookValue?.turnSources)).not.toContain(
+      'reasoning-canary',
+    );
+    // Local narrowing preserves the source. History requests carry only embed
+    // limits so the backend can apply the org's current settings.
+    orgPresentation = { streaming: true, ...presentation };
+    await act(async () => root.render(<Probe presentation={presentation} />));
+    expect(JSON.stringify(hookValue?.turnSources)).toContain('"count":42');
+    expect(getAgentTurnMessages).toHaveBeenLastCalledWith(
+      'sess-1',
+      presentation,
+    );
   });
 
   it('retains the streamed message synchronously from the terminal turn-identity part', async () => {

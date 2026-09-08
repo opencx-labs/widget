@@ -8,13 +8,10 @@ import {
   useMessages,
   useWidget,
 } from '@opencx/widget-react-headless';
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { SessionResolvedComponent } from '../../components/custom-components/SessionResolvedComponent';
 import { dc } from '../../utils/data-component';
-import {
-  groupMessagesByType,
-  isBotMessageGroup,
-} from '../../utils/group-messages-by-type';
+import { groupMessagesByType } from '../../utils/group-messages-by-type';
 import { ChatBannerItems } from './ChatBannerItems';
 import { ChatCustomStatus } from './ChatCustomStatus';
 import { InitialMessages } from './InitialMessages';
@@ -34,16 +31,27 @@ export function ChatMain() {
     [messages],
   );
 
-  // While the blocking send awaits its reply, an AI group polled in early
-  // must not render above the typing indicator — it would double-render the
-  // reply when the send resolves.
-  const visibleGroups = useMemo(() => {
-    const last = groupedMessages.at(-1);
-    if (isAwaitingBotReply && last && isBotMessageGroup(last)) {
-      return groupedMessages.slice(0, -1);
+  const lastMessage = messages.at(-1);
+  const lastMessageId = lastMessage?.id;
+  const lastMessageType = lastMessage?.type;
+  const previousMessageId = useRef(lastMessageId);
+  const [typingPaused, setTypingPaused] = useState(false);
+  const showTypingIndicator = isAwaitingBotReply && !typingPaused;
+
+  useEffect(() => {
+    const receivedMessage = previousMessageId.current !== lastMessageId;
+    previousMessageId.current = lastMessageId;
+    if (!isAwaitingBotReply || lastMessageType !== 'AI') {
+      setTypingPaused(false);
+      return;
     }
-    return groupedMessages;
-  }, [groupedMessages, isAwaitingBotReply]);
+    if (!receivedMessage) return;
+
+    // Let each completed update land before showing that more is coming.
+    setTypingPaused(true);
+    const resumeTyping = setTimeout(() => setTypingPaused(false), 600);
+    return () => clearTimeout(resumeTyping);
+  }, [isAwaitingBotReply, lastMessageId, lastMessageType]);
 
   const LoadingComponent = componentStore.getComponent(
     'loading' satisfies SafeExtract<LiteralWidgetComponentKey, 'loading'>,
@@ -64,7 +72,7 @@ export function ChatMain() {
 
   useEffect(() => {
     handleNewMessage();
-  }, [messages]);
+  }, [messages, showTypingIndicator]);
 
   return (
     <div
@@ -76,10 +84,13 @@ export function ChatMain() {
       <ChatBannerItems />
       <InitialMessages />
 
-      <MessageGroups groups={visibleGroups} />
+      <MessageGroups
+        groups={groupedMessages}
+        pendingReply={isAwaitingBotReply}
+      />
 
       {/* Typing indicator while awaiting the (blocking) bot reply. */}
-      {isAwaitingBotReply && LoadingComponent && (
+      {showTypingIndicator && LoadingComponent && (
         <LoadingComponent agent={bot} />
       )}
 

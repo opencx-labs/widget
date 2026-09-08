@@ -12,9 +12,21 @@ Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
  */
 
 let showStepToolIO: boolean | undefined;
+let orgActivity: 'hidden' | 'status' | 'details' | undefined;
+let clientActivity: 'hidden' | 'status' | 'details' | undefined;
 
 vi.mock('@opencx/widget-react-headless', () => ({
-  useConfig: () => ({ showStepToolIO }),
+  useConfig: () => ({
+    showStepToolIO,
+    presentation: { toolActivity: clientActivity },
+  }),
+  useWidget: () => ({
+    widgetCtx: {
+      agent: {
+        presentation: orgActivity ? { toolActivity: orgActivity } : undefined,
+      },
+    },
+  }),
 }));
 
 vi.mock('../../hooks/useTranslation', () => ({
@@ -37,6 +49,8 @@ describe('StepsGroup tool IO', () => {
 
   beforeEach(() => {
     showStepToolIO = true;
+    orgActivity = undefined;
+    clientActivity = undefined;
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -72,6 +86,43 @@ describe('StepsGroup tool IO', () => {
     expect(container.textContent).toContain('refund policy');
     expect(container.textContent).toContain('step_result');
     expect(container.textContent).toContain('"hits": 3');
+  });
+
+  it('uses the dashboard full-details setting without a legacy embed option', () => {
+    showStepToolIO = undefined;
+    orgActivity = 'details';
+    render([toolStep]);
+    expect(container.querySelector('.cursor-pointer')).not.toBeNull();
+    act(() => container.querySelector<HTMLElement>('.cursor-pointer')?.click());
+    expect(container.textContent).toContain('refund policy');
+    expect(container.textContent).toContain('"hits": 3');
+  });
+
+  it.each(['hidden', 'status'] as const)(
+    'does not override the org %s setting with a legacy opt-in',
+    (activity) => {
+      orgActivity = activity;
+      clientActivity = 'details';
+      render([toolStep]);
+      expect(container.querySelector('.cursor-pointer')).toBeNull();
+    },
+  );
+
+  it.each(['hidden', 'status'] as const)(
+    'honors the client %s opt-out with org full details',
+    (activity) => {
+      orgActivity = 'details';
+      clientActivity = activity;
+      render([toolStep]);
+      expect(container.querySelector('.cursor-pointer')).toBeNull();
+    },
+  );
+
+  it('keeps an explicit legacy opt-out', () => {
+    orgActivity = 'details';
+    showStepToolIO = false;
+    render([toolStep]);
+    expect(container.querySelector('.cursor-pointer')).toBeNull();
   });
 
   it('leaves the row alone when the option is off', () => {

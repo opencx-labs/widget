@@ -11,6 +11,7 @@ const config = vi.hoisted((): WidgetConfig => ({ token: 'test' }));
 vi.mock('@opencx/widget-react-headless', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@opencx/widget-react-headless')>()),
   useWidget: () => ({
+    widgetCtx: { agent: {} },
     config,
     componentStore: {
       getComponent: () => () => <div data-steps />,

@@ -1,4 +1,7 @@
-import type { WidgetAiMessage } from '@opencx/widget-core';
+import {
+  resolveClientPresentation,
+  type WidgetAiMessage,
+} from '@opencx/widget-core';
 import type {
   SpecDataPart,
   StreamingTurnItem,
@@ -37,7 +40,7 @@ export function StreamingTurn({
 }) {
   // Registered by `Widget` (`agent_chat_steps` / `agent_chat_spec`) and
   // replaceable through the `components` prop.
-  const { componentStore, config } = useWidget();
+  const { componentStore, config, widgetCtx } = useWidget();
   const StepsComponent = componentStore.getComponent('agent_chat_steps');
   const SpecComponent = componentStore.getComponent('agent_chat_spec');
   // Fixed for the life of the turn. A fresh `new Date()` per render would make
@@ -45,7 +48,13 @@ export function StreamingTurn({
   // persisted row (stamped once, server-side) takes over at the handoff.
   const [startedAt] = useState(() => new Date().toISOString());
   const groupTimestamp = timestamp ?? startedAt;
-  const items = applyPresentation(turn.items, config.presentation);
+  const items = applyPresentation(
+    turn.items,
+    resolveClientPresentation(
+      widgetCtx.agent.presentation,
+      config.presentation,
+    ),
+  );
 
   // `questions` renders NOTHING in the transcript. A pending clarification
   // takes the composer's place instead (`ChatInput`), so the customer answers

@@ -1,6 +1,7 @@
 import { useChat } from '@ai-sdk/react';
 import {
   buildSendMessageBody,
+  resolveClientPresentation,
   genUuid,
   log,
   type SendMessageInput,
@@ -903,6 +904,13 @@ export function useAgentChat({
     queueVersion,
   ]);
 
+  const visiblePresentation = resolveClientPresentation(
+    widgetCtx.agent.presentation,
+    config.presentation,
+  );
+  const visibleToolActivity = visiblePresentation?.toolActivity;
+  const visibleReasoning = visiblePresentation?.reasoning;
+
   // The live overlay: the in-flight assistant message's ordered items. Held
   // through `settling` as well as the stream itself — see above.
   const liveItems: StreamingTurnItem[] = useMemo(() => {
@@ -910,22 +918,22 @@ export function useAgentChat({
     const last = messages.at(-1);
     if (!last || last.role !== 'assistant') return [];
     return applyPresentation(mapUiPartsToItems(last.parts), {
-      toolActivity,
-      reasoning,
+      toolActivity: visibleToolActivity,
+      reasoning: visibleReasoning,
     });
-  }, [messages, isStreaming, settling, toolActivity, reasoning]);
+  }, [messages, isStreaming, settling, visibleToolActivity, visibleReasoning]);
 
   const visibleTurnSources = useMemo(
     () =>
       turnSources.flatMap((source) => {
         const items = applyPresentation(source.items, {
-          toolActivity,
-          reasoning,
+          toolActivity: visibleToolActivity,
+          reasoning: visibleReasoning,
         });
         if (items.length === 0) return [];
         return [items === source.items ? source : { ...source, items }];
       }),
-    [turnSources, toolActivity, reasoning],
+    [turnSources, visibleToolActivity, visibleReasoning],
   );
 
   // Messages the user queued mid-turn — surfaced so the composer can render

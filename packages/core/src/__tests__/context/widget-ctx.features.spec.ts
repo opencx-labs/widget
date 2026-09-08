@@ -13,7 +13,10 @@ import { TestUtils } from '../test-utils';
  * surface asks it instead of the raw flags.
  */
 suite('WidgetCtx.features (server-enabled, embed-narrowed)', () => {
-  function serverFeatures(overrides: Partial<Dto['WidgetAgentFeaturesDto']>) {
+  function serverFeatures(
+    overrides: Partial<Dto['WidgetAgentFeaturesDto']>,
+    presentation?: Dto['WidgetPresentationDto'],
+  ) {
     TestUtils.mock.ApiCaller.getExternalWidgetConfig(ApiCaller, {
       data: {
         org: { id: 'org-1', name: 'Org One' },
@@ -22,6 +25,7 @@ suite('WidgetCtx.features (server-enabled, embed-narrowed)', () => {
         modes: [],
         agent: {
           name: 'Agent',
+          ...(presentation ? { presentation } : {}),
           avatar_url: null,
           streaming: true,
           features: TestUtils.agentFeatures(overrides),
@@ -51,6 +55,23 @@ suite('WidgetCtx.features (server-enabled, embed-narrowed)', () => {
       pageContext: true,
       clientTools: false,
     });
+  });
+
+  test('preserves organization presentation settings from the config response', async () => {
+    const presentation = {
+      streaming: true,
+      toolActivity: 'details' as const,
+      reasoning: false,
+    };
+    serverFeatures({}, presentation);
+    const ctx = await init();
+    expect(ctx.agent.presentation).toEqual(presentation);
+  });
+
+  test('older backends leave presentation unspecified', async () => {
+    serverFeatures({});
+    const ctx = await init();
+    expect(ctx.agent.presentation).toBeUndefined();
   });
 
   test('org on + embed silent → every feature is on', async () => {

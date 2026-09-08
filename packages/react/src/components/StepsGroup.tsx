@@ -1,4 +1,9 @@
-import { useConfig, type StreamingStep } from '@opencx/widget-react-headless';
+import { resolveClientPresentation } from '@opencx/widget-core';
+import {
+  useConfig,
+  useWidget,
+  type StreamingStep,
+} from '@opencx/widget-react-headless';
 import { ChevronDownIcon, ChevronRightIcon } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { dc } from '../utils/data-component';
@@ -271,7 +276,7 @@ function ToolPayload({ label, value }: { label: string; value: unknown }) {
 }
 
 /**
- * One tool call in the trace. With `showStepToolIO` on, the row is a
+ * One tool call in the trace. When full details are allowed, the row is a
  * disclosure: it opens onto the call's arguments and its result, which is what
  * you actually need when an agent's answer is wrong and the label ("Search
  * knowledge base") tells you nothing about what it searched for. Off — the
@@ -342,7 +347,16 @@ export function StepsGroup({
   active,
 }: StreamingStepsComponentProps) {
   const { t } = useTranslation();
-  const { showStepToolIO } = useConfig();
+  const { showStepToolIO, presentation } = useConfig();
+  const { widgetCtx } = useWidget();
+  const activity = resolveClientPresentation(
+    widgetCtx.agent.presentation,
+    presentation,
+  )?.toolActivity;
+  const showToolDetails =
+    showStepToolIO !== false &&
+    (activity === 'details' ||
+      (activity === undefined && showStepToolIO === true));
   const thinkingLabel = t('thinking');
   // Once the turn is over nothing is running: a turn that ended with a step
   // unfinished — a stopped turn leaves its last tool call at
@@ -430,7 +444,7 @@ export function StepsGroup({
                   thinkingLabel={thinkingLabel}
                 />
               ) : (
-                <ToolRow step={step} showIO={showStepToolIO === true} />
+                <ToolRow step={step} showIO={showToolDetails} />
               )}
             </div>
           ))}
