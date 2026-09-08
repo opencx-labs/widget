@@ -33,6 +33,7 @@ import {
 import { Button } from './lib/button';
 import { DynamicIcon } from './lib/DynamicIcon';
 import { cn } from './lib/utils/cn';
+import { ConversationTitle } from '../companion/ConversationTitle';
 import { HeaderBottomComponent } from './custom-components/HeaderBottomComponent';
 import { HeaderTitleComponent } from './custom-components/HeaderTitleComponent';
 
@@ -435,6 +436,8 @@ export function Header__Buttons() {
 }
 
 export function Header() {
+  const config = useConfig();
+  const isCompanion = config.displayMode === 'companion' && !config.inline;
   const {
     routerState: { screen },
   } = useWidgetRouter();
@@ -447,12 +450,19 @@ export function Header() {
         <Header__BackToSessionsScreenButton />
         <div
           className={cn(
-            'flex-1 h-8 flex items-center',
+            'min-w-0 flex-1 h-8 flex items-center',
             screen === 'sessions' && 'ps-2',
           )}
+          style={{ paddingInlineEnd: isCompanion ? 64 : undefined }}
         >
           <HeaderTitleComponent
-            fallback={<h2 className="font-semibold">{title}</h2>}
+            fallback={
+              isCompanion && screen !== 'sessions' ? (
+                <ConversationTitle />
+              ) : (
+                <h2 className="font-semibold">{title}</h2>
+              )
+            }
           />
         </div>
         <Header__Buttons />

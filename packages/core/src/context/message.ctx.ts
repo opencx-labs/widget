@@ -245,6 +245,12 @@ export class MessageCtx {
     isInitialFetchLoading: false,
   });
 
+  /** One reactive draft per conversation, including while its composer is unmounted. */
+  public draftState = new PrimitiveState({
+    text: '',
+    mentions: [] as WidgetMention[],
+  });
+
   /**
    * Current transport choice. The org or this embed may request polling
    * independently of the server's agent version.
@@ -327,6 +333,7 @@ export class MessageCtx {
     this.state.reset();
     this.messageIdsDispatchedToOnMessageReceivedHook.clear();
     this.sentTextHistory = [];
+    this.draftState.reset();
   };
 
   /**

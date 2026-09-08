@@ -19,6 +19,8 @@ type RouterState = {
 
 export class RouterCtx {
   state: PrimitiveState<RouterState>;
+  private subscriptions: Array<() => void> = [];
+  private disposed = false;
 
   private config: WidgetConfig;
   private contactCtx: ContactCtx;
@@ -36,21 +38,11 @@ export class RouterCtx {
   /** Has the (async) storage read settled? Automatic routing waits for it. */
   private didReadStoredSession = false;
 
-  constructor({
-    config,
-    contactCtx,
-    sessionCtx,
-    resetChat,
-  }: {
-    config: WidgetConfig;
-    contactCtx: ContactCtx;
-    sessionCtx: SessionCtx;
-    resetChat: WidgetCtx['resetChat'];
-  }) {
-    this.config = config;
-    this.contactCtx = contactCtx;
-    this.sessionCtx = sessionCtx;
-    this.resetChat = resetChat;
+  constructor(private widget: WidgetCtx) {
+    this.config = widget.config;
+    this.contactCtx = widget.contactCtx;
+    this.sessionCtx = widget.sessionCtx;
+    this.resetChat = widget.resetChat;
     this.state = new PrimitiveState<RouterState>({
       screen: this.contactCtx.shouldCollectData()
         ? 'welcome'
@@ -87,16 +79,20 @@ export class RouterCtx {
   };
 
   private registerRoutingListener = () => {
-    this.contactCtx.state.subscribe(({ contact }) => {
-      // Auto navigate to sessions screen after collecting user data
-      if (contact?.token && this.state.get().screen === 'welcome') {
-        this.state.setPartial({
-          screen: this.config.router?.chatScreenOnly ? 'chat' : 'sessions',
-        });
-      }
-    });
+    this.subscriptions.push(
+      this.contactCtx.state.subscribe(({ contact }) => {
+        // Auto navigate to sessions screen after collecting user data
+        if (contact?.token && this.state.get().screen === 'welcome') {
+          this.state.setPartial({
+            screen: this.config.router?.chatScreenOnly ? 'chat' : 'sessions',
+          });
+        }
+      }),
+    );
 
-    this.sessionCtx.sessionsState.subscribe(this.routeFromSessions);
+    this.subscriptions.push(
+      this.sessionCtx.sessionsState.subscribe(this.routeFromSessions),
+    );
   };
 
   /**
@@ -113,7 +109,7 @@ export class RouterCtx {
     // Hold automatic routing until we know whether there is a conversation to
     // return to: routing first and restoring second would flash the wrong
     // screen, or start a second conversation beside the live one.
-    if (!this.didReadStoredSession) return;
+    if (this.disposed || !this.didReadStoredSession) return;
 
     if (
       this.restorableSessionId &&
@@ -155,15 +151,26 @@ export class RouterCtx {
     }
   };
 
+  dispose = () => {
+    this.disposed = true;
+    this.subscriptions.forEach((unsubscribe) => unsubscribe());
+    this.subscriptions = [];
+    this.navigateConversation = undefined;
+  };
+
+  /** A multi-chat host owns navigation without resetting background sends. */
+  navigateConversation?: (sessionId?: string) => WidgetCtx | undefined;
+
   toSessionsScreen = () => {
-    this.resetChat();
+    if (!this.navigateConversation) this.resetChat();
     this.state.setPartial({ screen: 'sessions' });
   };
 
   /**
    * @param sessionId The ID of the session to open, or `undefined` if it is a new chat session
    */
-  toChatScreen = (sessionId?: string) => {
+  toChatScreen = (sessionId?: string): WidgetCtx | undefined => {
+    if (this.navigateConversation) return this.navigateConversation(sessionId);
     this.resetChat();
 
     let session: SessionDto | undefined;
@@ -179,8 +186,7 @@ export class RouterCtx {
 
     this.state.setPartial({ screen: 'chat' });
 
-    this.config.hooks?.onNavigateToChat?.({
-      session: session,
-    });
+    this.config.hooks?.onNavigateToChat?.({ session });
+    return this.widget;
   };
 }

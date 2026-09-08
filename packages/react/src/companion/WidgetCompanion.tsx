@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import { createPortal } from 'react-dom';
 import {
+  useCompanionChats,
   useConfig,
   useMessages,
   useSessions,
@@ -34,6 +35,10 @@ import {
   shellAnchor,
 } from './companion-geometry';
 import { RestingPill } from './RestingPill';
+import { ChatPicker } from './ChatPicker';
+import { SessionCircles } from './SessionCircles';
+import { useChatPicker } from './useChatPicker';
+import { useCompanionOpenSync } from './useCompanionOpenSync';
 import {
   CHAT_SHADOW,
   DOCK_SHADOW,
@@ -61,6 +66,9 @@ const initialContent = buildFrameHtml({ transparent: true });
 
 export function WidgetCompanion() {
   const { isOpen, setIsOpen } = useWidgetTrigger();
+  const { openChats, activeId } = useCompanionChats();
+  const activeChatCount = openChats.length;
+  const workingChatCount = openChats.filter((chat) => chat.working).length;
   const { widgetCtx, contentIframeRef } = useWidget();
   const { companion, assets, customComponents } = useConfig();
   const { theme, cssVars } = useTheme();
@@ -124,6 +132,13 @@ export function WidgetCompanion() {
   const hasBeenChatRef = useRef(false);
 
   const isPill = state === 'pill';
+  const hasCountAction = activeChatCount > 0;
+  const picker = useChatPicker();
+  const closePickerRef = useRef(picker.close);
+  closePickerRef.current = picker.close;
+  useEffect(() => {
+    if (!isPill || !hasCountAction) closePickerRef.current(true);
+  }, [isPill, hasCountAction]);
 
   // Existing embedder customizations carry over without new config:
   // their popover trigger icon and bottom offset apply to the pill, and a
@@ -263,6 +278,7 @@ export function WidgetCompanion() {
 
   const launchFromPill = useCallback(() => {
     if (shouldIgnoreLaunch()) return;
+    closePickerRef.current(true);
     if (panelLayout === 'sidebar') {
       setState('chat');
       return;
@@ -341,26 +357,13 @@ export function WidgetCompanion() {
 
   const isFullscreenModal = state === 'chat' && panelLayout === 'fullscreen';
 
-  // Two-way sync with the shared trigger context (config.isOpen, imperative
-  // widget ref API). `lastPushedIsOpenRef` marks the values WE pushed so the
-  // external-change effect can tell an echo of our own push from a genuine
-  // outside setIsOpen. The external effect must NOT depend on `state`:
-  // otherwise it re-runs in the same commit that pushes a new state — still
-  // seeing the stale isOpen — and closes what was just opened, ping-ponging
-  // pill↔input until React hits its nested-update limit.
-  const lastPushedIsOpenRef = useRef<boolean>(false);
-  useEffect(() => {
-    const open = state !== 'pill';
-    lastPushedIsOpenRef.current = open;
-    setIsOpen(open);
-  }, [state, setIsOpen]);
-
-  useEffect(() => {
-    if (isOpen === lastPushedIsOpenRef.current) return;
-    lastPushedIsOpenRef.current = isOpen;
-    if (isOpen) openPanel();
-    else dismiss();
-  }, [isOpen, openPanel, dismiss]);
+  useCompanionOpenSync({
+    panelOpen: state !== 'pill',
+    isOpen,
+    setIsOpen,
+    onOpen: openPanel,
+    onClose: dismiss,
+  });
 
   // Click-outside closes. Clicks inside the content iframe never reach the
   // host document, so this only fires for genuine host-page clicks.
@@ -501,16 +504,6 @@ export function WidgetCompanion() {
     return () => document.removeEventListener('keydown', handleGlobalKey);
   }, [handleToggleFullscreen, state]);
 
-  // History = the stock sessions screen, rendered inside the same panel
-  const handleHistory = useCallback(() => {
-    setState('chat');
-    // The sessions list is a card-sized screen — a fullscreen column just
-    // strands it in empty space. Prefer the first configured non-fullscreen
-    // layout, but never transition to a layout the embedder excluded.
-    setPanelLayout(firstNonFullscreenLayout ?? defaultLayout);
-    widgetCtx.routerCtx.toSessionsScreen();
-  }, [defaultLayout, firstNonFullscreenLayout, setPanelLayout, widgetCtx]);
-
   // Portal to document.documentElement: <Widget> may render arbitrarily
   // deep in the host app (shadow roots, transformed/stacking-context
   // ancestors — e.g. the opencx dashboard preview, where an app rail
@@ -526,6 +519,15 @@ export function WidgetCompanion() {
           replaces the resting pill entirely and drives the panel via
           setIsOpen; the panel still opens from the bottom-center baseline. */}
       {customTrigger && renderCustomTrigger(customTrigger, isOpen, setIsOpen)}
+
+      {isPill && picker.anchor && !hasCustomTrigger && (
+        <ChatPicker
+          placement="above"
+          picker={picker}
+          portalTarget={portalTarget}
+          onSelected={() => setState('chat')}
+        />
+      )}
 
       {/* Modal scrim — fully transparent; it never tints, darkens or blurs
           the host page. Its only job is to swallow host-page clicks while
@@ -563,7 +565,7 @@ export function WidgetCompanion() {
         // edge, so a layout switch expands FROM the current rect in place.
         initial={false}
         animate={{ left: shellCenterX, bottom: shellBottom }}
-        drag={isPill && !hasCustomTrigger ? 'x' : false}
+        drag={isPill && !hasCustomTrigger && !picker.open ? 'x' : false}
         dragMomentum={false}
         dragElastic={0.15}
         dragConstraints={dragConstraints}
@@ -574,24 +576,22 @@ export function WidgetCompanion() {
         {/* Morphing shell — its surface is the background theme token, so
             palette changes recolor companion chrome like any stock screen */}
         <motion.div
-          onClick={isPill && !hasCustomTrigger ? launchFromPill : undefined}
-          role={isPill && !hasCustomTrigger ? 'button' : undefined}
-          tabIndex={isPill && !hasCustomTrigger ? 0 : undefined}
-          aria-label={isPill && !hasCustomTrigger ? pillAriaLabel : undefined}
-          aria-expanded={isPill && !hasCustomTrigger ? false : undefined}
-          onKeyDown={
+          onPointerEnter={
             isPill && !hasCustomTrigger
               ? (event) => {
-                  if (event.key !== 'Enter' && event.key !== ' ') return;
-                  event.preventDefault();
-                  launchFromPill();
+                  setPillHovered(true);
+                  const count =
+                    event.currentTarget.querySelector<HTMLButtonElement>(
+                      '[data-companion-count-trigger]',
+                    );
+                  if (count && !shouldIgnoreLaunch()) picker.hover(count);
                 }
               : undefined
           }
-          onPointerEnter={
-            isPill && !hasCustomTrigger ? () => setPillHovered(true) : undefined
-          }
-          onPointerLeave={() => setPillHovered(false)}
+          onPointerLeave={() => {
+            setPillHovered(false);
+            picker.leave();
+          }}
           style={{
             position: 'relative',
             overflow: 'hidden',
@@ -640,11 +640,56 @@ export function WidgetCompanion() {
           }
           transition={morphTransition}
         >
+          {isPill && !hasCustomTrigger && (
+            <button
+              type="button"
+              data-companion-launcher=""
+              onClick={launchFromPill}
+              aria-label={pillAriaLabel}
+              aria-expanded={false}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                zIndex: 1,
+                border: 0,
+                padding: 0,
+                background: 'transparent',
+                cursor: 'pointer',
+                borderRadius: 'inherit',
+              }}
+            />
+          )}
           {!hasCustomTrigger && (
             <RestingPill
               visible={isPill}
               docked={docked}
               label={dockLabel}
+              sessions={
+                activeChatCount > 0 ? (
+                  <SessionCircles
+                    interactive={isPill && docked}
+                    onSelected={() => setState('chat')}
+                    onLastClosed={() => {
+                      // The last circle disappears; return keyboard focus to
+                      // the resting launcher after its button is restored.
+                      requestAnimationFrame(() => {
+                        containerRef.current
+                          ?.querySelector<HTMLElement>(
+                            '[data-companion-launcher]',
+                          )
+                          ?.focus({ preventScroll: true });
+                      });
+                    }}
+                  />
+                ) : undefined
+              }
+              activeCount={activeChatCount}
+              countLabel={`${t('companion_chats')} · ${t('companion_active_chats', { count: activeChatCount })}${workingChatCount ? ` · ${t('companion_working_chats', { count: workingChatCount })}` : ''}`}
+              pickerOpen={picker.open}
+              onOpenChats={(anchor, pointer) => {
+                if (!shouldIgnoreLaunch()) picker.toggle(anchor, pointer);
+              }}
+              working={workingChatCount > 0}
               icon={companionIcon}
               pillBackground={pillBackground}
               dir={dir}
@@ -693,6 +738,7 @@ export function WidgetCompanion() {
                 }}
               >
                 <CompanionContent
+                  key={activeId}
                   state={state === 'chat' ? 'chat' : 'input'}
                   layout={panelLayout}
                   shellRadius={currentDims.borderRadius}
@@ -700,7 +746,6 @@ export function WidgetCompanion() {
                   onDismiss={dismissPanel}
                   onToggleFullscreen={handleToggleFullscreen}
                   onSelectLayout={selectLayout}
-                  onHistory={handleHistory}
                   onExpand={handleExpand}
                   canExpand={hasActiveSession}
                   placeholder={quickAskPlaceholder}

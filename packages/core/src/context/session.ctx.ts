@@ -39,6 +39,8 @@ export class SessionCtx {
   private sessionsRefresher = new Poller();
   /** The session id currently written to storage (null = none written). */
   private persistedSessionId: string | null = null;
+  private stopPersistingSession?: () => void;
+  private sessionAbortController = new AbortController();
 
   public sessionState = new PrimitiveState<SessionState>({
     session: null,
@@ -62,12 +64,14 @@ export class SessionCtx {
     contactCtx,
     storageCtx,
     sessionsPollingIntervalSeconds,
+    sharedSessions,
   }: {
     config: WidgetConfig;
     api: ApiCaller;
     contactCtx: ContactCtx;
     storageCtx?: StorageCtx;
     sessionsPollingIntervalSeconds: number;
+    sharedSessions?: PrimitiveState<SessionsState>;
   }) {
     this.config = config;
     this.api = api;
@@ -75,7 +79,8 @@ export class SessionCtx {
     this.storageCtx = storageCtx;
     this.sessionsPollingIntervalSeconds = sessionsPollingIntervalSeconds;
 
-    this.registerSessionsRefresherWrapper();
+    if (sharedSessions) this.sessionsState = sharedSessions;
+    else this.registerSessionsRefresherWrapper();
     this.registerActiveSessionPersistence();
   }
 
@@ -92,21 +97,43 @@ export class SessionCtx {
   private registerActiveSessionPersistence = () => {
     const storageCtx = this.storageCtx;
     if (!storageCtx) return;
-    this.sessionState.subscribe(({ session }) => {
-      const openSessionId = session?.isOpened ? session.id : null;
-      if (openSessionId === this.persistedSessionId) return;
-      // Nothing to forget until something was remembered.
-      if (!openSessionId && this.persistedSessionId === null) return;
-      this.persistedSessionId = openSessionId;
-      const write = openSessionId
-        ? storageCtx.setActiveSessionId(openSessionId)
-        : storageCtx.clearActiveSessionId();
-      // Storage is an embedder-provided adapter; a broken one must never take
-      // the conversation down with it.
-      void write.catch((error: unknown) => {
-        log.warn('failed to persist the active session', {
-          error: error instanceof Error ? error.message : String(error),
-        });
+    this.stopPersistingSession = this.sessionState.subscribe(
+      this.persistSession,
+    );
+  };
+
+  /** Return persistence to the owning widget without overwriting its saved selection. */
+  restoreActiveSessionTracking = () => {
+    this.stopPersistingSession?.();
+    this.stopPersistingSession = undefined;
+    this.registerActiveSessionPersistence();
+  };
+
+  /** Persistence belongs to the selected conversation, never a background response. */
+  trackActiveSession = (active: SessionCtx) => {
+    this.stopPersistingSession?.();
+    this.stopPersistingSession = active.sessionState.subscribe(
+      this.persistSession,
+    );
+    this.persistSession(active.sessionState.get());
+  };
+
+  private persistSession = ({ session }: SessionState) => {
+    const storageCtx = this.storageCtx;
+    if (!storageCtx) return;
+    const openSessionId = session?.isOpened ? session.id : null;
+    if (openSessionId === this.persistedSessionId) return;
+    // Nothing to forget until something was remembered.
+    if (!openSessionId && this.persistedSessionId === null) return;
+    this.persistedSessionId = openSessionId;
+    const write = openSessionId
+      ? storageCtx.setActiveSessionId(openSessionId)
+      : storageCtx.clearActiveSessionId();
+    // Storage is an embedder-provided adapter; a broken one must never take
+    // the conversation down with it.
+    void write.catch((error: unknown) => {
+      log.warn('failed to persist the active session', {
+        error: error instanceof Error ? error.message : String(error),
       });
     });
   };
@@ -123,6 +150,8 @@ export class SessionCtx {
 
   /** Clears the session and stops polling */
   reset = async () => {
+    this.sessionAbortController.abort();
+    this.sessionAbortController = new AbortController();
     // Reset the session only, leave sessions as-is
     this.sessionState.reset();
   };
@@ -175,9 +204,11 @@ export class SessionCtx {
   };
 
   createSession = async (): Promise<SessionDto | null> => {
+    const { signal } = this.sessionAbortController;
     this.sessionState.setPartial({ session: null, isCreatingSession: true });
     try {
-      const first = await this.requestSession();
+      const first = await this.requestSession(signal);
+      if (signal.aborted) return null;
       if (first.session) return first.session;
 
       // Self-heal a stale contact token (401): drop it, mint a fresh contact,
@@ -186,7 +217,9 @@ export class SessionCtx {
         first.status === 401 &&
         (await this.contactCtx.recoverFromStaleToken())
       ) {
-        const retry = await this.requestSession();
+        if (signal.aborted) return null;
+        const retry = await this.requestSession(signal);
+        if (signal.aborted) return null;
         if (retry.session) return retry.session;
         log.error('failed to create session', retry.error);
         return null;
@@ -195,15 +228,18 @@ export class SessionCtx {
       log.error('failed to create session', first.error);
       return null;
     } catch (error) {
-      log.error('failed to create session', error);
+      if (!signal.aborted) log.error('failed to create session', error);
       return null;
     } finally {
-      this.sessionState.setPartial({ isCreatingSession: false });
+      if (!signal.aborted)
+        this.sessionState.setPartial({ isCreatingSession: false });
     }
   };
 
   /** One create-session request; on success the session is stored and the hook fires. */
-  private requestSession = async (): Promise<{
+  private requestSession = async (
+    signal: AbortSignal,
+  ): Promise<{
     session: SessionDto | null;
     status: number | undefined;
     error: unknown;
@@ -217,10 +253,14 @@ export class SessionCtx {
       data: session,
       error,
       response,
-    } = await this.api.createSession({
-      customData: Object.keys(customData).length > 0 ? customData : undefined,
-    });
-    if (!session) return { session: null, status: response?.status, error };
+    } = await this.api.createSession(
+      {
+        customData: Object.keys(customData).length > 0 ? customData : undefined,
+      },
+      signal,
+    );
+    if (signal.aborted || !session)
+      return { session: null, status: response?.status, error };
 
     this.sessionState.setPartial({ session });
     try {
@@ -288,10 +328,16 @@ export class SessionCtx {
     }
 
     this.sessionState.setPartial({ isResolvingSession: true });
-
-    const { data: session, error } = await this.api.resolveSession({
-      session_id: currentSession.id,
-    });
+    const { signal } = this.sessionAbortController;
+    const result = await this.api
+      .resolveSession({ session_id: currentSession.id }, signal)
+      .catch((error: unknown) => {
+        if (signal.aborted) return null;
+        throw error;
+      });
+    if (!result || signal.aborted)
+      return { success: false, error: 'Session was reset' } as const;
+    const { data: session, error } = result;
 
     if (session) {
       this.sessionState.setPartial({ session, isResolvingSession: false });

@@ -1,4 +1,5 @@
-import { motion } from 'framer-motion';
+import { LoaderCircleIcon } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
 import React from 'react';
 import { PILL_SIZE } from './companion-geometry';
 import { CompanionFaceIcon } from './CompanionFaceIcon';
@@ -75,8 +76,20 @@ export function RestingPill({
   pillBackground,
   dir,
   measureRef,
+  activeCount = 0,
+  countLabel,
+  onOpenChats,
+  pickerOpen = false,
+  working = false,
+  sessions,
 }: {
   /** The shell is resting as a pill (vs. morphed open) — show this look */
+  sessions?: React.ReactNode;
+  activeCount?: number;
+  countLabel?: string;
+  onOpenChats?: (anchor: HTMLButtonElement, pointer: boolean) => void;
+  pickerOpen?: boolean;
+  working?: boolean;
   visible: boolean;
   /** Expanded into the labeled bar (vs. the icon-only round pill) */
   docked: boolean;
@@ -87,6 +100,7 @@ export function RestingPill({
   /** Measures the natural bar width (disc + label) so the shell springs to it */
   measureRef: (node: HTMLDivElement | null) => void;
 }) {
+  const reduceMotion = useReducedMotion();
   return (
     <motion.div
       style={{
@@ -104,6 +118,61 @@ export function RestingPill({
       }}
       {...restingFade(visible)}
     >
+      {visible && !docked && activeCount > 0 && (
+        <button
+          type="button"
+          data-companion-count-trigger=""
+          aria-label={countLabel}
+          aria-haspopup="menu"
+          aria-expanded={pickerOpen}
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenChats?.(event.currentTarget, event.detail > 0);
+          }}
+          style={{
+            position: 'absolute',
+            insetInlineStart: 12,
+            top: 0,
+            zIndex: 2,
+            width: 24,
+            height: 24,
+            padding: 0,
+            border: 0,
+            background: 'transparent',
+            pointerEvents: 'auto',
+            cursor: 'pointer',
+          }}
+        >
+          <span
+            aria-hidden
+            style={{
+              position: 'absolute',
+              insetInlineStart: 6,
+              top: 0,
+              width: 14,
+              height: 14,
+              display: 'grid',
+              placeItems: 'center',
+              borderRadius: 999,
+              background: 'hsl(var(--opencx-background))',
+              color: 'hsl(var(--opencx-foreground))',
+              font: '9px ui-sans-serif,system-ui,sans-serif',
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {activeCount}
+            {working && (
+              <motion.span
+                style={{ position: 'absolute', inset: -2, display: 'flex' }}
+                animate={reduceMotion ? undefined : { rotate: 360 }}
+                transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
+              >
+                <LoaderCircleIcon size={18} />
+              </motion.span>
+            )}
+          </span>
+        </button>
+      )}
       <div
         ref={measureRef}
         dir={dir}
@@ -136,6 +205,18 @@ export function RestingPill({
         >
           {label}
         </motion.span>
+        {sessions && (
+          <div
+            style={{
+              position: 'relative',
+              zIndex: 2,
+              paddingInlineStart: 4,
+              opacity: docked ? 1 : 0,
+            }}
+          >
+            {sessions}
+          </div>
+        )}
       </div>
     </motion.div>
   );

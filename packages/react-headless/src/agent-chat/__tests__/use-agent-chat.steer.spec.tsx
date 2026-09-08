@@ -268,6 +268,12 @@ describe('useAgentChat steering into the live turn', () => {
       setChatState({ status: 'ready', messages: fullTurn() }),
     );
     await act(async () => resolveReconcile());
+    await act(async () =>
+      setTranscript([
+        { id: 'msg-where is my order?', type: 'USER' },
+        { id: 'original-reply', type: 'AI' },
+      ]),
+    );
     const handlers =
       fakeMessageCtx.registerAgentHandlers.mock.calls.at(-1)?.[0];
     expect(handlers?.hasPendingWork()).toBe(true);

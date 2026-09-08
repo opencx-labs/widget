@@ -2,7 +2,6 @@ import { log } from '@opencx/widget-core';
 import React from 'react';
 import {
   useContact,
-  useMessages,
   useWidgetRouter,
   useWidgetTrigger,
 } from '@opencx/widget-react-headless';
@@ -20,7 +19,6 @@ export function WidgetImperativeHandler({
   const { contactState } = useContact();
   const { setIsOpen } = useWidgetTrigger();
   const { toChatScreen } = useWidgetRouter();
-  const { sendMessage } = useMessages();
 
   React.useImperativeHandle(
     widgetRef,
@@ -31,12 +29,17 @@ export function WidgetImperativeHandler({
           return;
         }
         setIsOpen(true);
-        // `toChatScreen` resets the current conversation on its way in.
-        toChatScreen();
-        if (options?.message) await sendMessage({ content: options.message });
+        // Companion navigation selects an independent runtime synchronously;
+        // React may not have rendered its hooks yet, so send to that runtime.
+        const conversation = toChatScreen();
+        if (conversation && options?.message) {
+          await conversation.messageCtx.sendMessage({
+            content: options.message,
+          });
+        }
       },
     }),
-    [contactState, setIsOpen, toChatScreen, sendMessage],
+    [contactState, setIsOpen, toChatScreen],
   );
 
   return null;

@@ -115,6 +115,36 @@ suite('WidgetCtx.features (server-enabled, embed-narrowed)', () => {
     expect(ctx.features.dictation).toBe(true);
   });
 
+  test('inherits current delivery and feature overrides in independent sessions', async () => {
+    serverFeatures(everythingOn);
+    let config: WidgetConfig = {
+      token: '',
+      streaming: true,
+      features: { pageContext: true },
+      capabilities: { richReplies: true },
+    };
+    const ctx = await WidgetCtx.initialize({
+      config,
+      getRequestConfig: () => config,
+      getClientCapabilities: () => config.capabilities,
+    });
+    const child = ctx.createConversation();
+    expect(child.streaming).toBe(true);
+    expect(child.features.pageContext).toBe(true);
+    config = {
+      ...config,
+      streaming: false,
+      features: { pageContext: false },
+      capabilities: { richReplies: false },
+    };
+    expect(child.streaming).toBe(false);
+    expect(child.features.pageContext).toBe(false);
+    expect(child.messageCtx.sendsPageContext).toBe(false);
+    expect(child.api).toBe(ctx.api);
+    child.releaseConversation();
+    ctx.resetChat();
+  });
+
   test('keeps sends buffered before provider mount when streaming is opted out', async () => {
     serverFeatures({});
     let config: WidgetConfig = { token: '', streaming: true };
