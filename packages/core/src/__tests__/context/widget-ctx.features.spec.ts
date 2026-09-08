@@ -114,4 +114,37 @@ suite('WidgetCtx.features (server-enabled, embed-narrowed)', () => {
     expect(ctx.features.clientTools).toBe(true);
     expect(ctx.features.dictation).toBe(true);
   });
+
+  test('keeps sends buffered before provider mount when streaming is opted out', async () => {
+    serverFeatures({});
+    let config: WidgetConfig = { token: '', streaming: true };
+    const ctx = await WidgetCtx.initialize({
+      config,
+      getRequestConfig: () => config,
+    });
+    await ctx.messageCtx.sendMessage({ content: 'accepted before mount' });
+    config = { ...config, streaming: false };
+    expect(ctx.streaming).toBe(true);
+    const send = vi.fn();
+    ctx.messageCtx.registerAgentHandlers({ send });
+    expect(send).toHaveBeenCalledExactlyOnceWith({
+      content: 'accepted before mount',
+    });
+    expect(ctx.streaming).toBe(false);
+  });
+
+  test('waits for a blocking send to settle before opting into streaming', async () => {
+    serverFeatures({});
+    let config: WidgetConfig = { token: '', streaming: false };
+    const ctx = await WidgetCtx.initialize({
+      config,
+      getRequestConfig: () => config,
+    });
+    expect(ctx.streaming).toBe(false);
+    ctx.messageCtx.state.setPartial({ isSendingMessage: true });
+    config = { ...config, streaming: true };
+    expect(ctx.streaming).toBe(false);
+    ctx.messageCtx.state.setPartial({ isSendingMessage: false });
+    expect(ctx.streaming).toBe(true);
+  });
 });

@@ -13,9 +13,12 @@ export type TurnRenderSource = {
 export function mergeTurnSources({
   existing,
   fetched,
+  refreshItems = false,
 }: {
   existing: TurnRenderSource[];
   fetched: AgentTurnMessagesDto;
+  /** Replace stale visibility projections while preserving each turn’s React key. */
+  refreshItems?: boolean;
 }): TurnRenderSource[] {
   const existingByTurnId = new Map(
     existing.map((source) => [source.turnId, source] as const),
@@ -26,7 +29,7 @@ export function mergeTurnSources({
     fetchedTurnIds.add(turn.turn_id);
     if (turn.message_uuids.length === 0) continue;
     const kept = existingByTurnId.get(turn.turn_id);
-    if (kept) {
+    if (kept && !refreshItems) {
       // Preserve React identity and the exact streamed items; only the server's
       // authoritative transcript row coverage may change.
       if (sameRowIds(kept.rowIds, turn.message_uuids)) {
@@ -40,7 +43,7 @@ export function mergeTurnSources({
       const items = mapUiPartsToItems(turn.ui_parts);
       if (items.length === 0) continue;
       merged.push({
-        key: `turn-${turn.turn_id}`,
+        key: kept?.key ?? `turn-${turn.turn_id}`,
         turnId: turn.turn_id,
         rowIds: turn.message_uuids,
         items,

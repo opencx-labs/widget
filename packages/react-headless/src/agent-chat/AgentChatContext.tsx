@@ -161,6 +161,8 @@ export function AgentChatProvider({
   widgetCtx: WidgetCtx;
   config: WidgetConfig;
 }) {
+  // A blocking send settling can make a deferred streaming opt-in effective.
+  usePrimitiveState(widgetCtx.messageCtx.state);
   if (!widgetCtx.streaming) {
     return (
       <AgentChatContext.Provider value={DEFAULT}>

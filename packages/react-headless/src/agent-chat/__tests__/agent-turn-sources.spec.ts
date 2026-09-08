@@ -163,6 +163,58 @@ describe('mergeTurnSources', () => {
     expect(merged[0]?.items).toEqual(mapUiPartsToItems(PARTS));
   });
 
+  it('replaces changed projections without changing retained turn identity or dropping newer turns', () => {
+    const existing: TurnRenderSource[] = [
+      {
+        key: 'turn-local-user',
+        turnId: 't-1',
+        rowIds: ['r1'],
+        items: mapUiPartsToItems(PARTS),
+      },
+      {
+        key: 'turn-newer',
+        turnId: 't-live',
+        rowIds: ['r-live'],
+        items: [{ kind: 'text', text: 'new reply' }],
+      },
+    ];
+    const merged = mergeTurnSources({
+      existing,
+      refreshItems: true,
+      fetched: {
+        turns: [
+          {
+            turn_id: 't-1',
+            message_uuids: ['r1', 'r2'],
+            ui_parts: [{ type: 'text', text: 'You have 42 sessions.' }],
+          },
+        ],
+      },
+    });
+    expect(merged[0]).toEqual({
+      key: 'turn-local-user',
+      turnId: 't-1',
+      rowIds: ['r1', 'r2'],
+      items: [{ kind: 'text', text: 'You have 42 sessions.' }],
+    });
+    expect(merged[1]).toBe(existing[1]);
+  });
+
+  it.each([null, []])(
+    'falls back to plain rows when a refresh has no renderable parts: %j',
+    (ui_parts) => {
+      const existing = mergeTurnSources({ existing: [], fetched });
+      const merged = mergeTurnSources({
+        existing,
+        refreshItems: true,
+        fetched: {
+          turns: [{ turn_id: 't-1', message_uuids: ['r1', 'r2'], ui_parts }],
+        },
+      });
+      expect(merged.map((source) => source.turnId)).toEqual(['t-2']);
+    },
+  );
+
   it('returns the existing array identity for a no-op merge', () => {
     const existing = mergeTurnSources({ existing: [], fetched });
     expect(mergeTurnSources({ existing, fetched })).toBe(existing);

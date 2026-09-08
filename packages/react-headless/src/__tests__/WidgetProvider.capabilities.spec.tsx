@@ -5,6 +5,28 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WidgetProvider, useWidget } from '../WidgetProvider';
 import { useMessages } from '../hooks/useMessages';
+import { useAgentChatUi } from '../agent-chat/AgentChatContext';
+
+const streamSend = vi.fn(async (_message: { text: string }) => {});
+let setStreamStatus: (
+  status: 'ready' | 'submitted' | 'streaming',
+) => void = () => {};
+let latestUi: ReturnType<typeof useAgentChatUi> | undefined;
+vi.mock('@ai-sdk/react', () => ({
+  useChat: () => {
+    const [status, setStatus] = React.useState<
+      'ready' | 'submitted' | 'streaming'
+    >('ready');
+    setStreamStatus = setStatus;
+    return {
+      status,
+      messages: [],
+      sendMessage: streamSend,
+      stop: vi.fn(),
+      resumeStream: vi.fn(),
+    };
+  },
+}));
 
 const session: SessionDto = {
   id: 'a3a3a3a3-0000-4000-8000-000000000001',
@@ -26,6 +48,7 @@ const session: SessionDto = {
 
 function SendProbe({ onContext }: { onContext: (ctx: WidgetCtx) => void }) {
   const { widgetCtx } = useWidget();
+  latestUi = useAgentChatUi();
   const { sendMessage } = useMessages();
   useLayoutEffect(() => {
     widgetCtx.sessionCtx.sessionState.setPartial({ session });
@@ -168,4 +191,161 @@ describe('WidgetProvider blocking capability updates', () => {
       });
     }
   });
+});
+
+it('keeps accepted queued sends through a polling opt-out, then sends new work through polling', async () => {
+  vi.stubGlobal(
+    'AbortController',
+    class {
+      constructor() {
+        return transferableAbortController();
+      }
+    },
+  );
+  streamSend.mockClear();
+  const pollingBodies: unknown[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request =
+        input instanceof Request ? input : new Request(input, init);
+      if (request.url.endsWith('/config'))
+        return jsonResponse({
+          org: { id: 'org', name: 'Org' },
+          sessionPollingIntervalSeconds: 3600,
+          sessionsPollingIntervalSeconds: 3600,
+          modes: [],
+          agent: {
+            name: 'Agent',
+            avatar_url: null,
+            streaming: true,
+            features: {
+              preamble: false,
+              inline_ui: false,
+              dictation: false,
+              attachments: true,
+              page_context: false,
+              client_tools: false,
+            },
+          },
+        });
+      if (request.url.includes('/messages')) return jsonResponse({ turns: [] });
+      if (request.url.includes('/poll'))
+        return jsonResponse({ session, history: [] });
+      if (request.url.endsWith('/chat/send')) {
+        pollingBodies.push(await request.json());
+        return jsonResponse({
+          success: true,
+          autopilotResponse: { value: { content: 'Done' } },
+        });
+      }
+      throw new Error(`Unexpected request: ${request.url}`);
+    }),
+  );
+  let ctx: WidgetCtx | undefined;
+  const onContext = (value: WidgetCtx) => {
+    ctx = value;
+  };
+  const container = document.createElement('div');
+  const root = createRoot(container);
+  const render = (streaming: boolean) =>
+    root.render(
+      <WidgetProvider
+        components={[{ key: 'fallback', component: () => null }]}
+        options={{ token: 't', collectUserData: true, streaming }}
+      >
+        <SendProbe onContext={onContext} />
+      </WidgetProvider>,
+    );
+  try {
+    await act(async () => render(true));
+    if (!ctx) throw new Error('Widget did not initialize');
+    const current = ctx;
+    let finishReconcile = () => {};
+    const reconcileGate = new Promise<void>((resolve) => {
+      finishReconcile = resolve;
+    });
+    vi.spyOn(ctx, 'reconcileAfterStream').mockImplementation(async () => {
+      await reconcileGate;
+      current.messageCtx.state.setPartial({
+        messages: [
+          ...current.messageCtx.state.get().messages,
+          {
+            id: crypto.randomUUID(),
+            type: 'AI',
+            component: 'bot_message',
+            timestamp: new Date().toISOString(),
+            data: { message: 'Done' },
+          },
+        ],
+      });
+    });
+    const stageUserTurn = ctx.messageCtx.stageUserTurn.bind(ctx.messageCtx);
+    let finishPreparation = () => {};
+    const preparationGate = new Promise<void>((resolve) => {
+      finishPreparation = resolve;
+    });
+    vi.spyOn(ctx.messageCtx, 'stageUserTurn').mockImplementationOnce(
+      async (...args) => {
+        await preparationGate;
+        return stageUserTurn(...args);
+      },
+    );
+    let firstSend: Promise<void> | undefined;
+    await act(async () => {
+      firstSend = current.messageCtx.sendMessage({ content: 'first' });
+    });
+    await act(async () => render(false));
+    expect(current.streaming).toBe(true);
+    expect(streamSend).not.toHaveBeenCalled();
+    await act(async () => {
+      finishPreparation();
+      await firstSend;
+    });
+    expect(streamSend).toHaveBeenCalledOnce();
+    await act(async () => render(true));
+    await act(async () => setStreamStatus('submitted'));
+    const accepted = vi.fn();
+    await act(async () => {
+      await ctx?.messageCtx.sendMessage({
+        content: 'second',
+        onAccepted: accepted,
+      });
+    });
+    expect(accepted).toHaveBeenCalledOnce();
+    expect(
+      latestUi?.queuedUserMessages.map((message) => message.content),
+    ).toEqual(['second']);
+    await act(async () => render(false));
+    expect(
+      latestUi?.queuedUserMessages.map((message) => message.content),
+    ).toEqual(['second']);
+    await act(async () => setStreamStatus('ready'));
+    // The response is over, but its canonical rows have not arrived yet.
+    await act(async () => render(false));
+    expect(current.streaming).toBe(true);
+    expect(streamSend).toHaveBeenCalledOnce();
+    expect(
+      latestUi?.queuedUserMessages.map((message) => message.content),
+    ).toEqual(['second']);
+    await act(async () => finishReconcile());
+    expect(streamSend).toHaveBeenCalledTimes(2);
+    expect(streamSend.mock.calls.map((call) => call[0])).toEqual([
+      { text: 'first' },
+      { text: 'second' },
+    ]);
+    await act(async () => setStreamStatus('streaming'));
+    await act(async () => setStreamStatus('ready'));
+    await act(async () => {
+      await ctx?.messageCtx.sendMessage({ content: 'third' });
+    });
+    expect(pollingBodies).toHaveLength(1);
+    expect(pollingBodies[0]).toMatchObject({ content: 'third' });
+    expect(streamSend).toHaveBeenCalledTimes(2);
+  } finally {
+    act(() => root.unmount());
+    ctx?.resetChat();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  }
 });

@@ -9,7 +9,8 @@ Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 const components = new Map<string, React.ElementType>();
 const config = vi.hoisted((): WidgetConfig => ({ token: 'test' }));
 
-vi.mock('@opencx/widget-react-headless', () => ({
+vi.mock('@opencx/widget-react-headless', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@opencx/widget-react-headless')>()),
   useWidget: () => ({
     config,
     componentStore: {

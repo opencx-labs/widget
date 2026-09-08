@@ -374,7 +374,10 @@ export interface WidgetConfig {
    */
   token: string;
 
-  /** Set false to use classic send/poll delivery, even with the new agent. */
+  /**
+   * Set false to use classic send/poll delivery, even with the new agent.
+   * Runtime changes wait for accepted sends and reply reconciliation to finish.
+   */
   streaming?: boolean;
   /** Visibility may only be reduced from the organization's defaults. */
   presentation?: {

@@ -66,6 +66,8 @@ export type StagedUserTurn = {
  * shared persisted message list.
  */
 export type AgentChatHandlers = {
+  /** Includes preparation, queued sends, live work and post-turn reconciliation. */
+  hasPendingWork?: () => boolean;
   send: (input: SendMessageInput) => Promise<void> | void;
 };
 
@@ -370,6 +372,13 @@ export class MessageCtx {
     } catch (err) {
       log.error('streaming send failed', err);
     }
+  }
+
+  get hasPendingAgentWork(): boolean {
+    return (
+      this.bufferedAgentSends.length > 0 ||
+      (this.agentHandlers?.hasPendingWork?.() ?? false)
+    );
   }
 
   unregisterAgentHandlers = (handlers: AgentChatHandlers): void => {

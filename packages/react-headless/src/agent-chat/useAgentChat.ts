@@ -12,6 +12,7 @@ import {
 import { getToolName, isToolUIPart, type UIMessage } from 'ai';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AgentChatQueue } from './agent-chat-queue';
+import { applyPresentation } from './apply-presentation';
 import { mapUiPartsToItems, type StreamingTurnItem } from './agent-chat-stream';
 import { buildAgentChatTransport } from './agent-chat-transport';
 import {
@@ -167,6 +168,8 @@ export function useAgentChat({
   // first send may be creating the session. Followers must wait for that id and
   // enqueue behind the first send, rather than being dropped or overtaking it.
   const sendPreparationTailRef = useRef<Promise<void>>(Promise.resolve());
+  const preparingSendsRef = useRef(0);
+  const pendingSteersRef = useRef(0);
   const sendGenerationRef = useRef(0);
   // Bumped on every enqueue / stop-completion so the drain effect re-evaluates
   // (the queue itself is a ref, so mutating it wouldn't trigger a render).
@@ -205,7 +208,10 @@ export function useAgentChat({
   const prevStatusRef = useRef(status);
   const previousSessionIdRef = useRef(sessionId);
   const ignoredStatusAfterSessionResetRef = useRef<typeof status | null>(null);
-  const historicalFetchSessionRef = useRef<string | null>(null);
+  const historicalFetchRef = useRef<{
+    sessionId: string;
+    presentation: WidgetConfig['presentation'];
+  } | null>(null);
   // `useChat` creates a new Chat object as soon as a non-null id changes. Keep
   // the prior object's stop function so a direct session switch can abort the
   // stream it just detached from, rather than calling stop on the new chat.
@@ -300,7 +306,7 @@ export function useAgentChat({
             log.error('agent chat steer fallback: client stop failed', err);
           }
           if (generation !== sendGenerationRef.current) return;
-          void resumeStream();
+          await resumeStream();
           return;
         case 'failed':
           log.error('agent chat steer: the turn failed', {
@@ -312,9 +318,11 @@ export function useAgentChat({
           messageCtx.markUserMessageDelivered(next.userMessage.id);
           break;
       }
-      widgetCtx.reconcileAfterStream(next.sessionId).catch((err: unknown) => {
-        log.error('agent chat post-steer reconcile failed', err);
-      });
+      await widgetCtx
+        .reconcileAfterStream(next.sessionId)
+        .catch((err: unknown) => {
+          log.error('agent chat post-steer reconcile failed', err);
+        });
     },
     [transport, bodyFor, messageCtx, stop, resumeStream, widgetCtx],
   );
@@ -348,12 +356,14 @@ export function useAgentChat({
       turnPhaseRef.current === 'in-flight';
 
     sendGenerationRef.current += 1;
+    preparingSendsRef.current = 0;
+    pendingSteersRef.current = 0;
     sendPreparationTailRef.current = Promise.resolve();
     queueRef.current = new AgentChatQueue<QueuedSend>(MAX_QUEUED_SENDS);
     turnPhaseRef.current = 'idle';
     lastDrainedRef.current = null;
     pendingReleaseKeyRef.current = null;
-    historicalFetchSessionRef.current = null;
+    historicalFetchRef.current = null;
     ignoredStatusAfterSessionResetRef.current =
       status === 'submitted' || status === 'streaming' ? status : null;
     prevStatusRef.current = 'ready';
@@ -518,6 +528,7 @@ export function useAgentChat({
   const send = useCallback(
     (input: SendMessageInput): Promise<void> => {
       const generation = sendGenerationRef.current;
+      preparingSendsRef.current++;
       const work = sendPreparationTailRef.current.then(
         async (): Promise<void> => {
           if (generation !== sendGenerationRef.current) return;
@@ -562,7 +573,16 @@ export function useAgentChat({
             // Into the transcript at once, dimmed until the server has it.
             messageCtx.appendUserMessageIfAbsent(next.userMessage);
             messageCtx.notifySendAccepted(input);
-            void steerRef.current(next);
+            pendingSteersRef.current++;
+            void steerRef
+              .current(next)
+              .catch((err: unknown) =>
+                log.error('agent chat steer failed', err),
+              )
+              .finally(() => {
+                if (generation !== sendGenerationRef.current) return;
+                pendingSteersRef.current--;
+              });
             return;
           }
 
@@ -579,11 +599,15 @@ export function useAgentChat({
 
       // Keep later sends moving after a failed preparation while preserving the
       // original rejection for the caller that owns this work item.
-      sendPreparationTailRef.current = work.then(
+      const finished = work.finally(() => {
+        if (generation !== sendGenerationRef.current) return;
+        preparingSendsRef.current--;
+      });
+      sendPreparationTailRef.current = finished.then(
         () => undefined,
         () => undefined,
       );
-      return work;
+      return finished;
     },
     [messageCtx],
   );
@@ -662,28 +686,47 @@ export function useAgentChat({
 
   // Route the shared `sendMessage` API to this useChat engine while mounted.
   useEffect(() => {
-    const handlers = { send };
+    const handlers = {
+      send,
+      hasPendingWork: () =>
+        preparingSendsRef.current > 0 ||
+        pendingSteersRef.current > 0 ||
+        queueRef.current.size > 0 ||
+        turnPhaseRef.current !== 'idle' ||
+        statusRef.current === 'submitted' ||
+        statusRef.current === 'streaming',
+    };
     messageCtx.registerAgentHandlers(handlers);
     return () => messageCtx.unregisterAgentHandlers(handlers);
   }, [messageCtx, send]);
 
-  // Session open / reload: fetch the settled turns' persisted `ui_parts` so
-  // historical AI turns render through the streaming renderer (chips and all)
-  // instead of their rows' plain text. A null result (any fetch surprise)
-  // keeps the plain-row rendering. Guarded per session so it fetches once,
-  // not once per `api` identity.
+  // Presentation is part of the history request, so changing it invalidates the
+  // previous projection. Late responses from superseded requests are ignored.
+  const toolActivity = config.presentation?.toolActivity;
+  const reasoning = config.presentation?.reasoning;
   useEffect(() => {
-    if (!sessionId || historicalFetchSessionRef.current === sessionId) return;
-    historicalFetchSessionRef.current = sessionId;
+    if (!sessionId) return;
+    const presentation =
+      toolActivity === undefined && reasoning === undefined
+        ? undefined
+        : { toolActivity, reasoning };
+    const previous = historicalFetchRef.current;
+    const refreshItems =
+      previous?.sessionId === sessionId &&
+      (previous.presentation?.toolActivity !== toolActivity ||
+        previous.presentation?.reasoning !== reasoning);
+    historicalFetchRef.current = { sessionId, presentation };
     let cancelled = false;
     void (async () => {
       try {
-        const fetched = await api.getAgentTurnMessages(
-          sessionId,
-          configRef.current.presentation,
-        );
+        const fetched =
+          presentation === undefined
+            ? await api.getAgentTurnMessages(sessionId)
+            : await api.getAgentTurnMessages(sessionId, presentation);
         if (!fetched || cancelled) return;
-        setTurnSources((existing) => mergeTurnSources({ existing, fetched }));
+        setTurnSources((existing) =>
+          mergeTurnSources({ existing, fetched, refreshItems }),
+        );
       } catch (err) {
         log.error('agent chat turn sources fetch failed', err);
       }
@@ -691,7 +734,7 @@ export function useAgentChat({
     return () => {
       cancelled = true;
     };
-  }, [sessionId, api]);
+  }, [sessionId, api, toolActivity, reasoning]);
 
   // Normalize browser-effect tool calls without touching the host document.
   // The styled package consumes this narrow surface and owns validation,
@@ -797,8 +840,24 @@ export function useAgentChat({
     if (!isStreaming && !settling) return [];
     const last = messages.at(-1);
     if (!last || last.role !== 'assistant') return [];
-    return mapUiPartsToItems(last.parts);
-  }, [messages, isStreaming, settling]);
+    return applyPresentation(mapUiPartsToItems(last.parts), {
+      toolActivity,
+      reasoning,
+    });
+  }, [messages, isStreaming, settling, toolActivity, reasoning]);
+
+  const visibleTurnSources = useMemo(
+    () =>
+      turnSources.flatMap((source) => {
+        const items = applyPresentation(source.items, {
+          toolActivity,
+          reasoning,
+        });
+        if (items.length === 0) return [];
+        return [items === source.items ? source : { ...source, items }];
+      }),
+    [turnSources, toolActivity, reasoning],
+  );
 
   // Messages the user queued mid-turn — surfaced so the composer can render
   // them as a queue pill. Recomputed on every enqueue/drain (`queueVersion`).
@@ -812,7 +871,7 @@ export function useAgentChat({
     isStreaming,
     liveItems,
     /** Finished turns' render sources — see `TurnRenderSource`. */
-    turnSources,
+    turnSources: visibleTurnSources,
     /** The live turn's node key (stable through the retained promotion). */
     liveTurnKey,
     /** The last turn failed — the transcript renders a visible error row. */

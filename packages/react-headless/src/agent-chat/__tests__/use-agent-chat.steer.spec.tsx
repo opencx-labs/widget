@@ -246,6 +246,36 @@ describe('useAgentChat steering into the live turn', () => {
     callOrder.length = 0;
   }
 
+  it('owns an accepted side stream until its acknowledgement arrives after the original turn finishes', async () => {
+    await liveTurn();
+    let acknowledge = () => {};
+    nextSideStream = () =>
+      new ReadableStream<UIMessageChunk>({
+        start(controller) {
+          acknowledge = () => {
+            controller.enqueue({
+              type: 'data-turn-steered',
+              data: { turn_id: 'turn-1', message_uuid: 'msg-follow-up' },
+            });
+            controller.close();
+          };
+        },
+      });
+    await act(async () => {
+      await registeredSend()({ content: 'follow-up' });
+    });
+    await act(async () =>
+      setChatState({ status: 'ready', messages: fullTurn() }),
+    );
+    await act(async () => resolveReconcile());
+    const handlers =
+      fakeMessageCtx.registerAgentHandlers.mock.calls.at(-1)?.[0];
+    expect(handlers?.hasPendingWork()).toBe(true);
+    await act(async () => acknowledge());
+    expect(handlers?.hasPendingWork()).toBe(false);
+    expect(callOrder).toContain('delivered:msg-follow-up');
+  });
+
   it('steer: the bubble appears at once, the live stream keeps rendering, the steered part binds, one reply answers both', async () => {
     await liveTurn();
     nextSideStream = () =>

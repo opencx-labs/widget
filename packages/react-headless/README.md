@@ -57,6 +57,10 @@ Interactive question and highlight payloads remain available when activity is
 hidden because they drive the customer-facing UI.
 
 Changing options on an existing provider updates subsequent requests without
-resetting its session. Streaming reconnects and history fetches include the
-current presentation opt-outs. Integrations displaying their own cached data
-should also apply their current display preferences to that cache.
+resetting its session. A delivery change waits for accepted messages, queued
+messages and reply reconciliation to finish on their current transport.
+Streaming reconnects and history fetches include the current presentation
+opt-outs. Changing visibility refreshes existing history; `useAgentChatUi()`
+immediately hides opted-out activity in both live and cached turns, including
+while that refresh is pending or fails. Integrations keeping a separate cache
+can use `applyPresentation(items, presentation)` to apply the same display rules.
