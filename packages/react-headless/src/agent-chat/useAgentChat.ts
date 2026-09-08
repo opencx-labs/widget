@@ -182,7 +182,10 @@ export function useAgentChat({
   // Raised while streaming (never at the boundary) so the hold is already up on
   // the frame the stream ends, and so a RESUMED turn is covered too.
   const [settling, setSettling] = useState(false);
-  const pendingHandoffRef = useRef(false);
+  // Message snapshots are throttled independently of status. An empty render
+  // does not release ownership while the persisted-row handoff is pending.
+  const pendingHandoffRef = useRef(settling);
+  pendingHandoffRef.current = settling;
   // Per-turn render sources: finished turns whose transcript rows render
   // through the streaming renderer instead of their plain bubbles. Retained
   // live turns (the streamed message STAYS the render source — no swap, no
@@ -847,9 +850,6 @@ export function useAgentChat({
       reasoning,
     });
   }, [messages, isStreaming, settling, toolActivity, reasoning]);
-  // Reconciliation can finish before the saved row arrives. Keep the engine
-  // that still owns a visible reply until the transcript can replace it.
-  pendingHandoffRef.current = settling && liveItems.length > 0;
 
   const visibleTurnSources = useMemo(
     () =>

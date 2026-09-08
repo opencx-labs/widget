@@ -204,6 +204,16 @@ describe('WidgetProvider blocking capability updates', () => {
 });
 
 it('keeps accepted queued sends through a polling opt-out, then sends new work through polling', async () => {
+  await expect(assertSendOwnership('before-ready')).resolves.toBeUndefined();
+});
+
+it('keeps ownership when the final assistant snapshot trails ready and reconciliation', async () => {
+  await expect(assertSendOwnership('after-ready')).resolves.toBeUndefined();
+});
+
+async function assertSendOwnership(
+  finalSnapshotTiming: 'before-ready' | 'after-ready',
+) {
   vi.stubGlobal(
     'AbortController',
     class {
@@ -347,22 +357,69 @@ it('keeps accepted queued sends through a polling opt-out, then sends new work t
       { text: 'second' },
     ]);
     persistReply = false;
+    const finalSnapshot: UIMessage[] = [
+      {
+        id: 'reply-2',
+        role: 'assistant',
+        parts: [
+          { type: 'text', text: 'Second reply.' },
+          {
+            type: 'data-spec',
+            data: { op: 'add', path: '/root', value: 'card' },
+          },
+          {
+            type: 'data-turn-settled',
+            data: {
+              turn_id: 'turn-2',
+              message_uuids: ['persisted-second-reply'],
+            },
+          },
+        ],
+      },
+    ];
     await act(async () => {
       setStreamStatus('streaming');
-      setStreamMessages([
-        {
-          id: 'reply-2',
-          role: 'assistant',
-          parts: [{ type: 'text', text: 'Second reply.' }],
-        },
-      ]);
+      setStreamMessages(
+        finalSnapshotTiming === 'before-ready'
+          ? finalSnapshot
+          : [
+              {
+                id: 'user-2',
+                role: 'user',
+                parts: [{ type: 'text', text: 'second' }],
+              },
+            ],
+      );
     });
     await act(async () => setStreamStatus('ready'));
-    // An empty reconciliation must not detach the only copy of the reply.
+    // Both status and an empty reconciliation can precede the final throttled
+    // assistant snapshot. Absence of rendered content does not settle the turn.
     await act(async () => render(false));
     expect(current.streaming).toBe(true);
+    const liveKey = latestUi?.liveTurnKey;
+    if (finalSnapshotTiming === 'after-ready') {
+      expect(latestUi?.liveItems).toEqual([]);
+      await act(async () => setStreamMessages(finalSnapshot));
+    }
     expect(latestUi?.liveItems).toEqual([
       { kind: 'text', text: 'Second reply.' },
+      {
+        kind: 'spec',
+        parts: [
+          {
+            type: 'data-spec',
+            data: { op: 'add', path: '/root', value: 'card' },
+          },
+        ],
+      },
+    ]);
+    expect(latestUi?.turnSources).toEqual([
+      {
+        key: liveKey,
+        turnId: 'turn-2',
+        rowIds: ['persisted-second-reply'],
+        items: latestUi?.liveItems,
+      },
     ]);
     await act(async () => {
       current.messageCtx.state.setPartial({
@@ -391,4 +448,4 @@ it('keeps accepted queued sends through a polling opt-out, then sends new work t
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   }
-});
+}
