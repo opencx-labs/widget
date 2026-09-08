@@ -1,5 +1,9 @@
 import React, { createContext, useContext, useEffect, useMemo } from 'react';
-import { PrimitiveState, type WidgetCtx } from '@opencx/widget-core';
+import {
+  PrimitiveState,
+  type WidgetConfig,
+  type WidgetCtx,
+} from '@opencx/widget-core';
 import {
   AgentChatContext,
   AgentChatProvider,
@@ -283,9 +287,11 @@ function ObserveChat({
 
 export function CompanionConversationProvider({
   widgetCtx,
+  config = widgetCtx.config,
   children,
 }: {
   widgetCtx: WidgetCtx;
+  config?: WidgetConfig;
   children: (active: WidgetCtx) => React.ReactNode;
 }) {
   const workspace = useMemo(
@@ -298,15 +304,11 @@ export function CompanionConversationProvider({
   const engines = useMemo(
     () =>
       chats.map((chat) => (
-        <AgentChatProvider
-          key={chat.id}
-          widgetCtx={chat.ctx}
-          config={widgetCtx.config}
-        >
+        <AgentChatProvider key={chat.id} widgetCtx={chat.ctx} config={config}>
           <ObserveChat chat={chat} workspace={workspace} />
         </AgentChatProvider>
       )),
-    [chats, widgetCtx.config, workspace],
+    [chats, config, workspace],
   );
   return (
     <WorkspaceContext.Provider value={workspace}>

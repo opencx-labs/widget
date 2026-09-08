@@ -66,6 +66,8 @@ export type StagedUserTurn = {
  * shared persisted message list.
  */
 export type AgentChatHandlers = {
+  /** Includes preparation, queued sends, live work and post-turn reconciliation. */
+  hasPendingWork?: () => boolean;
   send: (input: SendMessageInput) => Promise<void> | void;
 };
 
@@ -198,10 +200,18 @@ export const buildSendMessageBody = ({
   ...mergeSendContext(config, input, { sendsPageContext }),
   language: config.language,
   features: resolveSendFeatures(config),
-  capabilities:
-    config.capabilities?.structuredQuestions === undefined
-      ? undefined
-      : { structured_questions: config.capabilities.structuredQuestions },
+  presentation: config.presentation,
+  capabilities: [
+    config.capabilities?.structuredQuestions,
+    config.capabilities?.richReplies,
+    config.capabilities?.pageEffects,
+  ].some((value) => value !== undefined)
+    ? {
+        structured_questions: config.capabilities?.structuredQuestions,
+        rich_replies: config.capabilities?.richReplies,
+        page_effects: config.capabilities?.pageEffects,
+      }
+    : undefined,
   exit_mode_prompt: input.exitModePrompt,
   initial_messages:
     initialMessages.length > 0
@@ -214,12 +224,16 @@ type MessageCtxState = {
   /** Regardless of assignee */
   isSendingMessage: boolean;
   isSendingMessageToAI: boolean;
+  /** A completed streamed turn can intentionally leave no assistant row. */
+  settledAgentUserMessageId: string | null;
   lastAIResMightSolveUserIssue: boolean;
   isInitialFetchLoading: boolean;
 };
 
 export class MessageCtx {
   private config: WidgetConfig;
+  private readonly getRequestConfig: () => WidgetConfig;
+  private readonly isStreaming: () => boolean;
   private readonly getClientCapabilities: () => WidgetConfig['capabilities'];
   private api: ApiCaller;
   private contactCtx: ContactCtx;
@@ -229,6 +243,7 @@ export class MessageCtx {
     messages: [],
     isSendingMessage: false,
     isSendingMessageToAI: false,
+    settledAgentUserMessageId: null,
     lastAIResMightSolveUserIssue: false,
     isInitialFetchLoading: false,
   });
@@ -240,18 +255,22 @@ export class MessageCtx {
   });
 
   /**
-   * The org's web channel runs the streaming engine — turns stream over the
-   * AI SDK `useChat` surface instead of the blocking send. Decided by the
-   * server at init and constant for the widget's whole lifetime.
+   * Current transport choice. The org or this embed may request polling
+   * independently of the server's agent version.
    */
-  public readonly streaming: boolean;
+  public get streaming(): boolean {
+    return this.isStreaming();
+  }
 
   /**
    * `WidgetCtx.features.pageContext`: whether the widget's own page context
    * (page marks, picked elements) rides along with each message. Off → the
    * user bubble shows no page-mark chips either.
    */
-  public readonly sendsPageContext: boolean;
+  private readonly getSendsPageContext: () => boolean;
+  public get sendsPageContext(): boolean {
+    return this.getSendsPageContext();
+  }
 
   /** Registered by the headless agent engine for the WidgetProvider lifetime. */
   private agentHandlers: AgentChatHandlers | null = null;
@@ -284,6 +303,9 @@ export class MessageCtx {
     streaming,
     sendsPageContext,
     getClientCapabilities,
+    getRequestConfig,
+    isStreaming,
+    getSendsPageContext,
   }: {
     config: WidgetConfig;
     api: ApiCaller;
@@ -293,15 +315,19 @@ export class MessageCtx {
     sendsPageContext: boolean;
     /** Read renderer support at send time; React options may change after initialization. */
     getClientCapabilities?: () => WidgetConfig['capabilities'];
+    getRequestConfig?: () => WidgetConfig;
+    isStreaming?: () => boolean;
+    getSendsPageContext?: () => boolean;
   }) {
     this.config = config;
     this.getClientCapabilities =
-      getClientCapabilities ?? (() => this.config.capabilities);
+      getClientCapabilities ?? (() => this.getRequestConfig().capabilities);
     this.api = api;
     this.sessionCtx = sessionCtx;
     this.contactCtx = contactCtx;
-    this.streaming = streaming;
-    this.sendsPageContext = sendsPageContext;
+    this.isStreaming = isStreaming ?? (() => streaming);
+    this.getRequestConfig = getRequestConfig ?? (() => this.config);
+    this.getSendsPageContext = getSendsPageContext ?? (() => sendsPageContext);
   }
 
   reset = () => {
@@ -356,6 +382,13 @@ export class MessageCtx {
     } catch (err) {
       log.error('streaming send failed', err);
     }
+  }
+
+  get hasPendingAgentWork(): boolean {
+    return (
+      this.bufferedAgentSends.length > 0 ||
+      (this.agentHandlers?.hasPendingWork?.() ?? false)
+    );
   }
 
   unregisterAgentHandlers = (handlers: AgentChatHandlers): void => {
@@ -644,7 +677,9 @@ export class MessageCtx {
         this.blocksSendWhileAwaitingReply &&
         (isSendingToAI ||
           // If last message is from user, then bot response did not arrive yet
-          (isAssignedToAI && lastMessage?.type === 'USER'))
+          (isAssignedToAI &&
+            lastMessage?.type === 'USER' &&
+            lastMessage.id !== this.state.get().settledAgentUserMessageId))
       ) {
         log.warn('cannot send messages while awaiting AI response');
         return;
@@ -675,7 +710,7 @@ export class MessageCtx {
       const { data } = await this.api.sendMessage(
         buildSendMessageBody({
           config: {
-            ...this.config,
+            ...this.getRequestConfig(),
             capabilities: this.getClientCapabilities(),
           },
           input,

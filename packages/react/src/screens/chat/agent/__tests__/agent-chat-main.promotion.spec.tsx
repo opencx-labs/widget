@@ -99,11 +99,13 @@ vi.mock('../useStreamFollow', () => ({
 let transcript: WidgetMessageU[] = [];
 let uiValue: AgentChatUiValue;
 
-vi.mock('@opencx/widget-react-headless', () => ({
+vi.mock('@opencx/widget-react-headless', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@opencx/widget-react-headless')>()),
   useAgentChatUi: () => uiValue,
   useMessages: () => ({ messagesState: { messages: transcript } }),
   useBot: () => undefined,
   useWidget: () => ({
+    config: { token: 'test' },
     componentStore: { getComponent: () => null },
   }),
   // The failed-turn row is localized, so `useTranslation` is on this

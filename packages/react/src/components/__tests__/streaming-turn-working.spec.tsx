@@ -1,3 +1,4 @@
+import type { WidgetConfig } from '@opencx/widget-core';
 import type { StreamingTurnState } from '@opencx/widget-react-headless';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -5,8 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
-vi.mock('@opencx/widget-react-headless', () => ({
+const config = vi.hoisted((): WidgetConfig => ({ token: 'test' }));
+
+vi.mock('@opencx/widget-react-headless', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@opencx/widget-react-headless')>()),
   useWidget: () => ({
+    config,
     componentStore: {
       getComponent: () => () => <div data-steps />,
     },
@@ -32,6 +37,7 @@ describe('StreamingTurn working indicator', () => {
   afterEach(() => {
     act(() => root.unmount());
     container.remove();
+    config.presentation = undefined;
   });
 
   const working = () =>
@@ -56,6 +62,21 @@ describe('StreamingTurn working indicator', () => {
       ],
     });
     expect(working()).toBeNull();
+  });
+
+  it('keeps a working indicator when the running activity itself is hidden', () => {
+    config.presentation = { toolActivity: 'hidden', reasoning: false };
+    render({
+      active: true,
+      items: [
+        {
+          kind: 'steps',
+          steps: [{ kind: 'tool', label: 'lookup', done: false }],
+        },
+      ],
+    });
+    expect(container.querySelector('[data-steps]')).toBeNull();
+    expect(working()).not.toBeNull();
   });
 
   it('returns once the steps settle but the turn is still streaming', () => {

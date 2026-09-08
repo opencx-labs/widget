@@ -4,7 +4,7 @@ import type {
   StreamingTurnItem,
   StreamingTurnState,
 } from '@opencx/widget-react-headless';
-import { useWidget } from '@opencx/widget-react-headless';
+import { applyPresentation, useWidget } from '@opencx/widget-react-headless';
 import React, { useMemo, useState } from 'react';
 import { buildSpec, SpecRenderer } from '../json-render';
 import { dc } from '../utils/data-component';
@@ -37,7 +37,7 @@ export function StreamingTurn({
 }) {
   // Registered by `Widget` (`agent_chat_steps` / `agent_chat_spec`) and
   // replaceable through the `components` prop.
-  const { componentStore } = useWidget();
+  const { componentStore, config } = useWidget();
   const StepsComponent = componentStore.getComponent('agent_chat_steps');
   const SpecComponent = componentStore.getComponent('agent_chat_spec');
   // Fixed for the life of the turn. A fresh `new Date()` per render would make
@@ -45,6 +45,7 @@ export function StreamingTurn({
   // persisted row (stamped once, server-side) takes over at the handoff.
   const [startedAt] = useState(() => new Date().toISOString());
   const groupTimestamp = timestamp ?? startedAt;
+  const items = applyPresentation(turn.items, config.presentation);
 
   // `questions` renders NOTHING in the transcript. A pending clarification
   // takes the composer's place instead (`ChatInput`), so the customer answers
@@ -52,7 +53,7 @@ export function StreamingTurn({
   // has moved past leaves no dead card behind.
   return (
     <div {...dc('chat/streaming_turn/root')} className="flex flex-col gap-2">
-      {turn.items.map((item, index) =>
+      {items.map((item, index) =>
         item.kind === 'text' ? (
           <AgentMessageGroup
             key={`text-${index}`}
@@ -88,7 +89,7 @@ export function StreamingTurn({
           UI spec can take seconds with no new text, and silence reads as a
           stall. A running steps group carries its own loader, so the tail
           stays quiet while one is the last item. */}
-      {turn.active && !endsWithRunningSteps(turn.items) && (
+      {turn.active && !endsWithRunningSteps(items) && (
         <div
           {...dc('chat/streaming_turn/working')}
           className="flex h-5 items-center ps-1"

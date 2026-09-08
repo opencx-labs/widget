@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { isAgentStreamKeepalive } from '@opencx/widget-core';
 import {
   isAskQuestionsToolName,
@@ -27,6 +28,7 @@ export type StreamingStep = {
  * renderer assembles these into a renderable element-tree spec.
  */
 const SPEC_DATA_PART_TYPE = 'data-spec';
+const toolActivitySchema = z.object({ label: z.string(), done: z.boolean() });
 
 export type SpecDataPart = { type: typeof SPEC_DATA_PART_TYPE; data: unknown };
 
@@ -89,6 +91,9 @@ export function mapUiPartsToItems(
     // — but a persisted `ui_parts` snapshot replayed on reload can carry one;
     // it renders nothing either way.
     if (isAgentStreamKeepalive(part)) continue;
+    // Page effects have their own consumer; never display their selectors as
+    // generic tool activity, including when activity details are hidden.
+    if (partToolName(part) === 'highlight_element') continue;
     if (isAskQuestionsPart(part)) {
       // The raw call NEVER renders, parseable or not — the customer must never
       // be shown `ask_questions` as machinery. A payload that has not finished
@@ -98,7 +103,15 @@ export function mapUiPartsToItems(
       if (questions) items.push(questions);
       continue;
     }
-    if (part.type === SPEC_DATA_PART_TYPE) {
+    if (part.type === 'data-tool-activity') {
+      const parsed = toolActivitySchema.safeParse(part.data);
+      if (parsed.success)
+        pushStep({
+          kind: 'tool',
+          label: parsed.data.label,
+          done: parsed.data.done,
+        });
+    } else if (part.type === SPEC_DATA_PART_TYPE) {
       if (!specItem) {
         specItem = { kind: 'spec', parts: [] };
         items.push(specItem);
@@ -149,9 +162,8 @@ function isAskQuestionsPart(part: UiPartLike): boolean {
 /**
  * An `ask_questions` tool part as a renderable questionnaire, or `null` when
  * the part is not one — or carries nothing parseable yet, which is the normal
- * state while the model is still streaming the call's arguments. Returning
- * `null` there leaves the part to the step mapper, so a half-arrived call
- * shows as ordinary activity rather than flickering an empty questionnaire.
+ * state while the model is still streaming the call's arguments. An incomplete
+ * questionnaire contributes no activity step while its payload arrives.
  *
  * The OUTPUT is preferred over the INPUT: when an MCP server answered, its
  * response carries the real `request_id` and option ids.

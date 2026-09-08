@@ -114,4 +114,67 @@ suite('WidgetCtx.features (server-enabled, embed-narrowed)', () => {
     expect(ctx.features.clientTools).toBe(true);
     expect(ctx.features.dictation).toBe(true);
   });
+
+  test('inherits current delivery and feature overrides in independent sessions', async () => {
+    serverFeatures(everythingOn);
+    let config: WidgetConfig = {
+      token: '',
+      streaming: true,
+      features: { pageContext: true },
+      capabilities: { richReplies: true },
+    };
+    const ctx = await WidgetCtx.initialize({
+      config,
+      getRequestConfig: () => config,
+      getClientCapabilities: () => config.capabilities,
+    });
+    const child = ctx.createConversation();
+    expect(child.streaming).toBe(true);
+    expect(child.features.pageContext).toBe(true);
+    config = {
+      ...config,
+      streaming: false,
+      features: { pageContext: false },
+      capabilities: { richReplies: false },
+    };
+    expect(child.streaming).toBe(false);
+    expect(child.features.pageContext).toBe(false);
+    expect(child.messageCtx.sendsPageContext).toBe(false);
+    expect(child.api).toBe(ctx.api);
+    child.releaseConversation();
+    ctx.resetChat();
+  });
+
+  test('keeps sends buffered before provider mount when streaming is opted out', async () => {
+    serverFeatures({});
+    let config: WidgetConfig = { token: '', streaming: true };
+    const ctx = await WidgetCtx.initialize({
+      config,
+      getRequestConfig: () => config,
+    });
+    await ctx.messageCtx.sendMessage({ content: 'accepted before mount' });
+    config = { ...config, streaming: false };
+    expect(ctx.streaming).toBe(true);
+    const send = vi.fn();
+    ctx.messageCtx.registerAgentHandlers({ send });
+    expect(send).toHaveBeenCalledExactlyOnceWith({
+      content: 'accepted before mount',
+    });
+    expect(ctx.streaming).toBe(false);
+  });
+
+  test('waits for a blocking send to settle before opting into streaming', async () => {
+    serverFeatures({});
+    let config: WidgetConfig = { token: '', streaming: false };
+    const ctx = await WidgetCtx.initialize({
+      config,
+      getRequestConfig: () => config,
+    });
+    expect(ctx.streaming).toBe(false);
+    ctx.messageCtx.state.setPartial({ isSendingMessage: true });
+    config = { ...config, streaming: true };
+    expect(ctx.streaming).toBe(false);
+    ctx.messageCtx.state.setPartial({ isSendingMessage: false });
+    expect(ctx.streaming).toBe(true);
+  });
 });

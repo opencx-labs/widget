@@ -140,6 +140,14 @@ const Widget = React.forwardRef<
           ...options,
           capabilities: {
             ...options.capabilities,
+            richReplies:
+              options.capabilities?.richReplies ??
+              !components.some(({ key }) =>
+                ['AGENT_CHAT_SPEC', 'BOT_MESSAGE', 'AGENT_MESSAGE'].includes(
+                  key.toUpperCase(),
+                ),
+              ),
+            pageEffects: options.capabilities?.pageEffects ?? true,
             structuredQuestions:
               options.capabilities?.structuredQuestions ??
               !components.some(

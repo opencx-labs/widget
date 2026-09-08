@@ -194,4 +194,40 @@ describe('Widget receiving question renderer', () => {
       act(() => root.unmount());
     }
   });
+  it.each(['agent_chat_spec', 'AGENT_CHAT_SPEC', 'bot_message'])(
+    'requires explicit rich reply support for a custom %s renderer',
+    async (key) => {
+      const container = document.createElement('div');
+      const root = createRoot(container);
+      try {
+        await act(async () =>
+          root.render(
+            <Widget options={{ token: 't', collectUserData: true }} />,
+          ),
+        );
+        expect(captured.options?.capabilities?.richReplies).toBe(true);
+        expect(captured.options?.capabilities?.pageEffects).toBe(true);
+        for (const richReplies of [undefined, true, false]) {
+          await act(async () =>
+            root.render(
+              <Widget
+                options={{
+                  token: 't',
+                  collectUserData: true,
+                  capabilities: { richReplies, pageEffects: false },
+                }}
+                components={[{ key, component: () => null }]}
+              />,
+            ),
+          );
+          expect(captured.options?.capabilities?.richReplies).toBe(
+            richReplies ?? false,
+          );
+          expect(captured.options?.capabilities?.pageEffects).toBe(false);
+        }
+      } finally {
+        act(() => root.unmount());
+      }
+    },
+  );
 });

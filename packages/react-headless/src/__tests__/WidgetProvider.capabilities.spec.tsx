@@ -1,10 +1,40 @@
 import { transferableAbortController } from 'node:util';
 import type { SessionDto, WidgetConfig, WidgetCtx } from '@opencx/widget-core';
+import type { ChatOnFinishCallback, UIMessage } from 'ai';
 import React, { act, useLayoutEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WidgetProvider, useWidget } from '../WidgetProvider';
 import { useMessages } from '../hooks/useMessages';
+import { useIsAwaitingBotReply } from '../hooks/useIsAwaitingBotReply';
+import { useAgentChatUi } from '../agent-chat/AgentChatContext';
+
+const streamSend = vi.fn(async (_message: { text: string }) => {});
+let setStreamStatus: (
+  status: 'ready' | 'submitted' | 'streaming' | 'error',
+) => void = () => {};
+let setStreamMessages: (messages: UIMessage[]) => void = () => {};
+let finishStream: ChatOnFinishCallback<UIMessage> = () => {};
+let awaitingReply = false;
+let latestUi: ReturnType<typeof useAgentChatUi> | undefined;
+vi.mock('@ai-sdk/react', () => ({
+  useChat: (options: { onFinish?: ChatOnFinishCallback<UIMessage> }) => {
+    finishStream = (result) => options.onFinish?.(result);
+    const [status, setStatus] = React.useState<
+      'ready' | 'submitted' | 'streaming' | 'error'
+    >('ready');
+    setStreamStatus = setStatus;
+    const [messages, setMessages] = React.useState<UIMessage[]>([]);
+    setStreamMessages = setMessages;
+    return {
+      status,
+      messages,
+      sendMessage: streamSend,
+      stop: vi.fn(),
+      resumeStream: vi.fn(),
+    };
+  },
+}));
 
 const session: SessionDto = {
   id: 'a3a3a3a3-0000-4000-8000-000000000001',
@@ -26,6 +56,8 @@ const session: SessionDto = {
 
 function SendProbe({ onContext }: { onContext: (ctx: WidgetCtx) => void }) {
   const { widgetCtx } = useWidget();
+  latestUi = useAgentChatUi();
+  awaitingReply = useIsAwaitingBotReply().isAwaitingBotReply;
   const { sendMessage } = useMessages();
   useLayoutEffect(() => {
     widgetCtx.sessionCtx.sessionState.setPartial({ session });
@@ -46,106 +78,497 @@ function jsonResponse(body: unknown) {
 describe('WidgetProvider blocking capability updates', () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it('uses the latest declaration on the same initialized client after opt-in, opt-out, and removal', async () => {
-    // Node's Request requires its own AbortSignal, rather than jsdom's version.
-    vi.stubGlobal(
-      'AbortController',
-      class {
-        constructor() {
-          return transferableAbortController();
+  it.each([undefined, 'companion'] as const)(
+    'uses the latest declaration on the same initialized client after opt-in, opt-out, and removal (%s)',
+    async (displayMode) => {
+      // Node's Request requires its own AbortSignal, rather than jsdom's version.
+      vi.stubGlobal(
+        'AbortController',
+        class {
+          constructor() {
+            return transferableAbortController();
+          }
+        },
+      );
+      const bodies: unknown[] = [];
+      let configFetches = 0;
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+          const request =
+            input instanceof Request ? input : new Request(input, init);
+          if (request.url.endsWith('/config')) {
+            configFetches += 1;
+            return jsonResponse({
+              org: { id: 'org-1', name: 'Org' },
+              sessionPollingIntervalSeconds: 3600,
+              sessionsPollingIntervalSeconds: 3600,
+              modes: [],
+              agent: {
+                name: 'Agent',
+                avatar_url: null,
+                streaming: true,
+                features: {
+                  preamble: false,
+                  inline_ui: false,
+                  dictation: false,
+                  attachments: true,
+                  page_context: true,
+                  client_tools: false,
+                },
+              },
+            });
+          }
+          if (request.url.includes('/poll'))
+            return jsonResponse({ session, history: [] });
+          if (request.url.endsWith('/chat/send')) {
+            const body: unknown = JSON.parse(await request.text());
+            bodies.push(body);
+            return jsonResponse({
+              success: true,
+              autopilotResponse: { value: { content: 'Reply' } },
+            });
+          }
+          throw new Error(
+            `Unexpected request: ${request.method} ${request.url}`,
+          );
+        }),
+      );
+      const contexts = new Set<WidgetCtx>();
+      const onContext = (ctx: WidgetCtx) => {
+        contexts.add(ctx);
+      };
+      const container = document.createElement('div');
+      const root = createRoot(container);
+      try {
+        for (const structuredQuestions of [undefined, true, false, undefined]) {
+          const options: WidgetConfig = {
+            token: 'token',
+            displayMode,
+            streaming: false,
+            presentation: {
+              toolActivity: structuredQuestions ? 'details' : 'hidden',
+              reasoning: structuredQuestions === true,
+            },
+            features: {
+              preamble: structuredQuestions === true,
+              pageContext: structuredQuestions === true,
+            },
+            collectUserData: true,
+            capabilities:
+              structuredQuestions === undefined
+                ? undefined
+                : { structuredQuestions },
+          };
+          await act(async () =>
+            root.render(
+              <WidgetProvider
+                options={options}
+                components={[{ key: 'fallback', component: () => null }]}
+              >
+                <SendProbe onContext={onContext} />
+              </WidgetProvider>,
+            ),
+          );
+          const button = container.querySelector('button');
+          if (!button) throw new Error('Widget did not initialize');
+          const before = bodies.length;
+          await act(async () => button.click());
+          expect(bodies).toHaveLength(before + 1);
+          expect(bodies.at(-1)).toMatchObject({
+            presentation: options.presentation,
+            features: { preamble: options.features?.preamble },
+          });
+          expect(Array.from(contexts)[0]?.streaming).toBe(false);
+          expect(Array.from(contexts)[0]?.features.pageContext).toBe(
+            structuredQuestions === true,
+          );
+          expect(Array.from(contexts)[0]?.messageCtx.sendsPageContext).toBe(
+            structuredQuestions === true,
+          );
+          if (structuredQuestions === undefined)
+            expect(bodies.at(-1)).not.toHaveProperty('capabilities');
+          else
+            expect(bodies.at(-1)).toMatchObject({
+              capabilities: { structured_questions: structuredQuestions },
+            });
         }
+        expect(configFetches).toBe(1);
+        expect(contexts.size).toBe(1);
+        expect(
+          Array.from(contexts)[0]?.messageCtx.state.get().messages,
+        ).toHaveLength(8);
+      } finally {
+        act(() => {
+          root.unmount();
+          contexts.forEach((ctx) => ctx.resetChat());
+        });
+      }
+    },
+  );
+});
+
+it('keeps accepted queued sends through a polling opt-out, then sends new work through polling', async () => {
+  await expect(assertSendOwnership('before-ready')).resolves.toBeUndefined();
+});
+
+it('keeps ownership when the final assistant snapshot trails ready and reconciliation', async () => {
+  await expect(assertSendOwnership('after-ready')).resolves.toBeUndefined();
+});
+
+it.each([
+  'silent',
+  'withheld',
+  'legacy-silent',
+  'activity-only',
+  'fast-silent',
+  'stopped-silent',
+  'failed-stop',
+  'failed-stream',
+  'stale-completion',
+] as const)(
+  'releases a confirmed %s turn so subsequent sends use polling',
+  async (outcome) => {
+    await expect(assertSendOwnership(outcome)).resolves.toBeUndefined();
+  },
+);
+
+async function assertSendOwnership(
+  finalSnapshotTiming:
+    | 'before-ready'
+    | 'after-ready'
+    | 'silent'
+    | 'withheld'
+    | 'legacy-silent'
+    | 'activity-only'
+    | 'fast-silent'
+    | 'stopped-silent'
+    | 'failed-stop'
+    | 'failed-stream'
+    | 'stale-completion',
+) {
+  vi.stubGlobal(
+    'AbortController',
+    class {
+      constructor() {
+        return transferableAbortController();
+      }
+    },
+  );
+  streamSend.mockClear();
+  const pollingBodies: unknown[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request =
+        input instanceof Request ? input : new Request(input, init);
+      if (request.url.endsWith('/config'))
+        return jsonResponse({
+          org: { id: 'org', name: 'Org' },
+          sessionPollingIntervalSeconds: 3600,
+          sessionsPollingIntervalSeconds: 3600,
+          modes: [],
+          agent: {
+            name: 'Agent',
+            avatar_url: null,
+            streaming: true,
+            features: {
+              preamble: false,
+              inline_ui: false,
+              dictation: false,
+              attachments: true,
+              page_context: false,
+              client_tools: false,
+            },
+          },
+        });
+      if (request.url.includes('/messages')) return jsonResponse({ turns: [] });
+      if (request.url.includes('/poll'))
+        return jsonResponse({ session, history: [] });
+      if (request.url.endsWith('/chat/send')) {
+        pollingBodies.push(await request.json());
+        return jsonResponse({
+          success: true,
+          autopilotResponse: { value: { content: 'Done' } },
+        });
+      }
+      throw new Error(`Unexpected request: ${request.url}`);
+    }),
+  );
+  let ctx: WidgetCtx | undefined;
+  const onContext = (value: WidgetCtx) => {
+    ctx = value;
+  };
+  const container = document.createElement('div');
+  const root = createRoot(container);
+  const render = (streaming: boolean) =>
+    root.render(
+      <WidgetProvider
+        components={[{ key: 'fallback', component: () => null }]}
+        options={{ token: 't', collectUserData: true, streaming }}
+      >
+        <SendProbe onContext={onContext} />
+      </WidgetProvider>,
+    );
+  try {
+    await act(async () => render(true));
+    if (!ctx) throw new Error('Widget did not initialize');
+    const current = ctx;
+    const logError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    let acknowledgeStop = () => {};
+    const stopAcknowledgement = new Promise<void>((resolve) => {
+      acknowledgeStop = resolve;
+    });
+    vi.spyOn(current.api, 'stopStream').mockImplementation(async () => {
+      await stopAcknowledgement;
+      if (finalSnapshotTiming === 'failed-stop') throw new Error('Stop failed');
+    });
+    let persistReply = true;
+    let finishReconcile = () => {};
+    const reconcileGate = new Promise<void>((resolve) => {
+      finishReconcile = resolve;
+    });
+    vi.spyOn(ctx, 'reconcileAfterStream').mockImplementation(async () => {
+      await reconcileGate;
+      if (!persistReply) return;
+      current.messageCtx.state.setPartial({
+        messages: [
+          ...current.messageCtx.state.get().messages,
+          {
+            id: crypto.randomUUID(),
+            type: 'AI',
+            component: 'bot_message',
+            timestamp: new Date().toISOString(),
+            data: { message: 'Done' },
+          },
+        ],
+      });
+    });
+    const stageUserTurn = ctx.messageCtx.stageUserTurn.bind(ctx.messageCtx);
+    let finishPreparation = () => {};
+    const preparationGate = new Promise<void>((resolve) => {
+      finishPreparation = resolve;
+    });
+    vi.spyOn(ctx.messageCtx, 'stageUserTurn').mockImplementationOnce(
+      async (...args) => {
+        await preparationGate;
+        return stageUserTurn(...args);
       },
     );
-    const bodies: unknown[] = [];
-    let configFetches = 0;
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-        const request =
-          input instanceof Request ? input : new Request(input, init);
-        if (request.url.endsWith('/config')) {
-          configFetches += 1;
-          return jsonResponse({
-            org: { id: 'org-1', name: 'Org' },
-            sessionPollingIntervalSeconds: 3600,
-            sessionsPollingIntervalSeconds: 3600,
-            modes: [],
-            agent: {
-              name: 'Agent',
-              avatar_url: null,
-              streaming: false,
-              features: {
-                preamble: false,
-                inline_ui: false,
-                dictation: false,
-                attachments: true,
-                page_context: false,
-                client_tools: false,
+    let firstSend: Promise<void> | undefined;
+    await act(async () => {
+      firstSend = current.messageCtx.sendMessage({ content: 'first' });
+    });
+    await act(async () => render(false));
+    expect(current.streaming).toBe(true);
+    expect(streamSend).not.toHaveBeenCalled();
+    await act(async () => {
+      finishPreparation();
+      await firstSend;
+    });
+    expect(streamSend).toHaveBeenCalledOnce();
+    await act(async () => render(true));
+    await act(async () => setStreamStatus('submitted'));
+    const accepted = vi.fn();
+    await act(async () => {
+      await ctx?.messageCtx.sendMessage({
+        content: 'second',
+        onAccepted: accepted,
+      });
+    });
+    expect(accepted).toHaveBeenCalledOnce();
+    expect(
+      latestUi?.queuedUserMessages.map((message) => message.content),
+    ).toEqual(['second']);
+    await act(async () => render(false));
+    expect(
+      latestUi?.queuedUserMessages.map((message) => message.content),
+    ).toEqual(['second']);
+    await act(async () => setStreamStatus('ready'));
+    // The response is over, but its canonical rows have not arrived yet.
+    await act(async () => render(false));
+    expect(current.streaming).toBe(true);
+    expect(streamSend).toHaveBeenCalledOnce();
+    expect(
+      latestUi?.queuedUserMessages.map((message) => message.content),
+    ).toEqual(['second']);
+    await act(async () => finishReconcile());
+    expect(streamSend).toHaveBeenCalledTimes(2);
+    expect(streamSend.mock.calls.map((call) => call[0])).toEqual([
+      { text: 'first' },
+      { text: 'second' },
+    ]);
+    persistReply = false;
+    const silent =
+      finalSnapshotTiming !== 'before-ready' &&
+      finalSnapshotTiming !== 'after-ready';
+    const finalMessage: UIMessage = {
+      id: 'reply-2',
+      role: 'assistant',
+      parts: silent
+        ? finalSnapshotTiming === 'legacy-silent'
+          ? []
+          : [
+              ...(finalSnapshotTiming === 'activity-only'
+                ? [
+                    {
+                      type: 'data-tool-activity' as const,
+                      data: { label: 'Handing off', done: true },
+                    },
+                  ]
+                : []),
+              {
+                type: 'data-turn-settled',
+                data: {
+                  turn_id: 'turn-2',
+                  message_uuids:
+                    finalSnapshotTiming === 'withheld'
+                      ? ['hidden-suggestion']
+                      : [],
+                },
+              },
+            ]
+        : [
+            { type: 'text', text: 'Second reply.' },
+            {
+              type: 'data-spec',
+              data: { op: 'add', path: '/root', value: 'card' },
+            },
+            {
+              type: 'data-turn-settled',
+              data: {
+                turn_id: 'turn-2',
+                message_uuids: ['persisted-second-reply'],
               },
             },
-          });
-        }
-        if (request.url.includes('/poll'))
-          return jsonResponse({ session, history: [] });
-        if (request.url.endsWith('/chat/send')) {
-          const body: unknown = JSON.parse(await request.text());
-          bodies.push(body);
-          return jsonResponse({
-            success: true,
-            autopilotResponse: { value: { content: 'Reply' } },
-          });
-        }
-        throw new Error(`Unexpected request: ${request.method} ${request.url}`);
-      }),
-    );
-    const contexts = new Set<WidgetCtx>();
-    const onContext = (ctx: WidgetCtx) => {
-      contexts.add(ctx);
+          ],
     };
-    const container = document.createElement('div');
-    const root = createRoot(container);
-    try {
-      for (const structuredQuestions of [undefined, true, false, undefined]) {
-        const options: WidgetConfig = {
-          token: 'token',
-          collectUserData: true,
-          capabilities:
-            structuredQuestions === undefined
-              ? undefined
-              : { structuredQuestions },
-        };
-        await act(async () =>
-          root.render(
-            <WidgetProvider
-              options={options}
-              components={[{ key: 'fallback', component: () => null }]}
-            >
-              <SendProbe onContext={onContext} />
-            </WidgetProvider>,
-          ),
-        );
-        const button = container.querySelector('button');
-        if (!button) throw new Error('Widget did not initialize');
-        const before = bodies.length;
-        await act(async () => button.click());
-        expect(bodies).toHaveLength(before + 1);
-        if (structuredQuestions === undefined)
-          expect(bodies.at(-1)).not.toHaveProperty('capabilities');
-        else
-          expect(bodies.at(-1)).toMatchObject({
-            capabilities: { structured_questions: structuredQuestions },
+    const finalSnapshot: UIMessage[] =
+      finalSnapshotTiming === 'legacy-silent'
+        ? [
+            {
+              id: 'user-2',
+              role: 'user',
+              parts: [{ type: 'text', text: 'second' }],
+            },
+          ]
+        : [finalMessage];
+    await act(async () => {
+      if (finalSnapshotTiming !== 'fast-silent') setStreamStatus('streaming');
+      setStreamMessages(
+        finalSnapshotTiming !== 'after-ready'
+          ? finalSnapshot
+          : [
+              {
+                id: 'user-2',
+                role: 'user',
+                parts: [{ type: 'text', text: 'second' }],
+              },
+            ],
+      );
+    });
+    const wasStopped =
+      finalSnapshotTiming === 'stopped-silent' ||
+      finalSnapshotTiming === 'failed-stop';
+    if (wasStopped) await act(async () => latestUi?.stop());
+    await act(async () => {
+      setStreamStatus(
+        finalSnapshotTiming === 'failed-stream' ? 'error' : 'ready',
+      );
+      finishStream({
+        message: finalMessage,
+        messages:
+          finalSnapshotTiming === 'stale-completion'
+            ? [...finalSnapshot]
+            : finalSnapshot,
+        isAbort: wasStopped,
+        isError: finalSnapshotTiming === 'failed-stream',
+        isDisconnect: finalSnapshotTiming === 'failed-stream',
+      });
+    });
+    if (
+      wasStopped ||
+      finalSnapshotTiming === 'failed-stream' ||
+      finalSnapshotTiming === 'stale-completion'
+    ) {
+      await act(async () => render(false));
+      expect(current.streaming).toBe(true);
+      if (wasStopped) await act(async () => acknowledgeStop());
+      if (finalSnapshotTiming === 'failed-stop')
+        expect(logError).toHaveBeenCalled();
+      if (finalSnapshotTiming !== 'stopped-silent') {
+        await act(async () => render(false));
+        expect(current.streaming).toBe(true);
+        // Only a successful completion for the current SDK snapshot releases it.
+        await act(async () => {
+          setStreamStatus('ready');
+          finishStream({
+            message: finalMessage,
+            messages: finalSnapshot,
+            isAbort: false,
+            isError: false,
+            isDisconnect: false,
           });
+        });
       }
-      expect(configFetches).toBe(1);
-      expect(contexts.size).toBe(1);
-      expect(
-        Array.from(contexts)[0]?.messageCtx.state.get().messages,
-      ).toHaveLength(8);
-    } finally {
-      act(() => {
-        root.unmount();
-        contexts.forEach((ctx) => ctx.resetChat());
+    }
+    // Both status and an empty reconciliation can precede the final throttled
+    // assistant snapshot. Absence of rendered content does not settle the turn.
+    await act(async () => render(false));
+    if (!silent) {
+      expect(current.streaming).toBe(true);
+      const liveKey = latestUi?.liveTurnKey;
+      if (finalSnapshotTiming === 'after-ready') {
+        expect(latestUi?.liveItems).toEqual([]);
+        await act(async () => setStreamMessages(finalSnapshot));
+      }
+      expect(latestUi?.liveItems).toEqual([
+        { kind: 'text', text: 'Second reply.' },
+        {
+          kind: 'spec',
+          parts: [
+            {
+              type: 'data-spec',
+              data: { op: 'add', path: '/root', value: 'card' },
+            },
+          ],
+        },
+      ]);
+      expect(latestUi?.turnSources).toEqual([
+        {
+          key: liveKey,
+          turnId: 'turn-2',
+          rowIds: ['persisted-second-reply'],
+          items: latestUi?.liveItems,
+        },
+      ]);
+      await act(async () => {
+        current.messageCtx.state.setPartial({
+          messages: [
+            ...current.messageCtx.state.get().messages,
+            {
+              id: 'persisted-second-reply',
+              type: 'AI',
+              component: 'bot_message',
+              timestamp: new Date().toISOString(),
+              data: { message: 'Second reply.' },
+            },
+          ],
+        });
       });
     }
-  });
-});
+    expect(current.streaming).toBe(false);
+    expect(awaitingReply).toBe(false);
+    await act(async () => {
+      await ctx?.messageCtx.sendMessage({ content: 'third' });
+    });
+    expect(pollingBodies).toHaveLength(1);
+    expect(pollingBodies[0]).toMatchObject({ content: 'third' });
+    expect(streamSend).toHaveBeenCalledTimes(2);
+  } finally {
+    act(() => root.unmount());
+    ctx?.resetChat();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  }
+}

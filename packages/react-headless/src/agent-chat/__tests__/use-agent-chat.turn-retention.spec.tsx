@@ -1,5 +1,6 @@
 import type {
   AgentTurnMessagesDto,
+  WidgetConfig,
   SendMessageInput,
   StagedUserTurn,
   WidgetCtx,
@@ -146,12 +147,16 @@ import { useAgentChat } from '../useAgentChat';
 
 let hookValue: ReturnType<typeof useAgentChat> | null = null;
 
-function Probe() {
+function Probe({
+  presentation,
+}: {
+  presentation?: WidgetConfig['presentation'];
+}) {
   const [rows, setRows] = React.useState<PersistedRow[]>([]);
   setTranscript = setRows;
   hookValue = useAgentChat({
     widgetCtx: fakeWidgetCtx as unknown as WidgetCtx,
-    config: { token: 't' },
+    config: { token: 't', presentation },
     sessionId: 'sess-1',
     persistedMessages: rows as unknown as WidgetMessageU[],
   });
@@ -355,4 +360,187 @@ describe('useAgentChat turn retention', () => {
     ]);
     expect(hookValue?.turnSources[1]?.key).toBe('turn-msg-hey');
   });
+});
+
+it('refreshes historical payloads when presentation changes and preserves the turn identity', async () => {
+  const container = document.createElement('div');
+  const root = createRoot(container);
+  const payload = (details: boolean): AgentTurnMessagesDto => ({
+    turns: [
+      {
+        turn_id: 'T0',
+        message_uuids: ['r-old'],
+        ui_parts: [
+          { type: 'text', text: 'Historic answer.' },
+          ...(details
+            ? [
+                {
+                  type: 'tool-lookup',
+                  toolCallId: 'c0',
+                  state: 'output-available',
+                  input: { secret: 'input-canary' },
+                  output: { secret: 'output-canary' },
+                },
+                { type: 'reasoning', text: 'reasoning-canary' },
+              ]
+            : []),
+        ],
+      },
+    ],
+  });
+  getAgentTurnMessages.mockClear();
+  getAgentTurnMessages
+    .mockResolvedValueOnce(payload(false))
+    .mockResolvedValueOnce(payload(true))
+    .mockResolvedValueOnce(payload(false));
+  try {
+    await act(async () =>
+      root.render(
+        <Probe presentation={{ toolActivity: 'hidden', reasoning: false }} />,
+      ),
+    );
+    const key = hookValue?.turnSources[0]?.key;
+    expect(hookValue?.turnSources[0]?.items).toEqual([
+      { kind: 'text', text: 'Historic answer.' },
+    ]);
+    await act(async () =>
+      root.render(
+        <Probe presentation={{ toolActivity: 'details', reasoning: true }} />,
+      ),
+    );
+    expect(getAgentTurnMessages).toHaveBeenCalledTimes(2);
+    expect(JSON.stringify(hookValue?.turnSources)).toContain('input-canary');
+    expect(hookValue?.turnSources[0]?.key).toBe(key);
+    await act(async () =>
+      root.render(
+        <Probe presentation={{ toolActivity: 'hidden', reasoning: false }} />,
+      ),
+    );
+    expect(getAgentTurnMessages).toHaveBeenCalledTimes(3);
+    expect(JSON.stringify(hookValue?.turnSources)).not.toContain('canary');
+    expect(hookValue?.turnSources[0]?.key).toBe(key);
+  } finally {
+    act(() => root.unmount());
+  }
+});
+
+it('immediately hides cached details and ignores late responses from superseded visibility requests', async () => {
+  const container = document.createElement('div');
+  const root = createRoot(container);
+  const details: AgentTurnMessagesDto = {
+    turns: [
+      {
+        turn_id: 'T0',
+        message_uuids: ['r-old'],
+        ui_parts: [
+          { type: 'text', text: 'Historic answer.' },
+          {
+            type: 'tool-lookup',
+            state: 'output-available',
+            toolCallId: 't',
+            input: { secret: 'canary' },
+          },
+          { type: 'reasoning', text: 'reasoning-canary' },
+        ],
+      },
+    ],
+  };
+  const hidden: AgentTurnMessagesDto = {
+    turns: [
+      {
+        turn_id: 'T0',
+        message_uuids: ['r-old'],
+        ui_parts: [{ type: 'text', text: 'Historic answer.' }],
+      },
+    ],
+  };
+  let finishOldHidden: (response: AgentTurnMessagesDto) => void = () => {};
+  let finishOldDetails: (response: AgentTurnMessagesDto) => void = () => {};
+  getAgentTurnMessages.mockClear();
+  getAgentTurnMessages
+    .mockResolvedValueOnce(details)
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishOldHidden = resolve;
+        }),
+    )
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishOldDetails = resolve;
+        }),
+    )
+    .mockResolvedValueOnce(hidden);
+  try {
+    await act(async () =>
+      root.render(
+        <Probe presentation={{ toolActivity: 'details', reasoning: true }} />,
+      ),
+    );
+    expect(JSON.stringify(hookValue?.turnSources)).toContain('canary');
+    await act(async () =>
+      root.render(
+        <Probe presentation={{ toolActivity: 'hidden', reasoning: false }} />,
+      ),
+    );
+    expect(JSON.stringify(hookValue?.turnSources)).not.toContain('canary');
+    expect(JSON.stringify(hookValue?.turnSources)).toContain(
+      'Historic answer.',
+    );
+    await act(async () =>
+      root.render(
+        <Probe presentation={{ toolActivity: 'details', reasoning: true }} />,
+      ),
+    );
+    await act(async () =>
+      root.render(
+        <Probe presentation={{ toolActivity: 'hidden', reasoning: false }} />,
+      ),
+    );
+    await act(async () => {
+      finishOldHidden(hidden);
+      finishOldDetails(details);
+    });
+    expect(getAgentTurnMessages).toHaveBeenCalledTimes(4);
+    expect(JSON.stringify(hookValue?.turnSources)).not.toContain('canary');
+    expect(hookValue?.turnSources[0]?.key).toBe('turn-T0');
+  } finally {
+    act(() => root.unmount());
+  }
+});
+
+it('narrows live tool status immediately even when the history refresh fails', async () => {
+  const root = createRoot(document.createElement('div'));
+  getAgentTurnMessages.mockClear();
+  getAgentTurnMessages
+    .mockResolvedValueOnce(null)
+    .mockRejectedValueOnce(new Error('history unavailable'));
+  try {
+    await act(async () =>
+      root.render(
+        <Probe presentation={{ toolActivity: 'details', reasoning: true }} />,
+      ),
+    );
+    await act(async () =>
+      setChatState({ status: 'streaming', messages: ASSISTANT_TURN }),
+    );
+    expect(JSON.stringify(hookValue?.liveItems)).toContain('"count":42');
+    await act(async () =>
+      root.render(
+        <Probe presentation={{ toolActivity: 'status', reasoning: false }} />,
+      ),
+    );
+    expect(JSON.stringify(hookValue?.liveItems)).not.toContain('"count":42');
+    expect(hookValue?.liveItems).toEqual([
+      { kind: 'text', text: 'Let me count your sessions.' },
+      {
+        kind: 'steps',
+        steps: [{ kind: 'tool', label: 'count_sessions', done: true }],
+      },
+      { kind: 'text', text: 'You have 42 sessions.' },
+    ]);
+  } finally {
+    act(() => root.unmount());
+  }
 });

@@ -79,6 +79,7 @@ export function WidgetProvider({
         config,
         storage,
         getClientCapabilities: () => configRef.current.capabilities,
+        getRequestConfig: () => configRef.current,
       }));
     let active = true;
     void request.then(
@@ -126,7 +127,7 @@ export function WidgetProvider({
 
   if (config.displayMode === 'companion' && !config.inline) {
     return (
-      <CompanionConversationProvider widgetCtx={widgetCtx}>
+      <CompanionConversationProvider widgetCtx={widgetCtx} config={config}>
         {(activeCtx) => renderChildren(activeCtx, children)}
       </CompanionConversationProvider>
     );
