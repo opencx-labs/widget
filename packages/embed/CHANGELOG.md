@@ -1,5 +1,19 @@
 # @opencx/widget
 
+## 5.0.0-beta.3
+
+### Patch Changes
+
+- c669348: Choose polling delivery and reduce activity visibility per widget. Declare support for rich replies and page effects only when the receiving client implements them.
+
+  Changing delivery keeps accepted messages until they finish. Visibility changes immediately hide opted-out activity and refresh existing session history.
+
+- 72a19fd: Honor dashboard activity settings across tool rows, live replies and saved history, while preserving per-embed opt-outs.
+
+  Show progress messages received through polling while the final reply is still being prepared. Briefly pause typing as each update arrives, then resume it while waiting for the next reply.
+
+  Show the copy action only after the reply finishes, leaving no empty action row between progress updates and the typing indicator.
+
 ## 5.0.0-beta.2
 
 ### Minor Changes

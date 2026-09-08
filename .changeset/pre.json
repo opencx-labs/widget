@@ -12,6 +12,8 @@
   "changesets": [
     "companion-conversations",
     "selectable-question-capabilities",
+    "widget-delivery-controls",
+    "widget-tool-details-setting",
     "widget-v5-beta"
   ]
 }
