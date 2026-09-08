@@ -4,6 +4,7 @@ import type { ExternalStorage } from '../types/external-storage';
 import type { WidgetConfig } from '../types/widget-config';
 import { ActiveSessionPollingCtx } from './active-session-polling.ctx';
 import { ContactCtx } from './contact.ctx';
+import { UploadCtx } from './upload.ctx';
 import { CsatCtx } from './csat.ctx';
 import { DictationCtx } from './dictation.ctx';
 import { MessageCtx } from './message.ctx';
@@ -41,6 +42,7 @@ export class WidgetCtx {
   public sessionCtx: SessionCtx;
   public messageCtx: MessageCtx;
   public csatCtx: CsatCtx;
+  public uploadCtx: UploadCtx;
   public dictationCtx: DictationCtx;
   public routerCtx: RouterCtx;
   public storageCtx?: StorageCtx;
@@ -84,6 +86,7 @@ export class WidgetCtx {
     modes,
     org,
     agent,
+    parent,
   }: {
     config: WidgetConfig;
     storage?: ExternalStorage;
@@ -94,6 +97,7 @@ export class WidgetCtx {
       name: string;
     };
     agent: WidgetAgent;
+    parent?: WidgetCtx;
   }) {
     if (!WidgetCtx.pollingIntervalsSeconds) {
       throw Error(
@@ -105,22 +109,27 @@ export class WidgetCtx {
     this.org = org;
     this.agent = agent;
     this.features = resolveClientFeatures(agent, config);
-    this.api = new ApiCaller({ config });
-    this.storageCtx = storage ? new StorageCtx({ storage, config }) : undefined;
+    this.api = parent?.api ?? new ApiCaller({ config });
+    this.storageCtx =
+      parent?.storageCtx ??
+      (storage ? new StorageCtx({ storage, config }) : undefined);
     this.modes = modes;
 
-    this.contactCtx = new ContactCtx({
-      api: this.api,
-      config: this.config,
-      storageCtx: this.storageCtx,
-    });
+    this.contactCtx =
+      parent?.contactCtx ??
+      new ContactCtx({
+        api: this.api,
+        config: this.config,
+        storageCtx: this.storageCtx,
+      });
 
     this.sessionCtx = new SessionCtx({
       config: this.config,
       api: this.api,
       contactCtx: this.contactCtx,
       // Remembers the open conversation so a reload can return to it.
-      storageCtx: this.storageCtx,
+      storageCtx: parent ? undefined : this.storageCtx,
+      sharedSessions: parent?.sessionCtx.sessionsState,
       sessionsPollingIntervalSeconds:
         WidgetCtx.pollingIntervalsSeconds.sessions,
     });
@@ -137,6 +146,7 @@ export class WidgetCtx {
       getClientCapabilities,
     });
 
+    this.uploadCtx = new UploadCtx(this.api);
     this.csatCtx = new CsatCtx({
       api: this.api,
       sessionCtx: this.sessionCtx,
@@ -156,12 +166,7 @@ export class WidgetCtx {
       sessionPollingIntervalSeconds: WidgetCtx.pollingIntervalsSeconds.session,
     });
 
-    this.routerCtx = new RouterCtx({
-      config: this.config,
-      contactCtx: this.contactCtx,
-      sessionCtx: this.sessionCtx,
-      resetChat: this.resetChat,
-    });
+    this.routerCtx = new RouterCtx(this);
   }
 
   static initialize = async ({
@@ -205,9 +210,39 @@ export class WidgetCtx {
     });
   };
 
+  /** Independent send/history lifecycle, sharing the authenticated visitor and session list. */
+  createConversation = (): WidgetCtx => {
+    const conversation = new WidgetCtx({
+      config: {
+        ...this.config,
+        router: {
+          ...this.config.router,
+          restoreLastSession: false,
+          chatScreenOnly: false,
+          goToChatIfNoSessions: false,
+        },
+      },
+      modes: this.modes,
+      org: this.org,
+      agent: this.agent,
+      parent: this,
+    });
+    conversation.routerCtx.state.setPartial({
+      screen: this.contactCtx.shouldCollectData() ? 'welcome' : 'chat',
+    });
+    return conversation;
+  };
+
+  /** Release a closed companion runtime after its last send has settled. */
+  releaseConversation = () => {
+    this.routerCtx.dispose();
+    this.resetChat();
+  };
+
   resetChat = () => {
     this.sessionCtx.reset();
     this.messageCtx.reset();
+    this.uploadCtx.reset();
   };
 
   /**

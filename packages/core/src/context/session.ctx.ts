@@ -39,6 +39,7 @@ export class SessionCtx {
   private sessionsRefresher = new Poller();
   /** The session id currently written to storage (null = none written). */
   private persistedSessionId: string | null = null;
+  private stopPersistingSession?: () => void;
 
   public sessionState = new PrimitiveState<SessionState>({
     session: null,
@@ -62,12 +63,14 @@ export class SessionCtx {
     contactCtx,
     storageCtx,
     sessionsPollingIntervalSeconds,
+    sharedSessions,
   }: {
     config: WidgetConfig;
     api: ApiCaller;
     contactCtx: ContactCtx;
     storageCtx?: StorageCtx;
     sessionsPollingIntervalSeconds: number;
+    sharedSessions?: PrimitiveState<SessionsState>;
   }) {
     this.config = config;
     this.api = api;
@@ -75,7 +78,8 @@ export class SessionCtx {
     this.storageCtx = storageCtx;
     this.sessionsPollingIntervalSeconds = sessionsPollingIntervalSeconds;
 
-    this.registerSessionsRefresherWrapper();
+    if (sharedSessions) this.sessionsState = sharedSessions;
+    else this.registerSessionsRefresherWrapper();
     this.registerActiveSessionPersistence();
   }
 
@@ -92,21 +96,36 @@ export class SessionCtx {
   private registerActiveSessionPersistence = () => {
     const storageCtx = this.storageCtx;
     if (!storageCtx) return;
-    this.sessionState.subscribe(({ session }) => {
-      const openSessionId = session?.isOpened ? session.id : null;
-      if (openSessionId === this.persistedSessionId) return;
-      // Nothing to forget until something was remembered.
-      if (!openSessionId && this.persistedSessionId === null) return;
-      this.persistedSessionId = openSessionId;
-      const write = openSessionId
-        ? storageCtx.setActiveSessionId(openSessionId)
-        : storageCtx.clearActiveSessionId();
-      // Storage is an embedder-provided adapter; a broken one must never take
-      // the conversation down with it.
-      void write.catch((error: unknown) => {
-        log.warn('failed to persist the active session', {
-          error: error instanceof Error ? error.message : String(error),
-        });
+    this.stopPersistingSession = this.sessionState.subscribe(
+      this.persistSession,
+    );
+  };
+
+  /** Persistence belongs to the selected conversation, never a background response. */
+  trackActiveSession = (active: SessionCtx) => {
+    this.stopPersistingSession?.();
+    this.stopPersistingSession = active.sessionState.subscribe(
+      this.persistSession,
+    );
+    this.persistSession(active.sessionState.get());
+  };
+
+  private persistSession = ({ session }: SessionState) => {
+    const storageCtx = this.storageCtx;
+    if (!storageCtx) return;
+    const openSessionId = session?.isOpened ? session.id : null;
+    if (openSessionId === this.persistedSessionId) return;
+    // Nothing to forget until something was remembered.
+    if (!openSessionId && this.persistedSessionId === null) return;
+    this.persistedSessionId = openSessionId;
+    const write = openSessionId
+      ? storageCtx.setActiveSessionId(openSessionId)
+      : storageCtx.clearActiveSessionId();
+    // Storage is an embedder-provided adapter; a broken one must never take
+    // the conversation down with it.
+    void write.catch((error: unknown) => {
+      log.warn('failed to persist the active session', {
+        error: error instanceof Error ? error.message : String(error),
       });
     });
   };

@@ -1,9 +1,12 @@
+import { createComposerDraftMock } from './composer-draft';
 import type { SendMessageInput } from '@opencx/widget-core';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+const { state: draftState, useComposerDraft } = createComposerDraftMock();
+beforeEach(() => draftState.reset());
 
 const sendMessageSpy = vi.fn();
 const rememberSentTextSpy = vi.fn();
@@ -47,6 +50,7 @@ let allFiles: Array<{
 }> = [];
 
 vi.mock('@opencx/widget-react-headless', () => ({
+  useComposerDraft: () => useComposerDraft(),
   useHostLocation: () => 'http://host.test/page',
   useAgentChatUi: () => ({
     isStreaming,
@@ -98,7 +102,7 @@ vi.mock('@opencx/widget-react-headless', () => ({
         pageContext: sendsPageContext,
         clientTools: false,
       },
-      messageCtx: { blocksSendWhileAwaitingReply: false },
+      messageCtx: { blocksSendWhileAwaitingReply: false, draftState },
     },
     componentStore: {
       getComponent: (key: string) =>

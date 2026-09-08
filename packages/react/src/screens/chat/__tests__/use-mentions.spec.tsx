@@ -1,9 +1,12 @@
+import { createComposerDraftMock } from './composer-draft';
 import type { WidgetMention } from '@opencx/widget-core';
 import React, { act, useRef, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+const { state: draftState, useComposerDraft } = createComposerDraftMock();
+beforeEach(() => draftState.reset());
 
 const items: WidgetMention[] = [
   { type: 'integration', id: 'slack', title: 'Slack' },
@@ -17,6 +20,7 @@ const search = vi.fn(async (query: string) =>
 let pageContext = true;
 
 vi.mock('@opencx/widget-react-headless', () => ({
+  useComposerDraft: () => useComposerDraft(),
   useConfig: () => ({ mentions: { search } }),
   useWidget: () => ({ widgetCtx: { features: { pageContext } } }),
 }));

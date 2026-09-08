@@ -1,9 +1,12 @@
+import { createComposerDraftMock } from './composer-draft';
 import type { AskQuestionsRequest } from '@opencx/widget-react-headless';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+const { state: draftState, useComposerDraft } = createComposerDraftMock();
+beforeEach(() => draftState.reset());
 
 /**
  * The composer is where the customer says things, so a pending clarification
@@ -32,6 +35,7 @@ vi.mock('@opencx/widget-react-headless', async () => {
     // Real module, with only the context hooks this component reads swapped
     // for stubs — so a new hook in ChatInput cannot silently fail the suite.
     ...actual,
+    useComposerDraft: () => useComposerDraft(),
     useAgentChatUi: () => agentChatUi,
     useConfig: () => ({}),
     useDictation: () => ({ isAvailable: false, isDictating: false }),
@@ -58,7 +62,7 @@ vi.mock('@opencx/widget-react-headless', async () => {
           pageContext: false,
           clientTools: false,
         },
-        messageCtx: { blocksSendWhileAwaitingReply: false },
+        messageCtx: { blocksSendWhileAwaitingReply: false, draftState },
       },
       componentStore: {
         getComponent: (key: string) =>

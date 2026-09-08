@@ -52,7 +52,7 @@ export type AgentChatUiValue = {
   pendingClarification: AskQuestionsRequest | null;
 };
 
-const DEFAULT: AgentChatUiValue = {
+export const DEFAULT_AGENT_CHAT_UI: AgentChatUiValue = {
   isStreaming: false,
   liveItems: [],
   turnSources: [],
@@ -66,11 +66,11 @@ const DEFAULT: AgentChatUiValue = {
   pendingClarification: null,
 };
 
-const AgentChatContext = createContext<AgentChatUiValue | null>(null);
+export const AgentChatContext = createContext<AgentChatUiValue | null>(null);
 
 /** Reads the agent streaming state; safe defaults when not in an agent surface. */
 export function useAgentChatUi(): AgentChatUiValue {
-  return useContext(AgentChatContext) ?? DEFAULT;
+  return useContext(AgentChatContext) ?? DEFAULT_AGENT_CHAT_UI;
 }
 
 /**
@@ -163,7 +163,7 @@ export function AgentChatProvider({
 }) {
   if (!widgetCtx.streaming) {
     return (
-      <AgentChatContext.Provider value={DEFAULT}>
+      <AgentChatContext.Provider value={DEFAULT_AGENT_CHAT_UI}>
         {children}
       </AgentChatContext.Provider>
     );

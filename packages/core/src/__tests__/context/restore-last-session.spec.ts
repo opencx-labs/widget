@@ -6,6 +6,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ApiCaller } from '../../api/api-caller';
 import { ContactCtx } from '../../context/contact.ctx';
+import type { WidgetCtx } from '../../context/widget.ctx';
 import { RouterCtx } from '../../context/router.ctx';
 import { SessionCtx } from '../../context/session.ctx';
 import { StorageCtx } from '../../context/storage.ctx';
@@ -90,7 +91,7 @@ function buildCtx({
     contactCtx,
     sessionCtx,
     resetChat: () => sessionCtx.sessionState.reset(),
-  });
+  } as WidgetCtx);
   return { sessionCtx, routerCtx };
 }
 
@@ -98,6 +99,33 @@ function buildCtx({
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe('restoring the last conversation', () => {
+  it('persists only the selected companion session after switching runtimes', async () => {
+    const { storage, values } = createStorage();
+    const { sessionCtx: owner } = buildCtx({ storage });
+    const { sessionCtx: second } = buildCtx({
+      storage: createStorage().storage,
+    });
+    await settle();
+    const firstSession = buildSession();
+    const secondSession = buildSession({ id: 'second' });
+    owner.sessionState.setPartial({ session: firstSession });
+    second.sessionState.setPartial({ session: secondSession });
+    owner.trackActiveSession(second);
+    owner.sessionState.reset();
+    await settle();
+    expect(values.get(ACTIVE_SESSION_KEY)).toBe('second');
+    second.sessionState.setPartial({
+      session: { ...secondSession, isOpened: false },
+    });
+    await settle();
+    expect(values.has(ACTIVE_SESSION_KEY)).toBe(false);
+    owner.sessionState.setPartial({ session: firstSession });
+    await settle();
+    expect(values.has(ACTIVE_SESSION_KEY)).toBe(false);
+    owner.trackActiveSession(owner);
+    await settle();
+    expect(values.get(ACTIVE_SESSION_KEY)).toBe(firstSession.id);
+  });
   it('remembers the open session the visitor is in', async () => {
     const { storage, values } = createStorage();
     const { sessionCtx } = buildCtx({ storage });

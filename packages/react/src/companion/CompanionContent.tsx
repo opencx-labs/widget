@@ -1,12 +1,9 @@
 import { useConfig } from '@opencx/widget-react-headless';
-import { HistoryIcon } from 'lucide-react';
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { FrameDocument } from '../components/FrameDocument';
-import { Button } from '../components/lib/button';
 import { SuppressTooltips } from '../components/lib/tooltip';
 import { RootScreen } from '../screens';
 import { ChatInput } from '../screens/chat/ChatInput';
-import { COMPOSER_TOOL_BUTTON } from '../screens/chat/composer-styles';
 import { RADII } from './companion-geometry';
 import { FLAT_MESSAGE_CSS } from './message-styles';
 import type { WidgetCompanionLayoutU } from '@opencx/widget-core';
@@ -101,7 +98,6 @@ export function CompanionContent({
   onDismiss,
   onToggleFullscreen,
   onSelectLayout,
-  onHistory,
   onExpand,
   canExpand,
   placeholder,
@@ -125,8 +121,6 @@ export function CompanionContent({
   onToggleFullscreen: () => void;
   /** Switch layout from the corner picker (compact / sidebar / fullscreen) */
   onSelectLayout: (layout: WidgetCompanionLayoutU) => void;
-  /** Open conversation history in the first allowed non-fullscreen layout */
-  onHistory: () => void;
   /** Expand the follow-up bar back up into the open chat panel */
   onExpand: () => void;
   /** There's an open conversation to expand back into — show the expand arrow */
@@ -254,17 +248,6 @@ export function CompanionContent({
             <ChatInput
               hideAttachTools={hideAttachTools}
               placeholder={placeholder}
-              trailingActions={
-                <Button
-                  onClick={onHistory}
-                  size="fit"
-                  variant="ghost"
-                  aria-label={t('companion_history')}
-                  className={COMPOSER_TOOL_BUTTON}
-                >
-                  <HistoryIcon className="size-4" />
-                </Button>
-              }
             />
           </SuppressTooltips>
           {canExpand ? (

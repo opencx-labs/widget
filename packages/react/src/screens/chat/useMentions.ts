@@ -1,5 +1,9 @@
 import { log, type WidgetMention } from '@opencx/widget-core';
-import { useConfig, useWidget } from '@opencx/widget-react-headless';
+import {
+  useComposerDraft,
+  useConfig,
+  useWidget,
+} from '@opencx/widget-react-headless';
 import {
   useCallback,
   useEffect,
@@ -142,7 +146,7 @@ export function useMentions({
   }, [hostSearch, items]);
   const enabled = Boolean(search) && widgetCtx.features.pageContext;
 
-  const [picked, setPicked] = useState<WidgetMention[]>([]);
+  const { mentions: picked, setMentions: setPicked } = useComposerDraft();
   const [active, setActive] = useState<{ start: number; query: string } | null>(
     null,
   );
@@ -163,7 +167,7 @@ export function useMentions({
       const kept = current.filter((item) => text.includes(mentionText(item)));
       return kept.length === current.length ? current : kept;
     });
-  }, [text]);
+  }, [text, setPicked]);
 
   // Re-read the caret on every text change (typing moves it) and on caret
   // moves without typing (arrow keys, clicks), through `onCaretMove`.
@@ -271,7 +275,7 @@ export function useMentions({
         input.setSelectionRange(caret, caret);
       });
     },
-    [active, close, inputRef, setText, text],
+    [active, close, inputRef, setText, setPicked, text],
   );
 
   /** Show every item of one type; the highlight stays where it was. */
@@ -355,7 +359,7 @@ export function useMentions({
   const reset = useCallback(() => {
     setPicked([]);
     close();
-  }, [close]);
+  }, [close, setPicked]);
 
   return useMemo(
     () => ({

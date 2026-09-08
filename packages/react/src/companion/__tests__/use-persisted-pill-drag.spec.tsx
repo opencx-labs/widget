@@ -84,7 +84,12 @@ describe('usePersistedPillDrag', () => {
 
   it('restores, bounds, persists, and arbitrates drag clicks', async () => {
     await act(async () => root.render(<Harness />));
-    expect(motion.value.set).toHaveBeenCalledWith(100);
+    expect(motion.animate).toHaveBeenLastCalledWith(
+      motion.value,
+      100,
+      expect.any(Object),
+    );
+    motion.value.current = 100;
     expect(latest.dragConstraints).toEqual({
       left: -464,
       right: 464,
@@ -100,6 +105,14 @@ describe('usePersistedPillDrag', () => {
 
     act(() => releaseDrag?.(0));
     expect(latest.shouldIgnoreLaunch()).toBe(false);
+  });
+
+  it('keeps a saved launcher reachable when sessions grow or the viewport shrinks', async () => {
+    await act(async () => root.render(<Harness />));
+    motion.value.current = 400;
+    act(() => root.render(<Harness viewportWidth={200} />));
+    expect(motion.value.current).toBe(64);
+    expect(motion.value.set).not.toHaveBeenCalledWith(400);
   });
 
   it('settles centered when an open panel is wider than the viewport', async () => {
