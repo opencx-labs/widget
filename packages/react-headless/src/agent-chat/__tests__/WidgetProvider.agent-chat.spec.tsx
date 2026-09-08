@@ -148,6 +148,7 @@ describe('WidgetProvider agent-chat ownership', () => {
 
     fakeWidgetCtx = {
       streaming: true,
+      agent: {},
       sessionCtx: { sessionState },
       messageCtx,
       api: {
