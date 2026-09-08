@@ -131,6 +131,7 @@ function registeredSend(): (input: SendMessageInput) => Promise<void> | void {
 }
 
 const fakeWidgetCtx = {
+  agent: {},
   api: {
     getStreamTransportOptions: () => ({
       api: 'http://test/chat',

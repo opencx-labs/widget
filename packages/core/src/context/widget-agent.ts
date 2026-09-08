@@ -31,10 +31,8 @@ type ServerAgent = Dto['WidgetAgentDto'];
 /**
  * snake_case (backend DTO) → camelCase (widget types) at the boundary.
  *
- * A backend that predates widget v5 — OpenCX main today, until the companion
- * service lands there — returns no `agent` block at all. That is the classic
- * widget: blocking send, attachments on, nothing page-aware — the exact v4
- * behavior, so an embed upgraded ahead of its backend keeps working.
+ * A backend that predates widget v5 returns no `agent` block. Preserve its
+ * blocking send and attachment support when an embed is upgraded first.
  */
 export function resolveWidgetAgent({
   org,

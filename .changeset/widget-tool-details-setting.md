@@ -5,4 +5,4 @@
 "@opencx/widget": patch
 ---
 
-Honor the dashboard tool-detail setting in the activity display while preserving per-embed opt-outs.
+Honor dashboard activity settings across tool rows, live replies and saved history, while preserving per-embed opt-outs.

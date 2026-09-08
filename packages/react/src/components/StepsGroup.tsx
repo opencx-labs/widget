@@ -1,3 +1,4 @@
+import { resolveClientPresentation } from '@opencx/widget-core';
 import {
   useConfig,
   useWidget,
@@ -348,14 +349,14 @@ export function StepsGroup({
   const { t } = useTranslation();
   const { showStepToolIO, presentation } = useConfig();
   const { widgetCtx } = useWidget();
-  const orgActivity = widgetCtx.agent.presentation?.toolActivity;
-  const clientActivity = presentation?.toolActivity;
+  const activity = resolveClientPresentation(
+    widgetCtx.agent.presentation,
+    presentation,
+  )?.toolActivity;
   const showToolDetails =
     showStepToolIO !== false &&
-    (orgActivity === undefined || orgActivity === 'details') &&
-    (clientActivity === undefined
-      ? showStepToolIO === true || orgActivity === 'details'
-      : clientActivity === 'details');
+    (activity === 'details' ||
+      (activity === undefined && showStepToolIO === true));
   const thinkingLabel = t('thinking');
   // Once the turn is over nothing is running: a turn that ended with a step
   // unfinished — a stopped turn leaves its last tool call at

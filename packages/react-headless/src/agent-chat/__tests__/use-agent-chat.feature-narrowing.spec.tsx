@@ -77,6 +77,7 @@ function registeredSend(): (input: SendMessageInput) => Promise<void> | void {
 const features = { pageContext: true, clientTools: true };
 
 const fakeWidgetCtx = {
+  agent: {},
   api: {
     getStreamTransportOptions: () => ({
       api: 'http://test/chat',
