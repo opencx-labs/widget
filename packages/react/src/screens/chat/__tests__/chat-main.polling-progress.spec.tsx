@@ -7,28 +7,45 @@ Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
 let messages: WidgetMessageU[] = [];
 let awaitingReply = true;
+const writeText = vi.fn(async () => {});
+const originalClipboard = Object.getOwnPropertyDescriptor(
+  navigator,
+  'clipboard',
+);
 vi.mock('@opencx/widget-react-headless', () => ({
   useMessages: () => ({ messagesState: { messages } }),
   useIsAwaitingBotReply: () => ({ isAwaitingBotReply: awaitingReply }),
   useBot: () => undefined,
+  useConfig: () => ({}),
+  useDisplayMode: () => 'companion',
   useWidget: () => ({
     componentStore: { getComponent: () => () => <span>Still working</span> },
   }),
 }));
-vi.mock('../MessageGroups', () => ({
-  MessageGroups: ({ groups }: { groups: WidgetMessageU[][] }) => (
+vi.mock('../../../components/AgentMessage', () => ({
+  AgentMessage: (message: WidgetMessageU) => (
+    <p data-message-id={message.id}>
+      {message.type === 'AI' ? message.data.message : null}
+    </p>
+  ),
+}));
+vi.mock('../../../components/UserMessageGroup', () => ({
+  UserMessageGroup: ({ messages }: { messages: WidgetMessageU[] }) => (
     <div>
-      {groups.flat().map((message) => (
+      {messages.map((message) => (
         <p key={message.id} data-message-id={message.id}>
-          {message.type === 'USER'
-            ? message.content
-            : message.type === 'AI'
-              ? message.data.message
-              : null}
+          {message.type === 'USER' ? message.content : null}
         </p>
       ))}
     </div>
   ),
+}));
+vi.mock('../../../components/AgentAvatar', () => ({ AgentAvatar: () => null }));
+vi.mock('../../../components/lib/tooltip', () => ({
+  Tooltippy: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+vi.mock('../../../hooks/useTranslation', () => ({
+  useTranslation: () => ({ t: (key: string) => key, dir: 'ltr' }),
 }));
 vi.mock('../ChatCustomStatus', () => ({ ChatCustomStatus: () => null }));
 vi.mock('../ChatBannerItems', () => ({ ChatBannerItems: () => null }));
@@ -47,6 +64,10 @@ let root: Root;
 let container: HTMLDivElement;
 beforeEach(() => {
   vi.useFakeTimers();
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText },
+  });
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -58,6 +79,12 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount());
   container.remove();
+  if (originalClipboard) {
+    Object.defineProperty(navigator, 'clipboard', originalClipboard);
+  } else {
+    Reflect.deleteProperty(navigator, 'clipboard');
+  }
+  writeText.mockClear();
   vi.useRealTimers();
 });
 
@@ -163,4 +190,67 @@ it('keeps typing visible when mounting with an existing progress message', () =>
   act(() => root.render(<ChatMain />));
   expect(container.textContent).toContain('I am checking your balance.');
   expect(container.textContent).toContain('Still working');
+});
+
+it('omits the pending reply action row until completion, including during the typing pause', async () => {
+  messages = [
+    {
+      id: 'earlier-reply',
+      type: 'AI',
+      component: 'bot_message',
+      data: { message: 'An earlier completed reply.' },
+      timestamp: null,
+    },
+    ...messages,
+  ];
+  const actionRows = () =>
+    container.querySelectorAll(
+      '[data-component="chat/agent_msg_group/actions"]',
+    );
+  act(() => root.render(<ChatMain />));
+  expect(actionRows()).toHaveLength(1);
+
+  messages = [
+    ...messages,
+    {
+      id: 'progress',
+      type: 'AI',
+      component: 'bot_message',
+      data: { message: 'Checking your balance.' },
+      timestamp: null,
+    },
+  ];
+  act(() => root.render(<ChatMain />));
+  expect(container.textContent).toContain('Checking your balance.');
+  expect(container.textContent).not.toContain('Still working');
+  expect(actionRows()).toHaveLength(1);
+  act(() => vi.advanceTimersByTime(600));
+  expect(container.textContent).toContain('Still working');
+  expect(actionRows()).toHaveLength(1);
+
+  messages = [
+    ...messages,
+    {
+      id: 'final',
+      type: 'AI',
+      component: 'bot_message',
+      data: { message: 'Your balance is 468 dollars.' },
+      timestamp: null,
+    },
+  ];
+  act(() => root.render(<ChatMain />));
+  expect(container.textContent).toContain('Your balance is 468 dollars.');
+  expect(actionRows()).toHaveLength(1);
+
+  awaitingReply = false;
+  act(() => root.render(<ChatMain />));
+  expect(container.textContent).not.toContain('Still working');
+  expect(actionRows()).toHaveLength(2);
+  const copyButtons = container.querySelectorAll<HTMLButtonElement>(
+    '[data-component="chat/agent_msg_group/actions/copy"]',
+  );
+  await act(async () => copyButtons.item(1).click());
+  expect(writeText).toHaveBeenCalledWith(
+    'Checking your balance.\n\nYour balance is 468 dollars.',
+  );
 });

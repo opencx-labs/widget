@@ -84,7 +84,10 @@ export function ChatMain() {
       <ChatBannerItems />
       <InitialMessages />
 
-      <MessageGroups groups={groupedMessages} />
+      <MessageGroups
+        groups={groupedMessages}
+        pendingReply={isAwaitingBotReply}
+      />
 
       {/* Typing indicator while awaiting the (blocking) bot reply. */}
       {showTypingIndicator && LoadingComponent && (

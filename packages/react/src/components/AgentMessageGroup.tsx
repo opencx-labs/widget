@@ -30,8 +30,7 @@ export function AgentMessageGroup({
   agent: Agent | undefined;
   suggestedReplies?: string[];
   /**
-   * Offer the reply actions (copy). Off for a reply that is still streaming:
-   * its text is not final yet.
+   * Offer the reply actions (copy) only when its text is final.
    */
   actions?: boolean;
 }) {

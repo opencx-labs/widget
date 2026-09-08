@@ -15,13 +15,20 @@ import {
  * (server-resolved agent branding wins); human-agent groups prefer the
  * server-provided sender, patched by the `humanAgent` config override.
  */
-export function MessageGroups({ groups }: { groups: WidgetMessageU[][] }) {
+export function MessageGroups({
+  groups,
+  pendingReply = false,
+}: {
+  groups: WidgetMessageU[][];
+  /** The latest reply is still being prepared, including between polled updates. */
+  pendingReply?: boolean;
+}) {
   const { humanAgent } = useConfig();
   const bot = useBot();
 
   return (
     <>
-      {groups.map((group) => {
+      {groups.map((group, index) => {
         const firstIdInGroup = group[0]?.id;
         if (!firstIdInGroup) return null;
 
@@ -35,6 +42,7 @@ export function MessageGroups({ groups }: { groups: WidgetMessageU[][] }) {
               key={firstIdInGroup}
               messages={group}
               agent={bot}
+              actions={!pendingReply || index !== groups.length - 1}
             />
           );
         }
