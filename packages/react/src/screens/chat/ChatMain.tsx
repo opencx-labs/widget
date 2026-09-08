@@ -8,7 +8,7 @@ import {
   useMessages,
   useWidget,
 } from '@opencx/widget-react-headless';
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { SessionResolvedComponent } from '../../components/custom-components/SessionResolvedComponent';
 import { dc } from '../../utils/data-component';
 import { groupMessagesByType } from '../../utils/group-messages-by-type';
@@ -31,6 +31,28 @@ export function ChatMain() {
     [messages],
   );
 
+  const lastMessage = messages.at(-1);
+  const lastMessageId = lastMessage?.id;
+  const lastMessageType = lastMessage?.type;
+  const previousMessageId = useRef(lastMessageId);
+  const [typingPaused, setTypingPaused] = useState(false);
+  const showTypingIndicator = isAwaitingBotReply && !typingPaused;
+
+  useEffect(() => {
+    const receivedMessage = previousMessageId.current !== lastMessageId;
+    previousMessageId.current = lastMessageId;
+    if (!isAwaitingBotReply || lastMessageType !== 'AI') {
+      setTypingPaused(false);
+      return;
+    }
+    if (!receivedMessage) return;
+
+    // Let each completed update land before showing that more is coming.
+    setTypingPaused(true);
+    const resumeTyping = setTimeout(() => setTypingPaused(false), 600);
+    return () => clearTimeout(resumeTyping);
+  }, [isAwaitingBotReply, lastMessageId, lastMessageType]);
+
   const LoadingComponent = componentStore.getComponent(
     'loading' satisfies SafeExtract<LiteralWidgetComponentKey, 'loading'>,
   );
@@ -50,7 +72,7 @@ export function ChatMain() {
 
   useEffect(() => {
     handleNewMessage();
-  }, [messages]);
+  }, [messages, showTypingIndicator]);
 
   return (
     <div
@@ -65,7 +87,7 @@ export function ChatMain() {
       <MessageGroups groups={groupedMessages} />
 
       {/* Typing indicator while awaiting the (blocking) bot reply. */}
-      {isAwaitingBotReply && LoadingComponent && (
+      {showTypingIndicator && LoadingComponent && (
         <LoadingComponent agent={bot} />
       )}
 
