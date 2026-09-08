@@ -11,10 +11,7 @@ import {
 import React, { useEffect, useMemo, useRef } from 'react';
 import { SessionResolvedComponent } from '../../components/custom-components/SessionResolvedComponent';
 import { dc } from '../../utils/data-component';
-import {
-  groupMessagesByType,
-  isBotMessageGroup,
-} from '../../utils/group-messages-by-type';
+import { groupMessagesByType } from '../../utils/group-messages-by-type';
 import { ChatBannerItems } from './ChatBannerItems';
 import { ChatCustomStatus } from './ChatCustomStatus';
 import { InitialMessages } from './InitialMessages';
@@ -33,17 +30,6 @@ export function ChatMain() {
     () => groupMessagesByType(messages),
     [messages],
   );
-
-  // While the blocking send awaits its reply, an AI group polled in early
-  // must not render above the typing indicator — it would double-render the
-  // reply when the send resolves.
-  const visibleGroups = useMemo(() => {
-    const last = groupedMessages.at(-1);
-    if (isAwaitingBotReply && last && isBotMessageGroup(last)) {
-      return groupedMessages.slice(0, -1);
-    }
-    return groupedMessages;
-  }, [groupedMessages, isAwaitingBotReply]);
 
   const LoadingComponent = componentStore.getComponent(
     'loading' satisfies SafeExtract<LiteralWidgetComponentKey, 'loading'>,
@@ -76,7 +62,7 @@ export function ChatMain() {
       <ChatBannerItems />
       <InitialMessages />
 
-      <MessageGroups groups={visibleGroups} />
+      <MessageGroups groups={groupedMessages} />
 
       {/* Typing indicator while awaiting the (blocking) bot reply. */}
       {isAwaitingBotReply && LoadingComponent && (
