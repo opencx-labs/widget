@@ -14,6 +14,7 @@ Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
 vi.mock('@opencx/widget-react-headless', () => ({
   useConfig: () => ({ showStepToolIO: false }),
+  useWidget: () => ({ widgetCtx: { agent: {} } }),
 }));
 
 vi.mock('../../hooks/useTranslation', () => ({

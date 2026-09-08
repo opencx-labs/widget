@@ -839,12 +839,10 @@ export interface WidgetConfig {
   onUiAction?: (action: WidgetUiAction) => void;
 
   /**
-   * Makes each step row in an agent turn's trace expandable to show that tool
-   * call's arguments and its result, pretty-printed. For debugging an agent
-   * against a real conversation — the default trace shows only what each step
-   * did, which is what a customer should see.
-   *
-   * @default false
+   * Legacy override for expandable tool arguments and results. When omitted,
+   * follows the dashboard's Tool activity setting. False hides payloads in this
+   * embed; true cannot reveal details prohibited by the dashboard or presentation.
+   * Older backends without presentation settings require an explicit true.
    */
   showStepToolIO?: boolean;
 

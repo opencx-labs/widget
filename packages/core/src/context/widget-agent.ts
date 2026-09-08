@@ -15,6 +15,8 @@ export type WidgetAgent = {
    * means the classic blocking send.
    */
   streaming: boolean;
+  /** Optional on older backends; controls the maximum visible tool detail. */
+  presentation?: Dto['WidgetPresentationDto'];
   /** The org's EFFECTIVE features (entitlements already applied). */
   features: {
     dictation: boolean;
@@ -58,6 +60,7 @@ export function resolveWidgetAgent({
     name: agent.name,
     avatarUrl: agent.avatar_url,
     streaming: agent.streaming,
+    ...(agent.presentation ? { presentation: agent.presentation } : {}),
     features: {
       dictation: agent.features.dictation,
       attachments: agent.features.attachments,
