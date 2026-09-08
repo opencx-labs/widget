@@ -96,7 +96,7 @@ export function useAgentChat({
   const configRef = useRef(config);
   configRef.current = config;
 
-  // Org features narrowed by the embed: constant for the ctx lifetime.
+  // Org features narrowed by the current embed options.
   const { pageContext: sendsPageContext, clientTools: performsClientTools } =
     widgetCtx.features;
 
@@ -108,6 +108,15 @@ export function useAgentChat({
       buildAgentChatTransport({
         ...api.getStreamTransportOptions(),
         headers: () => api.getStreamTransportOptions().headers,
+        reconnectApi: (id) => {
+          const url = new URL(api.getStreamTransportOptions().reconnectApi(id));
+          const presentation = configRef.current.presentation;
+          if (presentation?.toolActivity)
+            url.searchParams.set('toolActivity', presentation.toolActivity);
+          if (presentation?.reasoning !== undefined)
+            url.searchParams.set('reasoning', String(presentation.reasoning));
+          return url.toString();
+        },
       }),
     [api],
   );
@@ -669,7 +678,10 @@ export function useAgentChat({
     let cancelled = false;
     void (async () => {
       try {
-        const fetched = await api.getAgentTurnMessages(sessionId);
+        const fetched = await api.getAgentTurnMessages(
+          sessionId,
+          configRef.current.presentation,
+        );
         if (!fetched || cancelled) return;
         setTurnSources((existing) => mergeTurnSources({ existing, fetched }));
       } catch (err) {

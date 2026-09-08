@@ -151,9 +151,9 @@ describe('tool step arguments and result', () => {
       },
       {
         type: 'dynamic-tool',
-        toolName: 'highlight_element',
+        toolName: 'check_order',
         state: 'output-available',
-        input: { selector: '#save' },
+        input: { id: 'order-1' },
         output: 'ok',
       },
     ]);
@@ -171,9 +171,9 @@ describe('tool step arguments and result', () => {
           },
           {
             kind: 'tool',
-            label: 'highlight_element',
+            label: 'check_order',
             done: true,
-            input: { selector: '#save' },
+            input: { id: 'order-1' },
             output: 'ok',
           },
         ],
@@ -204,4 +204,61 @@ describe('tool step arguments and result', () => {
       ],
     });
   });
+});
+
+it('maps status-only activity without inventing tool inputs or outputs', () => {
+  const items = mapUiPartsToItems([
+    {
+      type: 'data-tool-activity',
+      data: { toolCallId: 'lookup', label: 'Find order', done: true },
+    },
+  ]);
+  expect(items).toEqual([
+    {
+      kind: 'steps',
+      steps: [{ kind: 'tool', label: 'Find order', done: true }],
+    },
+  ]);
+});
+
+it('keeps page highlights out of activity steps while retaining ordinary tool steps', () => {
+  expect(
+    mapUiPartsToItems([
+      {
+        type: 'tool-highlight_element',
+        toolCallId: 'h1',
+        state: 'input-available',
+        input: { selector: '#private' },
+      },
+      {
+        type: 'dynamic-tool',
+        toolName: 'highlight_element',
+        toolCallId: 'h2',
+        state: 'output-available',
+        input: { selector: '#private' },
+      },
+      {
+        type: 'tool-find_order',
+        toolCallId: 't',
+        state: 'output-available',
+        input: { id: 1 },
+        output: { status: 'shipped' },
+      },
+      { type: 'text', text: 'Here it is.' },
+    ]),
+  ).toEqual([
+    {
+      kind: 'steps',
+      steps: [
+        {
+          kind: 'tool',
+          label: 'find_order',
+          done: true,
+          input: { id: 1 },
+          output: { status: 'shipped' },
+        },
+      ],
+    },
+    { kind: 'text', text: 'Here it is.' },
+  ]);
 });

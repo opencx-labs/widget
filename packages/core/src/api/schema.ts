@@ -680,7 +680,10 @@ export interface paths {
     };
     get: {
       parameters: {
-        query?: never;
+        query?: {
+          toolActivity?: 'hidden' | 'status' | 'details';
+          reasoning?: 'true' | 'false';
+        };
         header?: never;
         path: {
           sessionId: string;
@@ -724,7 +727,10 @@ export interface paths {
     };
     get: {
       parameters: {
-        query?: never;
+        query?: {
+          toolActivity?: 'hidden' | 'status' | 'details';
+          reasoning?: 'true' | 'false';
+        };
         header?: never;
         path: {
           sessionId: string;
@@ -874,6 +880,11 @@ export interface components {
       /** Format: binary */
       file: string;
     } | null;
+    WidgetPresentationOverrideDto: {
+      /** @enum {string} */
+      toolActivity?: 'hidden' | 'status' | 'details';
+      reasoning?: boolean;
+    };
     CreateWidgetSessionDto: {
       customData?: {
         [key: string]: string | number | boolean;
@@ -903,9 +914,12 @@ export interface components {
       clientContext?: {
         [key: string]: unknown;
       } | null;
+      presentation?: components['schemas']['WidgetPresentationOverrideDto'];
       /** @description What the receiving client can render. Set structured_questions to true only when it renders selectable questions from the streaming response. Missing or false disables the structured question tool; this never enables an organization feature. */
       capabilities?: {
         structured_questions?: boolean;
+        rich_replies?: boolean;
+        page_effects?: boolean;
       } | null;
       /** @description Per-embed feature narrowing: each flag can only switch OFF a feature the organization enabled for its agent (preamble = progress updates before and during longer tasks; inline_ui = inline rendered components in replies; page_context = the agent sees the page context sent with the message; client_tools = the agent may act on the page). Absent = the organization settings apply. */
       features?: {
@@ -976,6 +990,17 @@ export interface components {
     };
     CreateWidgetDictationSessionDto: {
       language?: string;
+    };
+    WidgetPresentationDto: {
+      /** @default true */
+      streaming: boolean;
+      /**
+       * @default status
+       * @enum {string}
+       */
+      toolActivity: 'hidden' | 'status' | 'details';
+      /** @default false */
+      reasoning: boolean;
     };
     WidgetVoteResponseDto: {
       messagePublicId: string | null;
@@ -1185,6 +1210,7 @@ export interface components {
       name: string;
       avatar_url: string | null;
       streaming: boolean;
+      presentation?: components['schemas']['WidgetPresentationDto'];
       features: components['schemas']['WidgetAgentFeaturesDto'];
     };
     WidgetConfigDto: {

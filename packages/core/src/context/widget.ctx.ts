@@ -57,19 +57,22 @@ export class WidgetCtx {
   public readonly agent: WidgetAgent;
 
   /**
-   * Whether turns stream (the v5 agent-chat engine) or use the blocking
-   * bot-chat send. Decided by the SERVER per org; the single source for every
-   * "which engine?" decision in the widget.
+   * Choose the transport from the org's default and the current embed opt-out.
+   * The backend chooses the agent version independently of this transport.
    */
+  private readonly getRequestConfig: () => WidgetConfig;
+
   public get streaming(): boolean {
-    return this.agent.streaming;
+    return this.agent.streaming && this.getRequestConfig().streaming !== false;
   }
 
   /**
    * The org's features narrowed by this embed's `config.features` — the
-   * answers the UI asks for, resolved once for the ctx lifetime.
+   * answers the UI asks for, resolved against the current options.
    */
-  public readonly features: WidgetClientFeatures;
+  public get features(): WidgetClientFeatures {
+    return resolveClientFeatures(this.agent, this.getRequestConfig());
+  }
 
   private static pollingIntervalsSeconds: {
     session: number;
@@ -81,6 +84,7 @@ export class WidgetCtx {
     config,
     storage,
     getClientCapabilities,
+    getRequestConfig,
     modes,
     org,
     agent,
@@ -88,6 +92,7 @@ export class WidgetCtx {
     config: WidgetConfig;
     storage?: ExternalStorage;
     getClientCapabilities?: () => WidgetConfig['capabilities'];
+    getRequestConfig?: () => WidgetConfig;
     modes: ModeDto[];
     org: {
       id: string;
@@ -102,9 +107,9 @@ export class WidgetCtx {
     }
 
     this.config = config;
+    this.getRequestConfig = getRequestConfig ?? (() => this.config);
     this.org = org;
     this.agent = agent;
-    this.features = resolveClientFeatures(agent, config);
     this.api = new ApiCaller({ config });
     this.storageCtx = storage ? new StorageCtx({ storage, config }) : undefined;
     this.modes = modes;
@@ -133,8 +138,11 @@ export class WidgetCtx {
       // Streaming orgs send their turns over the AI SDK transport instead of
       // the blocking bot-chat send.
       streaming: this.streaming,
+      isStreaming: () => this.streaming,
       sendsPageContext: this.features.pageContext,
+      getSendsPageContext: () => this.features.pageContext,
       getClientCapabilities,
+      getRequestConfig,
     });
 
     this.csatCtx = new CsatCtx({
@@ -168,10 +176,12 @@ export class WidgetCtx {
     config,
     storage,
     getClientCapabilities,
+    getRequestConfig,
   }: {
     config: WidgetConfig;
     storage?: ExternalStorage;
     getClientCapabilities?: () => WidgetConfig['capabilities'];
+    getRequestConfig?: () => WidgetConfig;
   }) => {
     const externalConfig = await new ApiCaller({
       config,
@@ -196,6 +206,7 @@ export class WidgetCtx {
       config,
       storage,
       getClientCapabilities,
+      getRequestConfig,
       modes: externalConfig.data.modes || [],
       org: {
         id: externalConfig.data.org.id,

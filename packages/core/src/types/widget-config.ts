@@ -374,7 +374,19 @@ export interface WidgetConfig {
    */
   token: string;
 
+  /** Set false to use classic send/poll delivery, even with the new agent. */
+  streaming?: boolean;
+  /** Visibility may only be reduced from the organization's defaults. */
+  presentation?: {
+    toolActivity?: 'hidden' | 'status' | 'details';
+    reasoning?: boolean;
+  };
+
   capabilities?: {
+    /** This client renders rich reply parts, live and from history. */
+    richReplies?: boolean;
+    /** This client performs page highlights. */
+    pageEffects?: boolean;
     /**
      * Whether this client renders selectable question parts and submits answers.
      * The built-in Widget declares support for its default question renderer.

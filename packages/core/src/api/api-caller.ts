@@ -142,10 +142,24 @@ export class ApiCaller {
    */
   getAgentTurnMessages = async (
     sessionId: string,
+    presentation?: WidgetConfig['presentation'],
   ): Promise<AgentTurnMessagesDto | null> => {
     const { data, response } = await this.client.GET(
       '/backend/widget/v5/chat/{sessionId}/messages',
-      { params: { path: { sessionId } } },
+      {
+        params: {
+          path: { sessionId },
+          query: {
+            toolActivity: presentation?.toolActivity,
+            reasoning:
+              presentation?.reasoning === undefined
+                ? undefined
+                : presentation.reasoning
+                  ? 'true'
+                  : 'false',
+          },
+        },
+      },
     );
     if (!data) {
       log.warn('agent turn messages fetch failed', response.status);

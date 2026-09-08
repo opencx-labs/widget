@@ -37,7 +37,7 @@ export function StreamingTurn({
 }) {
   // Registered by `Widget` (`agent_chat_steps` / `agent_chat_spec`) and
   // replaceable through the `components` prop.
-  const { componentStore } = useWidget();
+  const { componentStore, config } = useWidget();
   const StepsComponent = componentStore.getComponent('agent_chat_steps');
   const SpecComponent = componentStore.getComponent('agent_chat_spec');
   // Fixed for the life of the turn. A fresh `new Date()` per render would make
@@ -78,7 +78,18 @@ export function StreamingTurn({
             <StepsComponent
               key={`steps-${index}`}
               active={turn.active}
-              steps={item.steps}
+              steps={item.steps
+                .filter((step) =>
+                  step.kind === 'reasoning'
+                    ? config.presentation?.reasoning !== false
+                    : config.presentation?.toolActivity !== 'hidden',
+                )
+                .map((step) =>
+                  config.presentation?.toolActivity === 'status' &&
+                  step.kind === 'tool'
+                    ? { kind: step.kind, label: step.label, done: step.done }
+                    : step,
+                )}
             />
           )
         ),

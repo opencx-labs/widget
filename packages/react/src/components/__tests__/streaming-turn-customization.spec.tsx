@@ -1,3 +1,4 @@
+import type { WidgetConfig } from '@opencx/widget-core';
 import type { StreamingTurnState } from '@opencx/widget-react-headless';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -6,9 +7,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
 const components = new Map<string, React.ElementType>();
+const config = vi.hoisted((): WidgetConfig => ({ token: 'test' }));
 
 vi.mock('@opencx/widget-react-headless', () => ({
   useWidget: () => ({
+    config,
     componentStore: {
       getComponent: (key: string) => components.get(key) ?? null,
     },
@@ -56,4 +59,48 @@ describe('StreamingTurn customization', () => {
     act(() => root.unmount());
     container.remove();
   });
+});
+
+it('narrows already loaded activity after a widget opts out without mutating the source turn', () => {
+  components.set('agent_chat_steps', ({ steps }: { steps: unknown[] }) => (
+    <pre>{JSON.stringify(steps)}</pre>
+  ));
+  const turn: StreamingTurnState = {
+    active: false,
+    items: [
+      {
+        kind: 'steps',
+        steps: [
+          {
+            kind: 'tool',
+            label: 'find_order',
+            done: true,
+            input: { secret: 'input-canary' },
+            output: { secret: 'output-canary' },
+          },
+          { kind: 'reasoning', label: 'reasoning-canary', done: true },
+        ],
+      },
+    ],
+  };
+  const container = document.createElement('div');
+  const root = createRoot(container);
+  try {
+    config.presentation = { toolActivity: 'details', reasoning: true };
+    act(() => root.render(<StreamingTurn turn={turn} agent={undefined} />));
+    expect(container.textContent).toContain('input-canary');
+    expect(container.textContent).toContain('reasoning-canary');
+    config.presentation = { toolActivity: 'status', reasoning: false };
+    act(() => root.render(<StreamingTurn turn={turn} agent={undefined} />));
+    expect(container.textContent).toContain('find_order');
+    expect(container.textContent).not.toContain('canary');
+    config.presentation = { toolActivity: 'hidden', reasoning: false };
+    act(() => root.render(<StreamingTurn turn={turn} agent={undefined} />));
+    expect(container.textContent).not.toContain('find_order');
+    expect(JSON.stringify(turn)).toContain('input-canary');
+  } finally {
+    act(() => root.unmount());
+    config.presentation = undefined;
+    components.clear();
+  }
 });

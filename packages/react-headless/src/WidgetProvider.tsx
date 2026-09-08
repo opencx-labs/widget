@@ -78,6 +78,7 @@ export function WidgetProvider({
         config,
         storage,
         getClientCapabilities: () => configRef.current.capabilities,
+        getRequestConfig: () => configRef.current,
       }));
     let active = true;
     void request.then(

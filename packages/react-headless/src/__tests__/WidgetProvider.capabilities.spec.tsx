@@ -73,13 +73,13 @@ describe('WidgetProvider blocking capability updates', () => {
             agent: {
               name: 'Agent',
               avatar_url: null,
-              streaming: false,
+              streaming: true,
               features: {
                 preamble: false,
                 inline_ui: false,
                 dictation: false,
                 attachments: true,
-                page_context: false,
+                page_context: true,
                 client_tools: false,
               },
             },
@@ -108,6 +108,15 @@ describe('WidgetProvider blocking capability updates', () => {
       for (const structuredQuestions of [undefined, true, false, undefined]) {
         const options: WidgetConfig = {
           token: 'token',
+          streaming: false,
+          presentation: {
+            toolActivity: structuredQuestions ? 'details' : 'hidden',
+            reasoning: structuredQuestions === true,
+          },
+          features: {
+            preamble: structuredQuestions === true,
+            pageContext: structuredQuestions === true,
+          },
           collectUserData: true,
           capabilities:
             structuredQuestions === undefined
@@ -129,6 +138,17 @@ describe('WidgetProvider blocking capability updates', () => {
         const before = bodies.length;
         await act(async () => button.click());
         expect(bodies).toHaveLength(before + 1);
+        expect(bodies.at(-1)).toMatchObject({
+          presentation: options.presentation,
+          features: { preamble: options.features?.preamble },
+        });
+        expect(Array.from(contexts)[0]?.streaming).toBe(false);
+        expect(Array.from(contexts)[0]?.features.pageContext).toBe(
+          structuredQuestions === true,
+        );
+        expect(Array.from(contexts)[0]?.messageCtx.sendsPageContext).toBe(
+          structuredQuestions === true,
+        );
         if (structuredQuestions === undefined)
           expect(bodies.at(-1)).not.toHaveProperty('capabilities');
         else
