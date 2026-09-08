@@ -46,7 +46,6 @@ export function usePersistedPillDrag({
         // The saved offset is clamped to the CURRENT viewport by the bounds
         // effect below; here it only has to land somewhere sane.
         setPillOffsetX(saved);
-        dragX.set(saved);
       })
       .catch(() => {});
 
@@ -62,7 +61,11 @@ export function usePersistedPillDrag({
         0,
         viewportWidth / 2 - restingWidth / 2 - VIEWPORT_EDGE_PADDING,
       );
-      animate(dragX, clamp(pillOffsetX, -bound, bound), settle);
+      const target = clamp(pillOffsetX, -bound, bound);
+      // A narrower viewport or a wider session strip must stay reachable even
+      // when animation frames are paused in a background browser tab.
+      if (Math.abs(dragX.get()) > bound) dragX.set(target);
+      else animate(dragX, target, settle);
       return;
     }
 

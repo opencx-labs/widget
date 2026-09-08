@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useConversationWorkspace } from '../ConversationWorkspace';
 import { useWidget } from '../WidgetProvider';
 import { usePrimitiveState } from './usePrimitiveState';
 import { useConfig } from './useConfig';
@@ -16,12 +17,13 @@ export function useSessions() {
     };
   }, [sessionsState.data]);
 
-  const canCreateNewSession = useMemo(() => {
-    if (oneOpenSessionAllowed) {
-      return openSessions.length === 0;
-    }
-    return true;
-  }, [oneOpenSessionAllowed, openSessions.length]);
+  const { workspace } = useConversationWorkspace();
+  const canCreateNewSession = workspace
+    ? workspace.canCreateChat()
+    : !oneOpenSessionAllowed ||
+      (openSessions.length === 0 &&
+        !sessionState.isCreatingSession &&
+        !sessionState.session?.isOpened);
 
   return {
     sessionState,

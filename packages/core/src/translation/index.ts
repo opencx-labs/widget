@@ -106,7 +106,11 @@ export function getTranslation(
   overrides: WidgetConfig['translationOverrides'],
   params?: Record<string, string | number>,
 ): string {
-  const text = overrides?.[lang]?.[key] || languages[lang][key];
+  const text =
+    overrides?.[lang]?.[key] ||
+    languages[lang][key] ||
+    EnglishLanguage[key] ||
+    key;
   if (!params) return text;
   return text.replace(/\{(\w+)\}/g, (match, name: string) =>
     name in params ? String(params[name]) : match,
@@ -152,7 +156,19 @@ export type TranslationInterface = {
   companion_layout_sidebar: string;
   companion_layout_fullscreen: string;
   companion_close: string;
+  companion_close_chat?: string;
   companion_history: string;
+  companion_switch_chat?: string;
+  companion_viewing?: string;
+  companion_working?: string;
+  companion_open?: string;
+  companion_closed?: string;
+  companion_draft?: string;
+  companion_chats?: string;
+  companion_chat_number?: string;
+  companion_active_chats?: string;
+  companion_other_sessions?: string;
+  companion_working_chats?: string;
   companion_expand_chat: string;
   companion_sidebar_dock_label: string;
   companion_sidebar_side_label: string;

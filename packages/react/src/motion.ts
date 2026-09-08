@@ -12,6 +12,7 @@
 
 /** Strong ease-out for entering/exiting chrome (fades, veils, headers). */
 export const EASE_OUT = [0.23, 1, 0.32, 1] as const;
+export const EASE_OUT_CSS = `cubic-bezier(${EASE_OUT.join(', ')})`;
 
 /** The default enter: a 200ms fade on `EASE_OUT`. */
 export const FADE_TRANSITION = { duration: 0.2, ease: EASE_OUT } as const;

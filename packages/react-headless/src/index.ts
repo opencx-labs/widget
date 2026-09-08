@@ -38,3 +38,7 @@ export { useWidgetLayout, WidgetLayoutProvider } from './hooks/useWidgetLayout';
 export { useModes } from './hooks/useModes';
 export { useCsat } from './hooks/useCsat';
 export { useDictation } from './hooks/useDictation';
+
+export { useCompanionChats } from './ConversationWorkspace';
+
+export { useComposerDraft } from './hooks/useComposerDraft';

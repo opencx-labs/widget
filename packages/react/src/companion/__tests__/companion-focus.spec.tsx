@@ -84,7 +84,6 @@ describe('companion composer focus', () => {
           onDismiss={() => {}}
           onToggleFullscreen={() => {}}
           onSelectLayout={() => {}}
-          onHistory={() => {}}
           onExpand={() => {}}
           canExpand={canExpand}
           placeholder="Ask…"

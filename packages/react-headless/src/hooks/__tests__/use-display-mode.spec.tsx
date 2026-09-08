@@ -21,6 +21,16 @@ vi.mock('../../agent-chat/AgentChatContext', () => ({
   AgentChatProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
+vi.mock('../../ConversationWorkspace', () => ({
+  CompanionConversationProvider: ({
+    widgetCtx,
+    children,
+  }: {
+    widgetCtx: WidgetCtx;
+    children: (ctx: WidgetCtx) => React.ReactNode;
+  }) => children(widgetCtx),
+}));
+
 // Captures the hook result so tests assert the resolved mode directly.
 let captured: ReturnType<typeof useDisplayMode> | null = null;
 function Probe() {

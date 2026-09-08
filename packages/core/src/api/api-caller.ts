@@ -199,9 +199,13 @@ export class ApiCaller {
     );
   };
 
-  createSession = async (body: Dto['CreateWidgetSessionDto']) => {
+  createSession = async (
+    body: Dto['CreateWidgetSessionDto'],
+    abortSignal?: AbortSignal,
+  ) => {
     return await this.client.POST('/backend/widget/v2/create-session', {
       body,
+      signal: abortSignal,
     });
   };
 

@@ -1,6 +1,7 @@
 import { type SendMessageDto, log } from '@opencx/widget-core';
 import {
   useAgentChatUi,
+  useComposerDraft,
   useDictation,
   useIsAwaitingBotReply,
   useMessages,
@@ -108,7 +109,11 @@ export function ChatInput({
     useAgentChatUi();
   const { sessionState } = useSessions();
   const { t } = useTranslation();
-  const [inputText, setInputText] = useState('');
+  const {
+    text: inputText,
+    setText: setInputText,
+    clearSubmitted,
+  } = useComposerDraft();
   // The host page's entity ("this" to the agent). Dismissing the pill drops
   // it from the NEXT send only; it comes back for the message after.
   const pageEntity = usePageEntity();
@@ -321,11 +326,11 @@ export function ChatInput({
         submittedMarks.forEach((mark) => detach(mark));
         submittedFileIds.forEach((fileId) => handleCancelUpload(fileId));
 
+        const cleared = clearSubmitted();
         if (!mountedRef.current) return;
         recall.onSent();
         setPageEntityDismissed(false);
-        mentions.reset();
-        setInputText((current) => (current === submittedText ? '' : current));
+        if (cleared) mentions.reset();
       },
     }).catch((error: unknown) => {
       log.error('failed to send message', error);

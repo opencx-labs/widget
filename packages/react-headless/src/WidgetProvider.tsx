@@ -13,6 +13,7 @@ import {
   log,
   WidgetCtx,
 } from '@opencx/widget-core';
+import { CompanionConversationProvider } from './ConversationWorkspace';
 import { ComponentRegistry } from './ComponentRegistry';
 import { AgentChatProvider } from './agent-chat/AgentChatContext';
 import type { WidgetComponentType } from './types/components';
@@ -108,10 +109,10 @@ export function WidgetProvider({
 
   const { widgetCtx } = initialization;
 
-  return (
+  const renderChildren = (activeCtx: WidgetCtx, content: React.ReactNode) => (
     <context.Provider
       value={{
-        widgetCtx,
+        widgetCtx: activeCtx,
         config,
         components,
         componentStore,
@@ -119,10 +120,22 @@ export function WidgetProvider({
         contentIframeRef,
       }}
     >
-      <AgentChatProvider widgetCtx={widgetCtx} config={config}>
-        {children}
-      </AgentChatProvider>
+      {content}
     </context.Provider>
+  );
+
+  if (config.displayMode === 'companion' && !config.inline) {
+    return (
+      <CompanionConversationProvider widgetCtx={widgetCtx}>
+        {(activeCtx) => renderChildren(activeCtx, children)}
+      </CompanionConversationProvider>
+    );
+  }
+  return renderChildren(
+    widgetCtx,
+    <AgentChatProvider widgetCtx={widgetCtx} config={config}>
+      {children}
+    </AgentChatProvider>,
   );
 }
 
