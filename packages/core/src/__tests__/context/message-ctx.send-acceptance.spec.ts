@@ -66,6 +66,48 @@ afterEach(() => {
 });
 
 describe('MessageCtx send acceptance', () => {
+  it('allows polling after a silent streamed turn without releasing later unanswered sends', async () => {
+    const { api, messageCtx } = buildCtx({
+      streaming: false,
+      withSession: true,
+    });
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    messageCtx.state.setPartial({
+      messages: [
+        {
+          id: 'silent-user',
+          type: 'USER',
+          content: 'first',
+          timestamp: new Date().toISOString(),
+        },
+      ],
+      settledAgentUserMessageId: 'silent-user',
+    });
+    let completeRequest = () => {};
+    const request = new Promise<void>((resolve) => {
+      completeRequest = resolve;
+    });
+    const requestSpy = vi
+      .spyOn(api, 'sendMessage')
+      .mockImplementation(async () => {
+        await request;
+        return { data: { success: true }, response: new Response() };
+      });
+    const onAccepted = vi.fn();
+    const send = messageCtx.sendMessage({ content: 'second', onAccepted });
+    await vi.waitFor(() => expect(onAccepted).toHaveBeenCalledOnce());
+    await messageCtx.sendMessage({ content: 'while sending' });
+    expect(requestSpy).toHaveBeenCalledOnce();
+    completeRequest();
+    await send;
+    // Completion belongs only to the earlier user message. The new unanswered
+    // send still follows the blocking engine's configured composer gate.
+    await messageCtx.sendMessage({ content: 'while awaiting reply' });
+    expect(requestSpy).toHaveBeenCalledOnce();
+    messageCtx.reset();
+    expect(messageCtx.state.get().settledAgentUserMessageId).toBeNull();
+  });
+
   it('rolls back the agent first message and persistent greetings when session creation fails', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const { messageCtx, sessionCtx } = buildCtx({ streaming: true });

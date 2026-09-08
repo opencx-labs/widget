@@ -1,23 +1,27 @@
 import { transferableAbortController } from 'node:util';
 import type { SessionDto, WidgetConfig, WidgetCtx } from '@opencx/widget-core';
-import type { UIMessage } from 'ai';
+import type { ChatOnFinishCallback, UIMessage } from 'ai';
 import React, { act, useLayoutEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WidgetProvider, useWidget } from '../WidgetProvider';
 import { useMessages } from '../hooks/useMessages';
+import { useIsAwaitingBotReply } from '../hooks/useIsAwaitingBotReply';
 import { useAgentChatUi } from '../agent-chat/AgentChatContext';
 
 const streamSend = vi.fn(async (_message: { text: string }) => {});
 let setStreamStatus: (
-  status: 'ready' | 'submitted' | 'streaming',
+  status: 'ready' | 'submitted' | 'streaming' | 'error',
 ) => void = () => {};
 let setStreamMessages: (messages: UIMessage[]) => void = () => {};
+let finishStream: ChatOnFinishCallback<UIMessage> = () => {};
+let awaitingReply = false;
 let latestUi: ReturnType<typeof useAgentChatUi> | undefined;
 vi.mock('@ai-sdk/react', () => ({
-  useChat: () => {
+  useChat: (options: { onFinish?: ChatOnFinishCallback<UIMessage> }) => {
+    finishStream = (result) => options.onFinish?.(result);
     const [status, setStatus] = React.useState<
-      'ready' | 'submitted' | 'streaming'
+      'ready' | 'submitted' | 'streaming' | 'error'
     >('ready');
     setStreamStatus = setStatus;
     const [messages, setMessages] = React.useState<UIMessage[]>([]);
@@ -53,6 +57,7 @@ const session: SessionDto = {
 function SendProbe({ onContext }: { onContext: (ctx: WidgetCtx) => void }) {
   const { widgetCtx } = useWidget();
   latestUi = useAgentChatUi();
+  awaitingReply = useIsAwaitingBotReply().isAwaitingBotReply;
   const { sendMessage } = useMessages();
   useLayoutEffect(() => {
     widgetCtx.sessionCtx.sessionState.setPartial({ session });
@@ -211,8 +216,36 @@ it('keeps ownership when the final assistant snapshot trails ready and reconcili
   await expect(assertSendOwnership('after-ready')).resolves.toBeUndefined();
 });
 
+it.each([
+  'silent',
+  'withheld',
+  'legacy-silent',
+  'activity-only',
+  'fast-silent',
+  'stopped-silent',
+  'failed-stop',
+  'failed-stream',
+  'stale-completion',
+] as const)(
+  'releases a confirmed %s turn so subsequent sends use polling',
+  async (outcome) => {
+    await expect(assertSendOwnership(outcome)).resolves.toBeUndefined();
+  },
+);
+
 async function assertSendOwnership(
-  finalSnapshotTiming: 'before-ready' | 'after-ready',
+  finalSnapshotTiming:
+    | 'before-ready'
+    | 'after-ready'
+    | 'silent'
+    | 'withheld'
+    | 'legacy-silent'
+    | 'activity-only'
+    | 'fast-silent'
+    | 'stopped-silent'
+    | 'failed-stop'
+    | 'failed-stream'
+    | 'stale-completion',
 ) {
   vi.stubGlobal(
     'AbortController',
@@ -281,6 +314,15 @@ async function assertSendOwnership(
     await act(async () => render(true));
     if (!ctx) throw new Error('Widget did not initialize');
     const current = ctx;
+    const logError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    let acknowledgeStop = () => {};
+    const stopAcknowledgement = new Promise<void>((resolve) => {
+      acknowledgeStop = resolve;
+    });
+    vi.spyOn(current.api, 'stopStream').mockImplementation(async () => {
+      await stopAcknowledgement;
+      if (finalSnapshotTiming === 'failed-stop') throw new Error('Stop failed');
+    });
     let persistReply = true;
     let finishReconcile = () => {};
     const reconcileGate = new Promise<void>((resolve) => {
@@ -357,30 +399,64 @@ async function assertSendOwnership(
       { text: 'second' },
     ]);
     persistReply = false;
-    const finalSnapshot: UIMessage[] = [
-      {
-        id: 'reply-2',
-        role: 'assistant',
-        parts: [
-          { type: 'text', text: 'Second reply.' },
-          {
-            type: 'data-spec',
-            data: { op: 'add', path: '/root', value: 'card' },
-          },
-          {
-            type: 'data-turn-settled',
-            data: {
-              turn_id: 'turn-2',
-              message_uuids: ['persisted-second-reply'],
+    const silent =
+      finalSnapshotTiming !== 'before-ready' &&
+      finalSnapshotTiming !== 'after-ready';
+    const finalMessage: UIMessage = {
+      id: 'reply-2',
+      role: 'assistant',
+      parts: silent
+        ? finalSnapshotTiming === 'legacy-silent'
+          ? []
+          : [
+              ...(finalSnapshotTiming === 'activity-only'
+                ? [
+                    {
+                      type: 'data-tool-activity' as const,
+                      data: { label: 'Handing off', done: true },
+                    },
+                  ]
+                : []),
+              {
+                type: 'data-turn-settled',
+                data: {
+                  turn_id: 'turn-2',
+                  message_uuids:
+                    finalSnapshotTiming === 'withheld'
+                      ? ['hidden-suggestion']
+                      : [],
+                },
+              },
+            ]
+        : [
+            { type: 'text', text: 'Second reply.' },
+            {
+              type: 'data-spec',
+              data: { op: 'add', path: '/root', value: 'card' },
             },
-          },
-        ],
-      },
-    ];
+            {
+              type: 'data-turn-settled',
+              data: {
+                turn_id: 'turn-2',
+                message_uuids: ['persisted-second-reply'],
+              },
+            },
+          ],
+    };
+    const finalSnapshot: UIMessage[] =
+      finalSnapshotTiming === 'legacy-silent'
+        ? [
+            {
+              id: 'user-2',
+              role: 'user',
+              parts: [{ type: 'text', text: 'second' }],
+            },
+          ]
+        : [finalMessage];
     await act(async () => {
-      setStreamStatus('streaming');
+      if (finalSnapshotTiming !== 'fast-silent') setStreamStatus('streaming');
       setStreamMessages(
-        finalSnapshotTiming === 'before-ready'
+        finalSnapshotTiming !== 'after-ready'
           ? finalSnapshot
           : [
               {
@@ -391,51 +467,98 @@ async function assertSendOwnership(
             ],
       );
     });
-    await act(async () => setStreamStatus('ready'));
+    const wasStopped =
+      finalSnapshotTiming === 'stopped-silent' ||
+      finalSnapshotTiming === 'failed-stop';
+    if (wasStopped) await act(async () => latestUi?.stop());
+    await act(async () => {
+      setStreamStatus(
+        finalSnapshotTiming === 'failed-stream' ? 'error' : 'ready',
+      );
+      finishStream({
+        message: finalMessage,
+        messages:
+          finalSnapshotTiming === 'stale-completion'
+            ? [...finalSnapshot]
+            : finalSnapshot,
+        isAbort: wasStopped,
+        isError: finalSnapshotTiming === 'failed-stream',
+        isDisconnect: finalSnapshotTiming === 'failed-stream',
+      });
+    });
+    if (
+      wasStopped ||
+      finalSnapshotTiming === 'failed-stream' ||
+      finalSnapshotTiming === 'stale-completion'
+    ) {
+      await act(async () => render(false));
+      expect(current.streaming).toBe(true);
+      if (wasStopped) await act(async () => acknowledgeStop());
+      if (finalSnapshotTiming === 'failed-stop')
+        expect(logError).toHaveBeenCalled();
+      if (finalSnapshotTiming !== 'stopped-silent') {
+        await act(async () => render(false));
+        expect(current.streaming).toBe(true);
+        // Only a successful completion for the current SDK snapshot releases it.
+        await act(async () => {
+          setStreamStatus('ready');
+          finishStream({
+            message: finalMessage,
+            messages: finalSnapshot,
+            isAbort: false,
+            isError: false,
+            isDisconnect: false,
+          });
+        });
+      }
+    }
     // Both status and an empty reconciliation can precede the final throttled
     // assistant snapshot. Absence of rendered content does not settle the turn.
     await act(async () => render(false));
-    expect(current.streaming).toBe(true);
-    const liveKey = latestUi?.liveTurnKey;
-    if (finalSnapshotTiming === 'after-ready') {
-      expect(latestUi?.liveItems).toEqual([]);
-      await act(async () => setStreamMessages(finalSnapshot));
-    }
-    expect(latestUi?.liveItems).toEqual([
-      { kind: 'text', text: 'Second reply.' },
-      {
-        kind: 'spec',
-        parts: [
-          {
-            type: 'data-spec',
-            data: { op: 'add', path: '/root', value: 'card' },
-          },
-        ],
-      },
-    ]);
-    expect(latestUi?.turnSources).toEqual([
-      {
-        key: liveKey,
-        turnId: 'turn-2',
-        rowIds: ['persisted-second-reply'],
-        items: latestUi?.liveItems,
-      },
-    ]);
-    await act(async () => {
-      current.messageCtx.state.setPartial({
-        messages: [
-          ...current.messageCtx.state.get().messages,
-          {
-            id: 'persisted-second-reply',
-            type: 'AI',
-            component: 'bot_message',
-            timestamp: new Date().toISOString(),
-            data: { message: 'Second reply.' },
-          },
-        ],
+    if (!silent) {
+      expect(current.streaming).toBe(true);
+      const liveKey = latestUi?.liveTurnKey;
+      if (finalSnapshotTiming === 'after-ready') {
+        expect(latestUi?.liveItems).toEqual([]);
+        await act(async () => setStreamMessages(finalSnapshot));
+      }
+      expect(latestUi?.liveItems).toEqual([
+        { kind: 'text', text: 'Second reply.' },
+        {
+          kind: 'spec',
+          parts: [
+            {
+              type: 'data-spec',
+              data: { op: 'add', path: '/root', value: 'card' },
+            },
+          ],
+        },
+      ]);
+      expect(latestUi?.turnSources).toEqual([
+        {
+          key: liveKey,
+          turnId: 'turn-2',
+          rowIds: ['persisted-second-reply'],
+          items: latestUi?.liveItems,
+        },
+      ]);
+      await act(async () => {
+        current.messageCtx.state.setPartial({
+          messages: [
+            ...current.messageCtx.state.get().messages,
+            {
+              id: 'persisted-second-reply',
+              type: 'AI',
+              component: 'bot_message',
+              timestamp: new Date().toISOString(),
+              data: { message: 'Second reply.' },
+            },
+          ],
+        });
       });
-    });
+    }
     expect(current.streaming).toBe(false);
+    expect(awaitingReply).toBe(false);
     await act(async () => {
       await ctx?.messageCtx.sendMessage({ content: 'third' });
     });

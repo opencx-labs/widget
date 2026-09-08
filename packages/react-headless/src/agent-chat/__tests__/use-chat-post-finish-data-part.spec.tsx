@@ -1,5 +1,9 @@
 import { useChat } from '@ai-sdk/react';
-import { DefaultChatTransport } from 'ai';
+import {
+  DefaultChatTransport,
+  type ChatOnFinishCallback,
+  type UIMessage,
+} from 'ai';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -27,6 +31,7 @@ const STREAM_CHUNKS: Array<Record<string, unknown>> = [
   { type: 'data-turn-settled', data: { turn_id: 'T1', message_uuids: ['r1'] } },
 ];
 
+const onFinish = vi.fn<ChatOnFinishCallback<UIMessage>>();
 let hookValue: ReturnType<typeof useChat> | null = null;
 
 function Probe() {
@@ -37,6 +42,7 @@ function Probe() {
     // finished message (with the post-finish data part) is still observable
     // once status reads 'ready' under throttling.
     throttle: 50,
+    onFinish,
   });
   return null;
 }
@@ -46,6 +52,7 @@ describe('useChat applies data parts arriving after finish', () => {
   let root: Root;
 
   beforeEach(() => {
+    onFinish.mockClear();
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => {
@@ -66,6 +73,50 @@ describe('useChat applies data parts arriving after finish', () => {
     vi.unstubAllGlobals();
   });
 
+  it.each([
+    { chunks: [] },
+    {
+      chunks: [
+        {
+          type: 'data-turn-settled',
+          data: { turn_id: 'silent', message_uuids: [] },
+        },
+      ],
+    },
+  ])(
+    'provides the final snapshot for a successful silent response (%j)',
+    async ({ chunks }) => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(
+          async () =>
+            new Response(sseBody(chunks), {
+              headers: { 'Content-Type': 'text/event-stream' },
+            }),
+        ),
+      );
+      await act(async () => root.render(<Probe />));
+      await act(async () => {
+        await hookValue?.sendMessage({ text: 'hi' });
+      });
+      await vi.waitFor(() => {
+        expect(onFinish).toHaveBeenCalledOnce();
+        expect(onFinish.mock.calls[0]?.[0].messages).toBe(hookValue?.messages);
+      });
+      const completed = onFinish.mock.calls[0]?.[0];
+      expect(completed).toMatchObject({
+        isAbort: false,
+        isError: false,
+        isDisconnect: false,
+      });
+      expect(
+        completed?.message.parts.every(
+          (part) => part.type === 'data-turn-settled',
+        ),
+      ).toBe(true);
+    },
+  );
+
   it('the finished assistant message carries the post-finish data-turn-settled part', async () => {
     await act(async () => {
       root.render(<Probe />);
@@ -85,6 +136,14 @@ describe('useChat applies data parts arriving after finish', () => {
       ).toBe(true);
     });
 
+    const completed = onFinish.mock.calls.at(-1)?.[0];
+    expect(completed?.messages).toBe(hookValue?.messages);
+    expect(completed?.message.parts).toEqual(hookValue?.messages.at(-1)?.parts);
+    expect(completed).toMatchObject({
+      isAbort: false,
+      isError: false,
+      isDisconnect: false,
+    });
     const assistant = hookValue?.messages.at(-1);
     expect(assistant?.role).toBe('assistant');
     const settledPart = assistant?.parts.find(

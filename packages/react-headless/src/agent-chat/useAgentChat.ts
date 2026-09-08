@@ -9,7 +9,12 @@ import {
   type WidgetCtx,
   type WidgetMessageU,
 } from '@opencx/widget-core';
-import { getToolName, isToolUIPart, type UIMessage } from 'ai';
+import {
+  getToolName,
+  isToolUIPart,
+  type ChatOnFinishCallback,
+  type UIMessage,
+} from 'ai';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AgentChatQueue } from './agent-chat-queue';
 import { applyPresentation } from './apply-presentation';
@@ -122,6 +127,14 @@ export function useAgentChat({
     [api],
   );
 
+  // onFinish carries the final SDK snapshot, including a response with no
+  // assistant parts. A ready status alone cannot distinguish silence from a
+  // final message update that React has not observed yet.
+  const [completedStream, setCompletedStream] = useState<
+    Parameters<ChatOnFinishCallback<UIMessage>>[0] | null
+  >(null);
+  const stopAcknowledgedRef = useRef(false);
+
   const {
     status,
     messages,
@@ -143,6 +156,7 @@ export function useAgentChat({
     // replies inside customer pages.
     throttle: 50,
     onError: (error) => log.error('agent chat stream error', error),
+    onFinish: setCompletedStream,
   });
 
   // The turn-boundary effect is triggered by status/queue ownership changes,
@@ -367,6 +381,8 @@ export function useAgentChat({
     turnPhaseRef.current = 'idle';
     lastDrainedRef.current = null;
     pendingReleaseKeyRef.current = null;
+    setCompletedStream(null);
+    stopAcknowledgedRef.current = false;
     historicalFetchRef.current = null;
     ignoredStatusAfterSessionResetRef.current =
       status === 'submitted' || status === 'streaming' ? status : null;
@@ -433,8 +449,14 @@ export function useAgentChat({
     }
     if (status !== 'ready' && status !== 'error') return;
 
-    const justFinished = prev === 'streaming' || prev === 'submitted';
+    const justFinished =
+      prev === 'streaming' ||
+      prev === 'submitted' ||
+      // An empty response can finish before React observes an active status.
+      (turnPhaseRef.current === 'in-flight' &&
+        completedStream?.messages === messagesRef.current);
     if (justFinished) {
+      setSettling(true);
       if (turnPhaseRef.current === 'in-flight') turnPhaseRef.current = 'idle';
       // RETENTION, synchronous: the stream's terminal `data-turn-settled`
       // part says exactly which ledger turn this was and which transcript
@@ -505,6 +527,8 @@ export function useAgentChat({
     if (!next) return;
     turnPhaseRef.current = 'in-flight';
     lastDrainedRef.current = next;
+    setCompletedStream(null);
+    stopAcknowledgedRef.current = false;
     // The turn's node key — anchored on the user message uuid so it is stable
     // from the first streamed chunk through the retained render source.
     setLiveTurnKey(`turn-${next.userMessage.id}`);
@@ -527,6 +551,7 @@ export function useAgentChat({
     bodyFor,
     retainFromMessage,
     setLiveTurnKey,
+    completedStream,
   ]);
 
   const send = useCallback(
@@ -658,10 +683,15 @@ export function useAgentChat({
   // BELOW the partial reply.
   const stopTurn = useCallback(() => {
     turnPhaseRef.current = 'stopping';
+    stopAcknowledgedRef.current = false;
     // A session reset/switch mid-stop already discarded this turn's state;
     // its late ACK must not reconcile or re-arm the drain for the new one.
     const generation = sendGenerationRef.current;
     void stopAgentChatTurn({ api, sessionId, chatStop: stop })
+      .then(() => {
+        if (generation === sendGenerationRef.current)
+          stopAcknowledgedRef.current = true;
+      })
       .catch((err: unknown) => {
         log.error('agent chat stop failed', err);
       })
@@ -819,25 +849,59 @@ export function useAgentChat({
   // arriving must not release the overlay that is still being written to.
   useEffect(() => {
     if (isStreaming || !settling) return;
-    for (let i = persistedMessages.length - 1; i >= 0; i -= 1) {
-      const row = persistedMessages[i];
-      if (!row) continue;
-      // Walking back from the end, the first row that settles the question
-      // wins. Reaching a user row means this turn has no persisted reply yet,
-      // so there is still nothing to hand off to.
-      if (row.type === 'USER') return;
-      if (row.type !== 'AI' && row.type !== 'AGENT') continue;
-
+    const release = () => {
       setSettling(false);
-      // Clear the live key only if it still belongs to the released turn —
-      // a queued next send may have installed ITS key already.
+      // A queued next send may have installed its own key already.
       if (liveTurnKeyRef.current === pendingReleaseKeyRef.current) {
         setLiveTurnKey(null);
       }
       pendingReleaseKeyRef.current = null;
+    };
+
+    // Compare the SDK snapshot by identity: a late callback from a previous
+    // session/turn must not settle this one, and a throttled snapshot must
+    // catch up before it can prove silence. Hidden suggestions can carry row
+    // ids, while older agents may omit the terminal part altogether. Neither
+    // needs a visitor-facing row when the completed response has no reply.
+    if (
+      liveTurnKeyRef.current === pendingReleaseKeyRef.current &&
+      completedStream?.messages === messages &&
+      !completedStream.isError &&
+      !completedStream.isDisconnect &&
+      (!completedStream.isAbort || stopAcknowledgedRef.current) &&
+      !mapUiPartsToItems(completedStream.message.parts).some(
+        (item) => item.kind !== 'steps',
+      )
+    ) {
+      const lastUser = persistedMessages.findLast((row) => row.type === 'USER');
+      if (lastUser) {
+        // Preserve completion when switching to the blocking engine, whose
+        // composer otherwise treats a final user row as an unanswered send.
+        messageCtx.state.setPartial({ settledAgentUserMessageId: lastUser.id });
+      }
+      release();
       return;
     }
-  }, [isStreaming, settling, persistedMessages, setLiveTurnKey]);
+
+    for (let i = persistedMessages.length - 1; i >= 0; i -= 1) {
+      const row = persistedMessages[i];
+      if (!row) continue;
+      // A user row means this reply has not reached persisted history yet.
+      if (row.type === 'USER') return;
+      if (row.type !== 'AI' && row.type !== 'AGENT') continue;
+      release();
+      return;
+    }
+  }, [
+    isStreaming,
+    settling,
+    persistedMessages,
+    setLiveTurnKey,
+    completedStream,
+    messages,
+    messageCtx,
+    queueVersion,
+  ]);
 
   // The live overlay: the in-flight assistant message's ordered items. Held
   // through `settling` as well as the stream itself — see above.

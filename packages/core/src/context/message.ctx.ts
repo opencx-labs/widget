@@ -224,6 +224,8 @@ type MessageCtxState = {
   /** Regardless of assignee */
   isSendingMessage: boolean;
   isSendingMessageToAI: boolean;
+  /** A completed streamed turn can intentionally leave no assistant row. */
+  settledAgentUserMessageId: string | null;
   lastAIResMightSolveUserIssue: boolean;
   isInitialFetchLoading: boolean;
 };
@@ -241,6 +243,7 @@ export class MessageCtx {
     messages: [],
     isSendingMessage: false,
     isSendingMessageToAI: false,
+    settledAgentUserMessageId: null,
     lastAIResMightSolveUserIssue: false,
     isInitialFetchLoading: false,
   });
@@ -674,7 +677,9 @@ export class MessageCtx {
         this.blocksSendWhileAwaitingReply &&
         (isSendingToAI ||
           // If last message is from user, then bot response did not arrive yet
-          (isAssignedToAI && lastMessage?.type === 'USER'))
+          (isAssignedToAI &&
+            lastMessage?.type === 'USER' &&
+            lastMessage.id !== this.state.get().settledAgentUserMessageId))
       ) {
         log.warn('cannot send messages while awaiting AI response');
         return;

@@ -7,8 +7,10 @@ export function useIsAwaitingBotReply() {
 
   const isSessionAssignedToAI = sessionState.session?.assignee.kind === 'ai';
   // This check is useful in cases where the user might navigate in and out of a chat, and `isSendingMessage` is reset back to its default value
+  const lastMessage = messagesState.messages?.at(-1);
   const isLastMessageAUserMessage =
-    messagesState.messages?.at(-1)?.type === 'USER';
+    lastMessage?.type === 'USER' &&
+    lastMessage.id !== messagesState.settledAgentUserMessageId;
 
   const isAwaitingBotReply = (() => {
     if (messagesState.isSendingMessageToAI) return true;
