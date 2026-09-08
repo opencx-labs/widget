@@ -1,10 +1,4 @@
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { createContext, useContext, useEffect, useMemo } from 'react';
 import { PrimitiveState, type WidgetCtx } from '@opencx/widget-core';
 import {
   AgentChatContext,
@@ -31,12 +25,13 @@ export type CompanionChat = {
 export class ConversationWorkspace {
   state: PrimitiveState<{ chats: CompanionChat[]; activeId: number }>;
   private nextId = 1;
+  private mountVersion = 0;
+  private disposed = false;
   constructor(private root: WidgetCtx) {
     const chat = this.makeChat(root);
     this.state = new PrimitiveState({ chats: [chat], activeId: chat.id });
   }
   private makeChat(ctx: WidgetCtx): CompanionChat {
-    ctx.routerCtx.navigateConversation = this.open;
     return {
       id: this.nextId++,
       ctx,
@@ -47,9 +42,45 @@ export class ConversationWorkspace {
       ui: DEFAULT_AGENT_CHAT_UI,
     };
   }
+  /** Attach only after commit: Strict Mode may discard render-time workspaces. */
+  mount = () => {
+    const version = ++this.mountVersion;
+    this.root.routerCtx.navigateConversation = this.open;
+    const active = this.state
+      .get()
+      .chats.find((chat) => chat.id === this.state.get().activeId)!;
+    if (active.ctx === this.root)
+      this.root.sessionCtx.restoreActiveSessionTracking();
+    else this.root.sessionCtx.trackActiveSession(active.ctx.sessionCtx);
+    return () => {
+      // React replays effect cleanup/setup in Strict Mode. Keep the live
+      // workspace intact during that replay; dispose after a real unmount.
+      queueMicrotask(() => {
+        if (this.mountVersion === version) this.dispose();
+      });
+    };
+  };
+
+  dispose = () => {
+    if (this.disposed) return;
+    this.disposed = true;
+    if (this.root.routerCtx.navigateConversation === this.open) {
+      this.root.routerCtx.navigateConversation = undefined;
+      // The initial runtime is borrowed from WidgetProvider. Return its
+      // persistence subscription before resetting any owned child sessions.
+      this.root.sessionCtx.restoreActiveSessionTracking();
+    }
+    for (const chat of this.state.get().chats) {
+      if (chat.ctx !== this.root) chat.ctx.releaseConversation();
+    }
+    this.state.set({ chats: [], activeId: 0 });
+  };
+
   select = (id: number) => {
+    if (this.disposed) return;
     const chat = this.state.get().chats.find((chat) => chat.id === id);
     if (!chat) return;
+    chat.ctx.routerCtx.navigateConversation = this.open;
     chat.ctx.routerCtx.state.setPartial({
       screen: chat.ctx.contactCtx.shouldCollectData() ? 'welcome' : 'chat',
     });
@@ -64,6 +95,7 @@ export class ConversationWorkspace {
     });
   };
   close = (id: number) => {
+    if (this.disposed) return;
     const { chats, activeId } = this.state.get();
     const index = chats.findIndex((chat) => chat.id === id && !chat.closed);
     const chat = chats[index];
@@ -83,12 +115,19 @@ export class ConversationWorkspace {
       next = this.makeChat(this.root.createConversation());
       remaining.push(next);
     }
+    next.ctx.routerCtx.navigateConversation = this.open;
     this.root.sessionCtx.trackActiveSession(next.ctx.sessionCtx);
     this.state.set({ chats: remaining, activeId: next.id });
     // Closing a tab never resolves the server conversation or interrupts other
     // sends. A busy runtime stays mounted until it settles (including creation).
-    if (!working) chat.ctx.releaseConversation();
+    if (!working) this.releaseChat(chat);
   };
+  private releaseChat(chat: CompanionChat) {
+    // WidgetProvider can reuse the initial runtime outside companion mode.
+    // Only workspace-created runtimes own disposable routing subscriptions.
+    if (chat.ctx === this.root) chat.ctx.resetChat();
+    else chat.ctx.releaseConversation();
+  }
   private isWorking(chat: CompanionChat) {
     return (
       chat.ui.isStreaming ||
@@ -97,12 +136,16 @@ export class ConversationWorkspace {
     );
   }
   canCreateChat = () =>
-    !this.root.config.oneOpenSessionAllowed ||
-    (!this.state.get().chats.some(({ ctx }) => {
-      const { session, isCreatingSession } = ctx.sessionCtx.sessionState.get();
-      return session?.isOpened || isCreatingSession;
-    }) &&
-      !this.root.sessionCtx.sessionsState.get().data.some((s) => s.isOpened));
+    !this.disposed &&
+    (!this.root.config.oneOpenSessionAllowed ||
+      (!this.state.get().chats.some(({ ctx }) => {
+        const { session, isCreatingSession } =
+          ctx.sessionCtx.sessionState.get();
+        return session?.isOpened || isCreatingSession;
+      }) &&
+        !this.root.sessionCtx.sessionsState
+          .get()
+          .data.some((s) => s.isOpened)));
 
   private isEmpty(chat: CompanionChat) {
     const { session } = chat.ctx.sessionCtx.sessionState.get();
@@ -119,6 +162,7 @@ export class ConversationWorkspace {
   }
 
   open = (sessionId?: string) => {
+    if (this.disposed) return;
     const { chats } = this.state.get();
     if (!sessionId && !this.canCreateChat()) return;
     const existing = sessionId
@@ -167,7 +211,7 @@ export class ConversationWorkspace {
       this.state.setPartial({
         chats: this.state.get().chats.filter((chat) => chat.id !== id),
       });
-      updated.ctx.releaseConversation();
+      this.releaseChat(updated);
       return;
     }
     this.state.setPartial({
@@ -244,7 +288,11 @@ export function CompanionConversationProvider({
   widgetCtx: WidgetCtx;
   children: (active: WidgetCtx) => React.ReactNode;
 }) {
-  const [workspace] = useState(() => new ConversationWorkspace(widgetCtx));
+  const workspace = useMemo(
+    () => new ConversationWorkspace(widgetCtx),
+    [widgetCtx],
+  );
+  useEffect(() => workspace.mount(), [workspace]);
   const { chats, activeId } = usePrimitiveState(workspace.state);
   const active = chats.find((chat) => chat.id === activeId)!;
   const engines = useMemo(

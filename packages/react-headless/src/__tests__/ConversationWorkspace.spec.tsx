@@ -1,4 +1,4 @@
-import React, { act } from 'react';
+import React, { act, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   PrimitiveState,
@@ -10,6 +10,7 @@ import {
   CompanionConversationProvider,
   ConversationWorkspace,
   useCompanionChats,
+  useConversationWorkspace,
 } from '../ConversationWorkspace';
 
 function runtime(): WidgetCtx {
@@ -19,6 +20,7 @@ function runtime(): WidgetCtx {
     contactCtx: { shouldCollectData: () => false },
     sessionCtx: {
       trackActiveSession: vi.fn(),
+      restoreActiveSessionTracking: vi.fn(),
       sessionState: new PrimitiveState({
         session: null,
         isCreatingSession: false,
@@ -36,6 +38,7 @@ function runtime(): WidgetCtx {
     },
     routerCtx: { state: new PrimitiveState({ screen: 'chat' }) },
     releaseConversation: vi.fn(),
+    resetChat: vi.fn(),
     createConversation: vi.fn(() => runtime()),
   };
   return ctx as unknown as WidgetCtx;
@@ -125,7 +128,8 @@ describe('companion conversation workspace', () => {
     expect(first.sessionCtx.trackActiveSession).toHaveBeenLastCalledWith(
       second.sessionCtx,
     );
-    expect(first.releaseConversation).toHaveBeenCalledOnce();
+    expect(first.resetChat).toHaveBeenCalledOnce();
+    expect(first.releaseConversation).not.toHaveBeenCalled();
   });
   it('respects oneOpenSessionAllowed and ignores missing history IDs', () => {
     const first = runtime();
@@ -148,7 +152,8 @@ describe('companion conversation workspace', () => {
     workspace.close(1);
     expect(workspace.state.get().activeId).toBe(2);
     expect(workspace.state.get().chats.map((chat) => chat.id)).toEqual([2]);
-    expect(first.releaseConversation).toHaveBeenCalledOnce();
+    expect(first.resetChat).toHaveBeenCalledOnce();
+    expect(first.releaseConversation).not.toHaveBeenCalled();
     expect(first.sessionCtx.sessionsState.get().data).toEqual([session]);
     workspace.open('first');
     expect(
@@ -170,6 +175,9 @@ describe('companion conversation workspace', () => {
     expect(
       workspace.state.get().chats[0]!.ctx.sessionCtx.sessionState.get().session,
     ).toBeNull();
+    expect(
+      workspace.state.get().chats[0]!.ctx.routerCtx.navigateConversation,
+    ).toBe(workspace.open);
     workspace.close(999);
     expect(workspace.state.get().activeId).toBe(3);
   });
@@ -188,7 +196,8 @@ describe('companion conversation workspace', () => {
     first.messageCtx.state.setPartial({ isSendingMessage: false });
     workspace.update(1, { working: false });
     expect(workspace.state.get().chats.map((chat) => chat.id)).toEqual([2]);
-    expect(first.releaseConversation).toHaveBeenCalledOnce();
+    expect(first.resetChat).toHaveBeenCalledOnce();
+    expect(first.releaseConversation).not.toHaveBeenCalled();
   });
   it('keeps session creation alive after closing and hides that runtime from open chats', async () => {
     const first = runtime();
@@ -215,7 +224,8 @@ describe('companion conversation workspace', () => {
     });
     expect(first.releaseConversation).not.toHaveBeenCalled();
     act(() => first.messageCtx.state.setPartial({ isSendingMessage: false }));
-    expect(first.releaseConversation).toHaveBeenCalledOnce();
+    expect(first.resetChat).toHaveBeenCalledOnce();
+    expect(first.releaseConversation).not.toHaveBeenCalled();
     act(() => root.unmount());
   });
   it('observes background work even with no visible chat content mounted', async () => {
@@ -244,5 +254,141 @@ describe('companion conversation workspace', () => {
     expect(chats!.chats.filter((chat) => chat.working)).toHaveLength(1);
     expect(chats!.activeId).toBe(2);
     act(() => root.unmount());
+  });
+
+  it('releases every owned runtime on unmount, including closed chats still working', async () => {
+    const first = runtime();
+    started(first, 'first');
+    first.messageCtx.state.setPartial({ isSendingMessage: false });
+    let workspace!: ConversationWorkspace;
+    function Probe() {
+      workspace = useConversationWorkspace().workspace!;
+      return null;
+    }
+    const root = createRoot(document.createElement('div'));
+    await act(async () =>
+      root.render(
+        <CompanionConversationProvider widgetCtx={first}>
+          {() => <Probe />}
+        </CompanionConversationProvider>,
+      ),
+    );
+    let second!: WidgetCtx;
+    act(() => {
+      second = workspace.open()!;
+      started(second, 'second');
+      workspace.close(1);
+      workspace.close(2);
+    });
+    const third = workspace.state
+      .get()
+      .chats.find((chat) => chat.id === 3)!.ctx;
+    expect(second.releaseConversation).not.toHaveBeenCalled();
+    // Closing the borrowed tab must not dispose the owner's router.
+    expect(first.routerCtx.navigateConversation).toBe(workspace.open);
+    expect(first.resetChat).toHaveBeenCalledOnce();
+    await act(async () => root.unmount());
+    expect(second.releaseConversation).toHaveBeenCalledOnce();
+    expect(third.releaseConversation).toHaveBeenCalledOnce();
+    expect(first.releaseConversation).not.toHaveBeenCalled();
+    expect(first.routerCtx.navigateConversation).toBeUndefined();
+    expect(first.sessionCtx.restoreActiveSessionTracking).toHaveBeenCalledTimes(
+      2,
+    );
+    expect(
+      vi
+        .mocked(first.sessionCtx.restoreActiveSessionTracking)
+        .mock.invocationCallOrder.at(-1),
+    ).toBeLessThan(
+      vi.mocked(second.releaseConversation).mock.invocationCallOrder[0]!,
+    );
+    expect(workspace.state.get().chats).toEqual([]);
+    workspace.dispose();
+    workspace.open();
+    workspace.close(3);
+    workspace.select(3);
+    expect(workspace.canCreateChat()).toBe(false);
+    expect(first.createConversation).toHaveBeenCalledTimes(2);
+    expect(second.releaseConversation).toHaveBeenCalledOnce();
+  });
+
+  it('survives Strict Mode replay and keeps navigation and persistence on the live workspace', async () => {
+    const first = runtime();
+    started(first, 'first');
+    let workspace!: ConversationWorkspace;
+    let second: WidgetCtx | undefined;
+    function Probe() {
+      workspace = useConversationWorkspace().workspace!;
+      useEffect(() => {
+        if (!second) {
+          second = workspace.open()!;
+          started(second, 'second');
+        }
+      }, []);
+      return null;
+    }
+    const root = createRoot(document.createElement('div'));
+    await act(async () =>
+      root.render(
+        <React.StrictMode>
+          <CompanionConversationProvider widgetCtx={first}>
+            {() => <Probe />}
+          </CompanionConversationProvider>
+        </React.StrictMode>,
+      ),
+    );
+    expect(workspace.state.get().chats).toHaveLength(2);
+    expect(second!.releaseConversation).not.toHaveBeenCalled();
+    expect(first.routerCtx.navigateConversation).toBe(workspace.open);
+    expect(first.sessionCtx.trackActiveSession).toHaveBeenLastCalledWith(
+      second!.sessionCtx,
+    );
+    act(() => {
+      expect(first.routerCtx.navigateConversation?.('second')).toBe(second);
+    });
+    expect(workspace.state.get().activeId).toBe(2);
+    await act(async () => root.unmount());
+    expect(second!.releaseConversation).toHaveBeenCalledOnce();
+    expect(first.routerCtx.navigateConversation).toBeUndefined();
+  });
+
+  it('releases a replaced provider without disconnecting its successor on the same widget', async () => {
+    const first = runtime();
+    started(first, 'first');
+    let workspace!: ConversationWorkspace;
+    function Probe() {
+      workspace = useConversationWorkspace().workspace!;
+      return null;
+    }
+    const root = createRoot(document.createElement('div'));
+    const render = (key: string, widgetCtx: WidgetCtx) =>
+      root.render(
+        <CompanionConversationProvider key={key} widgetCtx={widgetCtx}>
+          {() => <Probe />}
+        </CompanionConversationProvider>,
+      );
+    await act(async () => render('first', first));
+    const previous = workspace;
+    let second!: WidgetCtx;
+    act(() => {
+      second = workspace.open()!;
+    });
+    await act(async () => render('replacement', first));
+    expect(workspace).not.toBe(previous);
+    expect(second.releaseConversation).toHaveBeenCalledOnce();
+    expect(first.routerCtx.navigateConversation).toBe(workspace.open);
+    expect(workspace.state.get().chats).toHaveLength(1);
+    // Replacing just the widget prop must also replace and clean up the workspace.
+    let third!: WidgetCtx;
+    act(() => {
+      third = workspace.open()!;
+    });
+    const nextWidget = runtime();
+    await act(async () => render('replacement', nextWidget));
+    expect(third.releaseConversation).toHaveBeenCalledOnce();
+    expect(first.routerCtx.navigateConversation).toBeUndefined();
+    expect(nextWidget.routerCtx.navigateConversation).toBe(workspace.open);
+    expect(workspace.state.get().chats[0]!.ctx).toBe(nextWidget);
+    await act(async () => root.unmount());
   });
 });

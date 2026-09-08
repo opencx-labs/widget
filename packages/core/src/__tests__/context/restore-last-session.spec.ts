@@ -99,6 +99,28 @@ function buildCtx({
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe('restoring the last conversation', () => {
+  it('detaches a released child without erasing the last selected session', async () => {
+    const { storage, values } = createStorage();
+    const { sessionCtx: owner } = buildCtx({ storage });
+    const { sessionCtx: child } = buildCtx({
+      storage: createStorage().storage,
+    });
+    await settle();
+    child.sessionState.setPartial({ session: buildSession({ id: 'child' }) });
+    owner.trackActiveSession(child);
+    owner.restoreActiveSessionTracking();
+    await child.reset();
+    await settle();
+    expect(values.get(ACTIVE_SESSION_KEY)).toBe('child');
+    owner.sessionState.setPartial({ session: buildSession({ id: 'owner' }) });
+    await settle();
+    expect(values.get(ACTIVE_SESSION_KEY)).toBe('owner');
+    child.sessionState.setPartial({
+      session: buildSession({ id: 'late-child' }),
+    });
+    await settle();
+    expect(values.get(ACTIVE_SESSION_KEY)).toBe('owner');
+  });
   it('persists only the selected companion session after switching runtimes', async () => {
     const { storage, values } = createStorage();
     const { sessionCtx: owner } = buildCtx({ storage });
