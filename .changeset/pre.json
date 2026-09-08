@@ -9,5 +9,9 @@
     "@opencx/widget-react-headless": "4.0.62",
     "@opencx/tsconfig": "0.0.2"
   },
-  "changesets": ["selectable-question-capabilities", "widget-v5-beta"]
+  "changesets": [
+    "companion-conversations",
+    "selectable-question-capabilities",
+    "widget-v5-beta"
+  ]
 }
