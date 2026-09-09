@@ -13,6 +13,7 @@ import { cn } from './lib/utils/cn';
 import { Button } from './lib/button';
 import { X } from 'lucide-react';
 import { useWidget } from '@opencx/widget-react-headless';
+import { useTranslation } from '../hooks/useTranslation';
 
 interface DialogerProviderValue {
   open: (content: React.ReactNode) => void;
@@ -115,6 +116,7 @@ export function DialogerContent({
   withClose?: boolean;
 }) {
   const { close } = useDialoger();
+  const { t } = useTranslation();
   return (
     <div
       className={cn(
@@ -131,7 +133,7 @@ export function DialogerContent({
           onClick={close}
         >
           <X className="h-4 w-4" />
-          <span className="sr-only">Close</span>
+          <span className="sr-only">{t('close')}</span>
         </Button>
       )}
     </div>

@@ -10,6 +10,7 @@ import { cn } from './components/lib/utils/cn';
 import { Wobble, WOBBLE_MAX_MOVEMENT_PIXELS } from './components/lib/wobble';
 import { ChatBubbleSvg } from './components/svg/ChatBubbleSvg';
 import { useTheme } from './hooks/useTheme';
+import { useTranslation } from './hooks/useTranslation';
 import { dc } from './utils/data-component';
 
 const initialContent = `<!DOCTYPE html>
@@ -34,9 +35,10 @@ function WidgetPopoverTrigger() {
   const { isOpen, setIsOpen } = useWidgetTrigger();
   const { cssOverrides, assets, customComponents, accessibility } = useConfig();
   const { theme, cssVars } = useTheme();
+  const { t } = useTranslation();
 
   const triggerLabel =
-    accessibility?.widgetTriggerButton?.label ?? 'Chat with us';
+    accessibility?.widgetTriggerButton?.label ?? t('chat_with_us');
 
   if (customComponents?.widgetTrigger) {
     return customComponents.widgetTrigger({

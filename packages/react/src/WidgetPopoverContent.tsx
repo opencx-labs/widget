@@ -126,15 +126,17 @@ export function WidgetContent() {
 export function WidgetPopoverContent() {
   const { theme, triggerSide } = useTheme();
   const { dir: hostDocumentDir } = useDocumentDir();
+  const { t } = useTranslation();
 
   // Radix/floating-ui resolves `align` logically against the floating element's
   // computed direction (inherited from the host page via the portal): on an RTL
   // host, 'end' means the physical LEFT edge. Map the resolved physical side
   // back to the logical align so the box always opens on the trigger's side.
-  const align =
-    (hostDocumentDir === 'rtl' ? triggerSide === 'left' : triggerSide === 'right')
-      ? 'end'
-      : 'start';
+  const align = (
+    hostDocumentDir === 'rtl' ? triggerSide === 'left' : triggerSide === 'right'
+  )
+    ? 'end'
+    : 'start';
 
   return (
     <PopoverPrimitive.Content
@@ -147,7 +149,7 @@ export function WidgetPopoverContent() {
       side="top"
       align={align}
       aria-modal="false"
-      aria-label="Support chat"
+      aria-label={t('support_chat_aria_label')}
       sideOffset={theme.widgetContentContainer.offset.side}
       alignOffset={theme.widgetContentContainer.offset.align}
       avoidCollisions={false}

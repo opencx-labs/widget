@@ -52,6 +52,7 @@ function FileDisplay({
   file: FileWithProgress;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
   const [fileContent, setFileContent] = useState<string | ArrayBuffer | null>(
     null,
   );
@@ -110,7 +111,9 @@ function FileDisplay({
       side="bottom"
       content={
         status === 'error' ? (
-          <span className="text-destructive">Failed to upload: {error}</span>
+          <span className="text-destructive">
+            {t('upload_failed')}: {error}
+          </span>
         ) : (
           file.name
         )
@@ -146,6 +149,9 @@ function FileDisplay({
 
 // Mirrors the server-side MAX_WIDGET_UPLOAD_BYTES cap on /widget/v2/upload.
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
+// Fed to the attach tooltip's `{size}` slot so the copy can never drift from
+// the cap the dropzone actually enforces.
+const MAX_FILE_SIZE_LABEL = `${MAX_FILE_BYTES / 1024 / 1024} MB`;
 
 function ChatInput() {
   const { isSmallScreen } = useIsSmallScreen();
@@ -321,7 +327,7 @@ function ChatInput() {
           <Tooltippy
             side="top"
             align="start"
-            content="attach images, videos, PDFs, or spreadsheets (maximum size 25mb)"
+            content={t('attach_files_tooltip', { size: MAX_FILE_SIZE_LABEL })}
           >
             <Button
               onClick={dropzone__openFileSelect}
@@ -345,7 +351,7 @@ function ChatInput() {
             </Button>
           </Tooltippy>
 
-          <Tooltippy content="send message" side="top" align="end">
+          <Tooltippy content={t('send_message_tooltip')} side="top" align="end">
             <Button
               size="fit"
               onClick={handleSubmit}

@@ -1,6 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { cn } from './lib/utils/cn';
+import { useTranslation } from '../hooks/useTranslation';
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 5;
@@ -22,10 +23,7 @@ function clampTranslate(
   const imgH = image.offsetHeight;
 
   const maxX = Math.max(0, (imgW * scale - containerRect.width) / (2 * scale));
-  const maxY = Math.max(
-    0,
-    (imgH * scale - containerRect.height) / (2 * scale),
-  );
+  const maxY = Math.max(0, (imgH * scale - containerRect.height) / (2 * scale));
 
   return {
     x: Math.min(maxX, Math.max(-maxX, translate.x)),
@@ -33,13 +31,8 @@ function clampTranslate(
   };
 }
 
-export function ZoomableImage({
-  src,
-  alt,
-}: {
-  src: string;
-  alt?: string;
-}) {
+export function ZoomableImage({ src, alt }: { src: string; alt?: string }) {
+  const { t } = useTranslation();
   const [scale, setScale] = useState(1);
   const [translate, setTranslate] = useState<Point>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -49,8 +42,7 @@ export function ZoomableImage({
   const imgRef = useRef<HTMLImageElement>(null);
   const pointerMovedRef = useRef(false);
 
-  const clampScale = (s: number) =>
-    Math.min(MAX_SCALE, Math.max(MIN_SCALE, s));
+  const clampScale = (s: number) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, s));
 
   const reset = useCallback(() => {
     setScale(1);
@@ -165,19 +157,27 @@ export function ZoomableImage({
       </div>
 
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-black/60 backdrop-blur-sm rounded-full px-1.5 py-1 transition opacity-50 hover:opacity-100">
-        <ControlButton onClick={zoomOut} label="Zoom out" disabled={scale <= MIN_SCALE}>
+        <ControlButton
+          onClick={zoomOut}
+          label={t('zoom_out')}
+          disabled={scale <= MIN_SCALE}
+        >
           <ZoomOut className="size-3.5" />
         </ControlButton>
         <span className="text-white text-xs font-medium min-w-[3ch] text-center tabular-nums">
           {Math.round(scale * 100)}%
         </span>
-        <ControlButton onClick={zoomIn} label="Zoom in" disabled={scale >= MAX_SCALE}>
+        <ControlButton
+          onClick={zoomIn}
+          label={t('zoom_in')}
+          disabled={scale >= MAX_SCALE}
+        >
           <ZoomIn className="size-3.5" />
         </ControlButton>
         {isZoomed && (
           <>
             <div className="w-px h-4 bg-white/30 mx-0.5" />
-            <ControlButton onClick={reset} label="Reset zoom">
+            <ControlButton onClick={reset} label={t('reset_zoom')}>
               <RotateCcw className="size-3.5" />
             </ControlButton>
           </>
