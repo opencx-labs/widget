@@ -20,4 +20,19 @@ export const VietnameseLanguage: TranslationInterface = {
   csat_title: 'Cuộc trò chuyện của bạn thế nào?',
   csat_submitted_title: 'Bạn đã đánh giá cuộc trò chuyện là',
   csat_feedback_placeholder: 'Cho chúng tôi biết thêm... (tùy chọn)',
+  attach_files_tooltip:
+    'Đính kèm hình ảnh, video, PDF hoặc bảng tính (tối đa {size})',
+  send_message_tooltip: 'Gửi tin nhắn',
+  upload_failed: 'Tải lên thất bại',
+  close_conversation_title: 'Đóng cuộc trò chuyện',
+  close_conversation_description:
+    'Bạn có chắc muốn đóng cuộc trò chuyện này không?',
+  close_conversation_cancel: 'Không',
+  close_conversation_confirm: 'Có',
+  zoom_in: 'Phóng to',
+  zoom_out: 'Thu nhỏ',
+  reset_zoom: 'Đặt lại thu phóng',
+  close: 'Đóng',
+  support_chat_aria_label: 'Trò chuyện hỗ trợ',
+  chat_with_us: 'Trò chuyện với chúng tôi',
 };

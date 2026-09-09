@@ -20,4 +20,18 @@ export const UrduLanguage: TranslationInterface = {
   csat_title: 'آپ کی گفتگو کیسی رہی؟',
   csat_submitted_title: 'آپ نے گفتگو کو درجہ دیا',
   csat_feedback_placeholder: 'ہمیں مزید بتائیں... (اختیاری)',
+  attach_files_tooltip:
+    'تصاویر، ویڈیوز، PDF یا اسپریڈ شیٹس منسلک کریں (زیادہ سے زیادہ {size})',
+  send_message_tooltip: 'پیغام بھیجیں',
+  upload_failed: 'اپ لوڈ ناکام ہو گیا',
+  close_conversation_title: 'گفتگو بند کریں',
+  close_conversation_description: 'کیا آپ واقعی یہ گفتگو بند کرنا چاہتے ہیں؟',
+  close_conversation_cancel: 'نہیں',
+  close_conversation_confirm: 'ہاں',
+  zoom_in: 'زوم اِن',
+  zoom_out: 'زوم آؤٹ',
+  reset_zoom: 'زوم دوبارہ ترتیب دیں',
+  close: 'بند کریں',
+  support_chat_aria_label: 'سپورٹ چیٹ',
+  chat_with_us: 'ہم سے چیٹ کریں',
 };

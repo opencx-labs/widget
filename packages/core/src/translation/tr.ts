@@ -20,4 +20,19 @@ export const TurkishLanguage: TranslationInterface = {
   csat_title: 'Görüşmeniz nasıldı?',
   csat_submitted_title: 'Görüşmeyi şöyle değerlendirdiniz',
   csat_feedback_placeholder: 'Bize daha fazlasını anlatın... (isteğe bağlı)',
+  attach_files_tooltip:
+    'Görsel, video, PDF veya elektronik tablo ekleyin (en fazla {size})',
+  send_message_tooltip: 'Mesajı gönder',
+  upload_failed: 'Yükleme başarısız',
+  close_conversation_title: 'Görüşmeyi kapat',
+  close_conversation_description:
+    'Bu görüşmeyi kapatmak istediğinizden emin misiniz?',
+  close_conversation_cancel: 'Hayır',
+  close_conversation_confirm: 'Evet',
+  zoom_in: 'Yakınlaştır',
+  zoom_out: 'Uzaklaştır',
+  reset_zoom: 'Yakınlaştırmayı sıfırla',
+  close: 'Kapat',
+  support_chat_aria_label: 'Destek sohbeti',
+  chat_with_us: 'Bizimle sohbet edin',
 };

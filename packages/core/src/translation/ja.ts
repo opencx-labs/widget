@@ -20,4 +20,18 @@ export const JapaneseLanguage: TranslationInterface = {
   csat_title: '会話はいかがでしたか？',
   csat_submitted_title: '会話を次のように評価しました',
   csat_feedback_placeholder: '詳しく教えてください...（任意）',
+  attach_files_tooltip:
+    '画像、動画、PDF、スプレッドシートを添付できます（最大 {size}）',
+  send_message_tooltip: 'メッセージを送信',
+  upload_failed: 'アップロードに失敗しました',
+  close_conversation_title: '会話を終了',
+  close_conversation_description: 'この会話を終了してもよろしいですか？',
+  close_conversation_cancel: 'いいえ',
+  close_conversation_confirm: 'はい',
+  zoom_in: '拡大',
+  zoom_out: '縮小',
+  reset_zoom: 'ズームをリセット',
+  close: '閉じる',
+  support_chat_aria_label: 'サポートチャット',
+  chat_with_us: 'チャットで問い合わせる',
 };

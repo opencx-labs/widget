@@ -20,4 +20,19 @@ export const CroatianLanguage: TranslationInterface = {
   csat_title: 'Kakav je bio vaš razgovor?',
   csat_submitted_title: 'Ocijenili ste razgovor kao',
   csat_feedback_placeholder: 'Recite nam više... (neobavezno)',
+  attach_files_tooltip:
+    'Priložite slike, videozapise, PDF-ove ili proračunske tablice (najviše {size})',
+  send_message_tooltip: 'Pošalji poruku',
+  upload_failed: 'Učitavanje nije uspjelo',
+  close_conversation_title: 'Zatvori razgovor',
+  close_conversation_description:
+    'Jeste li sigurni da želite zatvoriti ovaj razgovor?',
+  close_conversation_cancel: 'Ne',
+  close_conversation_confirm: 'Da',
+  zoom_in: 'Približi',
+  zoom_out: 'Udalji',
+  reset_zoom: 'Poništi zumiranje',
+  close: 'Zatvori',
+  support_chat_aria_label: 'Chat za podršku',
+  chat_with_us: 'Razgovarajte s nama',
 };

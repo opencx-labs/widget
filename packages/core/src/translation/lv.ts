@@ -20,4 +20,18 @@ export const LatvianLanguage: TranslationInterface = {
   csat_title: 'Kāda bija jūsu saruna?',
   csat_submitted_title: 'Jūs novērtējāt sarunu kā',
   csat_feedback_placeholder: 'Pastāstiet mums vairāk... (neobligāti)',
+  attach_files_tooltip:
+    'Pievienojiet attēlus, video, PDF vai izklājlapas (līdz {size})',
+  send_message_tooltip: 'Sūtīt ziņojumu',
+  upload_failed: 'Augšupielāde neizdevās',
+  close_conversation_title: 'Aizvērt sarunu',
+  close_conversation_description: 'Vai tiešām vēlaties aizvērt šo sarunu?',
+  close_conversation_cancel: 'Nē',
+  close_conversation_confirm: 'Jā',
+  zoom_in: 'Pietuvināt',
+  zoom_out: 'Attālināt',
+  reset_zoom: 'Atiestatīt tālummaiņu',
+  close: 'Aizvērt',
+  support_chat_aria_label: 'Atbalsta tērzēšana',
+  chat_with_us: 'Tērzējiet ar mums',
 };

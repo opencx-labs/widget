@@ -20,4 +20,19 @@ export const LuxembourgishLanguage: TranslationInterface = {
   csat_title: 'Wéi war Är Konversatioun?',
   csat_submitted_title: 'Dir hutt d’Konversatioun bewäert als',
   csat_feedback_placeholder: 'Sot eis méi... (fakultativ)',
+  attach_files_tooltip:
+    'Hänkt Biller, Videoen, PDFen oder Tabellen un (max. {size})',
+  send_message_tooltip: 'Message schécken',
+  upload_failed: 'Eropluede feelgeschloen',
+  close_conversation_title: 'Konversatioun zoumaachen',
+  close_conversation_description:
+    'Wëllt Dir dës Konversatioun wierklech zoumaachen?',
+  close_conversation_cancel: 'Nee',
+  close_conversation_confirm: 'Jo',
+  zoom_in: 'Erazoomen',
+  zoom_out: 'Erauszoomen',
+  reset_zoom: 'Zoom zrécksetzen',
+  close: 'Zoumaachen',
+  support_chat_aria_label: 'Support-Chat',
+  chat_with_us: 'Chatt mat eis',
 };

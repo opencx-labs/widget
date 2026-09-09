@@ -88,12 +88,29 @@ export function isSupportedLanguage(
   return LANGUAGES.includes(lang as Language);
 }
 
+/**
+ * Values substituted into `{placeholder}` slots of a translated string, so a
+ * number that lives in code (an upload limit, a count) has one source of truth
+ * instead of being spelled out in every locale file.
+ */
+export type TranslationVars = Readonly<Record<string, string>>;
+
+const PLACEHOLDER = /\{(\w+)\}/g;
+
 export function getTranslation(
   key: TranslationKeyU,
   lang: Language,
   overrides: WidgetConfig['translationOverrides'],
+  vars?: TranslationVars,
 ): string {
-  return overrides?.[lang]?.[key] || languages[lang][key] || '';
+  const template = overrides?.[lang]?.[key] || languages[lang][key] || '';
+  if (!vars) return template;
+  // An unknown placeholder is left verbatim: a customer-authored override with
+  // a typo should show `{sise}` rather than silently swallow the slot.
+  return template.replace(
+    PLACEHOLDER,
+    (slot: string, name: string) => vars[name] ?? slot,
+  );
 }
 
 export type TranslationInterface = {
@@ -115,5 +132,19 @@ export type TranslationInterface = {
   csat_title: string;
   csat_submitted_title: string;
   csat_feedback_placeholder: string;
+  /** Takes a `{size}` placeholder for the maximum upload size. */
+  attach_files_tooltip: string;
+  send_message_tooltip: string;
+  upload_failed: string;
+  close_conversation_title: string;
+  close_conversation_description: string;
+  close_conversation_cancel: string;
+  close_conversation_confirm: string;
+  zoom_in: string;
+  zoom_out: string;
+  reset_zoom: string;
+  close: string;
+  support_chat_aria_label: string;
+  chat_with_us: string;
 };
 export type TranslationKeyU = keyof TranslationInterface;

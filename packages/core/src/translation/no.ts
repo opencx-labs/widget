@@ -20,4 +20,19 @@ export const NorwegianLanguage: TranslationInterface = {
   csat_title: 'Hvordan var samtalen din?',
   csat_submitted_title: 'Du vurderte samtalen som',
   csat_feedback_placeholder: 'Fortell oss mer... (valgfritt)',
+  attach_files_tooltip:
+    'Legg ved bilder, videoer, PDF-er eller regneark (maks {size})',
+  send_message_tooltip: 'Send melding',
+  upload_failed: 'Opplastingen mislyktes',
+  close_conversation_title: 'Lukk samtale',
+  close_conversation_description:
+    'Er du sikker på at du vil lukke denne samtalen?',
+  close_conversation_cancel: 'Nei',
+  close_conversation_confirm: 'Ja',
+  zoom_in: 'Zoom inn',
+  zoom_out: 'Zoom ut',
+  reset_zoom: 'Tilbakestill zoom',
+  close: 'Lukk',
+  support_chat_aria_label: 'Support-chat',
+  chat_with_us: 'Chat med oss',
 };

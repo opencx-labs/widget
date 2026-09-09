@@ -20,4 +20,19 @@ export const BengaliLanguage: TranslationInterface = {
   csat_title: 'আপনার কথোপকথন কেমন ছিল?',
   csat_submitted_title: 'আপনি কথোপকথনটি মূল্যায়ন করেছেন',
   csat_feedback_placeholder: 'আমাদের আরও বলুন... (ঐচ্ছিক)',
+  attach_files_tooltip:
+    'ছবি, ভিডিও, PDF বা স্প্রেডশিট সংযুক্ত করুন (সর্বোচ্চ {size})',
+  send_message_tooltip: 'বার্তা পাঠান',
+  upload_failed: 'আপলোড ব্যর্থ হয়েছে',
+  close_conversation_title: 'কথোপকথন বন্ধ করুন',
+  close_conversation_description:
+    'আপনি কি নিশ্চিত যে আপনি এই কথোপকথনটি বন্ধ করতে চান?',
+  close_conversation_cancel: 'না',
+  close_conversation_confirm: 'হ্যাঁ',
+  zoom_in: 'বড় করুন',
+  zoom_out: 'ছোট করুন',
+  reset_zoom: 'জুম রিসেট করুন',
+  close: 'বন্ধ করুন',
+  support_chat_aria_label: 'সাপোর্ট চ্যাট',
+  chat_with_us: 'আমাদের সাথে চ্যাট করুন',
 };

@@ -20,4 +20,18 @@ export const KoreanLanguage: TranslationInterface = {
   csat_title: '대화는 어떠셨나요?',
   csat_submitted_title: '대화를 다음과 같이 평가했습니다',
   csat_feedback_placeholder: '더 알려주세요... (선택 사항)',
+  attach_files_tooltip:
+    '이미지, 동영상, PDF 또는 스프레드시트 첨부 (최대 {size})',
+  send_message_tooltip: '메시지 보내기',
+  upload_failed: '업로드 실패',
+  close_conversation_title: '대화 종료',
+  close_conversation_description: '이 대화를 종료하시겠습니까?',
+  close_conversation_cancel: '아니요',
+  close_conversation_confirm: '예',
+  zoom_in: '확대',
+  zoom_out: '축소',
+  reset_zoom: '확대/축소 초기화',
+  close: '닫기',
+  support_chat_aria_label: '고객 지원 채팅',
+  chat_with_us: '문의하기',
 };

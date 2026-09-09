@@ -20,4 +20,19 @@ export const BulgarianLanguage: TranslationInterface = {
   csat_title: 'Как мина разговорът ви?',
   csat_submitted_title: 'Оценихте разговора като',
   csat_feedback_placeholder: 'Кажете ни повече... (по желание)',
+  attach_files_tooltip:
+    'Прикачете изображения, видеа, PDF файлове или таблици (макс. {size})',
+  send_message_tooltip: 'Изпращане на съобщение',
+  upload_failed: 'Качването е неуспешно',
+  close_conversation_title: 'Затваряне на разговора',
+  close_conversation_description:
+    'Сигурни ли сте, че искате да затворите този разговор?',
+  close_conversation_cancel: 'Не',
+  close_conversation_confirm: 'Да',
+  zoom_in: 'Увеличаване',
+  zoom_out: 'Намаляване',
+  reset_zoom: 'Нулиране на мащаба',
+  close: 'Затваряне',
+  support_chat_aria_label: 'Чат за поддръжка',
+  chat_with_us: 'Пишете ни',
 };

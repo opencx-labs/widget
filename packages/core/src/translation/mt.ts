@@ -20,4 +20,18 @@ export const MalteseLanguage: TranslationInterface = {
   csat_title: 'Kif kienet il-konversazzjoni tiegħek?',
   csat_submitted_title: 'Int ivvalutajt il-konversazzjoni bħala',
   csat_feedback_placeholder: 'Għidilna aktar... (mhux obbligatorju)',
+  attach_files_tooltip:
+    'Ehmeż stampi, vidjows, PDFs jew spreadsheets (massimu {size})',
+  send_message_tooltip: 'Ibgħat il-messaġġ',
+  upload_failed: 'It-tlugħ falla',
+  close_conversation_title: 'Agħlaq il-konversazzjoni',
+  close_conversation_description: 'Żgur li trid tagħlaq din il-konversazzjoni?',
+  close_conversation_cancel: 'Le',
+  close_conversation_confirm: 'Iva',
+  zoom_in: 'Kabbar',
+  zoom_out: 'Ċekken',
+  reset_zoom: 'Irrisettja ż-zoom',
+  close: 'Agħlaq',
+  support_chat_aria_label: 'Chat ta’ appoġġ',
+  chat_with_us: 'Ikkuntattjana',
 };

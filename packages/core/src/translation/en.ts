@@ -20,4 +20,19 @@ export const EnglishLanguage: TranslationInterface = {
   csat_title: 'How was your conversation?',
   csat_submitted_title: 'You rated the conversation as',
   csat_feedback_placeholder: 'Tell us more... (optional)',
+  attach_files_tooltip:
+    'Attach images, videos, PDFs, or spreadsheets (max {size})',
+  send_message_tooltip: 'Send message',
+  upload_failed: 'Failed to upload',
+  close_conversation_title: 'Close conversation',
+  close_conversation_description:
+    'Are you sure you want to close this conversation?',
+  close_conversation_cancel: 'No',
+  close_conversation_confirm: 'Yes',
+  zoom_in: 'Zoom in',
+  zoom_out: 'Zoom out',
+  reset_zoom: 'Reset zoom',
+  close: 'Close',
+  support_chat_aria_label: 'Support chat',
+  chat_with_us: 'Chat with us',
 };

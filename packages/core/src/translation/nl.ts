@@ -20,4 +20,19 @@ export const DutchLanguage: TranslationInterface = {
   csat_title: 'Hoe was je gesprek?',
   csat_submitted_title: 'Je hebt het gesprek beoordeeld als',
   csat_feedback_placeholder: 'Vertel ons meer... (optioneel)',
+  attach_files_tooltip:
+    'Voeg afbeeldingen, video’s, PDF’s of spreadsheets toe (max. {size})',
+  send_message_tooltip: 'Bericht verzenden',
+  upload_failed: 'Uploaden mislukt',
+  close_conversation_title: 'Gesprek sluiten',
+  close_conversation_description:
+    'Weet je zeker dat je dit gesprek wilt sluiten?',
+  close_conversation_cancel: 'Nee',
+  close_conversation_confirm: 'Ja',
+  zoom_in: 'Inzoomen',
+  zoom_out: 'Uitzoomen',
+  reset_zoom: 'Zoom herstellen',
+  close: 'Sluiten',
+  support_chat_aria_label: 'Supportchat',
+  chat_with_us: 'Chat met ons',
 };

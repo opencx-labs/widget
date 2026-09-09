@@ -20,4 +20,19 @@ export const SwedishLanguage: TranslationInterface = {
   csat_title: 'Hur var din konversation?',
   csat_submitted_title: 'Du betygsatte konversationen som',
   csat_feedback_placeholder: 'Berätta mer... (valfritt)',
+  attach_files_tooltip:
+    'Bifoga bilder, videor, PDF-filer eller kalkylark (max {size})',
+  send_message_tooltip: 'Skicka meddelande',
+  upload_failed: 'Uppladdningen misslyckades',
+  close_conversation_title: 'Avsluta konversation',
+  close_conversation_description:
+    'Är du säker på att du vill avsluta den här konversationen?',
+  close_conversation_cancel: 'Nej',
+  close_conversation_confirm: 'Ja',
+  zoom_in: 'Zooma in',
+  zoom_out: 'Zooma ut',
+  reset_zoom: 'Återställ zoom',
+  close: 'Stäng',
+  support_chat_aria_label: 'Supportchatt',
+  chat_with_us: 'Chatta med oss',
 };

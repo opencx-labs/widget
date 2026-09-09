@@ -11,7 +11,7 @@ export const FrenchLanguage: TranslationInterface = {
   your_email_placeholder: 'Votre adresse e-mail',
   start_chat_button: 'Parler au support',
   start_chat_button_loading: 'Connexion...',
-  i_need_more_help: "Je besoin d'aide plus",
+  i_need_more_help: "J'ai besoin de plus d'aide",
   this_was_helpful: "C'était utile",
   optional: 'Optionnel',
   no_conversations_yet: 'Aucune conversation pour le moment',
@@ -20,4 +20,19 @@ export const FrenchLanguage: TranslationInterface = {
   csat_title: 'Comment s’est passée votre conversation ?',
   csat_submitted_title: 'Vous avez évalué la conversation comme',
   csat_feedback_placeholder: 'Dites-nous en plus... (facultatif)',
+  attach_files_tooltip:
+    'Joindre des images, des vidéos, des PDF ou des feuilles de calcul (max. {size})',
+  send_message_tooltip: 'Envoyer le message',
+  upload_failed: "Échec de l'envoi",
+  close_conversation_title: 'Fermer la conversation',
+  close_conversation_description:
+    'Voulez-vous vraiment fermer cette conversation ?',
+  close_conversation_cancel: 'Non',
+  close_conversation_confirm: 'Oui',
+  zoom_in: 'Zoom avant',
+  zoom_out: 'Zoom arrière',
+  reset_zoom: 'Réinitialiser le zoom',
+  close: 'Fermer',
+  support_chat_aria_label: 'Chat de support',
+  chat_with_us: 'Discutez avec nous',
 };

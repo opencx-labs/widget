@@ -20,4 +20,18 @@ export const LithuanianLanguage: TranslationInterface = {
   csat_title: 'Koks buvo jūsų pokalbis?',
   csat_submitted_title: 'Pokalbį įvertinote kaip',
   csat_feedback_placeholder: 'Papasakokite daugiau... (neprivaloma)',
+  attach_files_tooltip:
+    'Pridėkite vaizdų, vaizdo įrašų, PDF ar skaičiuoklių (iki {size})',
+  send_message_tooltip: 'Siųsti žinutę',
+  upload_failed: 'Nepavyko įkelti',
+  close_conversation_title: 'Uždaryti pokalbį',
+  close_conversation_description: 'Ar tikrai norite uždaryti šį pokalbį?',
+  close_conversation_cancel: 'Ne',
+  close_conversation_confirm: 'Taip',
+  zoom_in: 'Priartinti',
+  zoom_out: 'Nutolinti',
+  reset_zoom: 'Atstatyti mastelį',
+  close: 'Uždaryti',
+  support_chat_aria_label: 'Pagalbos pokalbis',
+  chat_with_us: 'Susisiekite su mumis',
 };

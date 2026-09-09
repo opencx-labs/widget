@@ -20,4 +20,19 @@ export const RussianLanguage: TranslationInterface = {
   csat_title: 'Как прошёл ваш разговор?',
   csat_submitted_title: 'Вы оценили разговор как',
   csat_feedback_placeholder: 'Расскажите подробнее... (необязательно)',
+  attach_files_tooltip:
+    'Прикрепите изображения, видео, PDF или таблицы (до {size})',
+  send_message_tooltip: 'Отправить сообщение',
+  upload_failed: 'Не удалось загрузить',
+  close_conversation_title: 'Закрыть разговор',
+  close_conversation_description:
+    'Вы уверены, что хотите закрыть этот разговор?',
+  close_conversation_cancel: 'Нет',
+  close_conversation_confirm: 'Да',
+  zoom_in: 'Увеличить',
+  zoom_out: 'Уменьшить',
+  reset_zoom: 'Сбросить масштаб',
+  close: 'Закрыть',
+  support_chat_aria_label: 'Чат поддержки',
+  chat_with_us: 'Напишите нам',
 };

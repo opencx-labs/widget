@@ -20,4 +20,18 @@ export const RomanianLanguage: TranslationInterface = {
   csat_title: 'Cum a fost conversația ta?',
   csat_submitted_title: 'Ai evaluat conversația ca',
   csat_feedback_placeholder: 'Spune-ne mai multe... (opțional)',
+  attach_files_tooltip:
+    'Atașează imagini, videoclipuri, PDF-uri sau foi de calcul (max. {size})',
+  send_message_tooltip: 'Trimite mesajul',
+  upload_failed: 'Încărcarea a eșuat',
+  close_conversation_title: 'Închide conversația',
+  close_conversation_description: 'Sigur vrei să închizi această conversație?',
+  close_conversation_cancel: 'Nu',
+  close_conversation_confirm: 'Da',
+  zoom_in: 'Mărește',
+  zoom_out: 'Micșorează',
+  reset_zoom: 'Resetează zoomul',
+  close: 'Închide',
+  support_chat_aria_label: 'Chat de asistență',
+  chat_with_us: 'Discută cu noi',
 };

@@ -51,6 +51,7 @@ export {
   type Language,
   type TranslationInterface,
   type TranslationKeyU,
+  type TranslationVars,
   getTranslation,
   isSupportedLanguage,
 } from './translation';

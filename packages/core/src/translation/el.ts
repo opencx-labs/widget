@@ -20,4 +20,19 @@ export const GreekLanguage: TranslationInterface = {
   csat_title: 'Πώς ήταν η συνομιλία σας;',
   csat_submitted_title: 'Βαθμολογήσατε τη συνομιλία ως',
   csat_feedback_placeholder: 'Πείτε μας περισσότερα... (προαιρετικό)',
+  attach_files_tooltip:
+    'Επισυνάψτε εικόνες, βίντεο, PDF ή υπολογιστικά φύλλα (έως {size})',
+  send_message_tooltip: 'Αποστολή μηνύματος',
+  upload_failed: 'Η μεταφόρτωση απέτυχε',
+  close_conversation_title: 'Κλείσιμο συνομιλίας',
+  close_conversation_description:
+    'Είστε βέβαιοι ότι θέλετε να κλείσετε αυτήν τη συνομιλία;',
+  close_conversation_cancel: 'Όχι',
+  close_conversation_confirm: 'Ναι',
+  zoom_in: 'Μεγέθυνση',
+  zoom_out: 'Σμίκρυνση',
+  reset_zoom: 'Επαναφορά ζουμ',
+  close: 'Κλείσιμο',
+  support_chat_aria_label: 'Συνομιλία υποστήριξης',
+  chat_with_us: 'Συνομιλήστε μαζί μας',
 };

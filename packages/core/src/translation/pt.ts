@@ -20,4 +20,19 @@ export const PortugueseLanguage: TranslationInterface = {
   csat_title: 'Como foi a sua conversa?',
   csat_submitted_title: 'Você avaliou a conversa como',
   csat_feedback_placeholder: 'Conte-nos mais... (opcional)',
+  attach_files_tooltip:
+    'Anexe imagens, vídeos, PDFs ou planilhas (máx. {size})',
+  send_message_tooltip: 'Enviar mensagem',
+  upload_failed: 'Falha no envio',
+  close_conversation_title: 'Encerrar conversa',
+  close_conversation_description:
+    'Tem certeza de que deseja encerrar esta conversa?',
+  close_conversation_cancel: 'Não',
+  close_conversation_confirm: 'Sim',
+  zoom_in: 'Ampliar',
+  zoom_out: 'Reduzir',
+  reset_zoom: 'Redefinir zoom',
+  close: 'Fechar',
+  support_chat_aria_label: 'Chat de suporte',
+  chat_with_us: 'Converse conosco',
 };

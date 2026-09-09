@@ -20,4 +20,19 @@ export const DanishLanguage: TranslationInterface = {
   csat_title: 'Hvordan var din samtale?',
   csat_submitted_title: 'Du vurderede samtalen som',
   csat_feedback_placeholder: 'Fortæl os mere... (valgfrit)',
+  attach_files_tooltip:
+    'Vedhæft billeder, videoer, PDF-filer eller regneark (maks. {size})',
+  send_message_tooltip: 'Send besked',
+  upload_failed: 'Upload mislykkedes',
+  close_conversation_title: 'Luk samtale',
+  close_conversation_description:
+    'Er du sikker på, at du vil lukke denne samtale?',
+  close_conversation_cancel: 'Nej',
+  close_conversation_confirm: 'Ja',
+  zoom_in: 'Zoom ind',
+  zoom_out: 'Zoom ud',
+  reset_zoom: 'Nulstil zoom',
+  close: 'Luk',
+  support_chat_aria_label: 'Supportchat',
+  chat_with_us: 'Chat med os',
 };

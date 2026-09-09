@@ -20,4 +20,18 @@ export const FinnishLanguage: TranslationInterface = {
   csat_title: 'Millainen keskustelusi oli?',
   csat_submitted_title: 'Arvioit keskustelun',
   csat_feedback_placeholder: 'Kerro lisää... (valinnainen)',
+  attach_files_tooltip:
+    'Liitä kuvia, videoita, PDF-tiedostoja tai taulukoita (enintään {size})',
+  send_message_tooltip: 'Lähetä viesti',
+  upload_failed: 'Lataus epäonnistui',
+  close_conversation_title: 'Sulje keskustelu',
+  close_conversation_description: 'Haluatko varmasti sulkea tämän keskustelun?',
+  close_conversation_cancel: 'Ei',
+  close_conversation_confirm: 'Kyllä',
+  zoom_in: 'Lähennä',
+  zoom_out: 'Loitonna',
+  reset_zoom: 'Palauta zoomaus',
+  close: 'Sulje',
+  support_chat_aria_label: 'Tukichat',
+  chat_with_us: 'Keskustele kanssamme',
 };

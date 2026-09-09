@@ -20,4 +20,18 @@ export const CzechLanguage: TranslationInterface = {
   csat_title: 'Jaká byla vaše konverzace?',
   csat_submitted_title: 'Konverzaci jste ohodnotili jako',
   csat_feedback_placeholder: 'Řekněte nám více... (nepovinné)',
+  attach_files_tooltip:
+    'Připojte obrázky, videa, PDF nebo tabulky (max. {size})',
+  send_message_tooltip: 'Odeslat zprávu',
+  upload_failed: 'Nahrání se nezdařilo',
+  close_conversation_title: 'Uzavřít konverzaci',
+  close_conversation_description: 'Opravdu chcete tuto konverzaci uzavřít?',
+  close_conversation_cancel: 'Ne',
+  close_conversation_confirm: 'Ano',
+  zoom_in: 'Přiblížit',
+  zoom_out: 'Oddálit',
+  reset_zoom: 'Obnovit přiblížení',
+  close: 'Zavřít',
+  support_chat_aria_label: 'Chat podpory',
+  chat_with_us: 'Napište nám',
 };

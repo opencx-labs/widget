@@ -20,4 +20,18 @@ export const HungarianLanguage: TranslationInterface = {
   csat_title: 'Milyen volt a beszélgetése?',
   csat_submitted_title: 'A beszélgetést így értékelte',
   csat_feedback_placeholder: 'Mondjon többet... (opcionális)',
+  attach_files_tooltip:
+    'Csatoljon képeket, videókat, PDF-eket vagy táblázatokat (legfeljebb {size})',
+  send_message_tooltip: 'Üzenet küldése',
+  upload_failed: 'A feltöltés sikertelen',
+  close_conversation_title: 'Beszélgetés lezárása',
+  close_conversation_description: 'Biztosan lezárja ezt a beszélgetést?',
+  close_conversation_cancel: 'Nem',
+  close_conversation_confirm: 'Igen',
+  zoom_in: 'Nagyítás',
+  zoom_out: 'Kicsinyítés',
+  reset_zoom: 'Nagyítás visszaállítása',
+  close: 'Bezárás',
+  support_chat_aria_label: 'Ügyfélszolgálati chat',
+  chat_with_us: 'Csevegjen velünk',
 };

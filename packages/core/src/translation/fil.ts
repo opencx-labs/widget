@@ -20,4 +20,19 @@ export const FilipinoLanguage: TranslationInterface = {
   csat_title: 'Kumusta ang iyong usapan?',
   csat_submitted_title: 'Ni-rate mo ang usapan bilang',
   csat_feedback_placeholder: 'Sabihin pa sa amin... (opsyonal)',
+  attach_files_tooltip:
+    'Maglakip ng mga larawan, video, PDF o spreadsheet (hanggang {size})',
+  send_message_tooltip: 'Ipadala ang mensahe',
+  upload_failed: 'Nabigo ang pag-upload',
+  close_conversation_title: 'Isara ang usapan',
+  close_conversation_description:
+    'Sigurado ka bang gusto mong isara ang usapang ito?',
+  close_conversation_cancel: 'Hindi',
+  close_conversation_confirm: 'Oo',
+  zoom_in: 'Palakihin',
+  zoom_out: 'Paliitin',
+  reset_zoom: 'I-reset ang zoom',
+  close: 'Isara',
+  support_chat_aria_label: 'Support chat',
+  chat_with_us: 'Makipag-chat sa amin',
 };

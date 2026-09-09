@@ -20,4 +20,18 @@ export const ArabicLanguage: TranslationInterface = {
   csat_title: 'كيف كانت محادثتك؟',
   csat_submitted_title: 'لقد قيّمت المحادثة بـ',
   csat_feedback_placeholder: 'أخبرنا المزيد... (اختياري)',
+  attach_files_tooltip:
+    'إرفاق صور أو فيديوهات أو ملفات PDF أو جداول بيانات (بحد أقصى {size})',
+  send_message_tooltip: 'إرسال الرسالة',
+  upload_failed: 'فشل الرفع',
+  close_conversation_title: 'إغلاق المحادثة',
+  close_conversation_description: 'هل أنت متأكد أنك تريد إغلاق هذه المحادثة؟',
+  close_conversation_cancel: 'لا',
+  close_conversation_confirm: 'نعم',
+  zoom_in: 'تكبير',
+  zoom_out: 'تصغير',
+  reset_zoom: 'إعادة تعيين التكبير',
+  close: 'إغلاق',
+  support_chat_aria_label: 'دردشة الدعم',
+  chat_with_us: 'تحدث معنا',
 };

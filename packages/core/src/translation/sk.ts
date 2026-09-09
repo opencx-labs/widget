@@ -20,4 +20,18 @@ export const SlovakLanguage: TranslationInterface = {
   csat_title: 'Aká bola vaša konverzácia?',
   csat_submitted_title: 'Konverzáciu ste ohodnotili ako',
   csat_feedback_placeholder: 'Povedzte nám viac... (nepovinné)',
+  attach_files_tooltip:
+    'Priložte obrázky, videá, PDF alebo tabuľky (max. {size})',
+  send_message_tooltip: 'Odoslať správu',
+  upload_failed: 'Nahrávanie zlyhalo',
+  close_conversation_title: 'Uzavrieť konverzáciu',
+  close_conversation_description: 'Naozaj chcete túto konverzáciu uzavrieť?',
+  close_conversation_cancel: 'Nie',
+  close_conversation_confirm: 'Áno',
+  zoom_in: 'Priblížiť',
+  zoom_out: 'Oddialiť',
+  reset_zoom: 'Obnoviť priblíženie',
+  close: 'Zavrieť',
+  support_chat_aria_label: 'Chat podpory',
+  chat_with_us: 'Napíšte nám',
 };

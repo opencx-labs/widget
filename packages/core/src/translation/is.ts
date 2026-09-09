@@ -20,4 +20,19 @@ export const IcelandicLanguage: TranslationInterface = {
   csat_title: 'Hvernig var samtalið þitt?',
   csat_submitted_title: 'Þú gafst samtalinu einkunnina',
   csat_feedback_placeholder: 'Segðu okkur meira... (valfrjálst)',
+  attach_files_tooltip:
+    'Hengdu við myndir, myndbönd, PDF-skjöl eða töflureikna (hámark {size})',
+  send_message_tooltip: 'Senda skilaboð',
+  upload_failed: 'Upphleðsla mistókst',
+  close_conversation_title: 'Loka samtali',
+  close_conversation_description:
+    'Ertu viss um að þú viljir loka þessu samtali?',
+  close_conversation_cancel: 'Nei',
+  close_conversation_confirm: 'Já',
+  zoom_in: 'Auka aðdrátt',
+  zoom_out: 'Minnka aðdrátt',
+  reset_zoom: 'Endurstilla aðdrátt',
+  close: 'Loka',
+  support_chat_aria_label: 'Þjónustuspjall',
+  chat_with_us: 'Spjallaðu við okkur',
 };
