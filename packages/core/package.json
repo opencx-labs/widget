@@ -1,7 +1,7 @@
 {
   "name": "@opencx/widget-core",
   "private": false,
-  "version": "5.0.0-beta.4",
+  "version": "5.0.0-beta.5",
   "type": "module",
   "repository": {
     "type": "git",
@@ -10,12 +10,13 @@
   "scripts": {
     "clean": "rm -rf node_modules dist .turbo",
     "clean:dist": "rm -rf dist .turbo",
-    "build": "vite build",
+    "build": "NODE_ENV=production vite build && node ../../scripts/check-production-build.mjs dist",
     "gen:sdk": "pnpm dlx openapi-typescript http://localhost:8080/backend/widget-api-json -o ./src/api/schema.ts && prettier --write ./src/api/schema.ts",
     "test": "vitest run",
     "type-check": "tsc --noEmit",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "prepack": "node ../../scripts/check-production-build.mjs dist"
   },
   "files": [
     "dist"

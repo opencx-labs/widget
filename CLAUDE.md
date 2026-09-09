@@ -20,6 +20,14 @@ Always commit the version bump (package.json + CHANGELOG.md changes) after publi
 - `pnpm cs` — create a changeset
 - `pnpm csv` — apply changesets (bumps versions)
 - `pnpm csp` — full check (clean, build, type-check, test) then publish
+- `pnpm release:beta` — full clean/build/lint/type-check/test gate, then publish all four packages sequentially with the `beta` tag. Use this for beta releases after `pnpm csv`.
+
+Every package build explicitly sets `NODE_ENV=production`, regardless of the
+calling shell. Both the build and `prepack` run
+`scripts/check-production-build.mjs`, which rejects development JSX in the
+compiled JavaScript. Do not skip lifecycle scripts when publishing. A green
+development preview does not verify a production bundle; check the packed
+release in a production consumer too.
 
 ### When the npm account has 2FA on writes
 
@@ -29,11 +37,10 @@ writes", each of those four authenticates separately and npm rate-limits the
 one-time-password endpoint: `E429 ... rate limited otp`, nothing published.
 That is what happened cutting `5.0.0-beta.0`.
 
-Run the gate and the publish as two steps instead:
+Use the sequential beta release command instead:
 
 ```bash
-pnpm x                                              # the same gate csp runs
-pnpm publish -r --tag beta --no-git-checks          # sequential, one package at a time
+pnpm release:beta
 ```
 
 `pnpm publish -r` covers exactly the four publishable packages (the tooling

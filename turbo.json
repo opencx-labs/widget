@@ -2,7 +2,7 @@
   "$schema": "https://turbo.build/schema.json",
   "globalEnv": ["*"],
   "ui": "stream",
-  "globalDependencies": [".env"],
+  "globalDependencies": [".env", "scripts/check-production-build.mjs"],
   "tasks": {
     "clean": {},
     "clean:dist": {},

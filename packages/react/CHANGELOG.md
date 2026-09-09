@@ -1,5 +1,14 @@
 # @opencx/widget-react
 
+## 5.0.0-beta.5
+
+### Patch Changes
+
+- Fix widget startup in production applications.
+- Updated dependencies
+  - @opencx/widget-core@5.0.0-beta.5
+  - @opencx/widget-react-headless@5.0.0-beta.5
+
 ## 5.0.0-beta.4
 
 ### Patch Changes

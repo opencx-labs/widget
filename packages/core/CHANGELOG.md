@@ -1,5 +1,11 @@
 # @opencx/widget-core
 
+## 5.0.0-beta.5
+
+### Patch Changes
+
+- Fix widget startup in production applications.
+
 ## 5.0.0-beta.4
 
 ### Patch Changes

@@ -1,7 +1,7 @@
 {
   "name": "@opencx/widget-react",
   "private": false,
-  "version": "5.0.0-beta.4",
+  "version": "5.0.0-beta.5",
   "type": "module",
   "repository": {
     "type": "git",
@@ -11,12 +11,13 @@
     "clean": "rm -rf node_modules dist .turbo",
     "clean:dist": "rm -rf dist .turbo",
     "dev": "vite --host",
-    "build": "vite build -c vite.config.ts",
+    "build": "NODE_ENV=production vite build -c vite.config.ts && node ../../scripts/check-production-build.mjs dist",
     "gen:ui-prompt": "tsx scripts/generate-ui-prompt.ts",
     "test": "vitest run",
     "type-check": "tsc --noEmit",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "prepack": "node ../../scripts/check-production-build.mjs dist"
   },
   "files": [
     "dist"
