@@ -100,5 +100,5 @@ export const FilipinoLanguage: TranslationInterface = {
   zoom_in: 'Palakihin',
   zoom_out: 'Paliitin',
   reset_zoom: 'I-reset ang zoom',
-  support_chat_aria_label: 'Support chat',
+  support_chat_aria_label: 'Chat ng suporta',
 };

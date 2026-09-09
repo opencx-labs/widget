@@ -49,18 +49,36 @@ describe('translations', () => {
     'support_chat_aria_label',
   ] satisfies TranslationKeyU[];
 
-  it.each(['ar', 'ja', 'ru'] as const)(
+  /**
+   * `language.key` pairs whose translation is genuinely the English word, so
+   * the sweep below does not report them. Keep this list short and explicit —
+   * every entry is a claim that a native speaker would write it this way.
+   */
+  const sharedWithEnglish = new Set([
+    // "No" is the Spanish and Italian word too.
+    'es.close_conversation_cancel',
+    'it.close_conversation_cancel',
+  ]);
+
+  it('recognizes English copy as English', () => {
+    // Positive control for the per-language sweep: prove the comparison fires
+    // when the copy really is English, so an empty result there means
+    // "everything was translated" rather than "nothing was compared".
+    expect(previouslyHardcoded).toHaveLength(9);
+    expect(
+      previouslyHardcoded.filter(
+        (key) => getTranslation(key, 'en', undefined) === EnglishLanguage[key],
+      ),
+    ).toEqual(previouslyHardcoded);
+  });
+
+  it.each(LANGUAGES.filter((language) => language !== 'en'))(
     '%s localizes the labels that used to be hardcoded',
     (language) => {
-      // Positive control: this locale really is being read, so a failure below
-      // means untranslated copy rather than a broken lookup.
-      expect(getTranslation('close_conversation_cancel', 'ar', undefined)).toBe(
-        'لا',
-      );
-
       const stillEnglish = previouslyHardcoded.filter(
         (key) =>
-          getTranslation(key, language, undefined) === EnglishLanguage[key],
+          getTranslation(key, language, undefined) === EnglishLanguage[key] &&
+          !sharedWithEnglish.has(`${language}.${key}`),
       );
 
       expect(stillEnglish).toEqual([]);
