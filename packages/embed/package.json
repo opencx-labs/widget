@@ -10,11 +10,12 @@
   "scripts": {
     "clean": "rm -rf node_modules dist-embed .turbo",
     "clean:dist": "rm -rf dist-embed .turbo",
-    "build": "vite build -c vite.config.ts && vite build -c vite.loader.config.ts",
+    "build": "NODE_ENV=production vite build -c vite.config.ts && NODE_ENV=production vite build -c vite.loader.config.ts && node ../../scripts/check-production-build.mjs dist-embed",
     "test": "vitest run",
     "type-check": "tsc --noEmit",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "prepack": "node ../../scripts/check-production-build.mjs dist-embed"
   },
   "files": [
     "dist-embed",

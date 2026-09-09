@@ -12,7 +12,7 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "type-check": "turbo type-check",
-    "test": "turbo test",
+    "test": "pnpm test:build && turbo test",
     "/* --------------------- DEVELOPMENT -------------------- */": "",
     "dev:prepare": "dotenv -- turbo dev:prepare --env-mode",
     "dev": "dotenv -- turbo dev --env-mode",
@@ -22,7 +22,8 @@
     "cs:pre:exit": "changeset pre exit",
     "cs": "changeset",
     "csv": "changeset version",
-    "csp": "pnpm x && changeset publish"
+    "csp": "pnpm x && changeset publish",
+    "test:build": "node --test scripts/check-production-build.test.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.9",
