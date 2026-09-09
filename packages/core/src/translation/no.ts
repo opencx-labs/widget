@@ -91,4 +91,14 @@ export const NorwegianLanguage: TranslationInterface = {
   questions_send: 'Send',
   questions_type_answer: 'Jeg skriver det selv',
   questions_answer_placeholder: 'Skriv svaret ditt…',
+  close_conversation_title: 'Lukk samtale',
+  close_conversation_description:
+    'Er du sikker på at du vil lukke denne samtalen?',
+  close_conversation_cancel: 'Nei',
+  close_conversation_confirm: 'Ja',
+  dialog_close: 'Lukk',
+  zoom_in: 'Zoom inn',
+  zoom_out: 'Zoom ut',
+  reset_zoom: 'Tilbakestill zoom',
+  support_chat_aria_label: 'Support-chat',
 };

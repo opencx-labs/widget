@@ -92,4 +92,13 @@ export const MalteseLanguage: TranslationInterface = {
   questions_send: 'Ibgħat',
   questions_type_answer: 'Nikteb jien',
   questions_answer_placeholder: 'Ikteb it-tweġiba tiegħek…',
+  close_conversation_title: 'Agħlaq il-konversazzjoni',
+  close_conversation_description: 'Żgur li trid tagħlaq din il-konversazzjoni?',
+  close_conversation_cancel: 'Le',
+  close_conversation_confirm: 'Iva',
+  dialog_close: 'Agħlaq',
+  zoom_in: 'Kabbar',
+  zoom_out: 'Ċekken',
+  reset_zoom: 'Irrisettja ż-zoom',
+  support_chat_aria_label: 'Chat ta’ appoġġ',
 };

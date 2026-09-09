@@ -91,4 +91,14 @@ export const HindiLanguage: TranslationInterface = {
   questions_send: 'भेजें',
   questions_type_answer: 'मैं खुद लिखूंगा',
   questions_answer_placeholder: 'अपना उत्तर लिखें…',
+  close_conversation_title: 'बातचीत बंद करें',
+  close_conversation_description:
+    'क्या आप वाकई इस बातचीत को बंद करना चाहते हैं?',
+  close_conversation_cancel: 'नहीं',
+  close_conversation_confirm: 'हाँ',
+  dialog_close: 'बंद करें',
+  zoom_in: 'ज़ूम इन',
+  zoom_out: 'ज़ूम आउट',
+  reset_zoom: 'ज़ूम रीसेट करें',
+  support_chat_aria_label: 'सहायता चैट',
 };

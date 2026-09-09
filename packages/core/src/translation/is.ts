@@ -91,4 +91,14 @@ export const IcelandicLanguage: TranslationInterface = {
   questions_send: 'Senda',
   questions_type_answer: 'Ég skrifa það',
   questions_answer_placeholder: 'Skrifaðu svarið þitt…',
+  close_conversation_title: 'Loka samtali',
+  close_conversation_description:
+    'Ertu viss um að þú viljir loka þessu samtali?',
+  close_conversation_cancel: 'Nei',
+  close_conversation_confirm: 'Já',
+  dialog_close: 'Loka',
+  zoom_in: 'Auka aðdrátt',
+  zoom_out: 'Minnka aðdrátt',
+  reset_zoom: 'Endurstilla aðdrátt',
+  support_chat_aria_label: 'Þjónustuspjall',
 };

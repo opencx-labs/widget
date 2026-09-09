@@ -92,4 +92,14 @@ export const DutchLanguage: TranslationInterface = {
   questions_send: 'Verzenden',
   questions_type_answer: 'Ik typ het zelf',
   questions_answer_placeholder: 'Typ je antwoord…',
+  close_conversation_title: 'Gesprek sluiten',
+  close_conversation_description:
+    'Weet je zeker dat je dit gesprek wilt sluiten?',
+  close_conversation_cancel: 'Nee',
+  close_conversation_confirm: 'Ja',
+  dialog_close: 'Sluiten',
+  zoom_in: 'Inzoomen',
+  zoom_out: 'Uitzoomen',
+  reset_zoom: 'Zoom herstellen',
+  support_chat_aria_label: 'Supportchat',
 };

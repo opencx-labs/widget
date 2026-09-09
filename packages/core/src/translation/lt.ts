@@ -91,4 +91,13 @@ export const LithuanianLanguage: TranslationInterface = {
   questions_send: 'Siųsti',
   questions_type_answer: 'Parašysiu pats',
   questions_answer_placeholder: 'Parašykite savo atsakymą…',
+  close_conversation_title: 'Uždaryti pokalbį',
+  close_conversation_description: 'Ar tikrai norite uždaryti šį pokalbį?',
+  close_conversation_cancel: 'Ne',
+  close_conversation_confirm: 'Taip',
+  dialog_close: 'Uždaryti',
+  zoom_in: 'Priartinti',
+  zoom_out: 'Nutolinti',
+  reset_zoom: 'Atstatyti mastelį',
+  support_chat_aria_label: 'Pagalbos pokalbis',
 };

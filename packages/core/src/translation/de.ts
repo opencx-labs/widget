@@ -93,4 +93,14 @@ export const GermanLanguage: TranslationInterface = {
   questions_send: 'Senden',
   questions_type_answer: 'Ich schreibe es selbst',
   questions_answer_placeholder: 'Antwort eingeben…',
+  close_conversation_title: 'Konversation schließen',
+  close_conversation_description:
+    'Möchten Sie diese Konversation wirklich schließen?',
+  close_conversation_cancel: 'Nein',
+  close_conversation_confirm: 'Ja',
+  dialog_close: 'Schließen',
+  zoom_in: 'Vergrößern',
+  zoom_out: 'Verkleinern',
+  reset_zoom: 'Zoom zurücksetzen',
+  support_chat_aria_label: 'Support-Chat',
 };

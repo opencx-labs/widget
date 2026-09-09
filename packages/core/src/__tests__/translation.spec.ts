@@ -33,6 +33,58 @@ describe('translations', () => {
     );
   });
 
+  // These keys replaced literals that sat in the components, so every locale
+  // had been rendering English. `getTranslation` falls back to English, which
+  // means "not empty" would still pass for a locale that was skipped — assert
+  // the copy actually moved.
+  const previouslyHardcoded = [
+    'close_conversation_title',
+    'close_conversation_description',
+    'close_conversation_cancel',
+    'close_conversation_confirm',
+    'dialog_close',
+    'zoom_in',
+    'zoom_out',
+    'reset_zoom',
+    'support_chat_aria_label',
+  ] satisfies TranslationKeyU[];
+
+  /**
+   * `language.key` pairs whose translation is genuinely the English word, so
+   * the sweep below does not report them. Keep this list short and explicit —
+   * every entry is a claim that a native speaker would write it this way.
+   */
+  const sharedWithEnglish = new Set([
+    // "No" is the Spanish and Italian word too.
+    'es.close_conversation_cancel',
+    'it.close_conversation_cancel',
+  ]);
+
+  it('recognizes English copy as English', () => {
+    // Positive control for the per-language sweep: prove the comparison fires
+    // when the copy really is English, so an empty result there means
+    // "everything was translated" rather than "nothing was compared".
+    expect(previouslyHardcoded).toHaveLength(9);
+    expect(
+      previouslyHardcoded.filter(
+        (key) => getTranslation(key, 'en', undefined) === EnglishLanguage[key],
+      ),
+    ).toEqual(previouslyHardcoded);
+  });
+
+  it.each(LANGUAGES.filter((language) => language !== 'en'))(
+    '%s localizes the labels that used to be hardcoded',
+    (language) => {
+      const stillEnglish = previouslyHardcoded.filter(
+        (key) =>
+          getTranslation(key, language, undefined) === EnglishLanguage[key] &&
+          !sharedWithEnglish.has(`${language}.${key}`),
+      );
+
+      expect(stillEnglish).toEqual([]);
+    },
+  );
+
   it('lets an embedder override a required translation', () => {
     expect(
       getTranslation('send_message', 'fr', {

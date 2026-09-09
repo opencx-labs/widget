@@ -89,4 +89,13 @@ export const ChineseSimplifiedLanguage: TranslationInterface = {
   questions_send: '发送',
   questions_type_answer: '我自己输入',
   questions_answer_placeholder: '输入你的回答…',
+  close_conversation_title: '结束对话',
+  close_conversation_description: '确定要结束此对话吗？',
+  close_conversation_cancel: '否',
+  close_conversation_confirm: '是',
+  dialog_close: '关闭',
+  zoom_in: '放大',
+  zoom_out: '缩小',
+  reset_zoom: '重置缩放',
+  support_chat_aria_label: '支持对话',
 };

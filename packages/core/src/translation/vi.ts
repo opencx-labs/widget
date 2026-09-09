@@ -91,4 +91,14 @@ export const VietnameseLanguage: TranslationInterface = {
   questions_send: 'Gửi',
   questions_type_answer: 'Tôi sẽ tự nhập',
   questions_answer_placeholder: 'Nhập câu trả lời của bạn…',
+  close_conversation_title: 'Đóng cuộc trò chuyện',
+  close_conversation_description:
+    'Bạn có chắc muốn đóng cuộc trò chuyện này không?',
+  close_conversation_cancel: 'Không',
+  close_conversation_confirm: 'Có',
+  dialog_close: 'Đóng',
+  zoom_in: 'Phóng to',
+  zoom_out: 'Thu nhỏ',
+  reset_zoom: 'Đặt lại thu phóng',
+  support_chat_aria_label: 'Trò chuyện hỗ trợ',
 };

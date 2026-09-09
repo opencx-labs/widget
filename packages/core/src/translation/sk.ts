@@ -91,4 +91,13 @@ export const SlovakLanguage: TranslationInterface = {
   questions_send: 'Odoslať',
   questions_type_answer: 'Napíšem to sám',
   questions_answer_placeholder: 'Napíšte svoju odpoveď…',
+  close_conversation_title: 'Uzavrieť konverzáciu',
+  close_conversation_description: 'Naozaj chcete túto konverzáciu uzavrieť?',
+  close_conversation_cancel: 'Nie',
+  close_conversation_confirm: 'Áno',
+  dialog_close: 'Zavrieť',
+  zoom_in: 'Priblížiť',
+  zoom_out: 'Oddialiť',
+  reset_zoom: 'Obnoviť priblíženie',
+  support_chat_aria_label: 'Chat podpory',
 };

@@ -91,4 +91,13 @@ export const LatvianLanguage: TranslationInterface = {
   questions_send: 'Sūtīt',
   questions_type_answer: 'Rakstīšu pats',
   questions_answer_placeholder: 'Ierakstiet savu atbildi…',
+  close_conversation_title: 'Aizvērt sarunu',
+  close_conversation_description: 'Vai tiešām vēlaties aizvērt šo sarunu?',
+  close_conversation_cancel: 'Nē',
+  close_conversation_confirm: 'Jā',
+  dialog_close: 'Aizvērt',
+  zoom_in: 'Pietuvināt',
+  zoom_out: 'Attālināt',
+  reset_zoom: 'Atiestatīt tālummaiņu',
+  support_chat_aria_label: 'Atbalsta tērzēšana',
 };
