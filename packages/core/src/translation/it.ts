@@ -93,4 +93,13 @@ export const ItalianLanguage: TranslationInterface = {
   questions_send: 'Invia',
   questions_type_answer: 'Lo scrivo io',
   questions_answer_placeholder: 'Scrivi la tua risposta…',
+  close_conversation_title: 'Chiudi conversazione',
+  close_conversation_description: 'Vuoi davvero chiudere questa conversazione?',
+  close_conversation_cancel: 'No',
+  close_conversation_confirm: 'Sì',
+  dialog_close: 'Chiudi',
+  zoom_in: 'Ingrandisci',
+  zoom_out: 'Riduci',
+  reset_zoom: 'Reimposta zoom',
+  support_chat_aria_label: 'Chat di supporto',
 };

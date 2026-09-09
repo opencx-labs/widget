@@ -90,4 +90,13 @@ export const ThaiLanguage: TranslationInterface = {
   questions_send: 'ส่ง',
   questions_type_answer: 'ขอพิมพ์เอง',
   questions_answer_placeholder: 'พิมพ์คำตอบของคุณ…',
+  close_conversation_title: 'ปิดการสนทนา',
+  close_conversation_description: 'คุณแน่ใจหรือไม่ว่าต้องการปิดการสนทนานี้?',
+  close_conversation_cancel: 'ไม่',
+  close_conversation_confirm: 'ใช่',
+  dialog_close: 'ปิด',
+  zoom_in: 'ขยาย',
+  zoom_out: 'ย่อ',
+  reset_zoom: 'รีเซ็ตการซูม',
+  support_chat_aria_label: 'แชทฝ่ายสนับสนุน',
 };

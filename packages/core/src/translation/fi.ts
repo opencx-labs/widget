@@ -91,4 +91,13 @@ export const FinnishLanguage: TranslationInterface = {
   questions_send: 'Lähetä',
   questions_type_answer: 'Kirjoitan itse',
   questions_answer_placeholder: 'Kirjoita vastauksesi…',
+  close_conversation_title: 'Sulje keskustelu',
+  close_conversation_description: 'Haluatko varmasti sulkea tämän keskustelun?',
+  close_conversation_cancel: 'Ei',
+  close_conversation_confirm: 'Kyllä',
+  dialog_close: 'Sulje',
+  zoom_in: 'Lähennä',
+  zoom_out: 'Loitonna',
+  reset_zoom: 'Palauta zoomaus',
+  support_chat_aria_label: 'Tukichat',
 };

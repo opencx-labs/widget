@@ -9,6 +9,9 @@ let contentIframe: HTMLIFrameElement;
 
 vi.mock('@opencx/widget-react-headless', () => ({
   useWidget: () => ({ contentIframeRef: { current: contentIframe } }),
+  // DialogerContent translates its dismiss label, and useTranslation reads both.
+  useDocumentDir: () => ({ dir: 'ltr' }),
+  useConfig: () => ({ language: 'en', translationOverrides: undefined }),
 }));
 
 import { DialogerContent, DialogerProvider, useDialoger } from '../Dialoger';

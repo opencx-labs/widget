@@ -92,4 +92,13 @@ export const RomanianLanguage: TranslationInterface = {
   questions_send: 'Trimite',
   questions_type_answer: 'Scriu eu',
   questions_answer_placeholder: 'Scrieți răspunsul dvs.…',
+  close_conversation_title: 'Închide conversația',
+  close_conversation_description: 'Sigur vrei să închizi această conversație?',
+  close_conversation_cancel: 'Nu',
+  close_conversation_confirm: 'Da',
+  dialog_close: 'Închide',
+  zoom_in: 'Mărește',
+  zoom_out: 'Micșorează',
+  reset_zoom: 'Resetează zoomul',
+  support_chat_aria_label: 'Chat de asistență',
 };

@@ -19,6 +19,7 @@ import { useComponentContext } from '../hooks/useComponentContext';
 import { useIsSmallScreen } from '../hooks/useIsSmallScreen';
 import { useSetWidgetSizeFn } from '../hooks/useSetWidgetSize';
 import { useTheme } from '../hooks/useTheme';
+import { useTranslation } from '../hooks/useTranslation';
 import { dc } from '../utils/data-component';
 import {
   Dialoger,
@@ -221,6 +222,7 @@ function Header__Buttons__Item__ResolveSession({
   const { resolveSession, sessionState } = useSessions();
   const { isSmallScreen } = useIsSmallScreen();
   const componentCtx = useComponentContext();
+  const { t } = useTranslation();
 
   const isNoSession = !sessionState.session;
   const isResolved = sessionState.session?.isOpened === false;
@@ -333,13 +335,13 @@ function Header__Buttons__Item__ResolveSession({
         <DialogerContent>
           <DialogerHeader>
             <DialogerTitle>
-              {button.confirmation.title || 'Close conversation'}
+              {button.confirmation.title || t('close_conversation_title')}
             </DialogerTitle>
           </DialogerHeader>
           <DialogerBody>
             <DialogerDescription>
               {button.confirmation.description ||
-                'Are you sure you want to close this conversation?'}
+                t('close_conversation_description')}
             </DialogerDescription>
           </DialogerBody>
           <DialogerFooter>
@@ -348,7 +350,8 @@ function Header__Buttons__Item__ResolveSession({
               onClick={closeDialog}
               disabled={sessionState.isResolvingSession}
             >
-              {button.confirmation.cancelButtonText || 'No'}
+              {button.confirmation.cancelButtonText ||
+                t('close_conversation_cancel')}
             </Button>
             <Button
               variant="destructive"
@@ -358,7 +361,8 @@ function Header__Buttons__Item__ResolveSession({
               }}
               disabled={sessionState.isResolvingSession}
             >
-              {button.confirmation.confirmButtonText || 'Yes'}
+              {button.confirmation.confirmButtonText ||
+                t('close_conversation_confirm')}
             </Button>
           </DialogerFooter>
         </DialogerContent>

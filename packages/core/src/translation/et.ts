@@ -91,4 +91,14 @@ export const EstonianLanguage: TranslationInterface = {
   questions_send: 'Saada',
   questions_type_answer: 'Kirjutan ise',
   questions_answer_placeholder: 'Kirjutage oma vastus…',
+  close_conversation_title: 'Sulge vestlus',
+  close_conversation_description:
+    'Kas soovite kindlasti selle vestluse sulgeda?',
+  close_conversation_cancel: 'Ei',
+  close_conversation_confirm: 'Jah',
+  dialog_close: 'Sulge',
+  zoom_in: 'Suurenda',
+  zoom_out: 'Vähenda',
+  reset_zoom: 'Lähtesta suurendus',
+  support_chat_aria_label: 'Tugivestlus',
 };

@@ -91,4 +91,14 @@ export const FilipinoLanguage: TranslationInterface = {
   questions_send: 'Ipadala',
   questions_type_answer: 'Ako na ang magta-type',
   questions_answer_placeholder: 'I-type ang iyong sagot…',
+  close_conversation_title: 'Isara ang usapan',
+  close_conversation_description:
+    'Sigurado ka bang gusto mong isara ang usapang ito?',
+  close_conversation_cancel: 'Hindi',
+  close_conversation_confirm: 'Oo',
+  dialog_close: 'Isara',
+  zoom_in: 'Palakihin',
+  zoom_out: 'Paliitin',
+  reset_zoom: 'I-reset ang zoom',
+  support_chat_aria_label: 'Support chat',
 };
