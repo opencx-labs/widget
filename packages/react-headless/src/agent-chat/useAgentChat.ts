@@ -426,7 +426,7 @@ export function useAgentChat({
             if (turnPhaseRef.current === 'reconciling') {
               turnPhaseRef.current = 'idle';
             }
-            // Re-run this effect now that the rows are in — drain the queue.
+            // Re-run the drain after the fetch; row-based handoff may still hold it.
             // The OVERLAY is not released here: this promise resolving only
             // means the fetch finished, which is not the same as the reply
             // having arrived (see the handoff effect below).
@@ -440,6 +440,10 @@ export function useAgentChat({
     }
 
     if (turnPhaseRef.current !== 'idle' || !sessionId) return;
+    // A completed fetch may have missed rows still being committed. Share the
+    // overlay's persisted-row handoff before appending the next user message.
+    // A failed request may have no saved reply; preserve retry/queue recovery.
+    if (pendingHandoffRef.current && status !== 'error') return;
     const next = queueRef.current.dequeueNext();
     if (!next) return;
     turnPhaseRef.current = 'in-flight';
@@ -486,6 +490,7 @@ export function useAgentChat({
             statusRef.current === 'submitted' ||
             statusRef.current === 'streaming' ||
             phase !== 'idle' ||
+            pendingHandoffRef.current ||
             queueRef.current.size > 0;
 
           // `disableSendingWhenAwaitingAIReply` is the non-streaming engine's
@@ -561,8 +566,8 @@ export function useAgentChat({
   // `/stop` ACK is the signal that row exists. So the partial stays on screen
   // (the boundary effect skips its reconcile while the phase is `stopping`)
   // and the reconcile runs AFTER the ACK — or after a failed stop, so the UI
-  // can never stick: the overlay is released by the row landing, the queue by
-  // the reconcile finishing. The `stopping` phase holds the drain for the
+  // can recover: both overlay and queue wait for the reply row to land. The
+  // `stopping` phase holds the drain for the
   // whole stop → reconcile span, so the queued message enters the transcript
   // BELOW the partial reply.
   const stopTurn = useCallback(() => {
@@ -717,8 +722,9 @@ export function useAgentChat({
     };
   }, [sessionId, isStreaming, settling, error, resumeStream]);
 
-  // Stand the overlay down only once the persisted transcript actually carries
-  // a replacement for it — an assistant-side row after the last user message.
+  // Release the overlay and queue only once history contains every row named
+  // by the settled turn. Older streams without row IDs fall back to an
+  // assistant-side row after the last user message.
   // (The retained source is already in `turnSources` from the boundary; it
   // starts rendering the moment its rows land, in the same commit this
   // releases, so ownership passes without a gap or an overlap.)
@@ -734,6 +740,7 @@ export function useAgentChat({
     if (isStreaming || !settling) return;
     const release = () => {
       setSettling(false);
+      setQueueVersion((version) => version + 1);
       // A queued next send may have installed its own key already.
       if (liveTurnKeyRef.current === pendingReleaseKeyRef.current) {
         setLiveTurnKey(null);
@@ -763,6 +770,18 @@ export function useAgentChat({
         messageCtx.state.setPartial({ settledAgentUserMessageId: lastUser.id });
       }
       release();
+      return;
+    }
+
+    // A throttled snapshot may still contain only a progress message.
+    if (completedStream && completedStream.messages !== messages) return;
+
+    const last = messages.at(-1);
+    const settled =
+      last?.role === 'assistant' ? parseTurnSettledPart(last.parts) : null;
+    if (settled && settled.rowIds.length > 0) {
+      const persistedIds = new Set(persistedMessages.map((row) => row.id));
+      if (settled.rowIds.every((id) => persistedIds.has(id))) release();
       return;
     }
 

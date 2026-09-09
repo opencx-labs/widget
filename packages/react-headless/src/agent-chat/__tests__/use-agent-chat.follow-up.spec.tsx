@@ -5,6 +5,7 @@ import type {
   WidgetMessageU,
   WidgetUserMessage,
 } from '@opencx/widget-core';
+import type { ChatOnFinishCallback, UIMessage } from 'ai';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -13,16 +14,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type ChatState = {
   status: 'submitted' | 'streaming' | 'ready' | 'error';
-  messages: unknown[];
+  messages: UIMessage[];
 };
 
 const PARTIAL = 'Checking your order';
 const FULL =
   'Checking your order — it ships Monday, and your address is updated.';
-const partialTurn = () => [
+const partialTurn = (): UIMessage[] => [
   { id: 'a-live', role: 'assistant', parts: [{ type: 'text', text: PARTIAL }] },
 ];
-const settledTurn = () => [
+const settledTurn = (rowIds = ['row-reply']): UIMessage[] => [
   {
     id: 'a-live',
     role: 'assistant',
@@ -30,7 +31,7 @@ const settledTurn = () => [
       { type: 'text', text: FULL },
       {
         type: 'data-turn-settled',
-        data: { turn_id: 'turn-1', message_uuids: ['row-reply'] },
+        data: { turn_id: 'turn-1', message_uuids: rowIds },
       },
     ],
   },
@@ -41,11 +42,13 @@ type PersistedRow = { id: string; type: 'USER' | 'AI' | 'AGENT' | 'SYSTEM' };
 const sendMessageSpy = vi.fn();
 const stopSpy = vi.fn();
 const resumeStreamSpy = vi.fn();
+let finishStream: ChatOnFinishCallback<UIMessage> = () => {};
 let setChatState: (next: ChatState) => void = () => {};
 let setTranscript: (next: PersistedRow[]) => void = () => {};
 
 vi.mock('@ai-sdk/react', () => ({
-  useChat: () => {
+  useChat: ({ onFinish }: { onFinish: ChatOnFinishCallback<UIMessage> }) => {
+    finishStream = onFinish;
     const [state, setState] = React.useState<ChatState>({
       status: 'ready',
       messages: [],
@@ -92,6 +95,7 @@ const fakeReconcileAfterStream = vi.fn(() => {
 });
 
 const fakeMessageCtx = {
+  state: { setPartial: vi.fn() },
   stageUserTurn: vi.fn(
     async (input: SendMessageInput): Promise<StagedUserTurn | null> => ({
       sessionId: 'sess-1',
@@ -260,6 +264,159 @@ describe('useAgentChat follow-up queue', () => {
     expect(hookValue?.turnSources).toHaveLength(1);
     expect(stopSpy).not.toHaveBeenCalled();
     expect(resumeStreamSpy).not.toHaveBeenCalled();
+  });
+
+  it.each(['empty', 'partial', 'unrelated'] as const)(
+    'waits for every settled reply row after an %s reconciliation result',
+    async (result) => {
+      await liveTurn();
+      await act(async () => {
+        await registeredSend()({ content: 'follow-up' });
+        setChatState({
+          status: 'ready',
+          messages: settledTurn(['row-progress', 'row-reply']),
+        });
+      });
+      await act(async () => {
+        setTranscript([
+          { id: 'msg-where is my order?', type: 'USER' },
+          ...(result === 'empty'
+            ? []
+            : [
+                {
+                  id: result === 'partial' ? 'row-progress' : 'unrelated-reply',
+                  type: 'AI' as const,
+                },
+              ]),
+        ]);
+        resolveReconcile();
+      });
+      expect(callOrder).toContain('reconcile:done');
+      expect(sendMessageSpy).toHaveBeenCalledTimes(1);
+      expect(callOrder).not.toContain('append:follow-up');
+      expect(liveText()).toEqual([FULL]);
+      // A new message arriving after the fetch also joins the queue.
+      await act(async () => {
+        await registeredSend()({ content: 'one more' });
+      });
+      expect(callOrder).not.toContain('append:one more');
+      expect(
+        hookValue?.queuedUserMessages.map((message) => message.content),
+      ).toEqual(['follow-up', 'one more']);
+      await act(async () => {
+        setTranscript([
+          { id: 'msg-where is my order?', type: 'USER' },
+          { id: 'row-progress', type: 'AI' },
+          { id: 'row-reply', type: 'AI' },
+        ]);
+      });
+      expect(sendMessageSpy).toHaveBeenCalledTimes(2);
+      expect(callOrder.slice(-2)).toEqual([
+        'append:follow-up',
+        'send:follow-up',
+      ]);
+      expect(
+        hookValue?.queuedUserMessages.map((message) => message.content),
+      ).toEqual(['one more']);
+    },
+  );
+
+  it('waits for the final message snapshot before treating an earlier progress row as the reply', async () => {
+    await liveTurn();
+    const finished = settledTurn(['row-progress', 'row-reply']);
+    const message = finished[0];
+    if (!message) throw new Error('missing finished message');
+    await act(async () => {
+      await registeredSend()({ content: 'follow-up' });
+      finishStream({
+        message,
+        messages: finished,
+        isError: false,
+        isAbort: false,
+        isDisconnect: false,
+      });
+      setChatState({ status: 'ready', messages: partialTurn() });
+      setTranscript([
+        { id: 'msg-where is my order?', type: 'USER' },
+        { id: 'row-progress', type: 'AI' },
+      ]);
+    });
+    await act(async () => {
+      resolveReconcile();
+    });
+    expect(sendMessageSpy).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      setChatState({ status: 'ready', messages: finished });
+    });
+    expect(sendMessageSpy).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      setTranscript([
+        { id: 'msg-where is my order?', type: 'USER' },
+        { id: 'row-progress', type: 'AI' },
+        { id: 'row-reply', type: 'AI' },
+      ]);
+    });
+    expect(sendMessageSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('drains after a confirmed silent completion without waiting for a reply row', async () => {
+    await liveTurn();
+    const message: UIMessage = { id: 'silent', role: 'assistant', parts: [] };
+    const messages = [message];
+    await act(async () => {
+      await registeredSend()({ content: 'follow-up' });
+      finishStream({
+        message,
+        messages,
+        isError: false,
+        isAbort: false,
+        isDisconnect: false,
+      });
+      setChatState({ status: 'ready', messages });
+    });
+    await act(async () => {
+      resolveReconcile();
+    });
+    expect(sendMessageSpy).toHaveBeenCalledTimes(2);
+    expect(hookValue?.queuedUserMessages).toEqual([]);
+  });
+
+  it('does not strand queued messages after a failed request with no persisted reply', async () => {
+    await liveTurn();
+    await act(async () => {
+      await registeredSend()({ content: 'follow-up' });
+      setChatState({ status: 'error', messages: [] });
+    });
+    await act(async () => {
+      resolveReconcile();
+    });
+    expect(sendMessageSpy).toHaveBeenCalledTimes(2);
+    expect(hookValue?.queuedUserMessages).toEqual([]);
+  });
+
+  it('recovers through later polling after the reconciliation request fails', async () => {
+    await liveTurn();
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      fakeReconcileAfterStream.mockRejectedValueOnce(
+        new Error('history unavailable'),
+      );
+      await act(async () => {
+        await registeredSend()({ content: 'follow-up' });
+        setChatState({ status: 'ready', messages: settledTurn() });
+      });
+      expect(sendMessageSpy).toHaveBeenCalledTimes(1);
+      expect(liveText()).toEqual([FULL]);
+      await act(async () => {
+        setTranscript([
+          { id: 'msg-where is my order?', type: 'USER' },
+          { id: 'row-reply', type: 'AI' },
+        ]);
+      });
+      expect(sendMessageSpy).toHaveBeenCalledTimes(2);
+    } finally {
+      log.mockRestore();
+    }
   });
 
   it('a keepalive on the live stream before the first text renders nothing extra', async () => {
