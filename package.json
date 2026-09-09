@@ -23,6 +23,7 @@
     "cs": "changeset",
     "csv": "changeset version",
     "csp": "pnpm x && changeset publish",
+    "release:beta": "pnpm x && pnpm publish -r --tag beta --no-git-checks",
     "test:build": "node --test scripts/check-production-build.test.mjs"
   },
   "devDependencies": {
