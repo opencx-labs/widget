@@ -83,7 +83,7 @@ export function StreamingTurn({
           SpecComponent && (
             <SpecComponent key={`spec-${index}`} parts={item.parts} />
           )
-        ) : item.kind === 'questions' ? null : (
+        ) : item.kind === 'questions' || item.kind === 'connection' ? null : (
           StepsComponent && (
             <StepsComponent
               key={`steps-${index}`}

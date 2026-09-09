@@ -1,0 +1,213 @@
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: #fafafa;
+  color: #171717;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+main {
+  display: flex;
+  min-height: 100dvh;
+  isolation: isolate;
+}
+aside {
+  width: 260px;
+  flex-shrink: 0;
+  padding: 28px 24px;
+  border-right: 1px solid #17171712;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.brand {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.7px;
+  color: inherit;
+  text-decoration: none;
+}
+h1,
+h2,
+p {
+  margin: 0;
+}
+h1 {
+  font-size: 16px;
+  font-weight: 500;
+  text-wrap: balance;
+}
+aside p {
+  color: #737373;
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+aside h1 + p {
+  margin-top: 8px;
+}
+nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+nav a {
+  padding: 9px 12px;
+  color: #737373;
+  text-decoration: none;
+  border-radius: 12px;
+  font-weight: 500;
+}
+nav a[aria-current],
+nav a:hover {
+  color: #171717;
+  background: #17171708;
+}
+.preview-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.preview-controls label {
+  font-weight: 500;
+}
+select,
+button {
+  font: inherit;
+  height: 36px;
+  padding: 0 12px;
+  background: transparent;
+  color: inherit;
+  border: 1px solid #17171720;
+  border-radius: 12px;
+  cursor: pointer;
+}
+button:hover {
+  background: #17171708;
+}
+:focus-visible {
+  outline: 2px solid #171717;
+  outline-offset: 2px;
+}
+.hint {
+  margin-top: auto;
+}
+.host {
+  flex: 1;
+  min-width: 0;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px 32px;
+  border-bottom: 1px solid #17171712;
+}
+header span {
+  color: #737373;
+}
+.content {
+  padding: 36px 32px;
+  max-width: 860px;
+}
+h2 {
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.5px;
+}
+h2 + p {
+  margin-top: 8px;
+  color: #737373;
+}
+.metrics {
+  display: flex;
+  margin: 36px 0;
+}
+.metrics > div {
+  padding-right: 32px;
+  min-width: 0;
+}
+.metrics > div + div {
+  border-left: 1px solid #17171712;
+  padding: 0 0 0 32px;
+}
+.metrics p {
+  color: #737373;
+  white-space: nowrap;
+}
+.metrics strong {
+  display: block;
+  margin-top: 12px;
+  font-size: 24px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+td,
+th {
+  padding: 16px 10px;
+  border-bottom: 1px solid #17171712;
+  white-space: nowrap;
+}
+td:first-child,
+th:first-child {
+  padding-left: 0;
+}
+td:last-child,
+th:last-child {
+  padding-right: 0;
+}
+th {
+  font-weight: 500;
+  color: #737373;
+}
+@media (max-width: 1000px) {
+  header span {
+    display: none;
+  }
+  .host {
+    overflow: hidden;
+  }
+}
+@media (max-width: 600px) {
+  main {
+    flex-direction: column;
+  }
+  aside {
+    width: 100%;
+    padding: 20px;
+    border-right: 0;
+    border-bottom: 1px solid #17171712;
+    gap: 16px;
+  }
+  .brand {
+    display: none;
+  }
+  nav {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+  nav a {
+    flex-shrink: 0;
+  }
+  .preview-controls {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  aside p,
+  .preview-controls {
+    font-size: 16px;
+  }
+  .content {
+    padding: 24px 20px;
+    overflow: auto;
+  }
+}

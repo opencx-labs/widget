@@ -70,6 +70,48 @@ export class ApiCaller {
     });
   };
 
+  listConnections = async (signal?: AbortSignal) => {
+    const { data, error } = await this.client.GET(
+      '/backend/widget/v5/connections',
+      { signal },
+    );
+    if (error || !data)
+      throw new Error('Could not load connections. Sign in and try again.');
+    return data;
+  };
+
+  startConnection = async (
+    serverId: string,
+    requestId?: string,
+    signal?: AbortSignal,
+  ) => {
+    const { data, error, response } = await this.client.POST(
+      '/backend/widget/v5/connections/{serverId}/start',
+      {
+        params: { path: { serverId } },
+        body: { request_id: requestId },
+        signal,
+      },
+    );
+    if (response.status === 404)
+      throw new Error(
+        'This request expired. Ask your assistant to connect again.',
+      );
+    if (error || !data)
+      throw new Error('Could not start this connection. Please try again.');
+    return data;
+  };
+
+  disconnectConnection = async (serverId: string) => {
+    const { error } = await this.client.DELETE(
+      '/backend/widget/v5/connections/{serverId}',
+      {
+        params: { path: { serverId } },
+      },
+    );
+    if (error) throw new Error('Could not disconnect. Please try again.');
+  };
+
   setAuthToken = (token: string) => {
     this.userToken = token;
     const { baseUrl, headers } = this.constructClientOptions(token);

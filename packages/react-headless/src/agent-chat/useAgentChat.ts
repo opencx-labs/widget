@@ -847,7 +847,10 @@ export function useAgentChat({
   // Messages the user queued mid-turn — surfaced so the composer can render
   // them as a queue pill. Recomputed on every enqueue/drain (`queueVersion`).
   const queuedUserMessages = useMemo(
-    () => queueRef.current.items.map((item) => item.userMessage),
+    () =>
+      queueRef.current.items
+        .filter((item) => !item.input.background)
+        .map((item) => item.userMessage),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- queueRef is mutable; queueVersion is the signal
     [queueVersion],
   );

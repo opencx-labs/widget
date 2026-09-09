@@ -386,6 +386,8 @@ export interface WidgetConfig {
   };
 
   capabilities?: {
+    /** This client renders connection requests and returns after authorization. */
+    connections?: boolean;
     /** This client renders rich reply parts, live and from history. */
     richReplies?: boolean;
     /** This client performs page highlights. */

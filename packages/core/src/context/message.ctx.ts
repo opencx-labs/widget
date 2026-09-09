@@ -21,6 +21,8 @@ import type { ContactCtx } from './contact.ctx';
 /** The shape a caller passes to `sendMessage` (and `stageUserTurn`). */
 export type SendMessageInput = {
   content: SendMessageDto['content'];
+  /** Send agent context without displaying a user bubble. */
+  background?: boolean;
   attachments?: SendMessageDto['attachments'];
   customData?: SendMessageDto['custom_data'];
   /**
@@ -98,11 +100,14 @@ export const mergeSendContext = (
     sendsPageContext && (input.clientContext || mentions)
       ? { ...configContext, ...input.clientContext, ...mentions }
       : configContext;
+  const context =
+    input.withPageEntity === false && merged && 'entity' in merged
+      ? withoutKey(merged, 'entity')
+      : merged;
   return {
-    clientContext:
-      input.withPageEntity === false && merged && 'entity' in merged
-        ? withoutKey(merged, 'entity')
-        : merged,
+    clientContext: input.background
+      ? { ...context, opencx__background: true }
+      : context,
     custom_data: {
       ...(config.messageCustomData || {}),
       ...(input.customData || {}),
@@ -202,11 +207,13 @@ export const buildSendMessageBody = ({
   features: resolveSendFeatures(config),
   presentation: config.presentation,
   capabilities: [
+    config.capabilities?.connections,
     config.capabilities?.structuredQuestions,
     config.capabilities?.richReplies,
     config.capabilities?.pageEffects,
   ].some((value) => value !== undefined)
     ? {
+        connections: config.capabilities?.connections,
         structured_questions: config.capabilities?.structuredQuestions,
         rich_replies: config.capabilities?.richReplies,
         page_effects: config.capabilities?.pageEffects,
@@ -513,7 +520,11 @@ export class MessageCtx {
       userMessage.id,
     ];
     this.state.setPartial({
-      messages: [...initialMessages, ...this.state.get().messages, userMessage],
+      messages: [
+        ...initialMessages,
+        ...this.state.get().messages,
+        ...(userMessage.background ? [] : [userMessage]),
+      ],
     });
 
     let sessionId: string | null;
@@ -560,16 +571,19 @@ export class MessageCtx {
       log.warn('cannot send an empty message of no content or attachments');
       return null;
     }
-    return this.toUserMessage(
-      input.content.trim(),
-      input.attachments || undefined,
-      this.sendsPageContext
-        ? MessageCtx.markedElementNames(input.clientContext)
-        : undefined,
-      this.sendsPageContext && input.mentions?.length
-        ? input.mentions
-        : undefined,
-    );
+    return {
+      ...this.toUserMessage(
+        input.content.trim(),
+        input.attachments || undefined,
+        this.sendsPageContext
+          ? MessageCtx.markedElementNames(input.clientContext)
+          : undefined,
+        this.sendsPageContext && input.mentions?.length
+          ? input.mentions
+          : undefined,
+      ),
+      ...(input.background ? { background: true } : {}),
+    };
   };
 
   /**
@@ -612,6 +626,7 @@ export class MessageCtx {
 
   /** Append a user message to the transcript once, ignoring a duplicate id. */
   appendUserMessageIfAbsent = (userMessage: WidgetUserMessage): void => {
+    if (userMessage.background) return;
     const messages = this.state.get().messages;
     if (messages.some((m) => m.id === userMessage.id)) return;
     this.state.setPartial({ messages: [...messages, userMessage] });

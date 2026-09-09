@@ -241,6 +241,20 @@ export const TestUtils = {
             ...(returnValue ?? {}),
           });
       },
+      listConnections(target) {
+        target.prototype.listConnections = vi.fn().mockResolvedValue([]);
+      },
+      startConnection(target) {
+        target.prototype.startConnection = vi.fn().mockResolvedValue({
+          authorization_url: 'https://example.com/connect',
+          completion: 'oauth',
+        });
+      },
+      disconnectConnection(target) {
+        target.prototype.disconnectConnection = vi
+          .fn()
+          .mockResolvedValue(undefined);
+      },
       createDictationSession(target, returnValue) {
         target.prototype.createDictationSession = vi
           .fn(target.prototype.createDictationSession)

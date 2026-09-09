@@ -147,6 +147,7 @@ const Widget = React.forwardRef<
                   key.toUpperCase(),
                 ),
               ),
+            connections: options.capabilities?.connections ?? true,
             pageEffects: options.capabilities?.pageEffects ?? true,
             structuredQuestions:
               options.capabilities?.structuredQuestions ??

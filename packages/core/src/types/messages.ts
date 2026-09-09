@@ -40,6 +40,8 @@ export type MarkedElementRef = {
 export type WidgetUserMessage = {
   id: string;
   type: 'USER';
+  /** Internal agent context; excluded from the visible transcript. */
+  background?: boolean;
   content: string;
   /**
    * Streaming engine only: the message was rendered optimistically and its

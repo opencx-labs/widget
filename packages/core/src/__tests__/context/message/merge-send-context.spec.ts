@@ -14,6 +14,16 @@ const baseConfig = (context: WidgetConfig['context']): WidgetConfig => ({
 const sends = { sendsPageContext: true };
 
 describe('mergeSendContext / resolveConfigContext', () => {
+  it('preserves background continuations when page context is disabled', () => {
+    expect(
+      mergeSendContext(
+        { token: 't' },
+        { content: 'Connection ready', background: true },
+        { sendsPageContext: false },
+      ).clientContext,
+    ).toEqual({ opencx__background: true });
+  });
+
   it('object-form context passes through as before', () => {
     const merged = mergeSendContext(
       baseConfig({ page: { url: '/inbox' } }),

@@ -43,3 +43,6 @@ export { useDictation } from './hooks/useDictation';
 export { useCompanionChats } from './ConversationWorkspace';
 
 export { useComposerDraft } from './hooks/useComposerDraft';
+
+export type { ConnectionRequest } from './agent-chat/agent-chat-stream';
+export { useConnection } from './agent-chat/useConnection';

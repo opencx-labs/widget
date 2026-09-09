@@ -5,7 +5,7 @@ import type {
 } from '@opencx/widget-core';
 import React, { createContext, useContext, useMemo } from 'react';
 import { usePrimitiveState } from '../hooks/usePrimitiveState';
-import type { StreamingTurnItem } from './agent-chat-stream';
+import type { ConnectionRequest, StreamingTurnItem } from './agent-chat-stream';
 import type { TurnRenderSource } from './agent-turn-sources';
 import type { AskQuestionsRequest } from './ask-questions';
 import { pendingClarification as resolvePendingClarification } from './pending-clarification';
@@ -50,6 +50,7 @@ export type AgentChatUiValue = {
    * questionnaire in its place — or null.
    */
   pendingClarification: AskQuestionsRequest | null;
+  pendingConnection?: ConnectionRequest | null;
 };
 
 export const DEFAULT_AGENT_CHAT_UI: AgentChatUiValue = {
@@ -120,6 +121,13 @@ function ActiveAgentChatProvider({
       removeQueued,
       stop,
       pageEffects,
+      pendingConnection:
+        isStreaming || lastMessageIsFromUser
+          ? null
+          : ((liveItems.length
+              ? liveItems
+              : (turnSources.at(-1)?.items ?? [])
+            ).findLast((item) => item.kind === 'connection')?.request ?? null),
       pendingClarification: resolvePendingClarification({
         turnSources,
         liveItems,
