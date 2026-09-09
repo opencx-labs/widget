@@ -26,7 +26,6 @@ import {
   parseTurnSettledPart,
   type TurnRenderSource,
 } from './agent-turn-sources';
-import { readSteerOutcome, type SteerOutcome } from './steer-into-live-turn';
 import { stopAgentChatTurn } from './stop-agent-chat-turn';
 
 /** Internal safety bound; a full backlog rejects the newest send. */
@@ -65,16 +64,9 @@ type TurnPhase = 'idle' | 'in-flight' | 'stopping' | 'reconciling';
  *
  * - **Streaming** is driven by `status` ('submitted' | 'streaming' | 'ready').
  * - **Resume** is native (`resume: true` reconnects to a live turn on mount).
- * - **Steering**: a message sent while a turn is STREAMING enters the
- *   transcript at once and is POSTed at once; the backend steers it into the
- *   live turn (`data-turn-steered`), whose single reply — still rendering on
- *   this engine's stream, untouched — answers both messages. When the live
- *   turn cannot take it (already over), the backend opens a new turn for it
- *   on that request's stream, which is replayed here via resume.
- * - **Multi-send queues** cover the gaps steering cannot: a turn that has
- *   not started streaming yet, a stop awaiting its ACK, and the post-turn
- *   reconcile window. A queued message is held in a queue pill above the
- *   composer and enters the transcript when its own turn starts.
+ * - **Multi-send queues** hold follow-ups until the active reply has settled
+ *   and its persisted rows have been reconciled. Each queued message enters
+ *   the transcript when its own turn starts.
  * - **Stop cancels the RESPONSE, not the conversation**: it aborts the client
  *   stream and POSTs `/stop` so the server cancels generation, then the next
  *   queued message (if any) is sent to the API immediately. The queue is
@@ -184,7 +176,6 @@ export function useAgentChat({
   // enqueue behind the first send, rather than being dropped or overtaking it.
   const sendPreparationTailRef = useRef<Promise<void>>(Promise.resolve());
   const preparingSendsRef = useRef(0);
-  const pendingSteersRef = useRef(0);
   const sendGenerationRef = useRef(0);
   // Bumped on every enqueue / stop-completion so the drain effect re-evaluates
   // (the queue itself is a ref, so mutating it wouldn't trigger a render).
@@ -276,80 +267,6 @@ export function useAgentChat({
     [sendsPageContext],
   );
 
-  // Steer a message into the live turn. The bubble is already in the
-  // transcript; this POSTs the message on a side stream (NOT through
-  // `useChat` — a second `sendMessage` on the engine would push a duplicate
-  // of the live assistant message and flip its status under the stream) and
-  // acts on the first chunk. The live turn's stream keeps rendering untouched.
-  const steer = useCallback(
-    async (next: QueuedSend) => {
-      const generation = sendGenerationRef.current;
-      const abort = new AbortController();
-      let outcome: SteerOutcome;
-      try {
-        const stream = await transport.sendMessages({
-          trigger: 'submit-message',
-          chatId: next.sessionId,
-          messageId: undefined,
-          messages: [],
-          abortSignal: abort.signal,
-          body: bodyFor(next),
-        });
-        outcome = await readSteerOutcome(stream);
-      } catch (err) {
-        log.error('agent chat steer failed', err);
-        return;
-      } finally {
-        abort.abort();
-      }
-      // A session reset/switch mid-flight already discarded this bubble.
-      if (generation !== sendGenerationRef.current) return;
-      switch (outcome.kind) {
-        case 'steered':
-          // The live turn has it: its reply is the answer. Un-dim the bubble —
-          // the server demonstrably received it.
-          messageCtx.markUserMessageDelivered(next.userMessage.id);
-          return;
-        case 'turn':
-          // The live turn was already over: the backend superseded it and
-          // opened a NEW turn for this message on the stream just released.
-          // The engine's stream (the superseded turn) is dead — drop it on
-          // the client too, then replay the new turn from the session's
-          // resume pointer so it renders through the normal live path. The
-          // resumed stream's first chunk marks this bubble delivered, and
-          // it is the retry source should the turn fail.
-          lastDrainedRef.current = next;
-          try {
-            await stop();
-          } catch (err) {
-            log.error('agent chat steer fallback: client stop failed', err);
-          }
-          if (generation !== sendGenerationRef.current) return;
-          await resumeStream();
-          return;
-        case 'failed':
-          log.error('agent chat steer: the turn failed', {
-            errorText: outcome.errorText,
-          });
-          break;
-        case 'silent':
-          // Accepted, reply withheld — the rows say what happened.
-          messageCtx.markUserMessageDelivered(next.userMessage.id);
-          break;
-      }
-      await widgetCtx
-        .reconcileAfterStream(next.sessionId)
-        .catch((err: unknown) => {
-          log.error('agent chat post-steer reconcile failed', err);
-        });
-    },
-    [transport, bodyFor, messageCtx, stop, resumeStream, widgetCtx],
-  );
-  // `send` is memoized on the MessageCtx alone (it is registered as the
-  // shared send handler); it reads the latest steer through a ref.
-  const steerRef = useRef(steer);
-  steerRef.current = steer;
-
   // A null → id transition is the first send creating its session; clearing
   // there would delete that very send. Any transition away from a real session
   // is a reset/switch and must invalidate every conversation-owned ref. Abort
@@ -376,7 +293,6 @@ export function useAgentChat({
 
     sendGenerationRef.current += 1;
     preparingSendsRef.current = 0;
-    pendingSteersRef.current = 0;
     sendPreparationTailRef.current = Promise.resolve();
     queueRef.current = new AgentChatQueue<QueuedSend>(MAX_QUEUED_SENDS);
     turnPhaseRef.current = 'idle';
@@ -510,7 +426,7 @@ export function useAgentChat({
             if (turnPhaseRef.current === 'reconciling') {
               turnPhaseRef.current = 'idle';
             }
-            // Re-run this effect now that the rows are in — drain the queue.
+            // Re-run the drain after the fetch; row-based handoff may still hold it.
             // The OVERLAY is not released here: this promise resolving only
             // means the fetch finished, which is not the same as the reply
             // having arrived (see the handoff effect below).
@@ -524,6 +440,10 @@ export function useAgentChat({
     }
 
     if (turnPhaseRef.current !== 'idle' || !sessionId) return;
+    // A completed fetch may have missed rows still being committed. Share the
+    // overlay's persisted-row handoff before appending the next user message.
+    // A failed request may have no saved reply; preserve retry/queue recovery.
+    if (pendingHandoffRef.current && status !== 'error') return;
     const next = queueRef.current.dequeueNext();
     if (!next) return;
     turnPhaseRef.current = 'in-flight';
@@ -563,29 +483,14 @@ export function useAgentChat({
         async (): Promise<void> => {
           if (generation !== sendGenerationRef.current) return;
 
-          // A turn is STREAMING (its first chunk arrived, so the server is
-          // generating) and nothing else is pending → steer: the bubble
-          // enters the transcript now, above the live reply, and the message
-          // is POSTed now. Not while a stop awaits its ACK (that message is
-          // for AFTER the stop — the queue drains it once the cancel lands),
-          // not while the reconcile is ingesting the last reply (the bubble
-          // would land above it), and not behind queued messages (order).
+          // Follow-ups belong after the active reply, including while its
+          // persisted rows are being reconciled.
           const phase = turnPhaseRef.current;
-          const steerable =
-            statusRef.current === 'streaming' &&
-            phase !== 'stopping' &&
-            phase !== 'reconciling' &&
-            queueRef.current.size === 0;
-          // Otherwise a turn is active (submitted, in flight, stopping,
-          // reconciling, or something queued) → multi-send queue: hold the
-          // user message in the queue pill above the composer and let it
-          // enter the transcript when its own turn drains. Or nothing is
-          // active: it's the current turn — render it now + ensure a session,
-          // then stream.
           const turnActive =
             statusRef.current === 'submitted' ||
             statusRef.current === 'streaming' ||
             phase !== 'idle' ||
+            pendingHandoffRef.current ||
             queueRef.current.size > 0;
 
           // `disableSendingWhenAwaitingAIReply` is the non-streaming engine's
@@ -599,23 +504,6 @@ export function useAgentChat({
           if (generation !== sendGenerationRef.current) return;
 
           const next: QueuedSend = { ...staged, input };
-          if (steerable) {
-            // Into the transcript at once, dimmed until the server has it.
-            messageCtx.appendUserMessageIfAbsent(next.userMessage);
-            messageCtx.notifySendAccepted(input);
-            pendingSteersRef.current++;
-            void steerRef
-              .current(next)
-              .catch((err: unknown) =>
-                log.error('agent chat steer failed', err),
-              )
-              .finally(() => {
-                if (generation !== sendGenerationRef.current) return;
-                pendingSteersRef.current--;
-              });
-            return;
-          }
-
           if (!queueRef.current.enqueue(next)) {
             log.warn('agent chat queue full; rejecting newest send', {
               rejectedMessageId: next.userMessage.id,
@@ -678,8 +566,8 @@ export function useAgentChat({
   // `/stop` ACK is the signal that row exists. So the partial stays on screen
   // (the boundary effect skips its reconcile while the phase is `stopping`)
   // and the reconcile runs AFTER the ACK — or after a failed stop, so the UI
-  // can never stick: the overlay is released by the row landing, the queue by
-  // the reconcile finishing. The `stopping` phase holds the drain for the
+  // can recover: both overlay and queue wait for the reply row to land. The
+  // `stopping` phase holds the drain for the
   // whole stop → reconcile span, so the queued message enters the transcript
   // BELOW the partial reply.
   const stopTurn = useCallback(() => {
@@ -725,7 +613,6 @@ export function useAgentChat({
       send,
       hasPendingWork: () =>
         preparingSendsRef.current > 0 ||
-        pendingSteersRef.current > 0 ||
         pendingHandoffRef.current ||
         queueRef.current.size > 0 ||
         turnPhaseRef.current !== 'idle' ||
@@ -835,8 +722,9 @@ export function useAgentChat({
     };
   }, [sessionId, isStreaming, settling, error, resumeStream]);
 
-  // Stand the overlay down only once the persisted transcript actually carries
-  // a replacement for it — an assistant-side row after the last user message.
+  // Release the overlay and queue only once history contains every row named
+  // by the settled turn. Older streams without row IDs fall back to an
+  // assistant-side row after the last user message.
   // (The retained source is already in `turnSources` from the boundary; it
   // starts rendering the moment its rows land, in the same commit this
   // releases, so ownership passes without a gap or an overlap.)
@@ -852,6 +740,7 @@ export function useAgentChat({
     if (isStreaming || !settling) return;
     const release = () => {
       setSettling(false);
+      setQueueVersion((version) => version + 1);
       // A queued next send may have installed its own key already.
       if (liveTurnKeyRef.current === pendingReleaseKeyRef.current) {
         setLiveTurnKey(null);
@@ -881,6 +770,18 @@ export function useAgentChat({
         messageCtx.state.setPartial({ settledAgentUserMessageId: lastUser.id });
       }
       release();
+      return;
+    }
+
+    // A throttled snapshot may still contain only a progress message.
+    if (completedStream && completedStream.messages !== messages) return;
+
+    const last = messages.at(-1);
+    const settled =
+      last?.role === 'assistant' ? parseTurnSettledPart(last.parts) : null;
+    if (settled && settled.rowIds.length > 0) {
+      const persistedIds = new Set(persistedMessages.map((row) => row.id));
+      if (settled.rowIds.every((id) => persistedIds.has(id))) release();
       return;
     }
 
@@ -914,14 +815,21 @@ export function useAgentChat({
   // The live overlay: the in-flight assistant message's ordered items. Held
   // through `settling` as well as the stream itself — see above.
   const liveItems: StreamingTurnItem[] = useMemo(() => {
-    if (!isStreaming && !settling) return [];
+    if (status === 'submitted' || (!isStreaming && !settling)) return [];
     const last = messages.at(-1);
     if (!last || last.role !== 'assistant') return [];
     return applyPresentation(mapUiPartsToItems(last.parts), {
       toolActivity: visibleToolActivity,
       reasoning: visibleReasoning,
     });
-  }, [messages, isStreaming, settling, visibleToolActivity, visibleReasoning]);
+  }, [
+    messages,
+    status,
+    isStreaming,
+    settling,
+    visibleToolActivity,
+    visibleReasoning,
+  ]);
 
   const visibleTurnSources = useMemo(
     () =>

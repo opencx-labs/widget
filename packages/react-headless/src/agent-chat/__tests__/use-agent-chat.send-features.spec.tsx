@@ -1,4 +1,4 @@
-import type { ChatStatus } from 'ai';
+import type { ChatStatus, UIMessage, ChatOnFinishCallback } from 'ai';
 import type {
   SendMessageInput,
   StagedUserTurn,
@@ -20,13 +20,18 @@ const chatState = vi.hoisted((): { status: ChatStatus } => ({
   status: 'ready',
 }));
 const sendMessageSpy = vi.fn();
+const messages: UIMessage[] = [];
+let finishStream: ChatOnFinishCallback<UIMessage> = () => {};
 vi.mock('@ai-sdk/react', () => ({
-  useChat: () => ({
-    status: chatState.status,
-    messages: [],
-    sendMessage: sendMessageSpy,
-    stop: vi.fn(),
-  }),
+  useChat: ({ onFinish }: { onFinish: ChatOnFinishCallback<UIMessage> }) => {
+    finishStream = onFinish;
+    return {
+      status: chatState.status,
+      messages,
+      sendMessage: sendMessageSpy,
+      stop: vi.fn(),
+    };
+  },
 }));
 
 vi.mock('../agent-chat-transport', () => ({
@@ -133,7 +138,17 @@ describe('useAgentChat stream body — features', () => {
       // Complete the preceding stream so the next send starts a new turn.
       for (const status of ['streaming', 'ready'] as const) {
         chatState.status = status;
-        await act(async () => root.render(<Probe config={config} />));
+        await act(async () => {
+          if (status === 'ready')
+            finishStream({
+              message: { id: 'silent', role: 'assistant', parts: [] },
+              messages,
+              isError: false,
+              isDisconnect: false,
+              isAbort: false,
+            });
+          root.render(<Probe config={config} />);
+        });
       }
       sendMessageSpy.mockClear();
       config = { token: 't', capabilities: { structuredQuestions } };

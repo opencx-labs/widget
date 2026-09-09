@@ -2,6 +2,7 @@ import type {
   SendMessageInput,
   StagedUserTurn,
   WidgetCtx,
+  WidgetMessageU,
   WidgetUserMessage,
 } from '@opencx/widget-core';
 import React, { act } from 'react';
@@ -17,12 +18,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  *   hey / amazing day / reply-to-hey        ← bug
  *   hey / reply-to-hey / amazing day        ← correct
  *
- * So the drain must hold until `reconcileAfterStream` resolves.
- *
- * Since steering, a message sent while a turn is STREAMING joins that turn
- * instead of queueing (see use-agent-chat.steer.spec). The queue covers the
- * `submitted` phase (turn not started on the server yet), a stop awaiting its
- * ACK, and the reconcile window — these specs set up those states.
+ * The queue waits for the reply row itself, including when the first history
+ * fetch finishes before persistence. Follow-ups queue in every active phase.
  */
 
 type ChatState = {
@@ -36,6 +33,7 @@ const replacementSessionStopSpy = vi.fn();
 const clearErrorSpy = vi.fn();
 const resumeStreamSpy = vi.fn();
 let setChatState: (next: ChatState) => void = () => {};
+let setTranscript: (rows: WidgetMessageU[]) => void = () => {};
 let currentSessionId: string | null = 'sess-1';
 let blockAgentMultiSend = false;
 
@@ -146,6 +144,8 @@ import { useAgentChat } from '../useAgentChat';
 let hookValue: ReturnType<typeof useAgentChat> | null = null;
 
 function Probe() {
+  const [rows, setRows] = React.useState<WidgetMessageU[]>([]);
+  setTranscript = setRows;
   hookValue = useAgentChat({
     widgetCtx: fakeWidgetCtx,
     config: {
@@ -153,7 +153,7 @@ function Probe() {
       disableSendingWhenAwaitingAIReply: blockAgentMultiSend,
     },
     sessionId: currentSessionId,
-    persistedMessages: [],
+    persistedMessages: rows,
   });
   return null;
 }
@@ -241,6 +241,16 @@ describe('useAgentChat drain ordering', () => {
 
     // Reply 1's canonical row lands → the queue drains, in order.
     await act(async () => {
+      setTranscript([
+        buildUserMessage('hey'),
+        {
+          id: 'reply-hey',
+          type: 'AI',
+          component: 'bot_message',
+          data: { message: 'Hello' },
+          timestamp: null,
+        },
+      ]);
       resolveReconcile();
     });
     expect(callOrder).toEqual([
@@ -511,6 +521,16 @@ describe('useAgentChat drain ordering', () => {
     ]);
 
     await act(async () => {
+      setTranscript([
+        buildUserMessage('hey'),
+        {
+          id: 'reply-hey',
+          type: 'AI',
+          component: 'bot_message',
+          data: { message: 'Hello' },
+          timestamp: null,
+        },
+      ]);
       resolveReconcile();
     });
     expect(callOrder).toEqual([
