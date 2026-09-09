@@ -1,5 +1,11 @@
 # @opencx/widget
 
+## 5.0.0-beta.4
+
+### Patch Changes
+
+- 529e5cc: Keep follow-up messages queued until the current reply appears in the saved session, including when saving is delayed. Prevent the previous reply from briefly appearing twice when the next reply starts.
+
 ## 5.0.0-beta.3
 
 ### Patch Changes

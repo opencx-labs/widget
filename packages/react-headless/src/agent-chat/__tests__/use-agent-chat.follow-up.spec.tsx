@@ -420,6 +420,11 @@ describe('useAgentChat follow-up queue', () => {
   });
 
   it('a keepalive on the live stream before the first text renders nothing extra', async () => {
+    const keepalive = {
+      type: 'data-keepalive',
+      data: null,
+      transient: true,
+    } as const;
     await act(async () => {
       await registeredSend()({ content: 'where is my order?' });
     });
@@ -432,7 +437,7 @@ describe('useAgentChat follow-up queue', () => {
           {
             id: 'a-live',
             role: 'assistant',
-            parts: [{ type: 'data-keepalive', data: null, transient: true }],
+            parts: [keepalive],
           },
         ],
       });
@@ -446,10 +451,7 @@ describe('useAgentChat follow-up queue', () => {
           {
             id: 'a-live',
             role: 'assistant',
-            parts: [
-              { type: 'data-keepalive', data: null, transient: true },
-              { type: 'text', text: PARTIAL },
-            ],
+            parts: [keepalive, { type: 'text', text: PARTIAL }],
           },
         ],
       });
