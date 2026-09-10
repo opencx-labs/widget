@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Payla — fictional payments dashboard with a Cloudflare Worker + D1 mock backend, built to demo the OpenCX Companion agent doing real actions.",
+  "description": "Payla \u2014 fictional payments dashboard with a Cloudflare Worker + D1 mock backend, built to demo the OpenCX Companion agent doing real actions.",
   "scripts": {
     "dev": "vite",
     "predev": "node scripts/sync-widget.mjs && pnpm db:migrate:local && node scripts/check-backend.mjs",
@@ -18,11 +18,11 @@
   "dependencies": {
     "@fontsource-variable/inter": "^5.1.0",
     "@tanstack/react-query": "^5.62.0",
-    "hono": "^4.6.14",
+    "hono": "^4.13.5",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.1.1",
+    "react-router-dom": "^7.18.2",
     "zod": "^3.24.1"
   },
   "devDependencies": {
@@ -36,5 +36,12 @@
     "typescript": "^5.7.2",
     "vite": "^6.0.5",
     "wrangler": "^4.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "undici@7": ">=7.29.0 <8",
+      "postcss": ">=8.5.23 <9",
+      "sharp": ">=0.35.4 <0.36"
+    }
   }
 }
