@@ -5,6 +5,18 @@ import type { Plugin } from 'vite';
 import { z } from 'zod';
 import base from './vite.config';
 
+const backendUrl = new URL(
+  process.env.OPENCX_CONNECTIONS_BACKEND_URL ?? 'http://127.0.0.1:8080',
+);
+if (
+  backendUrl.protocol !== 'http:' ||
+  !['localhost', '127.0.0.1'].includes(backendUrl.hostname) ||
+  backendUrl.username ||
+  backendUrl.password
+) {
+  throw new Error('The connection demo requires a local OpenCX backend.');
+}
+
 // Local customer-backend example. The org API key never enters the client bundle.
 const config = z
   .object({
@@ -68,7 +80,7 @@ export default defineConfig(
                     ? suppliedId
                     : randomBytes(32).toString('hex');
                 const upstream = await fetch(
-                  'http://127.0.0.1:8080/widget/authenticate-user',
+                  new URL('/widget/authenticate-user', backendUrl),
                   {
                     method: 'POST',
                     headers: {
@@ -121,7 +133,7 @@ export default defineConfig(
       port: 3017,
       strictPort: true,
       proxy: {
-        '/backend': { target: 'http://127.0.0.1:8080', changeOrigin: true },
+        '/backend': { target: backendUrl.origin, changeOrigin: true },
       },
     },
   }),

@@ -99,7 +99,13 @@
       <p id="state" role="status" aria-live="polite"></p>
     </main>
     <script>
-      const mode = new URLSearchParams(location.search).get('case');
+      const params = new URLSearchParams(location.search);
+      const mode = params.get('case');
+      const attemptId = params.get('attempt');
+      const connectedKey = 'connections-preview:' + mode + ':connected';
+      const attemptKey = attemptId
+        ? 'connections-preview:attempt:' + attemptId + ':status'
+        : null;
       const approve = document.getElementById('approve');
       const cancel = document.getElementById('cancel');
       if (mode === 'mollie')
@@ -110,7 +116,8 @@
         cancel.disabled = true;
         approve.textContent = 'Connecting…';
         setTimeout(() => {
-          localStorage.setItem('preview-connected-' + mode, '1');
+          localStorage.setItem(connectedKey, 'true');
+          if (attemptKey) localStorage.setItem(attemptKey, 'connected');
           approve.textContent = 'Connected';
           document.getElementById('state').textContent =
             'Connected. You can return to your assistant.';
@@ -118,6 +125,7 @@
         }, 800);
       };
       cancel.onclick = () => {
+        if (attemptKey) localStorage.setItem(attemptKey, 'canceled');
         document.getElementById('state').textContent =
           'No access was granted. You can return to your assistant.';
         approve.disabled = true;

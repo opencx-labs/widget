@@ -53,8 +53,8 @@ function LiveConnections() {
           OpenCX
         </a>
         <div>
-          <h1>Connections</h1>
-          <p>Connect your own account.</p>
+          <h1>Live connection</h1>
+          <p>Connect your own Linear account.</p>
         </div>
         <nav aria-label="Connection examples">
           <a href="/connections.live.html" aria-current="page">

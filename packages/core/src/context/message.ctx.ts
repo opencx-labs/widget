@@ -30,6 +30,8 @@ export type SendMessageInput = {
    * merged over the config-level `context` on the wire.
    */
   clientContext?: Record<string, unknown>;
+  /** Durable lifecycle marker for a connection card handled by this send. */
+  connectionRequestId?: string;
   /**
    * What the visitor @-mentioned (host items picked from `config.mentions`).
    * Sent as `clientContext.mentions`.
@@ -100,10 +102,18 @@ export const mergeSendContext = (
     sendsPageContext && (input.clientContext || mentions)
       ? { ...configContext, ...input.clientContext, ...mentions }
       : configContext;
+  const lifecycleContext = input.connectionRequestId
+    ? {
+        ...merged,
+        opencx__connection_request_id: input.connectionRequestId,
+      }
+    : merged;
   const context =
-    input.withPageEntity === false && merged && 'entity' in merged
-      ? withoutKey(merged, 'entity')
-      : merged;
+    input.withPageEntity === false &&
+    lifecycleContext &&
+    'entity' in lifecycleContext
+      ? withoutKey(lifecycleContext, 'entity')
+      : lifecycleContext;
   return {
     clientContext: input.background
       ? { ...context, opencx__background: true }

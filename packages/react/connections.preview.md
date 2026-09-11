@@ -7,9 +7,9 @@ Run the React package dev server, then open `/connections.preview.html`. The dem
 - Mollie: Connect opens the customer product. Returning or closing that page automatically asks the gateway to recheck access; it does not prove that setup succeeded.
 - Cancelled approval allows another attempt. If the browser blocks popups, the same Connect action becomes a direct link; no new setup request is created.
 - Connection setup appears inline when the assistant needs authorization. There is no Connections button in the header.
-- Try a state switches between the normal flow, slow loading, a failed first attempt with retry, and expired access. Restart flow clears only this preview's account state.
+- Try a state switches between the normal flow, slow loading, a failed first attempt with retry, and an expired request that the assistant renews. Restart flow clears only preview connection state.
 
-The preview imports the production Widget, message components, ConnectionCard and useConnection hook. Buttons, progress indicators, spacing and colors use the widget's existing components and theme. Only customer services, authorization and sample responses are simulated; no real credentials are used. The preview controls and customer page sit outside the widget.
+The preview mounts the production Widget and enables its streaming connection capability. A fake HTTP/SSE backend supplies session, stream, connection-attempt, authorization, and sample-data responses; the production composer, connection card, and accepted-message queue own the interaction. No real credentials or customer/provider data are used. The preview controls and customer page sit outside the widget.
 
 The companion OpenCX change documents identity, backend connection reuse and account isolation in `backend/src/mcp-servers/connections/README.md`.
 

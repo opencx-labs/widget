@@ -198,6 +198,8 @@ export function useAgentChat({
   // flash) and server-fetched historical turns (`ui_parts` — reload fidelity)
   // live in the same list; `mergeTurnSources` owns the precedence.
   const [turnSources, setTurnSources] = useState<TurnRenderSource[]>([]);
+  const [handledConnectionRequestIds, setHandledConnectionRequestIds] =
+    useState<string[]>([]);
   // The live turn's React key. Set when its send drains (or when a resumed
   // stream is detected) and handed to the retained source at release — SAME
   // key before and after the promotion, so the turn's node never remounts.
@@ -627,6 +629,7 @@ export function useAgentChat({
   // previous projection. Late responses from superseded requests are ignored.
   const toolActivity = config.presentation?.toolActivity;
   const reasoning = config.presentation?.reasoning;
+  useEffect(() => setHandledConnectionRequestIds([]), [sessionId]);
   useEffect(() => {
     if (!sessionId) return;
     const presentation =
@@ -647,6 +650,7 @@ export function useAgentChat({
             ? await api.getAgentTurnMessages(sessionId)
             : await api.getAgentTurnMessages(sessionId, presentation);
         if (!fetched || cancelled) return;
+        setHandledConnectionRequestIds(fetched.handled_connection_request_ids);
         setTurnSources((existing) =>
           mergeTurnSources({ existing, fetched, refreshItems }),
         );
@@ -869,6 +873,7 @@ export function useAgentChat({
     removeQueued,
     stop: stopTurn,
     pageEffects,
+    handledConnectionRequestIds,
   };
 }
 

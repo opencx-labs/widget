@@ -944,12 +944,20 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** Format: uri */
-              authorization_url: string;
-              /** @enum {string} */
-              completion: 'oauth' | 'external';
-            };
+            'application/json':
+              | {
+                  /** Format: uri */
+                  authorization_url: string;
+                  /** @enum {string} */
+                  completion: 'oauth';
+                  attempt_id: string;
+                }
+              | {
+                  /** Format: uri */
+                  authorization_url: string;
+                  /** @enum {string} */
+                  completion: 'external';
+                };
           };
         };
         /** @description Internal Server Error */
@@ -992,7 +1000,7 @@ export interface paths {
       requestBody?: never;
       responses: {
         /** @description Default Response */
-        200: {
+        204: {
           headers: {
             [name: string]: unknown;
           };
@@ -1009,6 +1017,61 @@ export interface paths {
         };
       };
     };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/backend/widget/v5/connections/{serverId}/attempts/{attemptId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          serverId: string;
+          attemptId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Default Response */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              /** @enum {string} */
+              status:
+                | 'pending'
+                | 'connected'
+                | 'canceled'
+                | 'failed'
+                | 'expired';
+            };
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorDto'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -1536,6 +1599,7 @@ export interface components {
       fileUrl: string;
     };
     WidgetAgentTurnMessagesDto: {
+      handled_connection_request_ids: string[];
       turns: {
         /** Format: uuid */
         turn_id: string;

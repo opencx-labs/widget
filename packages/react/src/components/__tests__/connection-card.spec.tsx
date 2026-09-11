@@ -14,17 +14,38 @@ const fixture = vi.hoisted(() => {
       host: string;
       completion: 'oauth' | 'external';
     } | null;
+    continuation: 'resume' | 'renew' | 'dismiss' | null;
     error: string | null;
-  } = { phase: 'idle', authorization: null, error: null };
-  return { state, start: vi.fn(), opened: vi.fn(), sendMessage: vi.fn() };
+  } = {
+    phase: 'idle',
+    authorization: null,
+    continuation: null,
+    error: null,
+  };
+  const sendMessage = vi.fn();
+  return {
+    state,
+    start: vi.fn(),
+    opened: vi.fn(),
+    cancel: vi.fn(),
+    retryContinuation: vi.fn(() =>
+      sendMessage({
+        background: true,
+        content:
+          'I returned from setting up Bookkeeping. Please try its tools again and continue my previous request.',
+      }),
+    ),
+    sendMessage,
+  };
 });
 vi.mock('@opencx/widget-react-headless', () => ({
   useConnection: () => ({
     ...fixture.state,
     start: fixture.start,
     opened: fixture.opened,
+    cancel: fixture.cancel,
+    retryContinuation: fixture.retryContinuation,
   }),
-  useMessages: () => ({ sendMessage: fixture.sendMessage }),
 }));
 const request = {
   request_id: 'b1111111-1111-4111-8111-111111111111',
@@ -53,6 +74,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   fixture.state.phase = 'idle';
   fixture.state.authorization = null;
+  fixture.state.continuation = null;
   fixture.state.error = null;
   container = document.createElement('div');
   document.body.append(container);
@@ -99,7 +121,7 @@ it('blocks repeated starts while loading, then offers a retry after failure', ()
     fixture.state.error,
   );
   click(button('Try again'));
-  expect(fixture.start).toHaveBeenCalledOnce();
+  expect(fixture.retryContinuation).toHaveBeenCalledOnce();
 });
 
 it('keeps approval recoverable without claiming that access is connected', () => {
@@ -118,6 +140,11 @@ it('keeps approval recoverable without claiming that access is connected', () =>
   expect(container.textContent).not.toContain('is connected');
   fixture.state.phase = 'external';
   rerender(<ConnectionCard request={request} />);
+  expect(container.querySelector('[role="status"]')?.textContent).toContain(
+    'Setup page completed',
+  );
+  click(button('Continue'));
+  expect(fixture.retryContinuation).toHaveBeenCalledOnce();
   expect(fixture.sendMessage).toHaveBeenCalledWith({
     background: true,
     content:
@@ -126,78 +153,41 @@ it('keeps approval recoverable without claiming that access is connected', () =>
 });
 
 it('explains expired access and offers reconnect', () => {
-  render(<ConnectionCard request={request} reconnect />);
+  fixture.state.error = 'Connection attempt expired. Try again.';
+  render(<ConnectionCard request={request} />);
   expect(button('Reconnect').title).toContain('Your access expired.');
   click(button('Reconnect'));
-  expect(fixture.start).toHaveBeenCalledOnce();
+  expect(fixture.retryContinuation).toHaveBeenCalledOnce();
 });
 
-it('resumes once after connecting and lets users decline', () => {
+it('shows provider-owned continuation progress and lets users decline', () => {
   fixture.state.phase = 'connected';
+  fixture.state.continuation = 'resume';
   const { unmount, rerender } = render(<ConnectionCard request={request} />);
   rerender(<ConnectionCard request={request} />);
-  expect(fixture.sendMessage).toHaveBeenCalledOnce();
-  expect(fixture.sendMessage).toHaveBeenCalledWith({
-    background: true,
-    content:
-      'The connection to Bookkeeping is ready. Please use its tools to continue my previous request.',
-  });
-  expect(container.querySelector('button')).toBeNull();
+  expect(button('Continuing…').disabled).toBe(true);
+  expect(button('Not now').disabled).toBe(true);
+  expect(fixture.sendMessage).not.toHaveBeenCalled();
   unmount();
   fixture.sendMessage.mockClear();
   fixture.state.phase = 'idle';
+  fixture.state.continuation = null;
   render(<ConnectionCard request={request} />);
   click(button('Not now'));
-  expect(fixture.sendMessage).toHaveBeenCalledWith({
-    content: 'Continue without connecting Bookkeeping.',
-  });
+  expect(fixture.cancel).toHaveBeenCalledOnce();
 });
 
-it('automatically invokes a custom continuation only once', () => {
-  const onContinue = vi.fn();
-  const { rerender } = render(
-    <ConnectionCard request={request} onContinue={onContinue} />,
-  );
+it('retries a failed accepted-send handoff through the production provider', () => {
   fixture.state.phase = 'connected';
-  rerender(<ConnectionCard request={request} onContinue={onContinue} />);
-  rerender(
-    <ConnectionCard request={request} onContinue={() => onContinue()} />,
-  );
-  expect(onContinue).toHaveBeenCalledOnce();
-  expect(fixture.sendMessage).not.toHaveBeenCalled();
+  fixture.state.error = 'Could not continue your request. Try again.';
+  render(<ConnectionCard request={request} />);
+  click(button('Try again'));
+  expect(fixture.retryContinuation).toHaveBeenCalledOnce();
+  expect(fixture.start).not.toHaveBeenCalled();
 });
 
-it('uses a supplied logo and falls back to the MCP mark when it fails', () => {
-  const images: HTMLImageElement[] = [];
-  const imageMock = vi.spyOn(window, 'Image').mockImplementation(() => {
-    const image = document.createElement('img');
-    images.push(image);
-    return image;
-  });
-  try {
-    const { rerender } = render(
-      <ConnectionCard
-        request={request}
-        logoUrl="https://example.com/logo.png"
-      />,
-    );
-    act(() => images[0]?.dispatchEvent(new Event('load')));
-    expect(container.querySelector('img')?.getAttribute('src')).toBe(
-      'https://example.com/logo.png',
-    );
-    expect(container.querySelector('[data-mcp-icon]')).toBeNull();
-    rerender(
-      <ConnectionCard
-        request={request}
-        logoUrl="https://example.com/missing.png"
-      />,
-    );
-    act(() => images[1]?.dispatchEvent(new Event('error')));
-    expect(container.querySelector('img')).toBeNull();
-    expect(container.querySelector('[data-mcp-icon]')).not.toBeNull();
-    rerender(<ConnectionCard request={request} />);
-    expect(container.querySelector('[data-mcp-icon]')).not.toBeNull();
-  } finally {
-    imageMock.mockRestore();
-  }
+it('uses the native MCP fallback for requests without provider artwork', () => {
+  render(<ConnectionCard request={request} />);
+  expect(container.querySelector('img')).toBeNull();
+  expect(container.querySelector('[data-mcp-icon]')).not.toBeNull();
 });

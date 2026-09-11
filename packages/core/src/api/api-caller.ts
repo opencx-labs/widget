@@ -1,4 +1,5 @@
 import { type Dto, type Endpoint, basicClient } from './client';
+import type { paths } from './schema';
 import type { DictationMint } from '../dictation/dictation-session';
 import type { WidgetConfig } from '../types/widget-config';
 import type {
@@ -8,6 +9,27 @@ import type {
   VoteInputDto,
 } from '../types/dtos';
 import { log } from '../utils/log';
+
+type ConnectionStartResult = NonNullable<
+  paths['/backend/widget/v5/connections/{serverId}/start']['post']
+>['responses'][201]['content']['application/json'];
+type ConnectionAttemptStatus = NonNullable<
+  paths['/backend/widget/v5/connections/{serverId}/attempts/{attemptId}']['get']
+>['responses'][200]['content']['application/json']['status'];
+
+export class ConnectionRequestExpiredError extends Error {
+  constructor() {
+    super('This connection request expired. Preparing a new request.');
+    this.name = 'ConnectionRequestExpiredError';
+  }
+}
+
+export class ConnectionAttemptUnavailableError extends Error {
+  constructor() {
+    super('This connection attempt is no longer available.');
+    this.name = 'ConnectionAttemptUnavailableError';
+  }
+}
 
 /**
  * The two stream endpoints the AI SDK transport hits directly (it needs raw
@@ -82,9 +104,9 @@ export class ApiCaller {
 
   startConnection = async (
     serverId: string,
-    requestId?: string,
+    requestId: string,
     signal?: AbortSignal,
-  ) => {
+  ): Promise<ConnectionStartResult> => {
     const { data, error, response } = await this.client.POST(
       '/backend/widget/v5/connections/{serverId}/start',
       {
@@ -93,13 +115,31 @@ export class ApiCaller {
         signal,
       },
     );
+    if (response.status === 410) throw new ConnectionRequestExpiredError();
     if (response.status === 404)
-      throw new Error(
-        'This request expired. Ask your assistant to connect again.',
-      );
+      throw new Error('This connection request is no longer available.');
     if (error || !data)
       throw new Error('Could not start this connection. Please try again.');
     return data;
+  };
+
+  getConnectionAttempt = async (
+    serverId: string,
+    attemptId: string,
+    signal?: AbortSignal,
+  ): Promise<ConnectionAttemptStatus> => {
+    const { data, error, response } = await this.client.GET(
+      '/backend/widget/v5/connections/{serverId}/attempts/{attemptId}',
+      {
+        params: { path: { serverId, attemptId } },
+        signal,
+      },
+    );
+    if ([401, 403, 404].includes(response.status))
+      throw new ConnectionAttemptUnavailableError();
+    if (error || !data)
+      throw new Error(`Could not check the connection (${response.status}).`);
+    return data.status;
   };
 
   disconnectConnection = async (serverId: string) => {

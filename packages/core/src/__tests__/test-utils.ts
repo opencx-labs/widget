@@ -237,6 +237,7 @@ export const TestUtils = {
         target.prototype.getAgentTurnMessages = vi
           .fn(target.prototype.getAgentTurnMessages)
           .mockResolvedValue({
+            handled_connection_request_ids: [],
             turns: [],
             ...(returnValue ?? {}),
           });
@@ -248,7 +249,13 @@ export const TestUtils = {
         target.prototype.startConnection = vi.fn().mockResolvedValue({
           authorization_url: 'https://example.com/connect',
           completion: 'oauth',
+          attempt_id: genUuid(),
         });
+      },
+      getConnectionAttempt(target) {
+        target.prototype.getConnectionAttempt = vi
+          .fn()
+          .mockResolvedValue('pending');
       },
       disconnectConnection(target) {
         target.prototype.disconnectConnection = vi

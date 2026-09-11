@@ -40,6 +40,7 @@ export class SessionCtx {
   /** The session id currently written to storage (null = none written). */
   private persistedSessionId: string | null = null;
   private stopPersistingSession?: () => void;
+  private stopWaitingForContact?: () => void;
   private sessionAbortController = new AbortController();
 
   public sessionState = new PrimitiveState<SessionState>({
@@ -165,11 +166,16 @@ export class SessionCtx {
       this.registerSessionsRefresher();
     } else {
       // In other cases where auto authenticate is fired, the token would be eventually set in state, so we wait for it
-      this.contactCtx.state.subscribe(({ contact }) => {
-        if (contact?.token && !this.sessionsState.get().didStartInitialFetch) {
-          this.registerSessionsRefresher();
-        }
-      });
+      this.stopWaitingForContact = this.contactCtx.state.subscribe(
+        ({ contact }) => {
+          if (
+            contact?.token &&
+            !this.sessionsState.get().didStartInitialFetch
+          ) {
+            this.registerSessionsRefresher();
+          }
+        },
+      );
     }
   };
 
@@ -185,6 +191,25 @@ export class SessionCtx {
         this.sessionsState.setPartial({ isInitialFetchLoading: false });
       }
     }, this.sessionsPollingIntervalSeconds * 1000);
+  };
+
+  /** Permanently stop work owned by this runtime. */
+  dispose = ({ clearActiveSession = false } = {}) => {
+    this.sessionsRefresher.reset();
+    this.sessionAbortController.abort();
+    this.stopPersistingSession?.();
+    this.stopPersistingSession = undefined;
+    this.stopWaitingForContact?.();
+    this.stopWaitingForContact = undefined;
+    this.sessionState.reset();
+    if (clearActiveSession && this.storageCtx) {
+      this.persistedSessionId = null;
+      void this.storageCtx.clearActiveSessionId().catch((error: unknown) => {
+        log.warn('failed to clear the replaced session', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+    }
   };
 
   private getParsedCustomData = (): CreateSessionDto['customData'] => {
