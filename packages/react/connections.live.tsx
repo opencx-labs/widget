@@ -105,7 +105,6 @@ function LiveConnections() {
             isOpen: true,
             displayMode: 'companion',
             companion: { defaultLayout: 'sidebar' },
-            router: { chatScreenOnly: true },
             initialMessages: [
               'What would you like to know about your Linear workspace?',
             ],
