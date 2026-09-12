@@ -28,7 +28,6 @@ type HistoryRow = {
 type StreamPart = Record<string, unknown> & { type: string };
 
 const SERVER_ID = '11111111-1111-4111-8111-111111111111';
-const SESSION_ID = '22222222-2222-4222-8222-222222222222';
 
 const names: Record<Exclude<PreviewMode, 'default'>, string> = {
   oto: 'OTO',
@@ -72,10 +71,10 @@ const textFrom = (value: unknown, key: string): string | undefined => {
   return typeof field === 'string' ? field : undefined;
 };
 
-const session = () => ({
-  id: SESSION_ID,
-  ticketNumber: 1,
-  title: null,
+const session = (ticketNumber: number, title: string | null = null) => ({
+  id: crypto.randomUUID(),
+  ticketNumber,
+  title,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   isHandedOff: false,
@@ -168,13 +167,19 @@ export function createPreviewBackend({
   state,
   storage,
 }: PreviewBackendOptions): typeof fetch {
-  const history: HistoryRow[] = [];
-  const turns: Array<{
-    turn_id: string;
-    ui_parts: StreamPart[];
-    message_uuids: string[];
-  }> = [];
-  const handledConnectionRequestIds = new Set<string>();
+  const sessions = new Map<
+    string,
+    {
+      info: ReturnType<typeof session>;
+      history: HistoryRow[];
+      turns: Array<{
+        turn_id: string;
+        ui_parts: StreamPart[];
+        message_uuids: string[];
+      }>;
+      handledConnectionRequestIds: Set<string>;
+    }
+  >();
   let startAttempts = 0;
   let turnNumber = 0;
   let connectionRequestNumber = 0;
@@ -218,37 +223,50 @@ export function createPreviewBackend({
       request.method === 'GET' &&
       url.pathname.endsWith('/widget/v2/sessions')
     ) {
-      return json({ items: [], next: null });
+      return json({
+        items: Array.from(sessions.values(), ({ info }) => info).reverse(),
+        next: null,
+      });
     }
 
     if (
       request.method === 'POST' &&
       url.pathname.endsWith('/widget/v2/create-session')
     ) {
-      return json(session());
-    }
-
-    if (request.method === 'GET' && url.pathname.includes('/widget/v2/poll/')) {
-      return json({ session: session(), history });
-    }
-
-    if (
-      request.method === 'GET' &&
-      url.pathname.endsWith(`/widget/v5/chat/${SESSION_ID}/messages`)
-    ) {
-      return json({
-        turns,
-        handled_connection_request_ids: Array.from(
-          handledConnectionRequestIds,
-        ),
+      const info = session(sessions.size + 1);
+      sessions.set(info.id, {
+        info,
+        history: [],
+        turns: [],
+        handledConnectionRequestIds: new Set(),
       });
+      return json(info);
     }
 
-    if (
-      request.method === 'GET' &&
-      url.pathname.endsWith(`/widget/v5/chat/${SESSION_ID}/stream`)
-    ) {
-      return new Response(null, { status: 204 });
+    const pollMatch = url.pathname.match(
+      /^\/backend\/widget\/v2\/poll\/([^/]+)$/,
+    );
+    if (request.method === 'GET' && pollMatch?.[1]) {
+      const record = sessions.get(pollMatch[1]);
+      return record
+        ? json({ session: record.info, history: record.history })
+        : json({ message: 'Session not found.' }, 404);
+    }
+
+    const chatMatch = url.pathname.match(
+      /^\/backend\/widget\/v5\/chat\/([^/]+)\/(messages|stream)$/,
+    );
+    if (request.method === 'GET' && chatMatch?.[1]) {
+      const record = sessions.get(chatMatch[1]);
+      if (!record) return json({ message: 'Session not found.' }, 404);
+      return chatMatch[2] === 'stream'
+        ? new Response(null, { status: 204 })
+        : json({
+            turns: record.turns,
+            handled_connection_request_ids: Array.from(
+              record.handledConnectionRequestIds,
+            ),
+          });
     }
 
     const attemptMatch = url.pathname.match(
@@ -307,6 +325,10 @@ export function createPreviewBackend({
       url.pathname.endsWith('/widget/v5/chat/stream')
     ) {
       const body: unknown = await request.json();
+      const sessionId = textFrom(body, 'session_id');
+      const record = sessionId ? sessions.get(sessionId) : undefined;
+      if (!record) return json({ message: 'Session not found.' }, 404);
+      const { history, turns, handledConnectionRequestIds } = record;
       const userId = textFrom(body, 'uuid') ?? crypto.randomUUID();
       const content = textFrom(body, 'content') ?? '';
       turnNumber += 1;
@@ -320,6 +342,7 @@ export function createPreviewBackend({
         'opencx__connection_request_id',
       );
       if (!background) {
+        record.info.title ??= content;
         history.push(historyRow({ id: userId, kind: 'user', text: content }));
       }
 
@@ -357,6 +380,7 @@ export function createPreviewBackend({
                 },
               },
             ];
+      record.info.updatedAt = new Date().toISOString();
       history.push(historyRow({ id: replyId, kind: 'ai', text: reply }));
       turns.push({
         turn_id: turnId,
