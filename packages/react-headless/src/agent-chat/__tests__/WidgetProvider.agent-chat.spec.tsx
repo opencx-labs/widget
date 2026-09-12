@@ -534,4 +534,77 @@ describe('WidgetProvider agent-chat ownership', () => {
     act(() => root.unmount());
     expect(unregisterAgentHandlers).toHaveBeenCalledOnce();
   });
+
+  it.each(['new', 'existing'] as const)(
+    'keeps a pending connection out of a different %s session',
+    async (destination) => {
+      const request = {
+        request_id: 'b1111111-1111-4111-8111-111111111111',
+        server_id: 'a1111111-1111-4111-8111-111111111111',
+        name: 'Bookkeeping',
+      };
+      vi.mocked(fakeWidgetCtx.api.getAgentTurnMessages).mockResolvedValueOnce({
+        handled_connection_request_ids: [],
+        turns: [
+          {
+            turn_id: 'turn-connect',
+            message_uuids: ['agent-row'],
+            ui_parts: [
+              {
+                type: 'dynamic-tool',
+                state: 'output-available',
+                toolName: 'list_issues',
+                output: { connection_required: request },
+              },
+            ],
+          },
+        ],
+      });
+      await renderProvider();
+      await act(async () => sendFromConsumer({ content: 'Show my issues' }));
+      expect(latestPendingConnection).toEqual(request);
+      const originalSession =
+        fakeWidgetCtx.sessionCtx.sessionState.get().session;
+      if (!originalSession) throw new Error('Session was not created');
+      await act(async () => {
+        fakeWidgetCtx.sessionCtx.sessionState.setPartial({
+          session:
+            destination === 'new'
+              ? null
+              : { ...originalSession, id: 'sess-other' },
+        });
+        fakeWidgetCtx.messageCtx.state.setPartial({ messages: [] });
+      });
+      expect(latestPendingConnection).toBeNull();
+      expect(fakeWidgetCtx.api.startConnection).not.toHaveBeenCalled();
+      if (destination === 'new') {
+        // useChat retains its previous instance when the session id becomes
+        // undefined. A trailing stream update must not revive its controls.
+        await act(async () =>
+          setChatState({
+            status: 'streaming',
+            messages: [
+              {
+                role: 'assistant',
+                parts: [
+                  {
+                    type: 'dynamic-tool',
+                    state: 'output-available',
+                    toolName: 'list_issues',
+                    output: {
+                      connection_required: {
+                        ...request,
+                        request_id: 'b2222222-2222-4222-8222-222222222222',
+                      },
+                    },
+                  },
+                ],
+              },
+            ],
+          }),
+        );
+        expect(latestPendingConnection).toBeNull();
+      }
+    },
+  );
 });

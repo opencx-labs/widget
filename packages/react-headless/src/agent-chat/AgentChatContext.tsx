@@ -155,6 +155,10 @@ function ActiveAgentChatProvider({
   }, [pendingConnection, sessionState.session?.id]);
 
   useEffect(() => {
+    if (currentSessionId === null) {
+      setPendingConnection(null);
+      return;
+    }
     if (
       pendingConnection &&
       handledConnectionsRef.current.has(pendingConnection.request_id)
@@ -169,7 +173,12 @@ function ActiveAgentChatProvider({
       return;
     }
     setPendingConnection((current) => current ?? connectionCandidate);
-  }, [connectionCandidate, handledConnectionRequestIds, pendingConnection]);
+  }, [
+    currentSessionId,
+    connectionCandidate,
+    handledConnectionRequestIds,
+    pendingConnection,
+  ]);
 
   const handleConnection = useCallback((requestId: string) => {
     handledConnectionsRef.current.add(requestId);

@@ -127,6 +127,8 @@ export function useAgentChat({
     Parameters<ChatOnFinishCallback<UIMessage>>[0] | null
   >(null);
   const stopAcknowledgedRef = useRef(false);
+  // An undefined id keeps the previous SDK stream alive after a session reset.
+  const [draftChatId] = useState(genUuid);
 
   const {
     status,
@@ -137,7 +139,7 @@ export function useAgentChat({
     clearError,
     resumeStream,
   } = useChat({
-    id: sessionId ?? undefined,
+    id: sessionId ?? draftChatId,
     // Reattach to a still-live turn (reload, tab switch) — but only once a
     // session actually exists. A fresh visitor has nothing to resume, and the
     // engine mounts with the shell, so probing unconditionally would fire a
