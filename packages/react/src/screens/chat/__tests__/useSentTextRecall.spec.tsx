@@ -32,8 +32,8 @@ function keyEvent(key: string, repeat = false) {
     altKey: false,
     shiftKey: false,
     repeat,
-    preventDefault: vi.fn(),
-  } satisfies RecallKeyEvent & { preventDefault: ReturnType<typeof vi.fn> };
+    preventDefault: vi.fn<() => void>(),
+  } satisfies RecallKeyEvent;
 }
 
 let container: HTMLDivElement;
