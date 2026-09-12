@@ -456,6 +456,7 @@ export function StepsGroup({
 
 /** `list_training_scenarios` → "List training scenarios". */
 function formatToolLabel(toolName: string): string {
-  const words = toolName.replaceAll(/[_-]+/g, ' ').trim();
+  const customerFacingName = toolName.replace(/^mcp_[a-f0-9]{16}__/, '');
+  const words = customerFacingName.replaceAll(/[_-]+/g, ' ').trim();
   return words.charAt(0).toUpperCase() + words.slice(1);
 }

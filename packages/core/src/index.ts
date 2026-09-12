@@ -52,6 +52,10 @@ export {
   isAgentStreamKeepalive,
   isTurnSteeredPart,
 } from './api/agent-stream-parts';
+export {
+  ConnectionAttemptUnavailableError,
+  ConnectionRequestExpiredError,
+} from './api/api-caller';
 
 export { WidgetCtx, WidgetInitializationError } from './context/widget.ctx';
 export { resolveClientPresentation } from './context/resolve-client-presentation';

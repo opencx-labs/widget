@@ -195,6 +195,58 @@ describe('useAgentChat drain ordering', () => {
     container.remove();
   });
 
+  it('drains background continuations without showing them in the queued messages', async () => {
+    await act(async () => {
+      root.render(<Probe />);
+    });
+    await act(async () => {
+      await registeredSend()({ content: 'first' });
+    });
+    await act(async () => {
+      setChatState({ status: 'submitted', messages: [] });
+    });
+    await act(async () => {
+      await registeredSend()({ content: 'Connection ready', background: true });
+    });
+    await act(async () => {
+      await registeredSend()({ content: 'next question' });
+    });
+    expect(
+      hookValue?.queuedUserMessages.map((message) => message.content),
+    ).toEqual(['next question']);
+    await act(async () => {
+      setChatState({ status: 'ready', messages: [] });
+    });
+    await act(async () => {
+      resolveReconcile();
+    });
+    expect(sendMessageSpy).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      setTranscript([
+        buildUserMessage('first'),
+        {
+          id: 'reply-first',
+          type: 'AI',
+          component: 'bot_message',
+          data: { message: 'Connect your account.' },
+          timestamp: null,
+        },
+      ]);
+    });
+    expect(sendMessageSpy).toHaveBeenLastCalledWith(
+      { text: 'Connection ready' },
+      {
+        body: expect.objectContaining({
+          content: 'Connection ready',
+          clientContext: { opencx__background: true },
+        }),
+      },
+    );
+    expect(
+      hookValue?.queuedUserMessages.map((message) => message.content),
+    ).toEqual(['next question']);
+  });
+
   it('holds the queued message until the finished reply is reconciled into the transcript', async () => {
     await act(async () => {
       root.render(<Probe />);

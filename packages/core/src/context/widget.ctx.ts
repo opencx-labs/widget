@@ -86,6 +86,7 @@ export class WidgetCtx {
     sessions: number;
   } | null = null;
   private activeSessionPollingCtx: ActiveSessionPollingCtx;
+  private disposed = false;
 
   private constructor({
     config,
@@ -253,9 +254,18 @@ export class WidgetCtx {
   };
 
   /** Release a closed companion runtime after its last send has settled. */
-  releaseConversation = () => {
+  releaseConversation = () => this.dispose();
+
+  /** Permanently stop all polling, subscriptions and in-flight work. */
+  dispose = ({ clearActiveSession = false } = {}) => {
+    if (this.disposed) return;
+    this.disposed = true;
     this.routerCtx.dispose();
-    this.resetChat();
+    this.activeSessionPollingCtx.dispose();
+    this.sessionCtx.dispose({ clearActiveSession });
+    this.messageCtx.reset();
+    this.uploadCtx.reset();
+    this.dictationCtx.stop();
   };
 
   resetChat = () => {

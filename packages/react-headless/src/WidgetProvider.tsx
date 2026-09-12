@@ -2,6 +2,7 @@ import React, {
   createContext,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -17,6 +18,7 @@ import { CompanionConversationProvider } from './ConversationWorkspace';
 import { ComponentRegistry } from './ComponentRegistry';
 import { AgentChatProvider } from './agent-chat/AgentChatContext';
 import type { WidgetComponentType } from './types/components';
+import { widgetUserIdentity } from './widget-user-identity';
 
 interface WidgetProviderValue {
   widgetCtx: WidgetCtx;
@@ -56,12 +58,20 @@ export function WidgetProvider({
 }): React.ReactElement | null {
   const configRef = useRef(config);
   configRef.current = config;
+  const identity = widgetUserIdentity(config);
   const contentIframeRef = useRef<HTMLIFrameElement | null>(null);
-  const initializationRef = useRef<Promise<WidgetCtx> | null>(null);
+  const initializationRef = useRef<{
+    identity: string;
+    request: Promise<WidgetCtx>;
+  } | null>(null);
+  const activeWidgetRef = useRef<{
+    identity: string;
+    widgetCtx: WidgetCtx;
+  } | null>(null);
   const [initialization, setInitialization] = useState<
     | { status: 'loading' }
-    | { status: 'ready'; widgetCtx: WidgetCtx }
-    | { status: 'error'; error: Error }
+    | { status: 'ready'; identity: string; widgetCtx: WidgetCtx }
+    | { status: 'error'; identity: string; error: Error }
   >({ status: 'loading' });
 
   const componentStore = useMemo(
@@ -73,35 +83,76 @@ export function WidgetProvider({
   );
 
   useEffect(() => {
-    const request =
-      initializationRef.current ??
-      (initializationRef.current = WidgetCtx.initialize({
-        config,
-        storage,
-        getClientCapabilities: () => configRef.current.capabilities,
-        getRequestConfig: () => configRef.current,
-      }));
-    let active = true;
+    if (activeWidgetRef.current?.identity !== identity) {
+      activeWidgetRef.current?.widgetCtx.dispose({ clearActiveSession: true });
+      activeWidgetRef.current = null;
+    }
+    if (initializationRef.current?.identity !== identity) {
+      setInitialization({ status: 'loading' });
+      initializationRef.current = {
+        identity,
+        request: WidgetCtx.initialize({
+          config,
+          storage,
+          getClientCapabilities: () => configRef.current.capabilities,
+          getRequestConfig: () => configRef.current,
+        }),
+      };
+    }
+    const request = initializationRef.current.request;
+    const requestIdentity = initializationRef.current.identity;
     void request.then(
       (widgetCtx) => {
-        if (active) setInitialization({ status: 'ready', widgetCtx });
+        if (initializationRef.current?.request !== request) {
+          widgetCtx.dispose();
+          return;
+        }
+        activeWidgetRef.current = { identity: requestIdentity, widgetCtx };
+        setInitialization({
+          status: 'ready',
+          identity: requestIdentity,
+          widgetCtx,
+        });
       },
       (reason: unknown) => {
+        if (initializationRef.current?.request !== request) return;
         const error =
           reason instanceof Error
             ? reason
             : new Error('Widget initialization failed', { cause: reason });
         log.error('widget initialization failed', error);
-        if (active) setInitialization({ status: 'error', error });
+        setInitialization({
+          status: 'error',
+          identity: requestIdentity,
+          error,
+        });
       },
     );
-    return () => {
-      active = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [identity, config, storage]);
 
-  if (initialization.status === 'loading') {
+  useEffect(
+    () => () => {
+      initializationRef.current = null;
+      activeWidgetRef.current?.widgetCtx.dispose();
+      activeWidgetRef.current = null;
+    },
+    [],
+  );
+
+  useLayoutEffect(() => {
+    if (
+      initialization.status !== 'ready' ||
+      initialization.identity !== identity
+    ) {
+      return;
+    }
+    initialization.widgetCtx.api.setAuthToken(config.user?.token ?? '');
+  }, [config.user?.token, identity, initialization]);
+
+  if (
+    initialization.status === 'loading' ||
+    ('identity' in initialization && initialization.identity !== identity)
+  ) {
     return loadingComponent ? <>{loadingComponent}</> : null;
   }
   if (initialization.status === 'error') {
@@ -134,7 +185,7 @@ export function WidgetProvider({
   }
   return renderChildren(
     widgetCtx,
-    <AgentChatProvider widgetCtx={widgetCtx} config={config}>
+    <AgentChatProvider key={identity} widgetCtx={widgetCtx} config={config}>
       {children}
     </AgentChatProvider>,
   );

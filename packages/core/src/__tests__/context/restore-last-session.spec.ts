@@ -99,6 +99,19 @@ function buildCtx({
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe('restoring the last conversation', () => {
+  it('preserves the active-session pointer when its runtime is disposed', async () => {
+    const { storage, values } = createStorage();
+    const { sessionCtx } = buildCtx({ storage });
+    await settle();
+    sessionCtx.sessionState.setPartial({ session: buildSession() });
+    await settle();
+    sessionCtx.dispose();
+    await settle();
+    expect(values.get(ACTIVE_SESSION_KEY)).toBe(
+      'a3a3a3a3-0000-4000-8000-000000000001',
+    );
+  });
+
   it('detaches a released child without erasing the last selected session', async () => {
     const { storage, values } = createStorage();
     const { sessionCtx: owner } = buildCtx({ storage });

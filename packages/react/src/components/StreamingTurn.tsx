@@ -13,6 +13,7 @@ import { buildSpec, SpecRenderer } from '../json-render';
 import { dc } from '../utils/data-component';
 import { AgentMessageGroup } from './AgentMessageGroup';
 import { BrailleSpinner } from './lib/BrailleSpinner';
+import { MessageActions, useShowsCopyAction } from './MessageActions';
 
 /**
  * The live streamed turn (streaming engine): rendered in STREAM ORDER —
@@ -41,6 +42,7 @@ export function StreamingTurn({
   // Registered by `Widget` (`agent_chat_steps` / `agent_chat_spec`) and
   // replaceable through the `components` prop.
   const { componentStore, config, widgetCtx } = useWidget();
+  const showsCopy = useShowsCopyAction();
   const StepsComponent = componentStore.getComponent('agent_chat_steps');
   const SpecComponent = componentStore.getComponent('agent_chat_spec');
   // Fixed for the life of the turn. A fresh `new Date()` per render would make
@@ -61,7 +63,10 @@ export function StreamingTurn({
   // where they would otherwise type — and a questionnaire the conversation
   // has moved past leaves no dead card behind.
   return (
-    <div {...dc('chat/streaming_turn/root')} className="flex flex-col gap-2">
+    <div
+      {...dc('chat/streaming_turn/root')}
+      className="group flex flex-col gap-2"
+    >
       {items.map((item, index) =>
         item.kind === 'text' ? (
           <AgentMessageGroup
@@ -77,13 +82,13 @@ export function StreamingTurn({
               },
             ]}
             agent={agent}
-            actions={!turn.active}
+            actions={false}
           />
         ) : item.kind === 'spec' ? (
           SpecComponent && (
             <SpecComponent key={`spec-${index}`} parts={item.parts} />
           )
-        ) : item.kind === 'questions' ? null : (
+        ) : item.kind === 'questions' || item.kind === 'connection' ? null : (
           StepsComponent && (
             <StepsComponent
               key={`steps-${index}`}
@@ -105,6 +110,13 @@ export function StreamingTurn({
         >
           <BrailleSpinner className="text-[14px] leading-none text-primary/70" />
         </div>
+      )}
+      {!turn.active && showsCopy && (
+        <MessageActions
+          messages={items.flatMap((item) =>
+            item.kind === 'text' ? [{ data: { message: item.text } }] : [],
+          )}
+        />
       )}
     </div>
   );

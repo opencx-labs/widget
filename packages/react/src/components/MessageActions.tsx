@@ -12,7 +12,9 @@ import { cn } from './lib/utils/cn';
 const COPIED_FEEDBACK_MS = 2000;
 
 /** The reply as text: every message of the group, citation tags removed. */
-export function replyText(messages: readonly WidgetAiMessage[]): string {
+export function replyText(
+  messages: readonly Pick<WidgetAiMessage, 'data'>[],
+): string {
   return messages
     .map((message) => stripCitationRefs(message.data.message).trim())
     .filter((text) => text.length > 0)
@@ -40,7 +42,7 @@ export function useShowsCopyAction(): boolean {
 export function MessageActions({
   messages,
 }: {
-  messages: readonly WidgetAiMessage[];
+  messages: readonly Pick<WidgetAiMessage, 'data'>[];
 }) {
   const { t } = useTranslation();
   const { messageActions } = useConfig();

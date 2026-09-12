@@ -27,6 +27,15 @@ export type StreamingStep = {
  * drains out of model text as typed `data-spec` UIMessage parts. The styled
  * renderer assembles these into a renderable element-tree spec.
  */
+export const connectionRequestSchema = z.object({
+  request_id: z.string().uuid(),
+  server_id: z.string().uuid(),
+  name: z.string().min(1).max(120),
+});
+export type ConnectionRequest = z.infer<typeof connectionRequestSchema>;
+const connectionOutputSchema = z.object({
+  connection_required: connectionRequestSchema,
+});
 const SPEC_DATA_PART_TYPE = 'data-spec';
 const toolActivitySchema = z.object({ label: z.string(), done: z.boolean() });
 
@@ -42,7 +51,8 @@ export type StreamingTurnItem =
    * NEWEST one still pending takes the composer's place instead
    * (`pendingClarification`), and an answered one leaves no card behind.
    */
-  | { kind: 'questions'; request: AskQuestionsRequest };
+  | { kind: 'questions'; request: AskQuestionsRequest }
+  | { kind: 'connection'; request: ConnectionRequest };
 
 /** The in-flight turn's render state: active + its ordered items. */
 export type StreamingTurnState = {
@@ -94,6 +104,19 @@ export function mapUiPartsToItems(
     // Page effects have their own consumer; never display their selectors as
     // generic tool activity, including when activity details are hidden.
     if (partToolName(part) === 'highlight_element') continue;
+    if (
+      part.state === 'output-available' &&
+      (part.type === 'dynamic-tool' || part.type.startsWith('tool-'))
+    ) {
+      const connection = connectionOutputSchema.safeParse(part.output);
+      if (connection.success) {
+        items.push({
+          kind: 'connection',
+          request: connection.data.connection_required,
+        });
+        continue;
+      }
+    }
     if (isAskQuestionsPart(part)) {
       // The raw call NEVER renders, parseable or not — the customer must never
       // be shown `ask_questions` as machinery. A payload that has not finished

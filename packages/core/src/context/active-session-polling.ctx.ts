@@ -22,6 +22,7 @@ export class ActiveSessionPollingCtx {
   private poller = new Poller();
   private fetchSessionAndFullHistoryAbortController = new AbortController();
   private reconcileAbortController = new AbortController();
+  private subscriptions: Array<() => void> = [];
   /** Session the in-flight post-stream reconcile belongs to, if any. */
   private reconcilingSessionId: string | null = null;
 
@@ -48,38 +49,48 @@ export class ActiveSessionPollingCtx {
   }
 
   private registerPolling = () => {
-    this.sessionCtx.sessionState.subscribe(({ session }) => {
-      if (session?.id) {
-        this.poller.startPolling(async (abortSignal) => {
-          this.fetchSessionAndHistory({ sessionId: session.id, abortSignal });
-        }, this.sessionPollingIntervalSeconds * 1000);
-      } else {
-        this.poller.reset();
-      }
-    });
+    this.subscriptions.push(
+      this.sessionCtx.sessionState.subscribe(({ session }) => {
+        if (session?.id) {
+          this.poller.startPolling(async (abortSignal) => {
+            this.fetchSessionAndHistory({
+              sessionId: session.id,
+              abortSignal,
+            });
+          }, this.sessionPollingIntervalSeconds * 1000);
+        } else {
+          this.poller.reset();
+        }
+      }),
+    );
 
     /**
      * When the session is closed, fetch immediately instead of waiting for the
      * next poll tick, so closing messages (e.g. csat_requested) show up right away.
      */
-    this.sessionCtx.sessionState.subscribe(({ session }) => {
-      if (session?.id && !session.isOpened) {
-        try {
-          this.fetchSessionAndFullHistoryAbortController =
-            new AbortController();
-          this.fetchSessionAndHistory({
-            sessionId: session.id,
-            abortSignal: this.fetchSessionAndFullHistoryAbortController.signal,
-          });
-        } catch (error) {
-          if (!this.fetchSessionAndFullHistoryAbortController.signal.aborted) {
-            log.error('failed to fetch session and full history', error);
+    this.subscriptions.push(
+      this.sessionCtx.sessionState.subscribe(({ session }) => {
+        if (session?.id && !session.isOpened) {
+          try {
+            this.fetchSessionAndFullHistoryAbortController =
+              new AbortController();
+            this.fetchSessionAndHistory({
+              sessionId: session.id,
+              abortSignal:
+                this.fetchSessionAndFullHistoryAbortController.signal,
+            });
+          } catch (error) {
+            if (
+              !this.fetchSessionAndFullHistoryAbortController.signal.aborted
+            ) {
+              log.error('failed to fetch session and full history', error);
+            }
           }
+        } else {
+          this.fetchSessionAndFullHistoryAbortController.abort();
         }
-      } else {
-        this.fetchSessionAndFullHistoryAbortController.abort();
-      }
-    });
+      }),
+    );
 
     /**
      * A post-stream reconcile still in flight when the active session stops
@@ -87,11 +98,22 @@ export class ActiveSessionPollingCtx {
      * land: its rows belong to the old conversation and would be appended to
      * the fresh transcript.
      */
-    this.sessionCtx.sessionState.subscribe(({ session }) => {
-      if (this.reconcilingSessionId === null) return;
-      if (session?.id === this.reconcilingSessionId) return;
-      this.reconcileAbortController.abort();
-    });
+    this.subscriptions.push(
+      this.sessionCtx.sessionState.subscribe(({ session }) => {
+        if (this.reconcilingSessionId === null) return;
+        if (session?.id === this.reconcilingSessionId) return;
+        this.reconcileAbortController.abort();
+      }),
+    );
+  };
+
+  dispose = () => {
+    this.poller.reset();
+    this.fetchSessionAndFullHistoryAbortController.abort();
+    this.reconcileAbortController.abort();
+    this.reconcilingSessionId = null;
+    this.subscriptions.forEach((unsubscribe) => unsubscribe());
+    this.subscriptions = [];
   };
 
   /**

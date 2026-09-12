@@ -14,6 +14,45 @@ const baseConfig = (context: WidgetConfig['context']): WidgetConfig => ({
 const sends = { sendsPageContext: true };
 
 describe('mergeSendContext / resolveConfigContext', () => {
+  it('preserves background continuations when page context is disabled', () => {
+    expect(
+      mergeSendContext(
+        { token: 't' },
+        { content: 'Connection ready', background: true },
+        { sendsPageContext: false },
+      ).clientContext,
+    ).toEqual({ opencx__background: true });
+  });
+
+  it('persists the handled connection id when page context is disabled', () => {
+    const requestId = 'b1111111-1111-4111-8111-111111111111';
+    expect(
+      mergeSendContext(
+        { token: 't' },
+        {
+          content: 'Continue without connecting',
+          connectionRequestId: requestId,
+        },
+        { sendsPageContext: false },
+      ).clientContext,
+    ).toEqual({ opencx__connection_request_id: requestId });
+    expect(
+      mergeSendContext(
+        { token: 't' },
+        {
+          content: 'Connection ready',
+          background: true,
+          connectionRequestId: requestId,
+          clientContext: { page_marks: ['must stay gated off'] },
+        },
+        { sendsPageContext: false },
+      ).clientContext,
+    ).toEqual({
+      opencx__connection_request_id: requestId,
+      opencx__background: true,
+    });
+  });
+
   it('object-form context passes through as before', () => {
     const merged = mergeSendContext(
       baseConfig({ page: { url: '/inbox' } }),

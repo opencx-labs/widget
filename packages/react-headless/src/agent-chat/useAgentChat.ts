@@ -127,6 +127,8 @@ export function useAgentChat({
     Parameters<ChatOnFinishCallback<UIMessage>>[0] | null
   >(null);
   const stopAcknowledgedRef = useRef(false);
+  // An undefined id keeps the previous SDK stream alive after a session reset.
+  const [draftChatId] = useState(genUuid);
 
   const {
     status,
@@ -137,7 +139,7 @@ export function useAgentChat({
     clearError,
     resumeStream,
   } = useChat({
-    id: sessionId ?? undefined,
+    id: sessionId ?? draftChatId,
     // Reattach to a still-live turn (reload, tab switch) — but only once a
     // session actually exists. A fresh visitor has nothing to resume, and the
     // engine mounts with the shell, so probing unconditionally would fire a
@@ -198,6 +200,8 @@ export function useAgentChat({
   // flash) and server-fetched historical turns (`ui_parts` — reload fidelity)
   // live in the same list; `mergeTurnSources` owns the precedence.
   const [turnSources, setTurnSources] = useState<TurnRenderSource[]>([]);
+  const [handledConnectionRequestIds, setHandledConnectionRequestIds] =
+    useState<string[]>([]);
   // The live turn's React key. Set when its send drains (or when a resumed
   // stream is detected) and handed to the retained source at release — SAME
   // key before and after the promotion, so the turn's node never remounts.
@@ -627,6 +631,7 @@ export function useAgentChat({
   // previous projection. Late responses from superseded requests are ignored.
   const toolActivity = config.presentation?.toolActivity;
   const reasoning = config.presentation?.reasoning;
+  useEffect(() => setHandledConnectionRequestIds([]), [sessionId]);
   useEffect(() => {
     if (!sessionId) return;
     const presentation =
@@ -647,6 +652,7 @@ export function useAgentChat({
             ? await api.getAgentTurnMessages(sessionId)
             : await api.getAgentTurnMessages(sessionId, presentation);
         if (!fetched || cancelled) return;
+        setHandledConnectionRequestIds(fetched.handled_connection_request_ids);
         setTurnSources((existing) =>
           mergeTurnSources({ existing, fetched, refreshItems }),
         );
@@ -847,7 +853,10 @@ export function useAgentChat({
   // Messages the user queued mid-turn — surfaced so the composer can render
   // them as a queue pill. Recomputed on every enqueue/drain (`queueVersion`).
   const queuedUserMessages = useMemo(
-    () => queueRef.current.items.map((item) => item.userMessage),
+    () =>
+      queueRef.current.items
+        .filter((item) => !item.input.background)
+        .map((item) => item.userMessage),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- queueRef is mutable; queueVersion is the signal
     [queueVersion],
   );
@@ -866,6 +875,7 @@ export function useAgentChat({
     removeQueued,
     stop: stopTurn,
     pageEffects,
+    handledConnectionRequestIds,
   };
 }
 
