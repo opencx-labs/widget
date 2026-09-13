@@ -217,6 +217,10 @@ export function useAgentChat({
   const lastDrainedRef = useRef<QueuedSend | null>(null);
   const prevStatusRef = useRef(status);
   const previousSessionIdRef = useRef(sessionId);
+  // Resetting the old turn state happens after commit. Withhold its render
+  // sources immediately so a newly selected session never paints the old plan,
+  // questions, or streamed content during that intervening frame.
+  const ownsSessionState = previousSessionIdRef.current === sessionId;
   const ignoredStatusAfterSessionResetRef = useRef<typeof status | null>(null);
   const historicalFetchRef = useRef<{
     sessionId: string;
@@ -815,7 +819,13 @@ export function useAgentChat({
   // The live overlay: the in-flight assistant message's ordered items. Held
   // through `settling` as well as the stream itself — see above.
   const liveItems: StreamingTurnItem[] = useMemo(() => {
-    if (status === 'submitted' || (!isStreaming && !settling)) return [];
+    if (
+      !ownsSessionState ||
+      liveTurnKey === null ||
+      status === 'submitted' ||
+      (!isStreaming && !settling)
+    )
+      return [];
     const last = messages.at(-1);
     if (!last || last.role !== 'assistant') return [];
     return applyPresentation(mapUiPartsToItems(last.parts), {
@@ -829,19 +839,23 @@ export function useAgentChat({
     settling,
     visibleToolActivity,
     visibleReasoning,
+    ownsSessionState,
+    liveTurnKey,
   ]);
 
   const visibleTurnSources = useMemo(
     () =>
-      turnSources.flatMap((source) => {
-        const items = applyPresentation(source.items, {
-          toolActivity: visibleToolActivity,
-          reasoning: visibleReasoning,
-        });
-        if (items.length === 0) return [];
-        return [items === source.items ? source : { ...source, items }];
-      }),
-    [turnSources, visibleToolActivity, visibleReasoning],
+      !ownsSessionState
+        ? []
+        : turnSources.flatMap((source) => {
+            const items = applyPresentation(source.items, {
+              toolActivity: visibleToolActivity,
+              reasoning: visibleReasoning,
+            });
+            if (items.length === 0) return [];
+            return [items === source.items ? source : { ...source, items }];
+          }),
+    [turnSources, visibleToolActivity, visibleReasoning, ownsSessionState],
   );
 
   // Messages the user queued mid-turn — surfaced so the composer can render
