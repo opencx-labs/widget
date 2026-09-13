@@ -26,6 +26,7 @@ export type OpenCxComponentNameU =
   | 'chat/msgs/wrapper'
   | 'chat/msgs/root'
   | 'chat/msgs/scroll-to-bottom'
+  | 'chat/session-plan'
   | 'chat/streaming_turn/root'
   | 'chat/streaming_turn/steps'
   | 'chat/streaming_turn/working'

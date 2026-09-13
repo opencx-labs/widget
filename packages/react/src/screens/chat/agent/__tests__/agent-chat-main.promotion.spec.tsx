@@ -336,7 +336,9 @@ describe('AgentChatMain live→retained promotion', () => {
 
     const plan = container.querySelector('[data-task-plan]');
     expect(plan).not.toBeNull();
-    expect(plan?.hasAttribute('open')).toBe(false);
+    expect(plan?.querySelector('button')?.getAttribute('aria-expanded')).toBe(
+      'false',
+    );
     expect(
       container
         .querySelector('[data-component="chat/msgs/root"]')
@@ -396,6 +398,10 @@ describe('AgentChatMain live→retained promotion', () => {
     act(() => root.render(<AgentChatMain />));
     const original = container.querySelector('[data-task-plan]');
     expect(original?.textContent).toContain('Session A work');
+    act(() => original?.querySelector('button')?.click());
+    expect(
+      original?.querySelector('button')?.getAttribute('aria-expanded'),
+    ).toBe('true');
 
     sessionId = 'session-b';
     uiValue = ui({
@@ -414,6 +420,11 @@ describe('AgentChatMain live→retained promotion', () => {
     act(() => root.render(<AgentChatMain />));
     expect(container.querySelectorAll('[data-task-plan]')).toHaveLength(1);
     expect(container.querySelector('[data-task-plan]')).not.toBe(original);
+    expect(
+      container
+        .querySelector('[data-task-plan] button')
+        ?.getAttribute('aria-expanded'),
+    ).toBe('false');
     expect(container.textContent).toContain('Session B work');
     expect(container.textContent).not.toContain('Session A work');
 
