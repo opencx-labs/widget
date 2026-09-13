@@ -13,7 +13,6 @@ import { buildSpec, SpecRenderer } from '../json-render';
 import { dc } from '../utils/data-component';
 import { AgentMessageGroup } from './AgentMessageGroup';
 import { BrailleSpinner } from './lib/BrailleSpinner';
-import { TaskPlan } from './TaskPlan';
 
 /**
  * The live streamed turn (streaming engine): rendered in STREAM ORDER —
@@ -60,7 +59,8 @@ export function StreamingTurn({
     presentation?.streaming === false &&
     !items.some((item) => item.kind === 'questions');
 
-  // `questions` renders NOTHING in the transcript. A pending clarification
+  // Plans live once above the composer; updates do not leave stale checklists
+  // in each turn. `questions` also renders NOTHING in the transcript. A pending clarification
   // takes the composer's place instead (`ChatInput`), so the customer answers
   // where they would otherwise type — and a questionnaire the conversation
   // has moved past leaves no dead card behind.
@@ -83,17 +83,11 @@ export function StreamingTurn({
             agent={agent}
             actions={!turn.active}
           />
-        ) : item.kind === 'plan' ? (
-          <TaskPlan
-            key={`plan-${index}`}
-            plan={item.plan}
-            active={turn.active}
-          />
         ) : item.kind === 'spec' ? (
           SpecComponent && (
             <SpecComponent key={`spec-${index}`} parts={item.parts} />
           )
-        ) : item.kind === 'questions' ? null : (
+        ) : item.kind === 'questions' || item.kind === 'plan' ? null : (
           StepsComponent && (
             <StepsComponent
               key={`steps-${index}`}

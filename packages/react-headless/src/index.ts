@@ -6,6 +6,7 @@ export type {
 export { WidgetProvider, useWidget } from './WidgetProvider';
 export { useAgentChatUi } from './agent-chat/AgentChatContext';
 export { applyPresentation } from './agent-chat/apply-presentation';
+export { sessionPlan } from './agent-chat/session-plan';
 export type {
   SpecDataPart,
   StreamingStep,

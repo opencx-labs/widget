@@ -13,7 +13,6 @@ export function TaskPlan({
   const completed = plan.filter((step) => step.status === 'completed').length;
   return (
     <details
-      open
       className="rounded-xl border border-primary/10 bg-background"
       data-task-plan
     >
@@ -25,7 +24,7 @@ export function TaskPlan({
             plan[0]?.step}
         </span>
       </summary>
-      <ol className="border-t border-primary/10 px-3 py-2 space-y-2">
+      <ol className="max-h-60 overflow-y-auto border-t border-primary/10 px-3 py-2 space-y-2">
         {plan.map((step, index) => (
           <li
             key={index}

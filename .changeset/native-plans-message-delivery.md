@@ -5,4 +5,4 @@
 "@opencx/widget": patch
 ---
 
-Show tracked task plans as consistent checklists, preserve them when reply streaming is off, and show typing dots between complete assistant messages. Keep text streaming, tool activity, and reasoning visibility independently configurable.
+Show one tracked checklist per session above the message box, updating it in place across replies. Preserve plans when reply streaming is off, and show typing dots between complete assistant messages. Keep text streaming, tool activity, and reasoning visibility independently configurable.

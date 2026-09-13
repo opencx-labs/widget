@@ -117,7 +117,7 @@ describe('StreamingTurn working indicator', () => {
     expect(container.querySelector('[data-typing]')).toBeNull();
   });
 
-  it('keeps a native plan visible with streaming and tool details off, including on reload', () => {
+  it('leaves plan rendering to the session while retaining typing with streaming and tools off', () => {
     config.presentation = {
       streaming: false,
       toolActivity: 'hidden',
@@ -133,12 +133,10 @@ describe('StreamingTurn working indicator', () => {
       },
     ];
     render({ active: true, items });
-    expect(container.querySelectorAll('[data-plan-status]')).toHaveLength(2);
+    expect(container.querySelector('[data-task-plan]')).toBeNull();
     expect(container.querySelector('[data-typing]')).not.toBeNull();
     render({ active: false, items });
-    expect(container.querySelector('[data-task-plan]')?.textContent).toContain(
-      'Compare payment methods',
-    );
+    expect(container.querySelector('[data-task-plan]')).toBeNull();
     expect(container.querySelector('[data-typing]')).toBeNull();
   });
 });
