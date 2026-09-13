@@ -13,6 +13,7 @@ import { buildSpec, SpecRenderer } from '../json-render';
 import { dc } from '../utils/data-component';
 import { AgentMessageGroup } from './AgentMessageGroup';
 import { BrailleSpinner } from './lib/BrailleSpinner';
+import { TaskPlan } from './TaskPlan';
 
 /**
  * The live streamed turn (streaming engine): rendered in STREAM ORDER —
@@ -43,18 +44,21 @@ export function StreamingTurn({
   const { componentStore, config, widgetCtx } = useWidget();
   const StepsComponent = componentStore.getComponent('agent_chat_steps');
   const SpecComponent = componentStore.getComponent('agent_chat_spec');
+  const LoadingComponent = componentStore.getComponent('loading');
   // Fixed for the life of the turn. A fresh `new Date()` per render would make
   // the group timestamp tick with every streamed token and then jump when the
   // persisted row (stamped once, server-side) takes over at the handoff.
   const [startedAt] = useState(() => new Date().toISOString());
   const groupTimestamp = timestamp ?? startedAt;
-  const items = applyPresentation(
-    turn.items,
-    resolveClientPresentation(
-      widgetCtx.agent.presentation,
-      config.presentation,
-    ),
+  const presentation = resolveClientPresentation(
+    widgetCtx.agent.presentation,
+    config.presentation,
   );
+  const items = applyPresentation(turn.items, presentation);
+  const typing =
+    turn.active &&
+    presentation?.streaming === false &&
+    !items.some((item) => item.kind === 'questions');
 
   // `questions` renders NOTHING in the transcript. A pending clarification
   // takes the composer's place instead (`ChatInput`), so the customer answers
@@ -79,6 +83,12 @@ export function StreamingTurn({
             agent={agent}
             actions={!turn.active}
           />
+        ) : item.kind === 'plan' ? (
+          <TaskPlan
+            key={`plan-${index}`}
+            plan={item.plan}
+            active={turn.active}
+          />
         ) : item.kind === 'spec' ? (
           SpecComponent && (
             <SpecComponent key={`spec-${index}`} parts={item.parts} />
@@ -98,13 +108,18 @@ export function StreamingTurn({
           UI spec can take seconds with no new text, and silence reads as a
           stall. A running steps group carries its own loader, so the tail
           stays quiet while one is the last item. */}
-      {turn.active && !endsWithRunningSteps(items) && (
-        <div
-          {...dc('chat/streaming_turn/working')}
-          className="flex h-5 items-center ps-1"
-        >
-          <BrailleSpinner className="text-[14px] leading-none text-primary/70" />
-        </div>
+      {typing && LoadingComponent ? (
+        <LoadingComponent agent={agent} />
+      ) : (
+        turn.active &&
+        !endsWithRunningSteps(items) && (
+          <div
+            {...dc('chat/streaming_turn/working')}
+            className="flex h-5 items-center ps-1"
+          >
+            <BrailleSpinner className="text-[14px] leading-none text-primary/70" />
+          </div>
+        )
       )}
     </div>
   );

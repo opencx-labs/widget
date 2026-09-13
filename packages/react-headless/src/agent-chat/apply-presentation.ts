@@ -7,6 +7,12 @@ export function applyPresentation(
   presentation: WidgetConfig['presentation'],
 ): StreamingTurnItem[] {
   const projected = items.flatMap<StreamingTurnItem>((item) => {
+    if (
+      item.kind === 'text' &&
+      item.streaming &&
+      presentation?.streaming === false
+    )
+      return [];
     if (item.kind !== 'steps') return [item];
     const steps = item.steps.flatMap<StreamingStep>((step) => {
       if (step.kind === 'reasoning') {
