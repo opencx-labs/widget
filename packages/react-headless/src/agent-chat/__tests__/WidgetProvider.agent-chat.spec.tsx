@@ -66,6 +66,7 @@ let latestLifecycle = {
 let latestPendingConnection: ReturnType<
   typeof useAgentChatUi
 >['pendingConnection'] = null;
+const renderedConnections: Array<ConnectionRequest | null> = [];
 let activeConnection: ReturnType<typeof useConnection> | null = null;
 
 function ConnectionProbe({ request }: { request: ConnectionRequest }) {
@@ -84,6 +85,7 @@ function Probe({ sendInLayout = false }: { sendInLayout?: boolean }) {
     messagesSendingToAi: messagesState.isSendingMessageToAI,
   };
   latestPendingConnection = pendingConnection;
+  renderedConnections.push(pendingConnection);
 
   useLayoutEffect(() => {
     if (!sendInLayout || didSendRef.current) return;
@@ -566,6 +568,7 @@ describe('WidgetProvider agent-chat ownership', () => {
       const originalSession =
         fakeWidgetCtx.sessionCtx.sessionState.get().session;
       if (!originalSession) throw new Error('Session was not created');
+      renderedConnections.length = 0;
       await act(async () => {
         fakeWidgetCtx.sessionCtx.sessionState.setPartial({
           session:
@@ -576,6 +579,10 @@ describe('WidgetProvider agent-chat ownership', () => {
         fakeWidgetCtx.messageCtx.state.setPartial({ messages: [] });
       });
       expect(latestPendingConnection).toBeNull();
+      expect(renderedConnections.length).toBeGreaterThan(0);
+      expect(renderedConnections.every((request) => request === null)).toBe(
+        true,
+      );
       expect(fakeWidgetCtx.api.startConnection).not.toHaveBeenCalled();
       if (destination === 'new') {
         // useChat retains its previous instance when the session id becomes

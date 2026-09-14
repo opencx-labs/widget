@@ -890,6 +890,7 @@ export function useAgentChat({
     stop: stopTurn,
     pageEffects,
     handledConnectionRequestIds,
+    sourceSessionId: ownsSessionState ? sessionId : null,
   };
 }
 

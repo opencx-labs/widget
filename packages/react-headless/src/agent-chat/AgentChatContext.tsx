@@ -111,6 +111,7 @@ function ActiveAgentChatProvider({
     stop,
     pageEffects,
     handledConnectionRequestIds,
+    sourceSessionId,
   } = useAgentChat({
     widgetCtx,
     config,
@@ -149,7 +150,12 @@ function ActiveAgentChatProvider({
       : null;
 
   useEffect(() => {
-    if (!connectionsEnabled || currentSessionId === null) return;
+    if (
+      !connectionsEnabled ||
+      currentSessionId === null ||
+      sourceSessionId !== currentSessionId
+    )
+      return;
     setConnectionState((current) => {
       const request =
         current.sessionId === currentSessionId &&
@@ -164,6 +170,7 @@ function ActiveAgentChatProvider({
     });
   }, [
     currentSessionId,
+    sourceSessionId,
     connectionCandidate,
     handledConnectionRequestIds,
     connectionsEnabled,
