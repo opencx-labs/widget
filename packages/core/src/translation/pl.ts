@@ -91,4 +91,13 @@ export const PolishLanguage: TranslationInterface = {
   questions_send: 'Wyślij',
   questions_type_answer: 'Napiszę sam',
   questions_answer_placeholder: 'Wpisz swoją odpowiedź…',
+  close_conversation_title: 'Zamknij rozmowę',
+  close_conversation_description: 'Czy na pewno chcesz zamknąć tę rozmowę?',
+  close_conversation_cancel: 'Nie',
+  close_conversation_confirm: 'Tak',
+  dialog_close: 'Zamknij',
+  zoom_in: 'Powiększ',
+  zoom_out: 'Pomniejsz',
+  reset_zoom: 'Resetuj powiększenie',
+  support_chat_aria_label: 'Czat pomocy',
 };

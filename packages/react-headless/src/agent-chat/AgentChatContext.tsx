@@ -136,54 +136,46 @@ function ActiveAgentChatProvider({
       item.kind === 'connection' &&
       !handledConnectionsRef.current.has(item.request.request_id),
   )?.request;
-  const [pendingConnection, setPendingConnection] =
-    useState<ConnectionRequest | null>(null);
-  const previousSessionIdRef = useRef(sessionState.session?.id ?? null);
+  const [connectionState, setConnectionState] = useState<{
+    sessionId: string | null;
+    request: ConnectionRequest | null;
+  }>({ sessionId: currentSessionId, request: null });
+  const connectionsEnabled = config.capabilities?.connections !== false;
+  const pendingConnection =
+    connectionsEnabled &&
+    currentSessionId !== null &&
+    connectionState.sessionId === currentSessionId
+      ? connectionState.request
+      : null;
 
   useEffect(() => {
-    const sessionId = sessionState.session?.id ?? null;
-    const previousSessionId = previousSessionIdRef.current;
-    if (previousSessionId === sessionId) return;
-    previousSessionIdRef.current = sessionId;
-    // null -> id is the first send creating its own session. Every other
-    // transition is a real conversation boundary.
-    if (previousSessionId === null) return;
-    if (pendingConnection) {
-      handledConnectionsRef.current.add(pendingConnection.request_id);
-      setPendingConnection(null);
-    }
-  }, [pendingConnection, sessionState.session?.id]);
-
-  useEffect(() => {
-    if (currentSessionId === null) {
-      setPendingConnection(null);
-      return;
-    }
-    if (
-      pendingConnection &&
-      handledConnectionsRef.current.has(pendingConnection.request_id)
-    ) {
-      setPendingConnection(null);
-      return;
-    }
-    if (
-      !connectionCandidate ||
-      handledConnectionsRef.current.has(connectionCandidate.request_id)
-    ) {
-      return;
-    }
-    setPendingConnection((current) => current ?? connectionCandidate);
+    if (!connectionsEnabled || currentSessionId === null) return;
+    setConnectionState((current) => {
+      const request =
+        current.sessionId === currentSessionId &&
+        current.request &&
+        !handledConnectionsRef.current.has(current.request.request_id)
+          ? current.request
+          : (connectionCandidate ?? null);
+      return current.sessionId === currentSessionId &&
+        current.request === request
+        ? current
+        : { sessionId: currentSessionId, request };
+    });
   }, [
     currentSessionId,
     connectionCandidate,
     handledConnectionRequestIds,
+    connectionsEnabled,
     pendingConnection,
   ]);
 
   const handleConnection = useCallback((requestId: string) => {
     handledConnectionsRef.current.add(requestId);
-    setPendingConnection((current) =>
-      current?.request_id === requestId ? null : current,
+    setConnectionState((current) =>
+      current.request?.request_id === requestId
+        ? { ...current, request: null }
+        : current,
     );
   }, []);
   // Memoized so consumers (message list, composer) don't re-render on every

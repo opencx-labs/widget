@@ -92,4 +92,14 @@ export const GreekLanguage: TranslationInterface = {
   questions_send: 'Αποστολή',
   questions_type_answer: 'Θα το γράψω',
   questions_answer_placeholder: 'Γράψτε την απάντησή σας…',
+  close_conversation_title: 'Κλείσιμο συνομιλίας',
+  close_conversation_description:
+    'Είστε βέβαιοι ότι θέλετε να κλείσετε αυτήν τη συνομιλία;',
+  close_conversation_cancel: 'Όχι',
+  close_conversation_confirm: 'Ναι',
+  dialog_close: 'Κλείσιμο',
+  zoom_in: 'Μεγέθυνση',
+  zoom_out: 'Σμίκρυνση',
+  reset_zoom: 'Επαναφορά ζουμ',
+  support_chat_aria_label: 'Συνομιλία υποστήριξης',
 };

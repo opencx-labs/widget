@@ -1,6 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { cn } from './lib/utils/cn';
+import { useTranslation } from '../hooks/useTranslation';
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 5;
@@ -31,6 +32,7 @@ function clampTranslate(
 }
 
 export function ZoomableImage({ src, alt }: { src: string; alt?: string }) {
+  const { t } = useTranslation();
   const [scale, setScale] = useState(1);
   const [translate, setTranslate] = useState<Point>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -145,7 +147,7 @@ export function ZoomableImage({ src, alt }: { src: string; alt?: string }) {
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-black/60 backdrop-blur-sm rounded-full px-1.5 py-1 transition opacity-50 hover:opacity-100">
         <ControlButton
           onClick={zoomOut}
-          label="Zoom out"
+          label={t('zoom_out')}
           disabled={scale <= MIN_SCALE}
         >
           <ZoomOut className="size-3.5" />
@@ -155,7 +157,7 @@ export function ZoomableImage({ src, alt }: { src: string; alt?: string }) {
         </span>
         <ControlButton
           onClick={zoomIn}
-          label="Zoom in"
+          label={t('zoom_in')}
           disabled={scale >= MAX_SCALE}
         >
           <ZoomIn className="size-3.5" />
@@ -163,7 +165,7 @@ export function ZoomableImage({ src, alt }: { src: string; alt?: string }) {
         {isZoomed && (
           <>
             <div className="w-px h-4 bg-white/30 mx-0.5" />
-            <ControlButton onClick={reset} label="Reset zoom">
+            <ControlButton onClick={reset} label={t('reset_zoom')}>
               <RotateCcw className="size-3.5" />
             </ControlButton>
           </>

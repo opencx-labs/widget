@@ -91,4 +91,14 @@ export const SwedishLanguage: TranslationInterface = {
   questions_send: 'Skicka',
   questions_type_answer: 'Jag skriver själv',
   questions_answer_placeholder: 'Skriv ditt svar…',
+  close_conversation_title: 'Avsluta konversation',
+  close_conversation_description:
+    'Är du säker på att du vill avsluta den här konversationen?',
+  close_conversation_cancel: 'Nej',
+  close_conversation_confirm: 'Ja',
+  dialog_close: 'Stäng',
+  zoom_in: 'Zooma in',
+  zoom_out: 'Zooma ut',
+  reset_zoom: 'Återställ zoom',
+  support_chat_aria_label: 'Supportchatt',
 };

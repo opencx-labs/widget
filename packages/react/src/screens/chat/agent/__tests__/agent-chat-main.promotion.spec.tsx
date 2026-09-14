@@ -98,12 +98,14 @@ vi.mock('../useStreamFollow', () => ({
 
 let transcript: WidgetMessageU[] = [];
 let uiValue: AgentChatUiValue;
+let sessionId = 'session-a';
 
 vi.mock('@opencx/widget-react-headless', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@opencx/widget-react-headless')>()),
   useAgentChatUi: () => uiValue,
   useMessages: () => ({ messagesState: { messages: transcript } }),
   useBot: () => undefined,
+  useSessions: () => ({ sessionState: { session: { id: sessionId } } }),
   useWidget: () => ({
     config: { token: 'test' },
     componentStore: { getComponent: () => null },
@@ -165,6 +167,7 @@ describe('AgentChatMain live→retained promotion', () => {
     mounts.length = 0;
     unmounts.length = 0;
     renderedTurnProps = [];
+    sessionId = 'session-a';
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -311,5 +314,144 @@ describe('AgentChatMain live→retained promotion', () => {
       container.querySelectorAll('[data-testid="group"]'),
     ).map((node) => node.textContent);
     expect(groups).toEqual(['u1', 'h1']);
+  });
+
+  it('keeps one plan outside the transcript and updates it in place through turns and reload', () => {
+    const pending: StreamingTurnItem = {
+      kind: 'plan',
+      plan: [{ step: 'Check balance', status: 'pending' }],
+    };
+    const completed: StreamingTurnItem = {
+      kind: 'plan',
+      plan: [{ step: 'Verified balance', status: 'completed' }],
+    };
+    const saved: TurnRenderSource = {
+      key: 'T1',
+      turnId: 'T1',
+      rowIds: ['r-a1'],
+      items: [pending],
+    };
+    transcript = [userRow, aiRow];
+    uiValue = ui({ turnSources: [saved] });
+    act(() => root.render(<AgentChatMain />));
+
+    const plan = container.querySelector('[data-task-plan]');
+    expect(plan).not.toBeNull();
+    expect(plan?.querySelector('button')?.getAttribute('aria-expanded')).toBe(
+      'false',
+    );
+    expect(
+      container
+        .querySelector('[data-component="chat/msgs/root"]')
+        ?.querySelector('[data-task-plan]'),
+    ).toBeNull();
+
+    uiValue = ui({
+      turnSources: [saved],
+      liveTurnKey: 'T2',
+      isStreaming: true,
+      liveItems: [completed],
+    });
+    act(() => root.render(<AgentChatMain />));
+    expect(container.querySelectorAll('[data-task-plan]')).toHaveLength(1);
+    expect(container.querySelector('[data-task-plan]')).toBe(plan);
+    expect(plan?.textContent).toContain('1/1');
+    expect(plan?.textContent).toContain('Verified balance');
+    expect(plan?.textContent).not.toContain('Check balance');
+
+    // A fresh history load contains both snapshots and a later ordinary reply.
+    uiValue = ui({
+      turnSources: [
+        saved,
+        {
+          ...saved,
+          key: 'T2',
+          turnId: 'T2',
+          rowIds: ['r-a2'],
+          items: [completed],
+        },
+        {
+          ...saved,
+          key: 'T3',
+          turnId: 'T3',
+          rowIds: ['r-a3'],
+          items: [{ kind: 'text', text: 'Anything else?' }],
+        },
+      ],
+    });
+    act(() => root.render(<AgentChatMain />));
+    expect(container.querySelectorAll('[data-task-plan]')).toHaveLength(1);
+    expect(container.querySelector('[data-task-plan]')).toBe(plan);
+    expect(plan?.textContent).toContain('Verified balance');
+  });
+
+  it('loads the selected session plan and clears it for a new session', () => {
+    const planSource: TurnRenderSource = {
+      key: 'T1',
+      turnId: 'T1',
+      rowIds: [],
+      items: [
+        { kind: 'plan', plan: [{ step: 'Session A work', status: 'pending' }] },
+      ],
+    };
+    transcript = [];
+    uiValue = ui({ turnSources: [planSource] });
+    act(() => root.render(<AgentChatMain />));
+    const original = container.querySelector('[data-task-plan]');
+    expect(original?.textContent).toContain('Session A work');
+    act(() => original?.querySelector('button')?.click());
+    expect(
+      original?.querySelector('button')?.getAttribute('aria-expanded'),
+    ).toBe('true');
+
+    sessionId = 'session-b';
+    uiValue = ui({
+      turnSources: [
+        {
+          ...planSource,
+          items: [
+            {
+              kind: 'plan',
+              plan: [{ step: 'Session B work', status: 'in_progress' }],
+            },
+          ],
+        },
+      ],
+    });
+    act(() => root.render(<AgentChatMain />));
+    expect(container.querySelectorAll('[data-task-plan]')).toHaveLength(1);
+    expect(container.querySelector('[data-task-plan]')).not.toBe(original);
+    expect(
+      container
+        .querySelector('[data-task-plan] button')
+        ?.getAttribute('aria-expanded'),
+    ).toBe('false');
+    expect(container.textContent).toContain('Session B work');
+    expect(container.textContent).not.toContain('Session A work');
+
+    sessionId = 'new-session';
+    uiValue = ui({});
+    act(() => root.render(<AgentChatMain />));
+    expect(container.querySelector('[data-task-plan]')).toBeNull();
+  });
+
+  it('removes the pinned checklist when the latest update explicitly clears it', () => {
+    transcript = [];
+    uiValue = ui({
+      liveTurnKey: 'T2',
+      liveItems: [{ kind: 'plan', plan: [] }],
+      turnSources: [
+        {
+          key: 'T1',
+          turnId: 'T1',
+          rowIds: [],
+          items: [
+            { kind: 'plan', plan: [{ step: 'Old work', status: 'pending' }] },
+          ],
+        },
+      ],
+    });
+    act(() => root.render(<AgentChatMain />));
+    expect(container.querySelector('[data-task-plan]')).toBeNull();
   });
 });

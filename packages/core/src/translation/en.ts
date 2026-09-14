@@ -102,4 +102,14 @@ export const EnglishLanguage: TranslationInterface = {
   questions_send: 'Send',
   questions_type_answer: "I'll type it",
   questions_answer_placeholder: 'Type your answer…',
+  close_conversation_title: 'Close conversation',
+  close_conversation_description:
+    'Are you sure you want to close this conversation?',
+  close_conversation_cancel: 'No',
+  close_conversation_confirm: 'Yes',
+  dialog_close: 'Close',
+  zoom_in: 'Zoom in',
+  zoom_out: 'Zoom out',
+  reset_zoom: 'Reset zoom',
+  support_chat_aria_label: 'Support chat',
 };

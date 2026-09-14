@@ -91,4 +91,14 @@ export const BulgarianLanguage: TranslationInterface = {
   questions_send: 'Изпрати',
   questions_type_answer: 'Ще напиша сам',
   questions_answer_placeholder: 'Напишете отговора си…',
+  close_conversation_title: 'Затваряне на разговора',
+  close_conversation_description:
+    'Сигурни ли сте, че искате да затворите този разговор?',
+  close_conversation_cancel: 'Не',
+  close_conversation_confirm: 'Да',
+  dialog_close: 'Затваряне',
+  zoom_in: 'Увеличаване',
+  zoom_out: 'Намаляване',
+  reset_zoom: 'Нулиране на мащаба',
+  support_chat_aria_label: 'Чат за поддръжка',
 };

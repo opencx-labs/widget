@@ -413,3 +413,44 @@ it('continues a newer request while the accepted prior send is still settling', 
   expect(onHandled).toHaveBeenCalledWith(nextRequest.request_id);
   await act(async () => settleFirst());
 });
+
+it('does not resume a blocked external popup on unrelated focus changes', async () => {
+  vi.mocked(window.open).mockReturnValue(null);
+  fixture.widgetCtx.api.startConnection.mockResolvedValue({
+    authorization_url: 'https://mollie.example/connect',
+    completion: 'external',
+  });
+  const { result } = renderHook();
+  await act(() => result.current.start());
+  act(() => {
+    window.dispatchEvent(new Event('blur'));
+    window.dispatchEvent(new Event('focus'));
+  });
+  await tick();
+  expect(result.current.phase).toBe('ready');
+  expect(fixture.widgetCtx.messageCtx.sendMessage).not.toHaveBeenCalled();
+  act(() => result.current.opened());
+  act(() => {
+    window.dispatchEvent(new Event('blur'));
+    window.dispatchEvent(new Event('focus'));
+  });
+  await tick();
+  expect(fixture.widgetCtx.messageCtx.sendMessage).toHaveBeenCalledOnce();
+});
+
+it.each([
+  'http://accounts.example/authorize',
+  'http://localhost.evil.test/authorize',
+])(
+  'rejects an insecure nonlocal authorization page: %s',
+  async (authorization_url) => {
+    fixture.widgetCtx.api.startConnection.mockResolvedValue({
+      authorization_url,
+      completion: 'external',
+    });
+    const { result } = renderHook();
+    await act(() => result.current.start());
+    expect(result.current.error).toBe('Invalid connection page');
+    expect(tab.navigate).not.toHaveBeenCalled();
+  },
+);

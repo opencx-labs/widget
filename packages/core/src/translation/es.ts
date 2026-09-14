@@ -92,4 +92,14 @@ export const SpanishLanguage: TranslationInterface = {
   questions_send: 'Enviar',
   questions_type_answer: 'Lo escribo yo',
   questions_answer_placeholder: 'Escribe tu respuesta…',
+  close_conversation_title: 'Cerrar conversación',
+  close_conversation_description:
+    '¿Seguro que quieres cerrar esta conversación?',
+  close_conversation_cancel: 'No',
+  close_conversation_confirm: 'Sí',
+  dialog_close: 'Cerrar',
+  zoom_in: 'Acercar',
+  zoom_out: 'Alejar',
+  reset_zoom: 'Restablecer zoom',
+  support_chat_aria_label: 'Chat de soporte',
 };

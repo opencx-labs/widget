@@ -92,4 +92,14 @@ export const LuxembourgishLanguage: TranslationInterface = {
   questions_send: 'Schécken',
   questions_type_answer: 'Ech schreiwen et selwer',
   questions_answer_placeholder: 'Schreift Är Äntwert…',
+  close_conversation_title: 'Konversatioun zoumaachen',
+  close_conversation_description:
+    'Wëllt Dir dës Konversatioun wierklech zoumaachen?',
+  close_conversation_cancel: 'Nee',
+  close_conversation_confirm: 'Jo',
+  dialog_close: 'Zoumaachen',
+  zoom_in: 'Erazoomen',
+  zoom_out: 'Erauszoomen',
+  reset_zoom: 'Zoom zrécksetzen',
+  support_chat_aria_label: 'Support-Chat',
 };

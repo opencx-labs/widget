@@ -18,7 +18,7 @@ describe('client activity limits', () => {
         { streaming: true, toolActivity: org, reasoning: true },
         { toolActivity: client },
       ),
-    ).toEqual({ toolActivity: expected, reasoning: true });
+    ).toEqual({ streaming: true, toolActivity: expected, reasoning: true });
   });
 
   it('inherits the org and allows reasoning to be hidden independently', () => {
@@ -28,10 +28,12 @@ describe('client activity limits', () => {
       reasoning: true,
     } as const;
     expect(resolveClientPresentation(org, undefined)).toEqual({
+      streaming: false,
       toolActivity: 'details',
       reasoning: true,
     });
     expect(resolveClientPresentation(org, { reasoning: false })).toEqual({
+      streaming: false,
       toolActivity: 'details',
       reasoning: false,
     });
@@ -41,6 +43,7 @@ describe('client activity limits', () => {
         { reasoning: true },
       ),
     ).toEqual({
+      streaming: false,
       toolActivity: 'details',
       reasoning: false,
     });

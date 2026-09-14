@@ -91,4 +91,14 @@ export const DanishLanguage: TranslationInterface = {
   questions_send: 'Send',
   questions_type_answer: 'Jeg skriver det selv',
   questions_answer_placeholder: 'Skriv dit svar…',
+  close_conversation_title: 'Luk samtale',
+  close_conversation_description:
+    'Er du sikker på, at du vil lukke denne samtale?',
+  close_conversation_cancel: 'Nej',
+  close_conversation_confirm: 'Ja',
+  dialog_close: 'Luk',
+  zoom_in: 'Zoom ind',
+  zoom_out: 'Zoom ud',
+  reset_zoom: 'Nulstil zoom',
+  support_chat_aria_label: 'Supportchat',
 };

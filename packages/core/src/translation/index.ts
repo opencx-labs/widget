@@ -243,5 +243,17 @@ export type TranslationInterface = {
   questions_type_answer: string;
   /** Placeholder of that free-text answer box. */
   questions_answer_placeholder: string;
+  /** Fallbacks for the close-session confirmation; a header button's own copy wins. */
+  close_conversation_title: string;
+  close_conversation_description: string;
+  close_conversation_cancel: string;
+  close_conversation_confirm: string;
+  /** Screen-reader label of the modal's corner dismiss button. */
+  dialog_close: string;
+  zoom_in: string;
+  zoom_out: string;
+  reset_zoom: string;
+  /** Names the chat panel for screen readers on the host page. */
+  support_chat_aria_label: string;
 };
 export type TranslationKeyU = keyof TranslationInterface;

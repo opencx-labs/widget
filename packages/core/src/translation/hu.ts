@@ -91,4 +91,13 @@ export const HungarianLanguage: TranslationInterface = {
   questions_send: 'Küldés',
   questions_type_answer: 'Inkább leírom',
   questions_answer_placeholder: 'Írja le a válaszát…',
+  close_conversation_title: 'Beszélgetés lezárása',
+  close_conversation_description: 'Biztosan lezárja ezt a beszélgetést?',
+  close_conversation_cancel: 'Nem',
+  close_conversation_confirm: 'Igen',
+  dialog_close: 'Bezárás',
+  zoom_in: 'Nagyítás',
+  zoom_out: 'Kicsinyítés',
+  reset_zoom: 'Nagyítás visszaállítása',
+  support_chat_aria_label: 'Ügyfélszolgálati chat',
 };

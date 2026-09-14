@@ -102,4 +102,13 @@ export const ArabicLanguage: TranslationInterface = {
   questions_send: 'إرسال',
   questions_type_answer: 'سأكتبها بنفسي',
   questions_answer_placeholder: 'اكتب إجابتك…',
+  close_conversation_title: 'إغلاق المحادثة',
+  close_conversation_description: 'هل أنت متأكد أنك تريد إغلاق هذه المحادثة؟',
+  close_conversation_cancel: 'لا',
+  close_conversation_confirm: 'نعم',
+  dialog_close: 'إغلاق',
+  zoom_in: 'تكبير',
+  zoom_out: 'تصغير',
+  reset_zoom: 'إعادة تعيين التكبير',
+  support_chat_aria_label: 'دردشة الدعم',
 };

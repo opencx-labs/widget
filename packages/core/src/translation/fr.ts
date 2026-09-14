@@ -94,4 +94,14 @@ export const FrenchLanguage: TranslationInterface = {
   questions_send: 'Envoyer',
   questions_type_answer: 'Je préfère écrire',
   questions_answer_placeholder: 'Écrivez votre réponse…',
+  close_conversation_title: 'Fermer la conversation',
+  close_conversation_description:
+    'Voulez-vous vraiment fermer cette conversation ?',
+  close_conversation_cancel: 'Non',
+  close_conversation_confirm: 'Oui',
+  dialog_close: 'Fermer',
+  zoom_in: 'Zoom avant',
+  zoom_out: 'Zoom arrière',
+  reset_zoom: 'Réinitialiser le zoom',
+  support_chat_aria_label: 'Chat de support',
 };

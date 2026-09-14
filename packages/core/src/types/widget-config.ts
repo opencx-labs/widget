@@ -381,6 +381,8 @@ export interface WidgetConfig {
   streaming?: boolean;
   /** Visibility may only be reduced from the organization's defaults. */
   presentation?: {
+    /** False shows each complete message while retaining live plans and tools. */
+    streaming?: boolean;
     toolActivity?: 'hidden' | 'status' | 'details';
     reasoning?: boolean;
   };

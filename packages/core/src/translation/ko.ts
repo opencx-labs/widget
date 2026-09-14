@@ -90,4 +90,13 @@ export const KoreanLanguage: TranslationInterface = {
   questions_send: '보내기',
   questions_type_answer: '직접 입력할게요',
   questions_answer_placeholder: '답변을 입력하세요…',
+  close_conversation_title: '대화 종료',
+  close_conversation_description: '이 대화를 종료하시겠습니까?',
+  close_conversation_cancel: '아니요',
+  close_conversation_confirm: '예',
+  dialog_close: '닫기',
+  zoom_in: '확대',
+  zoom_out: '축소',
+  reset_zoom: '확대/축소 초기화',
+  support_chat_aria_label: '고객 지원 채팅',
 };

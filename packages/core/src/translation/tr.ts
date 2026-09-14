@@ -91,4 +91,14 @@ export const TurkishLanguage: TranslationInterface = {
   questions_send: 'Gönder',
   questions_type_answer: 'Kendim yazayım',
   questions_answer_placeholder: 'Yanıtınızı yazın…',
+  close_conversation_title: 'Görüşmeyi kapat',
+  close_conversation_description:
+    'Bu görüşmeyi kapatmak istediğinizden emin misiniz?',
+  close_conversation_cancel: 'Hayır',
+  close_conversation_confirm: 'Evet',
+  dialog_close: 'Kapat',
+  zoom_in: 'Yakınlaştır',
+  zoom_out: 'Uzaklaştır',
+  reset_zoom: 'Yakınlaştırmayı sıfırla',
+  support_chat_aria_label: 'Destek sohbeti',
 };

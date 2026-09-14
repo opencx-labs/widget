@@ -204,7 +204,11 @@ export function ConnectionAttemptProvider({
       if (signal.aborted) return;
       const url = new URL(result.authorization_url);
       if (
-        !['https:', 'http:'].includes(url.protocol) ||
+        !(
+          url.protocol === 'https:' ||
+          (url.protocol === 'http:' &&
+            ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname))
+        ) ||
         url.username ||
         url.password
       ) {
@@ -295,7 +299,7 @@ export function ConnectionAttemptProvider({
       }
       if (authorization.completion === 'external') {
         // Returning only triggers a tool retry. It never proves downstream access.
-        if (popup.current?.closed || returned) {
+        if (phase === 'waiting' && (popup.current?.closed || returned)) {
           setPhase('external');
           return;
         }

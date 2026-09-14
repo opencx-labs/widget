@@ -38,14 +38,23 @@ const connectionOutputSchema = z.object({
 });
 const SPEC_DATA_PART_TYPE = 'data-spec';
 const toolActivitySchema = z.object({ label: z.string(), done: z.boolean() });
+const planSchema = z.object({
+  plan: z.array(
+    z.object({
+      step: z.string(),
+      status: z.enum(['pending', 'in_progress', 'completed']),
+    }),
+  ),
+});
 
 export type SpecDataPart = { type: typeof SPEC_DATA_PART_TYPE; data: unknown };
 
 /** One chronological render entry in an agent turn. */
 export type StreamingTurnItem =
-  | { kind: 'text'; text: string }
+  | { kind: 'text'; text: string; streaming?: boolean }
   | { kind: 'steps'; steps: StreamingStep[] }
   | { kind: 'spec'; parts: SpecDataPart[] }
+  | { kind: 'plan'; plan: z.infer<typeof planSchema>['plan'] }
   /**
    * A clarification the agent asked. Never rendered in the transcript: the
    * NEWEST one still pending takes the composer's place instead
@@ -96,6 +105,7 @@ export function mapUiPartsToItems(
   // All `data-spec` parts patch one accumulating spec, anchored where the
   // first patch appeared rather than creating a new render position per patch.
   let specItem: { kind: 'spec'; parts: SpecDataPart[] } | null = null;
+  let planItem: Extract<StreamingTurnItem, { kind: 'plan' }> | undefined;
   for (const part of parts) {
     // The idle heartbeat is `transient` — the SDK never adds it to a message
     // — but a persisted `ui_parts` snapshot replayed on reload can carry one;
@@ -126,7 +136,16 @@ export function mapUiPartsToItems(
       if (questions) items.push(questions);
       continue;
     }
-    if (part.type === 'data-tool-activity') {
+    if (part.type === 'data-plan') {
+      const parsed = planSchema.safeParse(part.data);
+      if (parsed.success) {
+        if (planItem) planItem.plan = parsed.data.plan;
+        else {
+          planItem = { kind: 'plan', plan: parsed.data.plan };
+          items.push(planItem);
+        }
+      }
+    } else if (part.type === 'data-tool-activity') {
       const parsed = toolActivitySchema.safeParse(part.data);
       if (parsed.success)
         pushStep({
@@ -142,7 +161,12 @@ export function mapUiPartsToItems(
       specItem.parts.push({ type: SPEC_DATA_PART_TYPE, data: part.data });
     } else if (part.type === 'text') {
       const text = typeof part.text === 'string' ? part.text : '';
-      if (text.trim().length > 0) items.push({ kind: 'text', text });
+      if (text.trim().length > 0)
+        items.push({
+          kind: 'text',
+          text,
+          ...(part.state === 'streaming' ? { streaming: true } : {}),
+        });
     } else if (part.type === 'reasoning') {
       pushStep({
         kind: 'reasoning',

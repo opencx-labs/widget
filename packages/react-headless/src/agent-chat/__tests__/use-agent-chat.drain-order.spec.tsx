@@ -1,4 +1,5 @@
 import type {
+  AgentTurnMessagesDto,
   SendMessageInput,
   StagedUserTurn,
   WidgetCtx,
@@ -105,7 +106,9 @@ const fakeMessageCtx = {
   unregisterAgentHandlers: vi.fn(),
 };
 
-const getAgentTurnMessagesSpy = vi.fn(async () => null);
+const getAgentTurnMessagesSpy = vi.fn<
+  (sessionId: string) => Promise<AgentTurnMessagesDto | null>
+>(async () => null);
 const stopStreamSpy = vi.fn(async () => {});
 const fakeApi = {
   getStreamTransportOptions: () => ({
@@ -140,13 +143,20 @@ function registeredSend(): (input: SendMessageInput) => Promise<void> | void {
 }
 
 import { useAgentChat } from '../useAgentChat';
+import { sessionPlan } from '../session-plan';
 
 let hookValue: ReturnType<typeof useAgentChat> | null = null;
 
-function Probe() {
+type PlanCommit = {
+  sessionId: string | null;
+  plan: ReturnType<typeof sessionPlan>;
+};
+
+function Probe({ onCommit }: { onCommit?: (snapshot: PlanCommit) => void }) {
   const [rows, setRows] = React.useState<WidgetMessageU[]>([]);
   setTranscript = setRows;
-  hookValue = useAgentChat({
+  const renderedSessionId = currentSessionId;
+  const value = useAgentChat({
     widgetCtx: fakeWidgetCtx,
     config: {
       token: 't',
@@ -154,6 +164,12 @@ function Probe() {
     },
     sessionId: currentSessionId,
     persistedMessages: rows,
+  });
+  hookValue = value;
+  // Observe every committed frame, before the hook's passive reset effect.
+  // Checking only the settled act() result misses the cross-session flash.
+  React.useLayoutEffect(() => {
+    onCommit?.({ sessionId: renderedSessionId, plan: sessionPlan(value) });
   });
   return null;
 }
@@ -164,6 +180,7 @@ describe('useAgentChat drain ordering', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    getAgentTurnMessagesSpy.mockImplementation(async () => null);
     currentSessionId = 'sess-1';
     blockAgentMultiSend = false;
     callOrder.length = 0;
@@ -518,6 +535,108 @@ describe('useAgentChat drain ordering', () => {
 
     expect(getAgentTurnMessagesSpy).toHaveBeenCalledTimes(2);
   });
+
+  it.each(['live', 'retained', 'historical'] as const)(
+    'never commits a previous session plan during a switch or reset (%s)',
+    async (source) => {
+      const commits: PlanCommit[] = [];
+      const onCommit = (snapshot: PlanCommit) => commits.push(snapshot);
+      const planPart = {
+        type: 'data-plan',
+        data: {
+          plan: [{ step: 'Private task in session A', status: 'pending' }],
+        },
+      };
+      if (source === 'historical') {
+        getAgentTurnMessagesSpy.mockResolvedValueOnce({
+          handled_connection_request_ids: [],
+          turns: [
+            {
+              turn_id: 'old-turn',
+              message_uuids: ['old-reply'],
+              ui_parts: [planPart],
+            },
+          ],
+        });
+      }
+      await act(async () => root.render(<Probe onCommit={onCommit} />));
+      if (source !== 'historical') {
+        await act(async () => registeredSend()({ content: 'old task' }));
+        const messages = [
+          {
+            role: 'assistant',
+            parts: [
+              planPart,
+              {
+                type: 'data-turn-settled',
+                data: { turn_id: 'old-turn', message_uuids: ['old-reply'] },
+              },
+            ],
+          },
+        ];
+        await act(async () => setChatState({ status: 'streaming', messages }));
+        if (source === 'retained') {
+          await act(async () => setChatState({ status: 'ready', messages }));
+          await act(async () => {
+            setTranscript([
+              {
+                id: 'old-reply',
+                type: 'AI',
+                component: 'bot_message',
+                data: { message: 'Ready' },
+                timestamp: null,
+              },
+            ]);
+            resolveReconcile();
+          });
+          expect(hookValue?.liveItems).toEqual([]);
+          expect(hookValue?.turnSources).toHaveLength(1);
+        }
+      }
+      expect(commits.at(-1)?.plan?.[0]?.step).toBe('Private task in session A');
+
+      commits.length = 0;
+      await act(async () => {
+        currentSessionId = 'sess-2';
+        // Keep the old SDK snapshot for this render, as throttled subscriptions can.
+        root.render(<Probe onCommit={onCommit} />);
+      });
+      expect(commits.length).toBeGreaterThan(0);
+      expect(
+        commits.every(
+          (snapshot) =>
+            snapshot.sessionId === 'sess-2' && snapshot.plan === undefined,
+        ),
+      ).toBe(true);
+
+      const newPlanPart = {
+        type: 'data-plan',
+        data: { plan: [{ step: 'Task in session B', status: 'pending' }] },
+      };
+      await act(async () => setChatState({ status: 'ready', messages: [] }));
+      await act(async () => registeredSend()({ content: 'new task' }));
+      await act(async () =>
+        setChatState({
+          status: 'streaming',
+          messages: [{ role: 'assistant', parts: [newPlanPart] }],
+        }),
+      );
+      expect(commits.at(-1)?.plan?.[0]?.step).toBe('Task in session B');
+
+      commits.length = 0;
+      await act(async () => {
+        currentSessionId = null;
+        root.render(<Probe onCommit={onCommit} />);
+      });
+      expect(commits.length).toBeGreaterThan(0);
+      expect(
+        commits.every(
+          (snapshot) =>
+            snapshot.sessionId === null && snapshot.plan === undefined,
+        ),
+      ).toBe(true);
+    },
+  );
 
   it('a direct session switch cannot retain an idle status or queued send', async () => {
     await act(async () => {

@@ -91,4 +91,14 @@ export const BengaliLanguage: TranslationInterface = {
   questions_send: 'পাঠান',
   questions_type_answer: 'আমি লিখে দিচ্ছি',
   questions_answer_placeholder: 'আপনার উত্তর লিখুন…',
+  close_conversation_title: 'কথোপকথন বন্ধ করুন',
+  close_conversation_description:
+    'আপনি কি নিশ্চিত যে আপনি এই কথোপকথনটি বন্ধ করতে চান?',
+  close_conversation_cancel: 'না',
+  close_conversation_confirm: 'হ্যাঁ',
+  dialog_close: 'বন্ধ করুন',
+  zoom_in: 'বড় করুন',
+  zoom_out: 'ছোট করুন',
+  reset_zoom: 'জুম রিসেট করুন',
+  support_chat_aria_label: 'সাপোর্ট চ্যাট',
 };

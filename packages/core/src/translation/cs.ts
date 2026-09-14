@@ -91,4 +91,13 @@ export const CzechLanguage: TranslationInterface = {
   questions_send: 'Odeslat',
   questions_type_answer: 'Napíšu to sám',
   questions_answer_placeholder: 'Napište svou odpověď…',
+  close_conversation_title: 'Uzavřít konverzaci',
+  close_conversation_description: 'Opravdu chcete tuto konverzaci uzavřít?',
+  close_conversation_cancel: 'Ne',
+  close_conversation_confirm: 'Ano',
+  dialog_close: 'Zavřít',
+  zoom_in: 'Přiblížit',
+  zoom_out: 'Oddálit',
+  reset_zoom: 'Obnovit přiblížení',
+  support_chat_aria_label: 'Chat podpory',
 };

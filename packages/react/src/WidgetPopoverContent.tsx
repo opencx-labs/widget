@@ -15,6 +15,7 @@ import {
 } from './components/FrameDocument';
 import { MORPH_SPRING } from './motion';
 import { useTheme } from './hooks/useTheme';
+import { useTranslation } from './hooks/useTranslation';
 import { RootScreen } from './screens';
 
 const initialContent = buildFrameHtml();
@@ -101,6 +102,7 @@ export function WidgetContent() {
 export function WidgetPopoverContent() {
   const { theme, triggerSide } = useTheme();
   const { dir: hostDocumentDir } = useDocumentDir();
+  const { t } = useTranslation();
 
   // Radix/floating-ui resolves `align` logically against the floating element's
   // computed direction (inherited from the host page via the portal): on an RTL
@@ -123,7 +125,7 @@ export function WidgetPopoverContent() {
       side="top"
       align={align}
       aria-modal="false"
-      aria-label="Support chat"
+      aria-label={t('support_chat_aria_label')}
       sideOffset={theme.widgetContentContainer.offset.side}
       alignOffset={theme.widgetContentContainer.offset.align}
       avoidCollisions={false}

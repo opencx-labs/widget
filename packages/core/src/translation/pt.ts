@@ -92,4 +92,14 @@ export const PortugueseLanguage: TranslationInterface = {
   questions_send: 'Enviar',
   questions_type_answer: 'Prefiro escrever',
   questions_answer_placeholder: 'Escreva a sua resposta…',
+  close_conversation_title: 'Encerrar conversa',
+  close_conversation_description:
+    'Tem certeza de que deseja encerrar esta conversa?',
+  close_conversation_cancel: 'Não',
+  close_conversation_confirm: 'Sim',
+  dialog_close: 'Fechar',
+  zoom_in: 'Ampliar',
+  zoom_out: 'Reduzir',
+  reset_zoom: 'Redefinir zoom',
+  support_chat_aria_label: 'Chat de suporte',
 };

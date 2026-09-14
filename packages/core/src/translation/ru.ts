@@ -91,4 +91,14 @@ export const RussianLanguage: TranslationInterface = {
   questions_send: 'Отправить',
   questions_type_answer: 'Напишу сам',
   questions_answer_placeholder: 'Напишите ваш ответ…',
+  close_conversation_title: 'Закрыть разговор',
+  close_conversation_description:
+    'Вы уверены, что хотите закрыть этот разговор?',
+  close_conversation_cancel: 'Нет',
+  close_conversation_confirm: 'Да',
+  dialog_close: 'Закрыть',
+  zoom_in: 'Увеличить',
+  zoom_out: 'Уменьшить',
+  reset_zoom: 'Сбросить масштаб',
+  support_chat_aria_label: 'Чат поддержки',
 };

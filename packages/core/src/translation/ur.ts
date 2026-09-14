@@ -91,4 +91,13 @@ export const UrduLanguage: TranslationInterface = {
   questions_send: 'بھیجیں',
   questions_type_answer: 'میں خود لکھوں گا',
   questions_answer_placeholder: 'اپنا جواب لکھیں…',
+  close_conversation_title: 'گفتگو بند کریں',
+  close_conversation_description: 'کیا آپ واقعی یہ گفتگو بند کرنا چاہتے ہیں؟',
+  close_conversation_cancel: 'نہیں',
+  close_conversation_confirm: 'ہاں',
+  dialog_close: 'بند کریں',
+  zoom_in: 'زوم اِن',
+  zoom_out: 'زوم آؤٹ',
+  reset_zoom: 'زوم دوبارہ ترتیب دیں',
+  support_chat_aria_label: 'سپورٹ چیٹ',
 };

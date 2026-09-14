@@ -1,5 +1,25 @@
 # @opencx/widget
 
+## 5.0.0-beta.6
+
+### Patch Changes
+
+- 17a89a3: Show one tracked checklist per session above the message box, updating it in place across replies. Preserve plans when reply streaming is off, and show typing dots between complete assistant messages. Keep text streaming, tool activity, and reasoning visibility independently configurable.
+
+  Switching or starting a session immediately hides the previous session's plan and streamed reply while the selected session loads.
+
+  Plans use a compact progress ring and expandable checklist, with smooth updates and reduced-motion support.
+
+- 6c97027: Translate the last labels that still rendered in English regardless of the
+  configured language: the close-conversation confirmation, the dialog's dismiss
+  label, the image zoom controls, and the chat panel's accessibility label.
+
+## 5.0.0-beta.5
+
+### Patch Changes
+
+- Fix widget startup in production applications.
+
 ## 5.0.0-beta.4
 
 ### Patch Changes

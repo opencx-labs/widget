@@ -89,4 +89,13 @@ export const JapaneseLanguage: TranslationInterface = {
   questions_send: '送信',
   questions_type_answer: '自分で入力する',
   questions_answer_placeholder: '回答を入力してください…',
+  close_conversation_title: '会話を終了',
+  close_conversation_description: 'この会話を終了してもよろしいですか？',
+  close_conversation_cancel: 'いいえ',
+  close_conversation_confirm: 'はい',
+  dialog_close: '閉じる',
+  zoom_in: '拡大',
+  zoom_out: '縮小',
+  reset_zoom: 'ズームをリセット',
+  support_chat_aria_label: 'サポートチャット',
 };

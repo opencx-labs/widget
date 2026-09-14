@@ -91,4 +91,14 @@ export const CroatianLanguage: TranslationInterface = {
   questions_send: 'Pošalji',
   questions_type_answer: 'Napisat ću sam',
   questions_answer_placeholder: 'Napišite svoj odgovor…',
+  close_conversation_title: 'Zatvori razgovor',
+  close_conversation_description:
+    'Jeste li sigurni da želite zatvoriti ovaj razgovor?',
+  close_conversation_cancel: 'Ne',
+  close_conversation_confirm: 'Da',
+  dialog_close: 'Zatvori',
+  zoom_in: 'Približi',
+  zoom_out: 'Udalji',
+  reset_zoom: 'Poništi zumiranje',
+  support_chat_aria_label: 'Chat za podršku',
 };
