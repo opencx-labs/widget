@@ -107,3 +107,10 @@ export {
 } from './translation';
 
 export type { FileWithProgress } from './context/upload.ctx';
+
+export type {
+  ElicitationRequest,
+  ElicitationResponse,
+} from './api/elicitation';
+
+export type { ApprovalPreference } from './api/elicitation';

@@ -31,7 +31,8 @@
   "dependencies": {
     "lodash.isequal": "^4.5.0",
     "openapi-fetch": "^0.13.4",
-    "uuid": "^11.0.4"
+    "uuid": "^11.0.4",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@opencx/eslint-config": "workspace:*",

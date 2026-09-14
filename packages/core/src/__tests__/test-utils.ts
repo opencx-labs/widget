@@ -112,6 +112,14 @@ export const TestUtils = {
             headers: {},
           });
       },
+      listApprovalPreferences(target, _returnValue) {
+        target.prototype.listApprovalPreferences = vi.fn(async () => []);
+      },
+      revokeApprovalPreference(target, _returnValue) {
+        target.prototype.revokeApprovalPreference = vi.fn(
+          async () => undefined,
+        );
+      },
       stopStream(target, _returnValue) {
         target.prototype.stopStream = vi
           .fn(target.prototype.stopStream)
@@ -241,6 +249,14 @@ export const TestUtils = {
             turns: [],
             ...(returnValue ?? {}),
           });
+      },
+      listElicitations(target) {
+        target.prototype.listElicitations = vi.fn().mockResolvedValue([]);
+      },
+      answerElicitation(target) {
+        target.prototype.answerElicitation = vi
+          .fn()
+          .mockResolvedValue(undefined);
       },
       listConnections(target) {
         target.prototype.listConnections = vi.fn().mockResolvedValue([]);

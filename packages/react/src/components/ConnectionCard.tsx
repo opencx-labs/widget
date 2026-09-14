@@ -2,7 +2,6 @@ import {
   useConnection,
   type ConnectionRequest,
 } from '@opencx/widget-react-headless';
-import { X } from 'lucide-react';
 import React from 'react';
 import { Button } from './lib/button';
 import { BrailleSpinner } from './lib/BrailleSpinner';
@@ -53,13 +52,20 @@ export function ConnectionCard({ request }: { request: ConnectionRequest }) {
       className="min-w-0 rounded-2xl border border-foreground/10 bg-background p-2 text-foreground"
     >
       <div className="flex min-w-0 items-center gap-2">
-        <McpIcon />
-        <p
-          className="min-w-0 flex-1 truncate text-sm font-medium"
-          title={authorization?.host ?? request.name}
-        >
-          {request.name}
-        </p>
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary p-2">
+          <McpIcon />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p
+            className="truncate text-sm font-medium"
+            title={authorization?.host ?? request.name}
+          >
+            {request.name}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Connect your account to continue.
+          </p>
+        </div>
         <p role="status" aria-live="polite" className="sr-only">
           {request.name}: {status}
         </p>
@@ -68,7 +74,7 @@ export function ConnectionCard({ request }: { request: ConnectionRequest }) {
             asChild
             wobble={false}
             size="sm"
-            className="h-8 px-3 text-sm [@media(pointer:coarse)]:h-12"
+            className="h-7 shrink-0 px-2.5 text-xs order-2"
           >
             <a
               href={authorization.url}
@@ -85,7 +91,7 @@ export function ConnectionCard({ request }: { request: ConnectionRequest }) {
             type="button"
             wobble={false}
             size="sm"
-            className="h-8 px-3 text-sm [@media(pointer:coarse)]:h-12"
+            className="h-7 shrink-0 px-2.5 text-xs order-2"
             disabled={busy}
             aria-busy={busy}
             title={
@@ -104,13 +110,13 @@ export function ConnectionCard({ request }: { request: ConnectionRequest }) {
           wobble={false}
           variant="ghost"
           size="fit"
-          className="size-8 p-0 text-muted-foreground [@media(pointer:coarse)]:size-12"
+          className="h-7 shrink-0 px-2 text-xs order-1"
           aria-label="Not now"
           title="Not now"
           disabled={continuation !== null}
           onClick={() => void connection.cancel()}
         >
-          <X className="size-4 shrink-0" aria-hidden />
+          Not now
         </Button>
       </div>
       {error && (

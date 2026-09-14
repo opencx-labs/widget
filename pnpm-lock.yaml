@@ -81,6 +81,9 @@ importers:
       uuid:
         specifier: ^11.0.4
         version: 11.1.0
+      zod:
+        specifier: ^4.5.4
+        version: 4.5.4
     devDependencies:
       '@opencx/eslint-config':
         specifier: workspace:*

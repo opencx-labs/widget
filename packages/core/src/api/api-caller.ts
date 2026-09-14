@@ -1,3 +1,8 @@
+import {
+  approvalPreferencesSchema,
+  elicitationListSchema,
+  type ElicitationResponse,
+} from './elicitation';
 import { type Dto, type Endpoint, basicClient } from './client';
 import type { paths } from './schema';
 import type { DictationMint } from '../dictation/dictation-session';
@@ -90,6 +95,57 @@ export class ApiCaller {
         });
       },
     });
+  };
+
+  listApprovalPreferences = async () => {
+    const { baseUrl, headers } = this.getStreamAuthContext();
+    const response = await fetch(
+      `${baseUrl}/backend/widget/v5/connections/approval-preferences`,
+      { headers },
+    );
+    if (!response.ok) throw new Error('Could not load permissions.');
+    return approvalPreferencesSchema.parse(await response.json());
+  };
+
+  revokeApprovalPreference = async (serverId: string, key: string) => {
+    const { baseUrl, headers } = this.getStreamAuthContext();
+    const response = await fetch(
+      `${baseUrl}/backend/widget/v5/connections/${encodeURIComponent(serverId)}/approval-preferences/${encodeURIComponent(key)}`,
+      { method: 'DELETE', headers },
+    );
+    if (!response.ok) throw new Error('Could not reset permission.');
+  };
+
+  listElicitations = async (sessionId: string, signal?: AbortSignal) => {
+    const { baseUrl, headers } = this.getStreamAuthContext();
+    const response = await fetch(
+      `${baseUrl}/backend/widget/v5/connections/elicitation/${encodeURIComponent(sessionId)}`,
+      { headers, signal },
+    );
+    if (!response.ok) throw new Error('Could not load the request.');
+    return elicitationListSchema.parse(await response.json());
+  };
+
+  answerElicitation = async (
+    sessionId: string,
+    requestId: string,
+    answer: ElicitationResponse,
+  ) => {
+    const { baseUrl, headers } = this.getStreamAuthContext();
+    const response = await fetch(
+      `${baseUrl}/backend/widget/v5/connections/elicitation/${encodeURIComponent(sessionId)}/${encodeURIComponent(requestId)}`,
+      {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify(answer),
+      },
+    );
+    if (!response.ok)
+      throw new Error(
+        response.status === 400
+          ? 'Check your answers and try again.'
+          : 'This request has ended. Ask the agent to try again.',
+      );
   };
 
   listConnections = async (signal?: AbortSignal) => {

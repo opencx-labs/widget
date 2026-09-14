@@ -763,6 +763,341 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/backend/widget/v5/connections/approval-preferences': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Default Response */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              key: string;
+              message: string;
+              toolName: string;
+              serverId: string;
+              serverName: string;
+            }[];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorDto'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/backend/widget/v5/connections/{serverId}/approval-preferences/{key}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          serverId: string;
+          key: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Default Response */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorDto'];
+          };
+        };
+      };
+    };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/backend/widget/v5/connections/elicitation/{sessionId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          sessionId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Default Response */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              serverId: string;
+              serverName: string;
+              expiresAt: number;
+              approvalKey?: string;
+              toolName?: string;
+              form: {
+                _meta?: {
+                  progressToken?: string | number;
+                  'io.modelcontextprotocol/related-task'?: {
+                    taskId: string;
+                  };
+                } & {
+                  [key: string]: unknown;
+                };
+                task?: {
+                  ttl?: number;
+                };
+                /** @enum {string} */
+                mode?: 'form';
+                message: string;
+                requestedSchema: {
+                  /** @enum {string} */
+                  type: 'object';
+                  properties: {
+                    [key: string]:
+                      | (
+                          | {
+                              /** @enum {string} */
+                              type: 'string';
+                              title?: string;
+                              description?: string;
+                              enum: string[];
+                              enumNames?: string[];
+                              default?: string;
+                            }
+                          | (
+                              | {
+                                  /** @enum {string} */
+                                  type: 'string';
+                                  title?: string;
+                                  description?: string;
+                                  enum: string[];
+                                  default?: string;
+                                }
+                              | {
+                                  /** @enum {string} */
+                                  type: 'string';
+                                  title?: string;
+                                  description?: string;
+                                  oneOf: {
+                                    const: string;
+                                    title: string;
+                                  }[];
+                                  default?: string;
+                                }
+                            )
+                          | (
+                              | {
+                                  /** @enum {string} */
+                                  type: 'array';
+                                  title?: string;
+                                  description?: string;
+                                  minItems?: number;
+                                  maxItems?: number;
+                                  items: {
+                                    /** @enum {string} */
+                                    type: 'string';
+                                    enum: string[];
+                                  };
+                                  default?: string[];
+                                }
+                              | {
+                                  /** @enum {string} */
+                                  type: 'array';
+                                  title?: string;
+                                  description?: string;
+                                  minItems?: number;
+                                  maxItems?: number;
+                                  items: {
+                                    anyOf: {
+                                      const: string;
+                                      title: string;
+                                    }[];
+                                  };
+                                  default?: string[];
+                                }
+                            )
+                        )
+                      | {
+                          /** @enum {string} */
+                          type: 'boolean';
+                          title?: string;
+                          description?: string;
+                          default?: boolean;
+                        }
+                      | {
+                          /** @enum {string} */
+                          type: 'string';
+                          title?: string;
+                          description?: string;
+                          minLength?: number;
+                          maxLength?: number;
+                          /** @enum {string} */
+                          format?: 'email' | 'uri' | 'date' | 'date-time';
+                          default?: string;
+                        }
+                      | {
+                          /** @enum {string} */
+                          type: 'number' | 'integer';
+                          title?: string;
+                          description?: string;
+                          minimum?: number;
+                          maximum?: number;
+                          default?: number;
+                        };
+                  };
+                  required?: string[];
+                };
+              };
+            }[];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorDto'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/backend/widget/v5/connections/elicitation/{sessionId}/{requestId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          sessionId: string;
+          requestId: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            _meta?: {
+              progressToken?: string | number;
+              'io.modelcontextprotocol/related-task'?: {
+                taskId: string;
+              };
+            } & {
+              [key: string]: unknown;
+            };
+            /** @enum {string} */
+            action: 'accept' | 'decline' | 'cancel';
+            content: {
+              [key: string]: string | number | boolean | string[];
+            };
+            remember?: boolean;
+          } & {
+            [key: string]: unknown;
+          };
+        };
+      };
+      responses: {
+        /** @description Default Response */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              received: true;
+            };
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorDto'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/backend/widget/v5/connections': {
     parameters: {
       query?: never;
@@ -1043,16 +1378,17 @@ export interface components {
       url: string;
       openai_file_id?: string;
       email_inline?: boolean;
+      content_id?: string;
     };
-    FileUploadDto: {
-      /** Format: binary */
-      file: string;
-    } | null;
     WidgetPresentationOverrideDto: {
       /** @enum {string} */
       toolActivity?: 'hidden' | 'status' | 'details';
       reasoning?: boolean;
     };
+    FileUploadDto: {
+      /** Format: binary */
+      file: string;
+    } | null;
     CreateWidgetSessionDto: {
       customData?: {
         [key: string]: string | number | boolean;

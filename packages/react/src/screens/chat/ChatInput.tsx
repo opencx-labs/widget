@@ -1,3 +1,4 @@
+import { ElicitationForm } from '../../components/ElicitationForm';
 import { ConnectionCard } from '../../components/ConnectionCard';
 import { type SendMessageDto, log } from '@opencx/widget-core';
 import {
@@ -392,6 +393,13 @@ export function ChatInput({
       className="p-2 relative space-y-1"
       {...dropzone__getRootProps({ ref: composerRootRef })}
     >
+      {sessionState.session && (
+        <ElicitationForm
+          key={sessionState.session.id}
+          sessionId={sessionState.session.id}
+          active={isStreaming || isAwaitingBotReply}
+        />
+      )}
       {pendingConnection && (
         <ConnectionCard
           key={pendingConnection.request_id}
