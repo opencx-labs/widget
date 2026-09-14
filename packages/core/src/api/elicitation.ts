@@ -15,6 +15,8 @@ const field = z.object({
       anyOf: z.array(option).optional(),
     })
     .optional(),
+  minItems: z.number().int().nonnegative().optional(),
+  maxItems: z.number().int().nonnegative().optional(),
   minimum: z.number().optional(),
   maximum: z.number().optional(),
   minLength: z.number().optional(),

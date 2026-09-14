@@ -262,10 +262,11 @@ export class WidgetCtx {
     this.disposed = true;
     this.routerCtx.dispose();
     this.activeSessionPollingCtx.dispose();
-    this.sessionCtx.dispose({ clearActiveSession });
+    const cleanup = this.sessionCtx.dispose({ clearActiveSession });
     this.messageCtx.reset();
     this.uploadCtx.reset();
     this.dictationCtx.stop();
+    return cleanup;
   };
 
   resetChat = () => {

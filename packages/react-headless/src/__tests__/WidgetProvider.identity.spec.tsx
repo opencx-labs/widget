@@ -1,7 +1,11 @@
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { PrimitiveState, WidgetCtx } from '@opencx/widget-core';
+import {
+  PrimitiveState,
+  WidgetCtx,
+  type ExternalStorage,
+} from '@opencx/widget-core';
 import { useWidget, WidgetProvider } from '../WidgetProvider';
 
 const features = {
@@ -92,10 +96,11 @@ describe('WidgetProvider verified identity lifecycle', () => {
     vi.restoreAllMocks();
   });
 
-  const render = async (userToken: string) => {
+  const render = async (userToken: string, storage?: ExternalStorage) => {
     await act(async () => {
       root.render(
         <WidgetProvider
+          storage={storage}
           options={{
             token: 'widget-token',
             apiUrl: 'https://widget.example',
@@ -131,6 +136,37 @@ describe('WidgetProvider verified identity lifecycle', () => {
     await vi.waitFor(() => expect(currentWidgetCtx).not.toBe(firstContext));
     expect(disposed).toHaveBeenCalledOnce();
     expect(configRequests).toBe(2);
+  });
+
+  it('waits for old storage cleanup before initializing another account', async () => {
+    const values = new Map<string, string>();
+    const storage: ExternalStorage = {
+      get: async (key) => values.get(key) ?? null,
+      set: async (key, value) => {
+        values.set(key, value);
+      },
+      remove: async (key) => {
+        values.delete(key);
+      },
+    };
+    await render(token({ accountId: 'account-a', expiresAt: 1 }), storage);
+    const first = currentWidgetCtx;
+    if (!first?.storageCtx) throw new Error('Missing storage');
+    let release: () => void = () => {};
+    const delayed = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(first.storageCtx, 'clearActiveSessionId').mockReturnValueOnce(
+      delayed,
+    );
+    await render(token({ accountId: 'account-b', expiresAt: 2 }), storage);
+    expect(configRequests).toBe(1);
+    await act(async () => {
+      release();
+      await delayed;
+    });
+    await vi.waitFor(() => expect(configRequests).toBe(2));
+    await vi.waitFor(() => expect(currentWidgetCtx).not.toBe(first));
   });
 
   it('disposes an obsolete runtime that resolves after an identity flip', async () => {

@@ -108,11 +108,30 @@ export function RequestForm({
         for (const [name, field] of Object.entries(fields)) {
           const value = data.get(name);
           if (field.type === 'boolean') content[name] = value === 'on';
-          else if (field.type === 'array')
-            content[name] = data
+          else if (field.type === 'array') {
+            const selected = data
               .getAll(name)
               .filter((item): item is string => typeof item === 'string');
-          else if (typeof value === 'string' && value !== '')
+            if (
+              field.minItems !== undefined &&
+              selected.length < field.minItems
+            ) {
+              setError(
+                `${field.title ?? name}: select at least ${field.minItems} options.`,
+              );
+              return;
+            }
+            if (
+              field.maxItems !== undefined &&
+              selected.length > field.maxItems
+            ) {
+              setError(
+                `${field.title ?? name}: select no more than ${field.maxItems} options.`,
+              );
+              return;
+            }
+            content[name] = selected;
+          } else if (typeof value === 'string' && value !== '')
             content[name] =
               field.type === 'number' || field.type === 'integer'
                 ? Number(value)

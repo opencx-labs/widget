@@ -127,3 +127,49 @@ it('remembers approval only after explicitly selecting Always allow', async () =
     remember: true,
   });
 });
+
+it('explains array bounds and submits only an allowed selection', async () => {
+  const answer = vi.fn().mockResolvedValue(undefined);
+  const bounded: ElicitationRequest = {
+    ...request,
+    form: {
+      message: 'Choose reports',
+      requestedSchema: {
+        properties: {
+          reports: {
+            type: 'array',
+            title: 'Reports',
+            minItems: 1,
+            maxItems: 2,
+            items: { enum: ['a', 'b', 'c'] },
+          },
+        },
+      },
+    },
+  };
+  act(() => root.render(<RequestForm request={bounded} onAnswer={answer} />));
+  const submit = () =>
+    act(async () => {
+      container
+        .querySelector('form')
+        ?.dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true }),
+        );
+    });
+  await submit();
+  expect(answer).not.toHaveBeenCalled();
+  expect(container.textContent).toContain('select at least 1');
+  for (const option of Array.from(container.querySelectorAll('option')))
+    option.selected = true;
+  await submit();
+  expect(answer).not.toHaveBeenCalled();
+  expect(container.textContent).toContain('select no more than 2');
+  const last = container.querySelector('option[value="c"]');
+  if (!(last instanceof HTMLOptionElement)) throw new Error('Missing option');
+  last.selected = false;
+  await submit();
+  expect(answer).toHaveBeenCalledWith({
+    action: 'accept',
+    content: { reports: ['a', 'b'] },
+  });
+});

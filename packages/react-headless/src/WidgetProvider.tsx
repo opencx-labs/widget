@@ -56,6 +56,7 @@ export function WidgetProvider({
    */
   errorComponent?: (error: Error) => React.ReactNode;
 }): React.ReactElement | null {
+  const cleanupRef = useRef<Promise<void>>(Promise.resolve());
   const configRef = useRef(config);
   configRef.current = config;
   const identity = widgetUserIdentity(config);
@@ -84,19 +85,26 @@ export function WidgetProvider({
 
   useEffect(() => {
     if (activeWidgetRef.current?.identity !== identity) {
-      activeWidgetRef.current?.widgetCtx.dispose({ clearActiveSession: true });
+      const cleanup = activeWidgetRef.current?.widgetCtx.dispose({
+        clearActiveSession: true,
+      });
+      cleanupRef.current = Promise.all([cleanupRef.current, cleanup]).then(
+        () => undefined,
+      );
       activeWidgetRef.current = null;
     }
     if (initializationRef.current?.identity !== identity) {
       setInitialization({ status: 'loading' });
       initializationRef.current = {
         identity,
-        request: WidgetCtx.initialize({
-          config,
-          storage,
-          getClientCapabilities: () => configRef.current.capabilities,
-          getRequestConfig: () => configRef.current,
-        }),
+        request: cleanupRef.current.then(() =>
+          WidgetCtx.initialize({
+            config,
+            storage,
+            getClientCapabilities: () => configRef.current.capabilities,
+            getRequestConfig: () => configRef.current,
+          }),
+        ),
       };
     }
     const request = initializationRef.current.request;

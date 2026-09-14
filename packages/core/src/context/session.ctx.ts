@@ -204,7 +204,7 @@ export class SessionCtx {
     this.sessionState.reset();
     if (clearActiveSession && this.storageCtx) {
       this.persistedSessionId = null;
-      void this.storageCtx.clearActiveSessionId().catch((error: unknown) => {
+      return this.storageCtx.clearActiveSessionId().catch((error: unknown) => {
         log.warn('failed to clear the replaced session', {
           error: error instanceof Error ? error.message : String(error),
         });

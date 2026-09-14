@@ -103,6 +103,7 @@ function LiveConnections() {
             apiUrl: location.origin,
             user: { token: session.userToken, externalId: session.externalId },
             isOpen: true,
+            router: { chatScreenOnly: true },
             displayMode: 'companion',
             companion: { defaultLayout: 'sidebar' },
             initialMessages: [
