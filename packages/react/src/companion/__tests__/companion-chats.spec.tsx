@@ -80,7 +80,7 @@ vi.mock('../../hooks/useTheme', () => ({
     theme: { widgetContentContainer: { zIndex: 1000 } },
   }),
 }));
-import { ChatPicker } from '../ChatPicker';
+import { ChatPicker, ChatPickerTrigger } from '../ChatPicker';
 import { SessionCircles } from '../SessionCircles';
 import { ConversationTitle } from '../ConversationTitle';
 import { RestingPill } from '../RestingPill';
@@ -227,6 +227,25 @@ describe('compact chat picker', () => {
       document.body.dispatchEvent(new Event('pointerdown', { bubbles: true })),
     );
     expect(close).toHaveBeenCalledTimes(2);
+  });
+  it('closes on the second trigger click without a focus dismissal reopening it', () => {
+    function Harness() {
+      const picker = useChatPicker();
+      return <ChatPickerTrigger picker={picker}>Sessions</ChatPickerTrigger>;
+    }
+    act(() => root.render(<Harness />));
+    const trigger = host.querySelector('button');
+    if (!trigger) throw new Error('Missing trigger');
+    act(() => trigger.click());
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    const pointerDown = new Event('pointerdown', {
+      bubbles: true,
+      cancelable: true,
+    });
+    act(() => trigger.dispatchEvent(pointerDown));
+    expect(pointerDown.defaultPrevented).toBe(true);
+    act(() => trigger.click());
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
   });
   it('previews on hover without stealing focus and stays open while entering the menu', () => {
     vi.useFakeTimers();
