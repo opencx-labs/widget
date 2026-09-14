@@ -11,7 +11,9 @@
   },
   "changesets": [
     "companion-conversations",
+    "native-plans-message-delivery",
     "selectable-question-capabilities",
+    "translate-remaining-hardcoded-labels",
     "widget-delivery-controls",
     "widget-follow-up-order",
     "widget-production-build",
