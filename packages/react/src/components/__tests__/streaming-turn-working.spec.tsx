@@ -14,7 +14,10 @@ vi.mock('@opencx/widget-react-headless', async (importOriginal) => ({
     widgetCtx: { agent: {} },
     config,
     componentStore: {
-      getComponent: () => () => <div data-steps />,
+      getComponent: (name: string) =>
+        name === 'loading'
+          ? () => <div data-typing />
+          : () => <div data-steps />,
     },
   }),
 }));
@@ -96,5 +99,44 @@ describe('StreamingTurn working indicator', () => {
   it('is gone once the turn ends', () => {
     render({ active: false, items: [{ kind: 'text', text: 'Done.' }] });
     expect(working()).toBeNull();
+  });
+
+  it('shows a typing bubble after complete preambles, including while tools are running, when text streaming is off', () => {
+    config.presentation = { streaming: false };
+    const items: StreamingTurnState['items'] = [
+      { kind: 'text', text: 'I will check.' },
+      {
+        kind: 'steps',
+        steps: [{ kind: 'tool', label: 'Lookup', done: false }],
+      },
+    ];
+    render({ active: true, items });
+    expect(container.querySelector('[data-typing]')).not.toBeNull();
+    expect(working()).toBeNull();
+    render({ active: false, items });
+    expect(container.querySelector('[data-typing]')).toBeNull();
+  });
+
+  it('leaves plan rendering to the session while retaining typing with streaming and tools off', () => {
+    config.presentation = {
+      streaming: false,
+      toolActivity: 'hidden',
+      reasoning: false,
+    };
+    const items: StreamingTurnState['items'] = [
+      {
+        kind: 'plan',
+        plan: [
+          { step: 'Check the revenue', status: 'in_progress' },
+          { step: 'Compare payment methods', status: 'pending' },
+        ],
+      },
+    ];
+    render({ active: true, items });
+    expect(container.querySelector('[data-task-plan]')).toBeNull();
+    expect(container.querySelector('[data-typing]')).not.toBeNull();
+    render({ active: false, items });
+    expect(container.querySelector('[data-task-plan]')).toBeNull();
+    expect(container.querySelector('[data-typing]')).toBeNull();
   });
 });

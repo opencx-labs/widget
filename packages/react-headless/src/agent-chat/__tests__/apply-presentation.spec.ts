@@ -21,6 +21,29 @@ const items: StreamingTurnItem[] = [
 ];
 
 describe('activity presentation', () => {
+  it('holds partial text until message completion without hiding native plans', () => {
+    const plan: StreamingTurnItem = {
+      kind: 'plan',
+      plan: [{ step: 'Check export', status: 'pending' }],
+    };
+    const partial: StreamingTurnItem = {
+      kind: 'text',
+      text: 'Partial',
+      streaming: true,
+    };
+    expect(applyPresentation([plan, partial], { streaming: false })).toEqual([
+      plan,
+    ]);
+    expect(applyPresentation([plan, partial], { streaming: true })).toEqual([
+      plan,
+      partial,
+    ]);
+    expect(
+      applyPresentation([plan, { kind: 'text', text: 'Complete' }], {
+        streaming: false,
+      }),
+    ).toEqual([plan, { kind: 'text', text: 'Complete' }]);
+  });
   it('keeps tool status without input, output, or reasoning and preserves content', () => {
     expect(
       applyPresentation(items, { toolActivity: 'status', reasoning: false }),

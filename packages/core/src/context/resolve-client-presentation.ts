@@ -8,6 +8,7 @@ export function resolveClientPresentation(
 ): WidgetConfig['presentation'] {
   if (!org) return client;
   return {
+    streaming: org.streaming && client?.streaming !== false,
     toolActivity:
       org.toolActivity === 'hidden' || client?.toolActivity === 'hidden'
         ? 'hidden'
