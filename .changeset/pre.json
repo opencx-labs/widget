@@ -12,6 +12,7 @@
   "changesets": [
     "companion-conversations",
     "native-plans-message-delivery",
+    "personal-account-connections",
     "selectable-question-capabilities",
     "translate-remaining-hardcoded-labels",
     "widget-delivery-controls",
