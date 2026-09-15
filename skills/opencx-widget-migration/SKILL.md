@@ -16,17 +16,17 @@ where the migration requires a change. This skill does not require another skill
 npm view @opencx/widget-react dist-tags --json --prefer-online
 ```
 
-Verified on 2026-09-06: v5 is `5.0.0-beta.0` under `beta`; `latest` remains
+Verified on 2026-09-15: v5 is `5.0.0-beta.7` under `beta`; `latest` remains
 `4.0.62`. Re-check before selecting a target. Explain when the selected target is
-a prerelease. For a repeatable beta.0 migration:
+a prerelease. For a repeatable beta.7 migration:
 
 ```bash
-npm install @opencx/widget-react@5.0.0-beta.0
+npm install @opencx/widget-react@5.0.0-beta.7
 ```
 
 Use the customer's package manager. For headless integrations, install
-`@opencx/widget-react-headless@5.0.0-beta.0` and
-`@opencx/widget-core@5.0.0-beta.0`. Match any other directly installed OpenCX widget
+`@opencx/widget-react-headless@5.0.0-beta.7` and
+`@opencx/widget-core@5.0.0-beta.7`. Match any other directly installed OpenCX widget
 packages to that exact version. React 18 and 19 are supported.
 
 For script embeds, use:
@@ -34,7 +34,7 @@ For script embeds, use:
 ```html
 <script
   defer
-  src="https://unpkg.com/@opencx/widget@5.0.0-beta.0/dist-embed/script.js"
+  src="https://unpkg.com/@opencx/widget@5.0.0-beta.7/dist-embed/script.js"
 ></script>
 <script>
   window.addEventListener('DOMContentLoaded', () => {
@@ -105,7 +105,7 @@ page-context feature; remove any experimental `enablePageMarks` option.
 
 The host's `context` still rides with every send, including when
 `features.pageContext` is false. Use a function reading current state for SPAs.
-For React beta.0, keep changing values in a ref/store read by that function rather
+For React, keep changing values in a ref/store read by that function rather
 than assuming a replaced `options.context` updates the classic sending engine.
 URL changes refresh the entity pill; for changes without navigation, dispatch
 `window.dispatchEvent(new Event('opencx:context-changed'))`. A context callback
@@ -120,6 +120,43 @@ For custom headless streaming UIs, inspect `useAgentChatUi()` for `liveItems`,
 `turnFailed`, `retryFailedTurn`, and `pendingClarification`. The stock React widget
 already renders these. A message sent during streaming may steer the live turn;
 other sends queue. Do not promise that every second message becomes a queue pill.
+
+## Add personal access only when needed
+
+Installing v5 does not require personal connections or approval forms. Existing
+shared integrations can keep their setup. For customers adopting per-user tools,
+follow the [authentication guide](https://docs.open.cx/widget/authentication) and
+verify the backend supports the flow before enabling it.
+
+- Pass the authenticated backend's widget user token as `user.token`. Unsigned
+  user data does not grant access. Keep organization keys and provider credentials
+  on the server.
+- Renew new user tokens before their one-hour expiry and after tab suspension.
+  Updating a token for the same signed owner preserves the session; changing the
+  signed user or account replaces the context. Include `mcp_access.account_id`
+  for account-switching products. Check custom storage does not restore another
+  owner's session.
+- Omitting `mcp_access.server_ids` allows all enabled per-user servers in the
+  organization, including future additions. Set a backend-derived list when
+  restriction is needed; `[]` allows none. Renew older user tokens to receive the
+  current access claims. `capabilities.connections: false` only hides controls.
+- Personal connections persist across sessions. New-session actions must clear
+  pending prompts while preserving the same owner's saved grants. Test Connect,
+  blocked popups, cancellation, return/resume, and account switching.
+- The stock UI handles form elicitation. Custom headless UIs must add the form
+  list/response flow using published core declarations, including field validation,
+  selection limits, decline/cancel, and expiry; rendering live text alone is not
+  sufficient. There is no public `useElicitation` hook in beta.7.
+- Simple approvals may be remembered for the exact account/server/tool/inputs/form.
+  Test **Always allow**, a changed request that still asks, and **Connections →
+  Saved approvals → Remove approval**. Disconnect removes the personal grant and
+  its saved approvals. Shared administrator grants are not shown as personal ones.
+
+Form elicitation is separate from OAuth and general action approval policy. Forms
+must not collect credentials. Requests currently expire after 50 seconds; verify
+that late responses do not execute the requested action. Customer-backend access
+token reuse is optional and requires separate server-side setup; no token export
+belongs in a browser callback or widget configuration.
 
 ## Verify and report
 
