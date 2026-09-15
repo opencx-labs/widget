@@ -1,3 +1,5 @@
+import { ElicitationForm } from '../../components/ElicitationForm';
+import { ConnectionCard } from '../../components/ConnectionCard';
 import { type SendMessageDto, log } from '@opencx/widget-core';
 import {
   useAgentChatUi,
@@ -105,8 +107,13 @@ export function ChatInput({
   const { attachments: canAttach, pageContext: pageMarksEnabled } =
     widgetCtx.features;
   // Agent-chat streaming state — no-op defaults for bot-chat embeds.
-  const { isStreaming, stop, queuedUserMessages, pendingClarification } =
-    useAgentChatUi();
+  const {
+    isStreaming,
+    stop,
+    queuedUserMessages,
+    pendingClarification,
+    pendingConnection,
+  } = useAgentChatUi();
   const { sessionState } = useSessions();
   const { t } = useTranslation();
   const {
@@ -372,7 +379,7 @@ export function ChatInput({
   const QuestionsComponent = componentStore.getComponent(
     'agent_chat_questions',
   );
-  if (pendingClarification && QuestionsComponent) {
+  if (!pendingConnection && pendingClarification && QuestionsComponent) {
     return (
       <div {...dc('chat/input_box/root')} className="p-2 relative space-y-1">
         <QuestionsComponent request={pendingClarification} />
@@ -386,6 +393,19 @@ export function ChatInput({
       className="p-2 relative space-y-1"
       {...dropzone__getRootProps({ ref: composerRootRef })}
     >
+      {sessionState.session && (
+        <ElicitationForm
+          key={sessionState.session.id}
+          sessionId={sessionState.session.id}
+          active={isStreaming || isAwaitingBotReply}
+        />
+      )}
+      {pendingConnection && (
+        <ConnectionCard
+          key={pendingConnection.request_id}
+          request={pendingConnection}
+        />
+      )}
       <input {...dropzone__getInputProps()} />
       {mentions.isOpen && (
         <MentionPicker

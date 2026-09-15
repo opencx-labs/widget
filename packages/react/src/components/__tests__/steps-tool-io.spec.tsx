@@ -88,6 +88,19 @@ describe('StepsGroup tool IO', () => {
     expect(container.textContent).toContain('"hits": 3');
   });
 
+  it('hides the generated MCP namespace from the customer-facing tool name', () => {
+    render([
+      {
+        kind: 'tool',
+        label: 'mcp_a5de1b5e497caeaf__account',
+        done: true,
+      },
+    ]);
+    expect(container.textContent).toContain('Account');
+    expect(container.textContent).not.toContain('a5de1b5e497caeaf');
+    expect(container.textContent).not.toContain('Mcp');
+  });
+
   it('uses the dashboard full-details setting without a legacy embed option', () => {
     showStepToolIO = undefined;
     orgActivity = 'details';

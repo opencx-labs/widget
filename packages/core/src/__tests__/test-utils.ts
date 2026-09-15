@@ -112,6 +112,14 @@ export const TestUtils = {
             headers: {},
           });
       },
+      listApprovalPreferences(target, _returnValue) {
+        target.prototype.listApprovalPreferences = vi.fn(async () => []);
+      },
+      revokeApprovalPreference(target, _returnValue) {
+        target.prototype.revokeApprovalPreference = vi.fn(
+          async () => undefined,
+        );
+      },
       stopStream(target, _returnValue) {
         target.prototype.stopStream = vi
           .fn(target.prototype.stopStream)
@@ -237,9 +245,38 @@ export const TestUtils = {
         target.prototype.getAgentTurnMessages = vi
           .fn(target.prototype.getAgentTurnMessages)
           .mockResolvedValue({
+            handled_connection_request_ids: [],
             turns: [],
             ...(returnValue ?? {}),
           });
+      },
+      listElicitations(target) {
+        target.prototype.listElicitations = vi.fn().mockResolvedValue([]);
+      },
+      answerElicitation(target) {
+        target.prototype.answerElicitation = vi
+          .fn()
+          .mockResolvedValue(undefined);
+      },
+      listConnections(target) {
+        target.prototype.listConnections = vi.fn().mockResolvedValue([]);
+      },
+      startConnection(target) {
+        target.prototype.startConnection = vi.fn().mockResolvedValue({
+          authorization_url: 'https://example.com/connect',
+          completion: 'oauth',
+          attempt_id: genUuid(),
+        });
+      },
+      getConnectionAttempt(target) {
+        target.prototype.getConnectionAttempt = vi
+          .fn()
+          .mockResolvedValue('pending');
+      },
+      disconnectConnection(target) {
+        target.prototype.disconnectConnection = vi
+          .fn()
+          .mockResolvedValue(undefined);
       },
       createDictationSession(target, returnValue) {
         target.prototype.createDictationSession = vi

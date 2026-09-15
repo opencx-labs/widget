@@ -10,6 +10,7 @@ export function useCanHover(): boolean {
   const [canHover] = useState(
     () =>
       typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
       window.matchMedia('(hover: hover) and (pointer: fine)').matches,
   );
   return canHover;

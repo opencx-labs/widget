@@ -154,6 +154,7 @@ function ui(partial: Partial<AgentChatUiValue>): AgentChatUiValue {
     stop: () => {},
     pageEffects: [],
     pendingClarification: null,
+    pendingConnection: null,
     ...partial,
   };
 }

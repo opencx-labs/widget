@@ -3,13 +3,22 @@ import type {
   WidgetCtx,
   WidgetUserMessage,
 } from '@opencx/widget-core';
-import React, { createContext, useContext, useMemo } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { usePrimitiveState } from '../hooks/usePrimitiveState';
-import type { StreamingTurnItem } from './agent-chat-stream';
+import type { ConnectionRequest, StreamingTurnItem } from './agent-chat-stream';
 import type { TurnRenderSource } from './agent-turn-sources';
 import type { AskQuestionsRequest } from './ask-questions';
 import { pendingClarification as resolvePendingClarification } from './pending-clarification';
 import { useAgentChat, type AgentChatPageEffect } from './useAgentChat';
+import { ConnectionAttemptProvider } from './useConnection';
 
 /**
  * Streaming state for the agent-chat surface, produced by the single
@@ -50,6 +59,7 @@ export type AgentChatUiValue = {
    * questionnaire in its place — or null.
    */
   pendingClarification: AskQuestionsRequest | null;
+  pendingConnection: ConnectionRequest | null;
 };
 
 export const DEFAULT_AGENT_CHAT_UI: AgentChatUiValue = {
@@ -64,6 +74,7 @@ export const DEFAULT_AGENT_CHAT_UI: AgentChatUiValue = {
   stop: () => {},
   pageEffects: [],
   pendingClarification: null,
+  pendingConnection: null,
 };
 
 export const AgentChatContext = createContext<AgentChatUiValue | null>(null);
@@ -99,6 +110,8 @@ function ActiveAgentChatProvider({
     removeQueued,
     stop,
     pageEffects,
+    handledConnectionRequestIds,
+    sourceSessionId,
   } = useAgentChat({
     widgetCtx,
     config,
@@ -106,6 +119,72 @@ function ActiveAgentChatProvider({
     persistedMessages: messagesState.messages,
   });
   const lastMessageIsFromUser = messagesState.messages.at(-1)?.type === 'USER';
+  const handledConnectionsRef = useRef(new Set<string>());
+  const handledSessionIdRef = useRef(sessionState.session?.id ?? null);
+  const currentSessionId = sessionState.session?.id ?? null;
+  if (handledSessionIdRef.current !== currentSessionId) {
+    handledSessionIdRef.current = currentSessionId;
+    handledConnectionsRef.current.clear();
+  }
+  handledConnectionRequestIds.forEach((requestId) =>
+    handledConnectionsRef.current.add(requestId),
+  );
+  const connectionCandidate = [
+    ...turnSources.flatMap((source) => source.items),
+    ...liveItems,
+  ].findLast(
+    (item): item is Extract<StreamingTurnItem, { kind: 'connection' }> =>
+      item.kind === 'connection' &&
+      !handledConnectionsRef.current.has(item.request.request_id),
+  )?.request;
+  const [connectionState, setConnectionState] = useState<{
+    sessionId: string | null;
+    request: ConnectionRequest | null;
+  }>({ sessionId: currentSessionId, request: null });
+  const connectionsEnabled = config.capabilities?.connections !== false;
+  const pendingConnection =
+    connectionsEnabled &&
+    currentSessionId !== null &&
+    connectionState.sessionId === currentSessionId
+      ? connectionState.request
+      : null;
+
+  useEffect(() => {
+    if (
+      !connectionsEnabled ||
+      currentSessionId === null ||
+      sourceSessionId !== currentSessionId
+    )
+      return;
+    setConnectionState((current) => {
+      const request =
+        current.sessionId === currentSessionId &&
+        current.request &&
+        !handledConnectionsRef.current.has(current.request.request_id)
+          ? current.request
+          : (connectionCandidate ?? null);
+      return current.sessionId === currentSessionId &&
+        current.request === request
+        ? current
+        : { sessionId: currentSessionId, request };
+    });
+  }, [
+    currentSessionId,
+    sourceSessionId,
+    connectionCandidate,
+    handledConnectionRequestIds,
+    connectionsEnabled,
+    pendingConnection,
+  ]);
+
+  const handleConnection = useCallback((requestId: string) => {
+    handledConnectionsRef.current.add(requestId);
+    setConnectionState((current) =>
+      current.request?.request_id === requestId
+        ? { ...current, request: null }
+        : current,
+    );
+  }, []);
   // Memoized so consumers (message list, composer) don't re-render on every
   // provider render — only when the streaming state actually changes.
   const value: AgentChatUiValue = useMemo(
@@ -120,6 +199,7 @@ function ActiveAgentChatProvider({
       removeQueued,
       stop,
       pageEffects,
+      pendingConnection,
       pendingClarification: resolvePendingClarification({
         turnSources,
         liveItems,
@@ -139,12 +219,22 @@ function ActiveAgentChatProvider({
       stop,
       pageEffects,
       lastMessageIsFromUser,
+      pendingConnection,
     ],
   );
-  return (
+  const content = (
     <AgentChatContext.Provider value={value}>
       {children}
     </AgentChatContext.Provider>
+  );
+  return (
+    <ConnectionAttemptProvider
+      request={pendingConnection}
+      widgetCtx={widgetCtx}
+      onHandled={handleConnection}
+    >
+      {content}
+    </ConnectionAttemptProvider>
   );
 }
 

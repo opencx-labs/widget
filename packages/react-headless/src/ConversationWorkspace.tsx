@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useEffect, useMemo } from 'react';
+import React, {
+  createContext,
+  memo,
+  useContext,
+  useEffect,
+  useMemo,
+} from 'react';
 import {
   PrimitiveState,
   type WidgetConfig,
@@ -11,6 +17,11 @@ import {
   useAgentChatUi,
   type AgentChatUiValue,
 } from './agent-chat/AgentChatContext';
+import {
+  ConnectionControllerProvider,
+  useConnectionController,
+  type ConnectionState,
+} from './agent-chat/useConnection';
 import { usePrimitiveState } from './hooks/usePrimitiveState';
 
 export type CompanionChat = {
@@ -21,6 +32,7 @@ export type CompanionChat = {
   hasSession: boolean;
   hasDraft: boolean;
   ui: AgentChatUiValue;
+  connection: ConnectionState | null;
   /** A closed tab may finish its current turn before its runtime is released. */
   closed?: boolean;
 };
@@ -44,6 +56,7 @@ export class ConversationWorkspace {
       hasSession: false,
       hasDraft: false,
       ui: DEFAULT_AGENT_CHAT_UI,
+      connection: null,
     };
   }
   /** Attach only after commit: Strict Mode may discard render-time workspaces. */
@@ -204,7 +217,7 @@ export class ConversationWorkspace {
     update: Partial<
       Pick<
         CompanionChat,
-        'title' | 'working' | 'hasSession' | 'hasDraft' | 'ui'
+        'title' | 'working' | 'hasSession' | 'hasDraft' | 'ui' | 'connection'
       >
     >,
   ) => {
@@ -216,6 +229,16 @@ export class ConversationWorkspace {
         chats: this.state.get().chats.filter((chat) => chat.id !== id),
       });
       this.releaseChat(updated);
+      return;
+    }
+    if (
+      updated.title === current.title &&
+      updated.working === current.working &&
+      updated.hasSession === current.hasSession &&
+      updated.hasDraft === current.hasDraft &&
+      updated.ui === current.ui &&
+      updated.connection === current.connection
+    ) {
       return;
     }
     this.state.setPartial({
@@ -256,17 +279,20 @@ export function useCompanionChats() {
 }
 
 function ObserveChat({
-  chat,
+  chatId,
+  ctx,
   workspace,
 }: {
-  chat: CompanionChat;
+  chatId: number;
+  ctx: WidgetCtx;
   workspace: ConversationWorkspace;
 }) {
   const ui = useAgentChatUi();
-  const messages = usePrimitiveState(chat.ctx.messageCtx.state);
-  const session = usePrimitiveState(chat.ctx.sessionCtx.sessionState);
-  const draft = usePrimitiveState(chat.ctx.messageCtx.draftState);
-  const files = usePrimitiveState(chat.ctx.uploadCtx.state);
+  const connection = useConnectionController();
+  const messages = usePrimitiveState(ctx.messageCtx.state);
+  const session = usePrimitiveState(ctx.sessionCtx.sessionState);
+  const draft = usePrimitiveState(ctx.messageCtx.draftState);
+  const files = usePrimitiveState(ctx.uploadCtx.state);
   const firstUser = messages.messages.find(
     (message) => message.type === 'USER',
   );
@@ -279,11 +305,36 @@ function ObserveChat({
     !!draft.text || draft.mentions.length > 0 || files.length > 0;
   useEffect(
     () =>
-      workspace.update(chat.id, { title, working, hasSession, hasDraft, ui }),
-    [workspace, chat.id, title, working, hasSession, hasDraft, ui],
+      workspace.update(chatId, {
+        title,
+        working,
+        hasSession,
+        hasDraft,
+        ui,
+        connection,
+      }),
+    [workspace, chatId, title, working, hasSession, hasDraft, ui, connection],
   );
   return null;
 }
+
+const CompanionChatEngine = memo(function CompanionChatEngine({
+  chatId,
+  ctx,
+  config,
+  workspace,
+}: {
+  chatId: number;
+  ctx: WidgetCtx;
+  config: WidgetConfig;
+  workspace: ConversationWorkspace;
+}) {
+  return (
+    <AgentChatProvider widgetCtx={ctx} config={config}>
+      <ObserveChat chatId={chatId} ctx={ctx} workspace={workspace} />
+    </AgentChatProvider>
+  );
+});
 
 export function CompanionConversationProvider({
   widgetCtx,
@@ -304,18 +355,24 @@ export function CompanionConversationProvider({
   const engines = useMemo(
     () =>
       chats.map((chat) => (
-        <AgentChatProvider key={chat.id} widgetCtx={chat.ctx} config={config}>
-          <ObserveChat chat={chat} workspace={workspace} />
-        </AgentChatProvider>
+        <CompanionChatEngine
+          key={chat.id}
+          chatId={chat.id}
+          ctx={chat.ctx}
+          config={config}
+          workspace={workspace}
+        />
       )),
     [chats, config, workspace],
   );
   return (
     <WorkspaceContext.Provider value={workspace}>
       {engines}
-      <AgentChatContext.Provider value={active.ui}>
-        {children(active.ctx)}
-      </AgentChatContext.Provider>
+      <ConnectionControllerProvider connection={active.connection}>
+        <AgentChatContext.Provider value={active.ui}>
+          {children(active.ctx)}
+        </AgentChatContext.Provider>
+      </ConnectionControllerProvider>
     </WorkspaceContext.Provider>
   );
 }

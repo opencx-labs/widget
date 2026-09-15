@@ -5,6 +5,8 @@ import React, {
   useState,
 } from 'react';
 import { memo } from 'react';
+import { useReducedMotion } from 'framer-motion';
+import { useCanHover } from '../../hooks/useCanHover';
 import { cn } from './utils/cn';
 
 /**
@@ -20,9 +22,9 @@ export const WOBBLE_MAX_MOVEMENT_PIXELS = {
 const INVERSE_SCALE = true;
 
 type ChildProps = {
-  onMouseMove?: (event: React.MouseEvent<HTMLElement>) => void;
-  onMouseEnter?: () => void;
-  onMouseLeave?: () => void;
+  onMouseMove?: React.MouseEventHandler<HTMLElement>;
+  onMouseEnter?: React.MouseEventHandler<HTMLElement>;
+  onMouseLeave?: React.MouseEventHandler<HTMLElement>;
   style?: React.CSSProperties;
   className?: string;
   ref: React.ForwardedRef<HTMLElement>;
@@ -40,8 +42,12 @@ const Wobble = memo(
     ({ children, className, scale = 1.02, off = false }, ref) => {
       const [isHovering, setIsHovering] = useState(false);
       const [movement, setMovement] = useState({ x: 0, y: 0 });
+      const canHover = useCanHover();
+      const shouldReduceMotion = useReducedMotion();
 
-      if (off) return children;
+      if (off || !canHover || shouldReduceMotion) {
+        return cloneElement(children, { ref: ref ?? children.props.ref });
+      }
 
       const hasTranslateClass = /translate/.test(
         children.props.className || '',
@@ -77,14 +83,14 @@ const Wobble = memo(
         children.props.onMouseMove?.(event);
       };
 
-      const handleMouseEnter = () => {
+      const handleMouseEnter = (event: React.MouseEvent<HTMLElement>) => {
         setIsHovering(true);
-        children.props.onMouseEnter?.();
+        children.props.onMouseEnter?.(event);
       };
-      const handleMouseLeave = () => {
+      const handleMouseLeave = (event: React.MouseEvent<HTMLElement>) => {
         setIsHovering(false);
         setMovement({ x: 0, y: 0 });
-        children.props.onMouseLeave?.();
+        children.props.onMouseLeave?.(event);
       };
 
       const childStyles = {
@@ -110,7 +116,7 @@ const Wobble = memo(
           'hover:scale-[var(--scale)] active:hover:scale-[calc(var(--scale)-0.02)]',
           className,
           children.props.className,
-          'transition-all ease-out',
+          'transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]',
         ),
       });
     },

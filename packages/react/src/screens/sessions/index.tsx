@@ -10,7 +10,7 @@ import { ChevronRightIcon, UserRoundIcon } from 'lucide-react';
 import React from 'react';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
-import { Header } from '../../components/Header';
+import { ConnectionsSettings } from '../../components/ConnectionsSettings';
 import {
   Avatar,
   AvatarFallback,
@@ -242,8 +242,9 @@ export function SessionsScreen() {
       }}
     >
       <div className="size-full flex flex-col">
-        <Header />
-        <SessionsList />
+        <ConnectionsSettings>
+          <SessionsList />
+        </ConnectionsSettings>
         <PoweredByOpen />
       </div>
     </div>

@@ -1,4 +1,10 @@
+import {
+  approvalPreferencesSchema,
+  elicitationListSchema,
+  type ElicitationResponse,
+} from './elicitation';
 import { type Dto, type Endpoint, basicClient } from './client';
+import type { paths } from './schema';
 import type { DictationMint } from '../dictation/dictation-session';
 import type { WidgetConfig } from '../types/widget-config';
 import type {
@@ -8,6 +14,27 @@ import type {
   VoteInputDto,
 } from '../types/dtos';
 import { log } from '../utils/log';
+
+type ConnectionStartResult = NonNullable<
+  paths['/backend/widget/v5/connections/{serverId}/start']['post']
+>['responses'][201]['content']['application/json'];
+type ConnectionAttemptStatus = NonNullable<
+  paths['/backend/widget/v5/connections/{serverId}/attempts/{attemptId}']['get']
+>['responses'][200]['content']['application/json']['status'];
+
+export class ConnectionRequestExpiredError extends Error {
+  constructor() {
+    super('This connection request expired. Preparing a new request.');
+    this.name = 'ConnectionRequestExpiredError';
+  }
+}
+
+export class ConnectionAttemptUnavailableError extends Error {
+  constructor() {
+    super('This connection attempt is no longer available.');
+    this.name = 'ConnectionAttemptUnavailableError';
+  }
+}
 
 /**
  * The two stream endpoints the AI SDK transport hits directly (it needs raw
@@ -68,6 +95,117 @@ export class ApiCaller {
         });
       },
     });
+  };
+
+  listApprovalPreferences = async () => {
+    const { baseUrl, headers } = this.getStreamAuthContext();
+    const response = await fetch(
+      `${baseUrl}/backend/widget/v5/connections/approval-preferences`,
+      { headers },
+    );
+    if (!response.ok) throw new Error('Could not load permissions.');
+    return approvalPreferencesSchema.parse(await response.json());
+  };
+
+  revokeApprovalPreference = async (serverId: string, key: string) => {
+    const { baseUrl, headers } = this.getStreamAuthContext();
+    const response = await fetch(
+      `${baseUrl}/backend/widget/v5/connections/${encodeURIComponent(serverId)}/approval-preferences/${encodeURIComponent(key)}`,
+      { method: 'DELETE', headers },
+    );
+    if (!response.ok) throw new Error('Could not reset permission.');
+  };
+
+  listElicitations = async (sessionId: string, signal?: AbortSignal) => {
+    const { baseUrl, headers } = this.getStreamAuthContext();
+    const response = await fetch(
+      `${baseUrl}/backend/widget/v5/connections/elicitation/${encodeURIComponent(sessionId)}`,
+      { headers, signal },
+    );
+    if (!response.ok) throw new Error('Could not load the request.');
+    return elicitationListSchema.parse(await response.json());
+  };
+
+  answerElicitation = async (
+    sessionId: string,
+    requestId: string,
+    answer: ElicitationResponse,
+  ) => {
+    const { baseUrl, headers } = this.getStreamAuthContext();
+    const response = await fetch(
+      `${baseUrl}/backend/widget/v5/connections/elicitation/${encodeURIComponent(sessionId)}/${encodeURIComponent(requestId)}`,
+      {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify(answer),
+      },
+    );
+    if (!response.ok)
+      throw new Error(
+        response.status === 400
+          ? 'Check your answers and try again.'
+          : 'This request has ended. Ask the agent to try again.',
+      );
+  };
+
+  listConnections = async (signal?: AbortSignal) => {
+    const { data, error } = await this.client.GET(
+      '/backend/widget/v5/connections',
+      { signal },
+    );
+    if (error || !data)
+      throw new Error('Could not load connections. Sign in and try again.');
+    return data;
+  };
+
+  startConnection = async (
+    serverId: string,
+    requestId: string,
+    signal?: AbortSignal,
+  ): Promise<ConnectionStartResult> => {
+    const { data, error, response } = await this.client.POST(
+      '/backend/widget/v5/connections/{serverId}/start',
+      {
+        params: { path: { serverId } },
+        body: { request_id: requestId },
+        signal,
+      },
+    );
+    if (response.status === 410) throw new ConnectionRequestExpiredError();
+    if (response.status === 404)
+      throw new Error('This connection request is no longer available.');
+    if (error || !data)
+      throw new Error('Could not start this connection. Please try again.');
+    return data;
+  };
+
+  getConnectionAttempt = async (
+    serverId: string,
+    attemptId: string,
+    signal?: AbortSignal,
+  ): Promise<ConnectionAttemptStatus> => {
+    const { data, error, response } = await this.client.GET(
+      '/backend/widget/v5/connections/{serverId}/attempts/{attemptId}',
+      {
+        params: { path: { serverId, attemptId } },
+        signal,
+      },
+    );
+    if ([401, 403, 404].includes(response.status))
+      throw new ConnectionAttemptUnavailableError();
+    if (error || !data)
+      throw new Error(`Could not check the connection (${response.status}).`);
+    return data.status;
+  };
+
+  disconnectConnection = async (serverId: string) => {
+    const { error } = await this.client.DELETE(
+      '/backend/widget/v5/connections/{serverId}',
+      {
+        params: { path: { serverId } },
+      },
+    );
+    if (error) throw new Error('Could not disconnect. Please try again.');
   };
 
   setAuthToken = (token: string) => {

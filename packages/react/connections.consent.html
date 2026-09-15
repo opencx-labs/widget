@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Review access · Demo</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 24px;
+        background: #fff;
+        color: #171717;
+        font:
+          16px -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        -webkit-font-smoothing: antialiased;
+      }
+      main {
+        width: min(100%, 320px);
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+      h1,
+      p {
+        margin: 0;
+      }
+      h1 {
+        font-size: 24px;
+        font-weight: 500;
+        letter-spacing: -0.5px;
+        text-wrap: balance;
+      }
+      p {
+        color: #737373;
+        line-height: 1.5;
+        text-wrap: pretty;
+      }
+      .label {
+        font-size: 14px;
+      }
+      .account {
+        padding: 16px 0;
+        border-block: 1px solid #17171715;
+        color: #171717;
+      }
+      .actions {
+        display: flex;
+        gap: 8px;
+      }
+      button {
+        font: inherit;
+        font-size: 14px;
+        height: 36px;
+        padding: 0 12px;
+        border-radius: 12px;
+        border: 0;
+        background: #171717;
+        color: #fafafa;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: #f0f0f0;
+        color: #171717;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      :focus-visible {
+        outline: 2px solid #171717;
+        outline-offset: 3px;
+      }
+      #state:empty {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="label">Demo authorization</p>
+      <h1 id="title">Connect your account</h1>
+      <p>
+        Allow your assistant to read the account data needed for this request.
+      </p>
+      <p class="account">Alex · Main account</p>
+      <div class="actions">
+        <button id="approve" type="button">Allow access</button
+        ><button id="cancel" type="button" class="secondary">Cancel</button>
+      </div>
+      <p id="state" role="status" aria-live="polite"></p>
+    </main>
+    <script>
+      const params = new URLSearchParams(location.search);
+      const mode = params.get('case');
+      const attemptId = params.get('attempt');
+      const connectedKey = 'connections-preview:' + mode + ':connected';
+      const attemptKey = attemptId
+        ? 'connections-preview:attempt:' + attemptId + ':status'
+        : null;
+      const approve = document.getElementById('approve');
+      const cancel = document.getElementById('cancel');
+      if (mode === 'mollie')
+        document.getElementById('title').textContent =
+          'Connect in your product';
+      approve.onclick = () => {
+        approve.disabled = true;
+        cancel.disabled = true;
+        approve.textContent = 'Connecting…';
+        setTimeout(() => {
+          localStorage.setItem(connectedKey, 'true');
+          if (attemptKey) localStorage.setItem(attemptKey, 'connected');
+          approve.textContent = 'Connected';
+          document.getElementById('state').textContent =
+            'Connected. You can return to your assistant.';
+          window.close();
+        }, 800);
+      };
+      cancel.onclick = () => {
+        if (attemptKey) localStorage.setItem(attemptKey, 'canceled');
+        document.getElementById('state').textContent =
+          'No access was granted. You can return to your assistant.';
+        approve.disabled = true;
+        cancel.disabled = true;
+        window.close();
+      };
+    </script>
+  </body>
+</html>

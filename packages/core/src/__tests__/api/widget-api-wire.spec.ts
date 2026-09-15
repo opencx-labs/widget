@@ -2,7 +2,7 @@
 // REAL ApiCaller so the assertions cover the actual wire format (query string +
 // POST body), which the mocked-ApiCaller specs cannot prove.
 import { afterEach, beforeEach, expect, suite, test, vi } from 'vitest';
-import { ApiCaller } from '../../api/api-caller';
+import { ApiCaller, ConnectionRequestExpiredError } from '../../api/api-caller';
 
 function jsonResponse(body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -12,7 +12,12 @@ function jsonResponse(body: unknown): Response {
 }
 
 suite('widget API — wire format (real ApiCaller, stubbed fetch)', () => {
-  let requests: Array<{ url: string; method: string; body: string | null }>;
+  let requests: Array<{
+    url: string;
+    method: string;
+    body: string | null;
+    authorization: string | null;
+  }>;
   /** The next response the stubbed fetch returns (then back to `{}`). */
   let nextResponse: Response | null;
 
@@ -28,6 +33,7 @@ suite('widget API — wire format (real ApiCaller, stubbed fetch)', () => {
           url: request.url,
           method: request.method,
           body: request.method === 'POST' ? await request.text() : null,
+          authorization: request.headers.get('authorization'),
         });
         const response = nextResponse ?? jsonResponse({});
         nextResponse = null;
@@ -81,9 +87,11 @@ suite('widget API — wire format (real ApiCaller, stubbed fetch)', () => {
   test('v5 turn messages GET returns the wire payload, null on failure', async () => {
     const api = new ApiCaller({ config: { token: 'tok' } });
     nextResponse = jsonResponse({
+      handled_connection_request_ids: [],
       turns: [{ turn_id: 't1', ui_parts: null, message_uuids: ['m1'] }],
     });
     await expect(api.getAgentTurnMessages('s1')).resolves.toEqual({
+      handled_connection_request_ids: [],
       turns: [{ turn_id: 't1', ui_parts: null, message_uuids: ['m1'] }],
     });
     expect(requests.at(-1)?.url).toContain(
@@ -110,5 +118,44 @@ suite('widget API — wire format (real ApiCaller, stubbed fetch)', () => {
     await expect(api.createDictationSession({})).rejects.toThrow(
       'Failed to start dictation: 403',
     );
+  });
+
+  test('connection start and attempt status use the generated owner-bound wire contract', async () => {
+    const api = new ApiCaller({
+      config: { token: 'tok', user: { token: 'user-token' } },
+    });
+    nextResponse = jsonResponse({
+      authorization_url: 'https://accounts.example/authorize',
+      completion: 'oauth',
+      attempt_id: 'attempt-1',
+    });
+    await expect(api.startConnection('server/1', 'request-1')).resolves.toEqual(
+      {
+        authorization_url: 'https://accounts.example/authorize',
+        completion: 'oauth',
+        attempt_id: 'attempt-1',
+      },
+    );
+    expect(requests.at(-1)).toMatchObject({
+      method: 'POST',
+      authorization: 'Bearer user-token',
+      body: JSON.stringify({ request_id: 'request-1' }),
+    });
+    expect(requests.at(-1)?.url).toContain(
+      '/backend/widget/v5/connections/server%2F1/start',
+    );
+
+    nextResponse = jsonResponse({ status: 'failed' });
+    await expect(
+      api.getConnectionAttempt('server/1', 'attempt/1'),
+    ).resolves.toBe('failed');
+    expect(requests.at(-1)?.url).toContain(
+      '/backend/widget/v5/connections/server%2F1/attempts/attempt%2F1',
+    );
+
+    nextResponse = new Response(null, { status: 410 });
+    await expect(
+      api.startConnection('server-1', 'expired-request'),
+    ).rejects.toBeInstanceOf(ConnectionRequestExpiredError);
   });
 });

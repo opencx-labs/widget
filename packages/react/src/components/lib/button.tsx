@@ -11,9 +11,9 @@ const buttonVariants = cva(
     'text-sm font-medium whitespace-nowrap',
     'ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
     'disabled:pointer-events-none disabled:opacity-50',
-    'active:scale-95 hover:active:scale-95',
+    'active:scale-[0.97] motion-reduce:active:scale-100',
     'rounded-xl',
-    'transition',
+    'transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]',
   ),
   {
     variants: {
@@ -50,16 +50,25 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
+  /** Disable decorative pointer-follow movement for stable action targets. */
+  wobble?: boolean;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   (
-    { className, variant = 'default', size, asChild = false, ...props },
+    {
+      className,
+      variant = 'default',
+      size,
+      asChild = false,
+      wobble = true,
+      ...props
+    },
     ref,
   ) => {
     const Comp = asChild ? Slot : 'button';
     return (
-      <Wobble ref={ref}>
+      <Wobble ref={ref} off={!wobble}>
         <Comp
           {...dc('ui_lib/btn')}
           data-variant={variant}

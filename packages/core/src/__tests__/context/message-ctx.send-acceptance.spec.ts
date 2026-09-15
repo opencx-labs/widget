@@ -66,6 +66,46 @@ afterEach(() => {
 });
 
 describe('MessageCtx send acceptance', () => {
+  it('sends background context without staging or re-appending a user bubble', async () => {
+    const { api, messageCtx } = buildCtx({
+      streaming: false,
+      withSession: true,
+    });
+    const requestSpy = vi.spyOn(api, 'sendMessage').mockResolvedValue({
+      data: { success: true },
+      response: new Response(),
+    });
+    await messageCtx.sendMessage({
+      content: 'Connection ready',
+      background: true,
+    });
+    expect(requestSpy).toHaveBeenCalledOnce();
+    expect(requestSpy.mock.calls[0]?.[0]).toMatchObject({
+      content: 'Connection ready',
+      clientContext: { opencx__background: true },
+    });
+    const queued = messageCtx.buildQueuedUserMessage({
+      content: 'Connection ready',
+      background: true,
+    });
+    if (!queued) throw new Error('Expected a queued continuation');
+    messageCtx.appendUserMessageIfAbsent(queued.userMessage);
+    expect(
+      messageCtx.state
+        .get()
+        .messages.filter((message) => message.type === 'USER'),
+    ).toEqual([]);
+    await messageCtx.sendMessage({ content: 'My next question' });
+    expect(requestSpy).toHaveBeenCalledTimes(2);
+    expect(
+      messageCtx.state
+        .get()
+        .messages.filter((message) => message.type === 'USER')
+        .map((message) => message.content),
+    ).toEqual(['My next question']);
+    expect(requestSpy.mock.calls[1]?.[0].clientContext).toBeUndefined();
+  });
+
   it('allows polling after a silent streamed turn without releasing later unanswered sends', async () => {
     const { api, messageCtx } = buildCtx({
       streaming: false,

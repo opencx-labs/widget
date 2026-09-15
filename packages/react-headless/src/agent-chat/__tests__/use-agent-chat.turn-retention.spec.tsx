@@ -344,6 +344,7 @@ describe('useAgentChat turn retention', () => {
 
   it('reload path: historical turns with ui_parts become sources on session open', async () => {
     getAgentTurnMessages.mockImplementation(async () => ({
+      handled_connection_request_ids: [],
       turns: [
         {
           turn_id: 'T0',
@@ -410,6 +411,7 @@ describe('useAgentChat turn retention', () => {
 
     await act(async () => {
       resolveHistoricalFetch({
+        handled_connection_request_ids: [],
         turns: [
           {
             turn_id: 'T0',
@@ -435,6 +437,7 @@ it('refreshes historical payloads when presentation changes and preserves the tu
   const container = document.createElement('div');
   const root = createRoot(container);
   const payload = (details: boolean): AgentTurnMessagesDto => ({
+    handled_connection_request_ids: [],
     turns: [
       {
         turn_id: 'T0',
@@ -497,6 +500,7 @@ it('immediately hides cached details and ignores late responses from superseded 
   const container = document.createElement('div');
   const root = createRoot(container);
   const details: AgentTurnMessagesDto = {
+    handled_connection_request_ids: [],
     turns: [
       {
         turn_id: 'T0',
@@ -515,6 +519,7 @@ it('immediately hides cached details and ignores late responses from superseded 
     ],
   };
   const hidden: AgentTurnMessagesDto = {
+    handled_connection_request_ids: [],
     turns: [
       {
         turn_id: 'T0',

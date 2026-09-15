@@ -52,6 +52,10 @@ export {
   isAgentStreamKeepalive,
   isTurnSteeredPart,
 } from './api/agent-stream-parts';
+export {
+  ConnectionAttemptUnavailableError,
+  ConnectionRequestExpiredError,
+} from './api/api-caller';
 
 export { WidgetCtx, WidgetInitializationError } from './context/widget.ctx';
 export { resolveClientPresentation } from './context/resolve-client-presentation';
@@ -103,3 +107,10 @@ export {
 } from './translation';
 
 export type { FileWithProgress } from './context/upload.ctx';
+
+export type {
+  ElicitationRequest,
+  ElicitationResponse,
+} from './api/elicitation';
+
+export type { ApprovalPreference } from './api/elicitation';

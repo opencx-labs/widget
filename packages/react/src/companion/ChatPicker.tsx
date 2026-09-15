@@ -43,6 +43,11 @@ export function ChatPickerTrigger({
         aria-expanded={picker.open}
         onPointerEnter={(event) => picker.hover(event.currentTarget)}
         onPointerLeave={picker.leave}
+        onPointerDown={(event) => {
+          // Keep focus in the host menu until click toggles it. Focusing the
+          // iframe trigger first dismisses the menu and makes click reopen it.
+          if (picker.open) event.preventDefault();
+        }}
         onClick={(event) => {
           event.stopPropagation();
           picker.toggle(event.currentTarget, event.detail > 0);

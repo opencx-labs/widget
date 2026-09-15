@@ -115,6 +115,7 @@ describe('mapUiPartsToItems', () => {
 
 describe('mergeTurnSources', () => {
   const fetched: AgentTurnMessagesDto = {
+    handled_connection_request_ids: [],
     turns: [
       { turn_id: 't-1', ui_parts: PARTS, message_uuids: ['r1', 'r2'] },
       { turn_id: 't-2', ui_parts: PARTS, message_uuids: ['r3'] },
@@ -152,6 +153,7 @@ describe('mergeTurnSources', () => {
     const merged = mergeTurnSources({
       existing: [],
       fetched: {
+        handled_connection_request_ids: [],
         turns: [
           { turn_id: 't-a', ui_parts: PARTS, message_uuids: [] },
           { turn_id: 't-b', ui_parts: null, message_uuids: ['r9'] },
@@ -182,6 +184,7 @@ describe('mergeTurnSources', () => {
       existing,
       refreshItems: true,
       fetched: {
+        handled_connection_request_ids: [],
         turns: [
           {
             turn_id: 't-1',
@@ -208,6 +211,7 @@ describe('mergeTurnSources', () => {
         existing,
         refreshItems: true,
         fetched: {
+          handled_connection_request_ids: [],
           turns: [{ turn_id: 't-1', message_uuids: ['r1', 'r2'], ui_parts }],
         },
       });
@@ -229,9 +233,12 @@ describe('mergeTurnSources', () => {
         items: [{ kind: 'text', text: 'finished while fetching' }],
       },
     ];
-    expect(mergeTurnSources({ existing, fetched: { turns: [] } })).toEqual(
-      existing,
-    );
+    expect(
+      mergeTurnSources({
+        existing,
+        fetched: { handled_connection_request_ids: [], turns: [] },
+      }),
+    ).toEqual(existing);
   });
 });
 
