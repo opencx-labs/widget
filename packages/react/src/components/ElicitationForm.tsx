@@ -96,7 +96,7 @@ export function RequestForm({
   return (
     <form
       aria-label={`Request from ${request.serverName}`}
-      className={`px-2 py-2 space-y-2 text-foreground ${approval ? 'overflow-visible' : 'max-h-[50vh] overflow-y-auto'}`}
+      className={`min-w-0 rounded-2xl border border-foreground/10 bg-background p-2 space-y-2 text-foreground ${approval ? 'overflow-visible' : 'max-h-[50vh] overflow-y-auto'}`}
       onSubmit={(event) => {
         event.preventDefault();
         if (approval) {
