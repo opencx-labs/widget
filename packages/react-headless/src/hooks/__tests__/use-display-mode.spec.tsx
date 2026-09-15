@@ -45,7 +45,11 @@ function Probe() {
  */
 function fakeCtx(agent: WidgetAgent): WidgetCtx {
   const ctx: WidgetCtx = Object.create(WidgetCtx.prototype);
-  return Object.assign(ctx, { agent });
+  return Object.assign(ctx, {
+    agent,
+    api: { setAuthToken: vi.fn() },
+    dispose: vi.fn(),
+  });
 }
 
 const STREAMING: WidgetAgent = {

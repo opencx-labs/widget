@@ -12,6 +12,7 @@ export default defineConfig({
     tsconfigPaths(),
     dts({
       insertTypesEntry: true,
+      exclude: ['src/**/__tests__/**', 'src/**/*.spec.ts', 'src/**/*.spec.tsx'],
       // FrameDocument imports both the runtime package version and Vite's
       // `?inline.css` module. Include their declarations in the d.ts program.
       include: ['src', 'package.json', 'vite-env.d.ts'],

@@ -303,7 +303,10 @@ export class ApiCaller {
       log.warn('agent turn messages fetch failed', response.status);
       return null;
     }
-    return data;
+    return {
+      ...data,
+      handled_connection_request_ids: data.handled_connection_request_ids ?? [],
+    };
   };
 
   /**
