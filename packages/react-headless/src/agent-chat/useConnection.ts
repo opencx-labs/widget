@@ -44,7 +44,6 @@ export type ConnectionState = {
   opened: () => void;
   cancel: () => Promise<void>;
   retryContinuation: () => Promise<void>;
-  disconnect: () => Promise<void>;
 };
 
 const ConnectionContext = createContext<ConnectionState | null>(null);
@@ -406,8 +405,6 @@ export function ConnectionAttemptProvider({
             opened,
             cancel,
             retryContinuation,
-            disconnect: () =>
-              widgetCtx.api.disconnectConnection(request.server_id),
           }
         : null,
     [
@@ -420,7 +417,6 @@ export function ConnectionAttemptProvider({
       request,
       retryContinuation,
       start,
-      widgetCtx,
     ],
   );
 
