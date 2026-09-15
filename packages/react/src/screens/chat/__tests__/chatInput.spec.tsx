@@ -139,7 +139,8 @@ vi.mock('react-dropzone', () => ({
   }),
 }));
 
-vi.mock('framer-motion', () => ({
+vi.mock('framer-motion', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('framer-motion')>()),
   AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
 }));
 

@@ -27,7 +27,7 @@ export class Poller {
   ) => {
     if (this.stopPolling) return;
 
-    const timeouts: NodeJS.Timeout[] = [];
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
 
     const poll = async () => {
       this.abortController = new AbortController();

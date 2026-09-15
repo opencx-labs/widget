@@ -103,6 +103,15 @@ suite('widget API — wire format (real ApiCaller, stubbed fetch)', () => {
     await expect(api.getAgentTurnMessages('s1')).resolves.toBeNull();
   });
 
+  test('turn messages from older backends default handled connections to empty', async () => {
+    const api = new ApiCaller({ config: { token: 'tok' } });
+    nextResponse = jsonResponse({ turns: [] });
+    await expect(api.getAgentTurnMessages('s1')).resolves.toEqual({
+      turns: [],
+      handled_connection_request_ids: [],
+    });
+  });
+
   test('v5 dictation mint POSTs the language and throws on failure', async () => {
     const api = new ApiCaller({ config: { token: 'tok' } });
     nextResponse = jsonResponse({ token: 'ek', expiresAt: 'x', model: 'm' });
