@@ -17,8 +17,8 @@ the user's version choice. Check registry tags when selecting a new version:
 npm view @opencx/widget-react dist-tags --json --prefer-online
 ```
 
-At verification on 2026-09-06, `latest` is `4.0.62` and `beta` is
-`5.0.0-beta.0` for all four widget packages. Use the stable release for a normal
+At verification on 2026-09-15, `latest` is `4.0.62` and `beta` is
+`5.0.0-beta.7` for all four widget packages. Use the stable release for a normal
 installation; use v5 beta when the user requests beta or v5 features. Do not add
 v5-only options to a v4 installation. Re-check tags rather than assuming this
 snapshot is still current. Installing this skill does not install the widget.
@@ -137,14 +137,78 @@ the entity pill follows URL changes. When context changes without navigation,
 dispatch `window.dispatchEvent(new Event('opencx:context-changed'))` so the pill
 refreshes too. In React, keep changing values behind a ref or store that the
 context function reads: do not assume replacing `options.context` updates every
-initialized core context in beta.0. Do not reinitialize on every route change.
+initialized core context. Do not reinitialize on every route change.
+
+## Personal connections and approval forms (v5)
+
+These are optional capabilities, not prerequisites for installing v5. They need
+compatible backend support and a server enabled for per-user access in the
+customer's OpenCX dashboard. The stock widget renders the connection and approval
+UI; selecting the companion shell does not enable server access.
+
+Use the [authentication guide](https://docs.open.cx/widget/authentication) to have
+the customer's authenticated backend obtain a short-lived widget user token.
+Return only that token to the browser and pass it as `user.token`; never expose the
+organization API key or provider credentials. User data and `externalId` alone do
+not authorize personal connections.
+
+The backend authentication request can include `mcp_access`:
+
+- Omitted `mcp_access.server_ids` allows all enabled per-user servers in that
+  organization, including servers enabled later.
+- An explicit list restricts access to those enabled servers; `[]` allows none.
+- Include `mcp_access.account_id` when a user can switch accounts or workspaces.
+  Resolve both the account and allowed servers from trusted backend state.
+
+New authenticated user tokens expire after one hour. Renew them through the
+customer's backend before expiry and when returning to a suspended tab, then
+update `user.token`. Renewal for the same signed owner preserves the session;
+a different signed user/account gets a separate widget context. Personal grants
+persist across sessions for that owner; starting a new session is not disconnect.
+
+When a tool needs access, **Connect** opens authorization and the widget resumes
+after success. Check popup blocking, cancellation, failure, and return-to-widget
+behavior. `capabilities.connections: false` hides connection controls; it is not
+an authorization boundary. Enforce restrictions with backend authentication.
+
+Form elicitation lets a service request structured input during a tool call. It
+is separate from OAuth consent and action approval policies. The stock UI validates
+required fields and selection limits and offers Submit, Decline, and Cancel.
+Simple approval forms can offer **Approve once** and **Always allow**. A saved
+approval matches the same account, server, tool, inputs, and form; it is not a
+blanket approval for every tool. Requests currently expire after 50 seconds and
+cancel without approval. Do not collect credentials through forms.
+
+From the session list, **Connections** shows services the user connected personally.
+Select a service to remove an individual saved approval or disconnect it. Removing
+an approval restores prompts without disconnecting; disconnecting also removes
+saved approvals. Shared administrator connections are not user-managed here.
+
+For a custom headless UI, use published exports and installed declarations:
+`useAgentChatUi`, `ConnectionRequest`, and `useConnection` cover live turns and the
+active connection request. Do not assume a public `useElicitation` hook exists.
+Inspect the published core API declarations for elicitation list/response and
+approval preference operations; implement their waiting, validation, cancellation,
+expiry, and identity boundaries or use the stock React UI. Never import internal
+monorepo components to fill a missing public export.
+
+Backend token reuse is a separate, optional integration described in the
+[authentication guide](https://docs.open.cx/widget/authentication). It requires an
+explicit server opt-in and a server-only API key. A signed `connection.ready`
+webhook carries identifiers, not credentials; the customer's backend retrieves
+the current access token through the documented endpoint. Refresh tokens and
+client secrets are not exported. A customer-managed gateway is another path; do
+not promise arbitrary ready-credential import during user authentication.
 
 ## Verify the integration
 
 Run the host application's build/type checks. In a browser, verify opening,
 sending and receiving a message, history after reload, and the configured layout.
 For v5, exercise streaming/stop if enabled and navigate before sending to confirm
-current context. Check failed script/module requests and `[opencx]` console errors
+current context. If personal access is enabled, also verify token renewal,
+account switching, Connect return/cancel/blocked-popup behavior, a fresh session,
+and disconnect. Test form submission, invalid selections, decline/cancel, expiry,
+and removal of a saved approval. Check failed script/module requests and `[opencx]` console errors
 when initialization fails. Report which checks required a real widget token and
 which were actually completed.
 
