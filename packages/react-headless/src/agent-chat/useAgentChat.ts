@@ -106,6 +106,7 @@ export function useAgentChat({
     () =>
       buildAgentChatTransport({
         ...api.getStreamTransportOptions(),
+        fetch: api.streamFetch,
         headers: () => api.getStreamTransportOptions().headers,
         reconnectApi: (id) => {
           const url = new URL(api.getStreamTransportOptions().reconnectApi(id));
