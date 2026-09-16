@@ -7,6 +7,16 @@ export const useBalance = () =>
   useQuery({ queryKey: ['balance'], queryFn: api.balance });
 export const useSettings = () =>
   useQuery({ queryKey: ['settings'], queryFn: api.settings });
+// User tokens last an hour; refresh well before that.
+const IDENTITY_REFRESH_MS = 50 * 60_000;
+export const useWidgetIdentity = ({ enabled }: { enabled: boolean }) =>
+  useQuery({
+    queryKey: ['widget-identity'],
+    queryFn: api.widgetIdentity,
+    enabled,
+    staleTime: IDENTITY_REFRESH_MS,
+    refetchInterval: IDENTITY_REFRESH_MS,
+  });
 
 export const usePayments = (
   filters: {
