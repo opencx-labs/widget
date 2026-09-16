@@ -40,13 +40,10 @@ import { SessionCircles } from './SessionCircles';
 import { useChatPicker } from './useChatPicker';
 import { useCompanionOpenSync } from './useCompanionOpenSync';
 import {
-  CHAT_SHADOW,
-  DOCK_SHADOW,
+  companionShadows,
   FADE_TRANSITION,
   QUICK_TWEEN,
-  INPUT_SHADOW,
   MORPH_SPRING,
-  PILL_SHADOW,
 } from '../motion';
 import type { PanelState } from './types';
 import { useCompanionHostEffects } from './useCompanionHostEffects';
@@ -71,7 +68,8 @@ export function WidgetCompanion() {
   const workingChatCount = openChats.filter((chat) => chat.working).length;
   const { widgetCtx, contentIframeRef } = useWidget();
   const { companion, assets, customComponents } = useConfig();
-  const { theme, cssVars } = useTheme();
+  const { theme, cssVars, colorScheme } = useTheme();
+  const shadows = companionShadows(colorScheme);
   const { t, dir } = useTranslation();
   const { sessionState } = useSessions();
   const { messagesState } = useMessages();
@@ -619,11 +617,11 @@ export function WidgetCompanion() {
             borderBottomRightRadius: currentDims.borderRadius,
             boxShadow: isPill
               ? docked
-                ? DOCK_SHADOW
-                : PILL_SHADOW
+                ? shadows.dock
+                : shadows.pill
               : state === 'input'
-                ? INPUT_SHADOW
-                : CHAT_SHADOW,
+                ? shadows.input
+                : shadows.chat,
           }}
           // Hover: scale only — animating boxShadow repaints a large region
           // on an interaction that fires tens of times a day. The dock gets

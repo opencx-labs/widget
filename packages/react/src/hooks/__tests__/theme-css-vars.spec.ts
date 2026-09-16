@@ -55,3 +55,24 @@ describe('themeCssVars', () => {
     );
   });
 });
+
+describe('companionShadows', () => {
+  it('light keeps the original four shadows', async () => {
+    const m = await import('../../motion');
+    expect(m.companionShadows('light')).toEqual({
+      pill: m.PILL_SHADOW,
+      dock: m.DOCK_SHADOW,
+      input: m.INPUT_SHADOW,
+      chat: m.CHAT_SHADOW,
+    });
+  });
+
+  it('dark drops the bright inset highlight and keeps four interpolable slots', async () => {
+    const { companionShadows } = await import('../../motion');
+    const dark = companionShadows('dark');
+    for (const value of Object.values(dark)) {
+      expect(value.split(', ').length).toBe(4);
+      expect(value).not.toContain('rgba(255,255,255,0.5)');
+    }
+  });
+});
