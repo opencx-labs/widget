@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { useSettings } from '../lib/queries.ts';
+import { useEffect } from 'react';
+import { useSettings, useWidgetIdentity } from '../lib/queries.ts';
 import {
   BOT_NAME,
   WIDGET_SCRIPT_URL,
@@ -32,16 +32,21 @@ export function CompanionWidget({
 }: {
   variant?: 'companion' | 'support';
 }) {
+  const isCompanion = variant === 'companion';
   const { data: settings, isLoading: settingsLoading } = useSettings();
-  const started = useRef(false);
+  // The dashboard's merchant is signed in, so their personal connections
+  // (Linear, the Payla test lab) follow them. The public support page stays
+  // anonymous.
+  const identity = useWidgetIdentity({ enabled: isCompanion });
 
   useEffect(() => {
     // Mount once the settings query SETTLES (success OR error) — never block the widget
     // on the DB. If settings failed (e.g. empty DB), just skip the merchant context.
-    if (started.current || settingsLoading) return;
-    started.current = true;
+    // Sign-in is different: an anonymous boot would start chats under a
+    // different contact, so the companion waits for it. Each refreshed token
+    // re-runs this effect; `initOpenScript` re-renders the same root with it.
+    if (settingsLoading || (isCompanion && !identity.data)) return;
 
-    const isCompanion = variant === 'companion';
     const { token, apiUrl } = getWidgetConfig();
 
     const boot = () =>
@@ -49,6 +54,7 @@ export function CompanionWidget({
         token,
         // Points the widget at the local opencx backend.
         apiUrl,
+        ...(identity.data ? { user: identity.data } : {}),
         // The shell is a client choice: the dashboard assistant is the
         // companion pill, the public support surface the classic popover.
         displayMode: isCompanion ? 'companion' : 'popover',
@@ -134,15 +140,18 @@ export function CompanionWidget({
       `script[src="${WIDGET_SCRIPT_URL}"]`,
     );
     if (existing) {
-      boot();
-      return;
+      // The tag may still be loading when a refreshed token re-runs this.
+      if (window.initOpenScript) boot();
+      else existing.addEventListener('load', boot);
+      return () => existing.removeEventListener('load', boot);
     }
     const script = document.createElement('script');
     script.src = WIDGET_SCRIPT_URL;
     script.defer = true;
     script.addEventListener('load', boot);
     document.body.appendChild(script);
-  }, [settings, settingsLoading, variant]);
+    return () => script.removeEventListener('load', boot);
+  }, [settings, settingsLoading, variant, isCompanion, identity.data]);
 
   return null;
 }

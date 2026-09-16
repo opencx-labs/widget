@@ -38,6 +38,8 @@ const paginated = <T extends z.ZodTypeAny>(item: T) =>
 const PaymentWithRefunds = Payment.extend({ refunds: z.array(Refund) });
 const CustomerWithPayments = Customer.extend({ payments: z.array(Payment) });
 const RefundResult = z.object({ refund: Refund, payment: Payment });
+// Served by the dev server (scripts/widget-identity.mjs), not the Worker.
+const WidgetIdentity = z.object({ token: z.string(), externalId: z.string() });
 
 export type PaymentWithRefunds = z.infer<typeof PaymentWithRefunds>;
 export type CustomerWithPayments = z.infer<typeof CustomerWithPayments>;
@@ -76,6 +78,8 @@ export const api = {
   metrics: () => request('/metrics', Metrics),
   balance: () => request('/balance', Balance),
   settings: () => request('/settings', Settings),
+  widgetIdentity: () =>
+    request('/widget-identity', WidgetIdentity, { method: 'POST' }),
 
   payments: (
     filters: {
