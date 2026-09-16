@@ -77,9 +77,9 @@ export type CompanionShadows = {
 };
 
 /**
- * The same four slots per scheme. Dark keeps the hairline ring and the inset
- * highlight as faint light on dark — the light scheme's half-white inset reads
- * as a bright border against a dark page — and leans on deeper drops instead.
+ * The same four slots per scheme. Dark keeps only a 5% hairline ring — the
+ * same weight as light's 5% black — drops the inset highlight entirely (any
+ * light line on a dark surface reads as a border), and leans on deeper drops.
  */
 export function companionShadows(scheme: 'light' | 'dark'): CompanionShadows {
   if (scheme === 'light')
@@ -90,10 +90,10 @@ export function companionShadows(scheme: 'light' | 'dark'): CompanionShadows {
       chat: CHAT_SHADOW,
     };
   return {
-    pill: '0 2px 12px 0 rgba(0,0,0,0.5), 0 1px 4px 0 rgba(0,0,0,0), 0 0 0 1px rgba(255,255,255,0.08), inset 0 1px 0 0 rgba(255,255,255,0)',
-    dock: '0 8px 28px 0 rgba(0,0,0,0.45), 0 1px 4px 0 rgba(0,0,0,0), 0 0 0 1px rgba(255,255,255,0.06), inset 0 1px 0 0 rgba(255,255,255,0.04)',
+    pill: '0 2px 12px 0 rgba(0,0,0,0.5), 0 1px 4px 0 rgba(0,0,0,0), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 0 rgba(255,255,255,0)',
+    dock: '0 8px 28px 0 rgba(0,0,0,0.45), 0 1px 4px 0 rgba(0,0,0,0), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 0 rgba(255,255,255,0)',
     input:
-      '0 12px 40px 0 rgba(0,0,0,0.5), 0 2px 8px 0 rgba(0,0,0,0.2), 0 0 0 1px rgba(255,255,255,0.06), inset 0 1px 0 0 rgba(255,255,255,0.04)',
-    chat: '0 24px 48px -16px rgba(0,0,0,0.6), 0 4px 16px 0 rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.06), inset 0 1px 0 0 rgba(255,255,255,0.04)',
+      '0 12px 40px 0 rgba(0,0,0,0.5), 0 2px 8px 0 rgba(0,0,0,0.2), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 0 rgba(255,255,255,0)',
+    chat: '0 24px 48px -16px rgba(0,0,0,0.6), 0 4px 16px 0 rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 0 rgba(255,255,255,0)',
   };
 }
