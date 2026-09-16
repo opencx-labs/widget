@@ -54,6 +54,21 @@ suite('ApiCaller — rejected contact token', () => {
     expect(onUnauthorized).not.toHaveBeenCalled();
   });
 
+  test('connection routes never report: they refuse every anonymous visitor', async () => {
+    const api = new ApiCaller({ config: { token: 'tok' } });
+    const onUnauthorized = vi.fn();
+    api.onUnauthorized = onUnauthorized;
+    status = 401;
+    await api.listConnections().catch(() => undefined);
+    await api.listApprovalPreferences().catch(() => undefined);
+    await api.listElicitations('s1').catch(() => undefined);
+    expect(seen.filter((u) => u.includes('/v5/connections'))).toHaveLength(3);
+    expect(onUnauthorized).not.toHaveBeenCalled();
+    // Positive control on the same stub: a chat route still reports.
+    await api.getSessions({ cursor: '0', filters: {} });
+    expect(onUnauthorized).toHaveBeenCalledTimes(1);
+  });
+
   test('the stream fetch reports a 401 like the typed client', async () => {
     const api = new ApiCaller({ config: { token: 'tok' } });
     const onUnauthorized = vi.fn();

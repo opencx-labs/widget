@@ -54,6 +54,11 @@ const streamUrl = (baseUrl: string, path: string, sessionId?: string) =>
 /** Minting a contact never carries a contact token, so its 401 is not stale auth. */
 const MINT_PATH =
   '/backend/widget/v2/contact/create-unverified' satisfies Endpoint;
+/**
+ * Personal-connection routes answer 401 to any visitor who is not signed in
+ * with connection access — a valid anonymous token included. Not stale auth.
+ */
+const CONNECTIONS_PATH = '/backend/widget/v5/connections';
 
 export class ApiCaller {
   private client: ReturnType<typeof basicClient>;
@@ -110,7 +115,9 @@ export class ApiCaller {
 
   /** Report a rejected contact token; the mint call is the one 401 that is not one. */
   private noteUnauthorized = (response: Response) => {
-    if (response.status !== 401 || response.url.endsWith(MINT_PATH)) return;
+    if (response.status !== 401) return;
+    const path = new URL(response.url, 'http://localhost').pathname;
+    if (path === MINT_PATH || path.startsWith(CONNECTIONS_PATH)) return;
     this.onUnauthorized?.();
   };
 
