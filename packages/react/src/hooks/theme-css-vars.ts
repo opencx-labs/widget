@@ -66,8 +66,10 @@ export function themeCssVars({
     '--opencx-muted': surface,
     '--opencx-muted-foreground': dark ? palette['400'] : palette['500'],
 
-    '--opencx-input': dark ? palette['700'] : palette['300'],
-    '--opencx-border': dark ? palette['700'] : palette['300'],
+    // Light-on-dark reads louder than dark-on-light, so dark hairlines sit one
+    // step off the background where light sits two.
+    '--opencx-input': dark ? palette['800'] : palette['300'],
+    '--opencx-border': dark ? palette['800'] : palette['300'],
     '--opencx-ring': 'var(--opencx-foreground)',
 
     // The docked sidebar's canvas behind the framed host page. A CSS color,
