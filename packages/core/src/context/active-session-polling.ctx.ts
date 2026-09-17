@@ -243,6 +243,20 @@ export class ActiveSessionPollingCtx {
           id: null,
           isAi: false,
         },
+        ...(history.replyTo
+          ? {
+              replyTo: {
+                id: history.replyTo.publicId,
+                text: history.replyTo.text,
+                senderName:
+                  history.replyTo.sender.kind === 'user'
+                    ? null
+                    : history.replyTo.sender.kind === 'ai'
+                      ? (this.config.bot?.name ?? null)
+                      : (history.replyTo.sender.name ?? null),
+              },
+            }
+          : {}),
       };
     }
 
