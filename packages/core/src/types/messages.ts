@@ -103,6 +103,13 @@ export type WidgetAgentMessage = {
   timestamp: string | null;
   agent?: Agent;
   attachments?: MessageAttachmentType[];
+  /** The earlier message of this conversation a teammate's reply answers. */
+  replyTo?: {
+    id: string;
+    text: string;
+    /** Whose message is quoted; null for the visitor's own. */
+    senderName: string | null;
+  };
 };
 
 export type WidgetSystemMessage__StateCheckpoint = {

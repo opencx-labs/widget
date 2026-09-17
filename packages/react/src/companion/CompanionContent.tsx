@@ -5,7 +5,11 @@ import { SuppressTooltips } from '../components/lib/tooltip';
 import { RootScreen } from '../screens';
 import { ChatInput } from '../screens/chat/ChatInput';
 import { RADII } from './companion-geometry';
-import { FLAT_MESSAGE_CSS } from './message-styles';
+import {
+  FLAT_AVATARS_CSS,
+  FLAT_MESSAGE_CSS,
+  HIDE_AVATARS_CSS,
+} from './message-styles';
 import type { WidgetCompanionLayoutU } from '@opencx/widget-core';
 import { PanelControls } from './PanelControls';
 import { useTranslation } from '../hooks/useTranslation';
@@ -137,10 +141,15 @@ export function CompanionContent({
   // Agent chat default: flat, document-style AI replies (no bubbles) for
   // every companion layout. `companion.bubbles: true` opts back into chat
   // bubbles.
+  // `companion.avatars` follows `bubbles` unless set, so existing embeds keep
+  // their look.
+  const bubbles = companion?.bubbles === true;
+  const avatars = companion?.avatars ?? bubbles;
   const overrides =
-    companion?.bubbles === true
-      ? companionLayoutOverrides
-      : companionLayoutOverrides + FLAT_MESSAGE_CSS;
+    companionLayoutOverrides +
+    (bubbles ? '' : FLAT_MESSAGE_CSS) +
+    (avatars ? '' : HIDE_AVATARS_CSS) +
+    (avatars && !bubbles ? FLAT_AVATARS_CSS : '');
 
   // Shortcuts pressed anywhere inside the iframe (message list, chat
   // composer, ...) — the mirror of WidgetCompanion's host-document handler,
