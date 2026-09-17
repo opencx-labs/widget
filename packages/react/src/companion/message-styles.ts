@@ -74,8 +74,20 @@ ${scope} [data-component="chat/agent_msg_group/avatar_and_msgs/avatar"] {
 }
 /* Steps, rendered blocks, the working spinner and the actions row are siblings
    of the text groups in a streamed turn: indent them by the avatar gutter
-   (20px avatar + 8px gap) so everything shares the text's left edge. */
-${scope} [data-component="chat/streaming_turn/root"] > :not([data-component="chat/agent_msg_group/root"]) {
+   (20px avatar + 8px gap) so everything shares the text's left edge. The
+   typing row carries its own avatar, so it keeps the gutter instead — indenting
+   it would jump the avatar sideways when the reply replaces it. */
+${scope} [data-component="chat/streaming_turn/root"] > :not([data-component="chat/agent_msg_group/root"]):not([data-component="chat/bot_loading/root"]) {
   margin-inline-start: 28px !important;
+}
+${scope} [data-component="chat/bot_loading/root"] {
+  align-items: flex-start !important;
+}
+/* Its avatar is the row's first child (LoadingDefaultComponent renders no
+   data-component on it), sized to match a reply's. */
+${scope} [data-component="chat/bot_loading/root"] > :first-child {
+  width: 20px !important;
+  height: 20px !important;
+  margin-top: 2px !important;
 }
 `;
