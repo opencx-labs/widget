@@ -273,6 +273,41 @@ export class ApiCaller {
   };
 
   /**
+   * What actually happened on the page, back to the turn that is waiting for
+   * it. The widget does the thing, looks at the result, and says so; until
+   * this call lands the agent only knows that it asked.
+   *
+   * Never throws and never blocks anything the visitor is doing: a lost
+   * answer costs the tool call its timeout, which the server already handles,
+   * and a browser stuck on this would be a browser that cannot get on with
+   * the page.
+   */
+  sendPageReply = async (
+    sessionId: string,
+    reply: {
+      callId: string;
+      outcome:
+        | 'done'
+        | 'covered'
+        | 'gone'
+        | 'hidden'
+        | 'unsupported'
+        | 'no_change'
+        | 'declined';
+      detail?: string;
+    },
+  ): Promise<void> => {
+    try {
+      await this.client.POST('/backend/widget/v5/chat/{sessionId}/page-reply', {
+        params: { path: { sessionId } },
+        body: reply,
+      });
+    } catch {
+      // The turn's own timeout is the backstop.
+    }
+  };
+
+  /**
    * The session's settled agent turns with their final UIMessage parts and
    * the transcript rows each produced — the reload-fidelity read (widget v5).
    * Returns null on any failure: the caller then keeps the plain-row

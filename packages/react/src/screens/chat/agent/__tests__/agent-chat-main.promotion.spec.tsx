@@ -148,6 +148,7 @@ function ui(partial: Partial<AgentChatUiValue>): AgentChatUiValue {
     turnSources: [],
     liveTurnKey: null,
     turnFailed: false,
+    replyToPageCall: () => {},
     retryFailedTurn: () => {},
     queuedUserMessages: [],
     removeQueued: () => {},

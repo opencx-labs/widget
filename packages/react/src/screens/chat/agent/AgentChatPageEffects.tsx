@@ -21,7 +21,7 @@ const MAX_HANDLED_PAGE_EFFECTS = 200;
  */
 export function AgentChatPageEffects() {
   const { pageMarkHighlightDurationMs } = useConfig();
-  const { pageEffects } = useAgentChatUi();
+  const { pageEffects, replyToPageCall } = useAgentChatUi();
   const { theme, cssVars } = useTheme();
   const pageMarkTheme = resolvePageMarkTheme({
     cssVars,
@@ -51,6 +51,7 @@ export function AgentChatPageEffects() {
         log.warn('highlight_element: invalid tool input', {
           issues: parsed.error.issues,
         });
+        replyToPageCall(effect.callId, 'unsupported');
         continue;
       }
       // The reference is looked up and the element re-checked here, in the
@@ -63,6 +64,9 @@ export function AgentChatPageEffects() {
           ref: parsed.data.ref,
           reason: guarded.reason,
         });
+        // The turn is waiting: say WHICH no it was, so the agent can tell
+        // the customer to close the dialog rather than "it didn't work".
+        replyToPageCall(effect.callId, guarded.reason);
         continue;
       }
       const found = highlightElementOnHostPage(guarded.element, parsed.data, {
@@ -72,12 +76,14 @@ export function AgentChatPageEffects() {
         zIndex: pageMarkTheme.inkZIndex,
         durationMs: pageMarkHighlightDurationMs,
       });
+      replyToPageCall(effect.callId, found ? 'done' : 'gone');
       if (!found) {
         log.warn('highlight_element: the mark could not be drawn', parsed.data);
       }
     }
   }, [
     pageEffects,
+    replyToPageCall,
     pageMarkHighlightDurationMs,
     pageMarkTheme.accent,
     pageMarkTheme.surface,

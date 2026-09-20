@@ -26,8 +26,15 @@ vi.mock('@shardsui/notation', () => ({
   },
 }));
 
+/** What the adapter told the waiting turn, in order. */
+let replies: Array<{ callId: string; outcome: string }> = [];
+
 vi.mock('@opencx/widget-react-headless', () => ({
-  useAgentChatUi: () => ({ pageEffects }),
+  useAgentChatUi: () => ({
+    pageEffects,
+    replyToPageCall: (callId: string, outcome: string) =>
+      replies.push({ callId, outcome }),
+  }),
   useConfig: () => ({ pageMarkHighlightDurationMs }),
 }));
 
@@ -58,6 +65,7 @@ describe('AgentChatPageEffects', () => {
 
   beforeEach(() => {
     pageEffects = [];
+    replies = [];
     pageMarkHighlightDurationMs = undefined;
     container = document.createElement('div');
     document.body.appendChild(container);
@@ -108,6 +116,7 @@ describe('AgentChatPageEffects', () => {
     pageEffects = [
       {
         key: 'sess-1:call-1',
+        callId: 'call-1',
         type: 'highlight-element',
         input: { ref, label: 'here' },
       },
@@ -124,9 +133,14 @@ describe('AgentChatPageEffects', () => {
     // Ink sits two under the widget (100); the callout one above the ink.
     expect(callout?.style.zIndex).toBe('99');
 
+    // The turn asked; the turn is told.
+    expect(replies).toEqual([{ callId: 'call-1', outcome: 'done' }]);
+
     pageEffects = [...pageEffects];
     await render();
     expect(target.scrollIntoView).toHaveBeenCalledOnce();
+    // ...and told exactly once, however many times it re-renders.
+    expect(replies).toHaveLength(1);
   });
 
   it('uses the configured highlight duration', async () => {
@@ -136,6 +150,7 @@ describe('AgentChatPageEffects', () => {
     pageEffects = [
       {
         key: 'sess-1:call-duration',
+        callId: 'call-duration',
         type: 'highlight-element',
         input: { ref },
       },
@@ -157,11 +172,18 @@ describe('AgentChatPageEffects', () => {
     const { target, ref } = addTarget();
     target.remove();
     pageEffects = [
-      { key: 'sess-1:call-stale', type: 'highlight-element', input: { ref } },
+      {
+        key: 'sess-1:call-stale',
+        callId: 'call-stale',
+        type: 'highlight-element',
+        input: { ref },
+      },
     ];
     await render();
 
     expect(document.querySelectorAll('[data-opencx-overlay]')).toHaveLength(0);
+    // Not silence: the turn is told WHICH no it was.
+    expect(replies).toEqual([{ callId: 'call-stale', outcome: 'gone' }]);
   });
 
   it('draws nothing for a reference the reader never handed out', async () => {
@@ -169,6 +191,7 @@ describe('AgentChatPageEffects', () => {
     pageEffects = [
       {
         key: 'sess-1:call-forged',
+        callId: 'call-forged',
         type: 'highlight-element',
         input: { ref: '#create-key' },
       },
@@ -176,5 +199,6 @@ describe('AgentChatPageEffects', () => {
     await render();
 
     expect(document.querySelectorAll('[data-opencx-overlay]')).toHaveLength(0);
+    expect(replies).toEqual([{ callId: 'call-forged', outcome: 'gone' }]);
   });
 });

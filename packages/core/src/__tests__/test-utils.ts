@@ -278,6 +278,9 @@ export const TestUtils = {
           .fn()
           .mockResolvedValue(undefined);
       },
+      sendPageReply(target) {
+        target.prototype.sendPageReply = vi.fn().mockResolvedValue(undefined);
+      },
       createDictationSession(target, returnValue) {
         target.prototype.createDictationSession = vi
           .fn(target.prototype.createDictationSession)

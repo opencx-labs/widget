@@ -38,6 +38,13 @@ export type AgentChatPageEffect = {
   key: string;
   type: 'highlight-element';
   input: unknown;
+  /**
+   * The tool call this effect belongs to. The adapter performs the effect,
+   * sees what happened, and answers with `replyToPageCall(callId, …)` —
+   * which is how the turn finds out anything at all about the page it just
+   * touched.
+   */
+  callId: string;
 };
 
 type QueuedSend = StagedUserTurn & {
@@ -691,10 +698,43 @@ export function useAgentChat({
         key: `${sessionId ?? 'pending'}:${part.toolCallId}`,
         type: 'highlight-element',
         input: part.input,
+        callId: part.toolCallId,
       });
     }
     return effects;
   }, [messages, sessionId, performsClientTools]);
+
+  /**
+   * The adapter's way of telling the turn what happened. It is the only
+   * thing that makes a page tool honest: without it the server knows it
+   * asked and nothing else, which is why such tools used to be described to
+   * the model as "never claim this worked".
+   *
+   * Never throws — a lost answer costs the tool call its timeout, which the
+   * server already handles, and must never break the host page.
+   */
+  const replyToPageCall = useCallback(
+    (
+      callId: string,
+      outcome:
+        | 'done'
+        | 'covered'
+        | 'gone'
+        | 'hidden'
+        | 'unsupported'
+        | 'no_change'
+        | 'declined',
+      detail?: string,
+    ) => {
+      if (!sessionId) return;
+      void api.sendPageReply(sessionId, {
+        callId,
+        outcome,
+        ...(detail ? { detail } : {}),
+      });
+    },
+    [api, sessionId],
+  );
 
   const isStreaming = status === 'submitted' || status === 'streaming';
 
@@ -889,6 +929,7 @@ export function useAgentChat({
     removeQueued,
     stop: stopTurn,
     pageEffects,
+    replyToPageCall,
     handledConnectionRequestIds,
     sourceSessionId: ownsSessionState ? sessionId : null,
   };

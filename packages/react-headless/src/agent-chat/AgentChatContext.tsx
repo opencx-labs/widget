@@ -55,6 +55,23 @@ export type AgentChatUiValue = {
   /** Host-page effects normalized from the current assistant tool parts. */
   pageEffects: AgentChatPageEffect[];
   /**
+   * Tell the waiting turn what actually happened on the page. The adapter
+   * that performs an effect owes exactly one of these per call; without it
+   * the agent only knows that it asked.
+   */
+  replyToPageCall: (
+    callId: string,
+    outcome:
+      | 'done'
+      | 'covered'
+      | 'gone'
+      | 'hidden'
+      | 'unsupported'
+      | 'no_change'
+      | 'declined',
+    detail?: string,
+  ) => void;
+  /**
    * The clarification the agent is waiting on — the composer shows the
    * questionnaire in its place — or null.
    */
@@ -73,6 +90,7 @@ export const DEFAULT_AGENT_CHAT_UI: AgentChatUiValue = {
   removeQueued: () => {},
   stop: () => {},
   pageEffects: [],
+  replyToPageCall: () => {},
   pendingClarification: null,
   pendingConnection: null,
 };
@@ -110,6 +128,7 @@ function ActiveAgentChatProvider({
     removeQueued,
     stop,
     pageEffects,
+    replyToPageCall,
     handledConnectionRequestIds,
     sourceSessionId,
   } = useAgentChat({
@@ -199,6 +218,7 @@ function ActiveAgentChatProvider({
       removeQueued,
       stop,
       pageEffects,
+      replyToPageCall,
       pendingConnection,
       pendingClarification: resolvePendingClarification({
         turnSources,
@@ -218,6 +238,7 @@ function ActiveAgentChatProvider({
       removeQueued,
       stop,
       pageEffects,
+      replyToPageCall,
       lastMessageIsFromUser,
       pendingConnection,
     ],
