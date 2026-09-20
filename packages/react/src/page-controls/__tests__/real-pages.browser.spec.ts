@@ -14,9 +14,12 @@
 //                          from the tests is how to get it without going
 //                          anywhere near a live customer session.
 //
-// Still missing, and worth saying: the inbox. Its controls (composer,
-// status pickers, filters) are the densest in the product, and its page
-// test needs a session fixture this change does not build.
+// The inbox is represented by its new-session dialog: comboboxes, a
+// contact picker, cc, assignee, channel. Its session LIST and reply
+// composer are not here, and not for want of trying — every sessions-list
+// test stubs the session card to isolate list behaviour, so capturing one
+// would produce a fixture of stubs and a rate that means nothing. Measuring
+// those needs a rendering fixture the product does not have yet.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { accessibleName } from '../accessible-name';
 import { resetRefsForTest } from '../control-ref';
