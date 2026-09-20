@@ -2,6 +2,7 @@ import { log } from '@opencx/widget-core';
 import { useAgentChatUi } from '@opencx/widget-react-headless';
 import { useEffect, useRef } from 'react';
 import { actOnPage } from '../../../page-controls/act';
+import { travelTo } from '../../../page-controls/cursor';
 import { actOnPageInputSchema } from '../../../page-controls/act-input';
 import { accessibleName } from '../../../page-controls/accessible-name';
 import { resolveRef } from '../../../page-controls/control-ref';
@@ -68,7 +69,14 @@ export function AgentChatPageActions() {
           }
         }
 
+        // The pointer goes first, and the press lands before the event
+        // does. Firing the click while the cursor is still travelling is
+        // the one thing that makes this read as fake: the page would move
+        // before the hand got there.
+        const cursor = await travelTo(element, { press: true });
+
         const result = await actOnPage({ ref, action, value });
+        cursor.release();
         replyToPageCall(effect.callId, result.outcome, result.detail);
       })();
     }

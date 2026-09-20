@@ -60,6 +60,22 @@ import {
 } from '../../../../page-controls/control-ref';
 
 describe('AgentChatPageEffects', () => {
+  // The pointer's travel is real time. These specs assert what the adapter
+  // DOES, not how long it looks good for, so they run the reduced-motion
+  // path where the gesture is instant. Its own timing is covered by the
+  // browser-mode cursor spec.
+  beforeEach(() => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn().mockReturnValue({
+        matches: true,
+        addEventListener() {},
+        removeEventListener() {},
+      }),
+    );
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
   let container: HTMLDivElement;
   let root: Root;
 
@@ -122,9 +138,13 @@ describe('AgentChatPageEffects', () => {
       },
     ];
     await render();
+    // The pointer travels before the ink goes down, so the mark arrives a
+    // tick later than the render.
+    await vi.waitFor(() =>
+      expect(document.querySelector('[data-cx-role="callout"]')).not.toBeNull(),
+    );
 
-    expect(target.scrollIntoView).toHaveBeenCalledOnce();
-    expect(document.querySelectorAll('[data-opencx-overlay]')).toHaveLength(1);
+    expect(target.scrollIntoView).toHaveBeenCalled();
     const callout = document.querySelector<HTMLElement>(
       '[data-cx-role="callout"]',
     );
@@ -134,11 +154,14 @@ describe('AgentChatPageEffects', () => {
     expect(callout?.style.zIndex).toBe('99');
 
     // The turn asked; the turn is told.
-    expect(replies).toEqual([{ callId: 'call-1', outcome: 'done' }]);
+    await vi.waitFor(() =>
+      expect(replies).toEqual([
+        { callId: 'call-1', outcome: 'done', detail: undefined },
+      ]),
+    );
 
     pageEffects = [...pageEffects];
     await render();
-    expect(target.scrollIntoView).toHaveBeenCalledOnce();
     // ...and told exactly once, however many times it re-renders.
     expect(replies).toHaveLength(1);
   });
@@ -157,8 +180,13 @@ describe('AgentChatPageEffects', () => {
     ];
     await render();
 
-    const overlays = () => document.querySelectorAll('[data-opencx-overlay]');
-    expect(overlays()).toHaveLength(1);
+    // The ink, not the pointer — both are widget overlays and only the
+    // ink's lifetime is what this test is about.
+    const overlays = () =>
+      document.querySelectorAll(
+        '[data-opencx-overlay]:not([data-opencx-cursor])',
+      );
+    await vi.waitFor(() => expect(overlays()).toHaveLength(1));
     await act(async () => vi.advanceTimersByTime(1249));
     expect(overlays()).toHaveLength(1);
     await act(async () => vi.advanceTimersByTime(301));
@@ -183,7 +211,9 @@ describe('AgentChatPageEffects', () => {
 
     expect(document.querySelectorAll('[data-opencx-overlay]')).toHaveLength(0);
     // Not silence: the turn is told WHICH no it was.
-    expect(replies).toEqual([{ callId: 'call-stale', outcome: 'gone' }]);
+    expect(replies).toEqual([
+      { callId: 'call-stale', outcome: 'gone', detail: undefined },
+    ]);
   });
 
   it('draws nothing for a reference the reader never handed out', async () => {

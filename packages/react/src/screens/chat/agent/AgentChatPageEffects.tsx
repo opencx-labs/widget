@@ -7,6 +7,7 @@ import {
   highlightElementInputSchema,
   highlightElementOnHostPage,
 } from '../../../page-marks/agent-mark';
+import { dismissAgentCursor, travelTo } from '../../../page-controls/cursor';
 import { guardRef } from '../../../page-controls/guard';
 import { resolvePageMarkTheme } from '../../../page-marks/page-mark-theme';
 
@@ -31,7 +32,13 @@ export function AgentChatPageEffects() {
   const handledEffectKeysRef = useRef(new Set<string>());
 
   // The ink lives in the HOST document: an unmounting widget takes it along.
-  useEffect(() => () => dismissActiveHighlight(), []);
+  useEffect(
+    () => () => {
+      dismissActiveHighlight();
+      dismissAgentCursor();
+    },
+    [],
+  );
 
   useEffect(() => {
     const handled = handledEffectKeysRef.current;
@@ -73,17 +80,28 @@ export function AgentChatPageEffects() {
         }
         continue;
       }
-      const found = highlightElementOnHostPage(guarded.element, parsed.data, {
-        accentColor: pageMarkTheme.accent,
-        surfaceColor: pageMarkTheme.surface,
-        foregroundColor: pageMarkTheme.foreground,
-        zIndex: pageMarkTheme.inkZIndex,
-        durationMs: pageMarkHighlightDurationMs,
-      });
-      replyToPageCall(effect.callId, found ? 'done' : 'gone');
-      if (!found) {
-        log.warn('highlight_element: the mark could not be drawn', parsed.data);
-      }
+      // The pointer travels there first, so the mark has a hand behind it
+      // instead of appearing out of nowhere. The travel overlaps the turn's
+      // own wait, and a document that will not take the cursor simply gets
+      // the ink straight away.
+      const element = guarded.element;
+      const callId = effect.callId;
+      const input = parsed.data;
+      void (async () => {
+        const cursor = await travelTo(element);
+        const found = highlightElementOnHostPage(element, input, {
+          accentColor: pageMarkTheme.accent,
+          surfaceColor: pageMarkTheme.surface,
+          foregroundColor: pageMarkTheme.foreground,
+          zIndex: pageMarkTheme.inkZIndex,
+          durationMs: pageMarkHighlightDurationMs,
+        });
+        cursor.release();
+        replyToPageCall(callId, found ? 'done' : 'gone');
+        if (!found) {
+          log.warn('highlight_element: the mark could not be drawn', input);
+        }
+      })();
     }
   }, [
     pageEffects,

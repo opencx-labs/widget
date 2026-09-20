@@ -40,12 +40,28 @@ vi.mock('@opencx/widget-react-headless', () => ({
 }));
 
 import { AgentChatPageActions } from '../AgentChatPageActions';
-import {
-  beginSnapshot,
-  resetRefsForTest,
-} from '../../../../page-controls/control-ref';
+import { beginSnapshot, resetRefsForTest } from '../../../../page-controls/control-ref';
 
 describe('AgentChatPageActions', () => {
+  // Once for the file, never between tests — see the note in beforeEach.
+  resetRefsForTest();
+
+  // The pointer's travel is real time. These specs assert what the adapter
+  // DOES, not how long it looks good for, so they run the reduced-motion
+  // path where the gesture is instant. Its own timing is covered by the
+  // browser-mode cursor spec.
+  beforeEach(() => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn().mockReturnValue({
+        matches: true,
+        addEventListener() {},
+        removeEventListener() {},
+      }),
+    );
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
   let container: HTMLDivElement;
   let root: Root;
 
@@ -54,7 +70,10 @@ describe('AgentChatPageActions', () => {
     replies = [];
     consentAsked = [];
     consentAnswer = true;
-    resetRefsForTest();
+    // NOT reset between tests on purpose. Resetting restarts the reference
+    // counter, so an action still in flight from the previous test would
+    // resolve THIS test's identically-numbered ref and click its button.
+    // Letting the counter run makes that collision impossible.
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
