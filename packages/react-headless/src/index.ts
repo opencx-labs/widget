@@ -46,4 +46,5 @@ export { useCompanionChats } from './ConversationWorkspace';
 export { useComposerDraft } from './hooks/useComposerDraft';
 
 export type { ConnectionRequest } from './agent-chat/agent-chat-stream';
+export type { PendingPageAction } from './agent-chat/useAgentChat';
 export { useConnection } from './agent-chat/useConnection';

@@ -17,7 +17,11 @@ import type { ConnectionRequest, StreamingTurnItem } from './agent-chat-stream';
 import type { TurnRenderSource } from './agent-turn-sources';
 import type { AskQuestionsRequest } from './ask-questions';
 import { pendingClarification as resolvePendingClarification } from './pending-clarification';
-import { useAgentChat, type AgentChatPageEffect } from './useAgentChat';
+import {
+  useAgentChat,
+  type AgentChatPageEffect,
+  type PendingPageAction,
+} from './useAgentChat';
 import { ConnectionAttemptProvider } from './useConnection';
 
 /**
@@ -59,6 +63,15 @@ export type AgentChatUiValue = {
    * that performs an effect owes exactly one of these per call; without it
    * the agent only knows that it asked.
    */
+  /**
+   * The committing action waiting on the visitor's yes, or null. Shown as a
+   * chip naming the exact control; a decline is final.
+   */
+  pendingPageAction: PendingPageAction | null;
+  /** The visitor's answer to that chip. */
+  resolvePageAction: (callId: string, allowed: boolean) => void;
+  /** Raised by the adapter that is about to act. Resolves false on decline. */
+  requestPageActionConsent: (request: PendingPageAction) => Promise<boolean>;
   replyToPageCall: (
     callId: string,
     outcome:
@@ -90,6 +103,9 @@ export const DEFAULT_AGENT_CHAT_UI: AgentChatUiValue = {
   removeQueued: () => {},
   stop: () => {},
   pageEffects: [],
+  pendingPageAction: null,
+  resolvePageAction: () => {},
+  requestPageActionConsent: async () => false,
   replyToPageCall: () => {},
   pendingClarification: null,
   pendingConnection: null,
@@ -129,6 +145,9 @@ function ActiveAgentChatProvider({
     stop,
     pageEffects,
     replyToPageCall,
+    pendingPageAction,
+    requestPageActionConsent,
+    resolvePageAction,
     handledConnectionRequestIds,
     sourceSessionId,
   } = useAgentChat({
@@ -219,6 +238,9 @@ function ActiveAgentChatProvider({
       stop,
       pageEffects,
       replyToPageCall,
+      pendingPageAction,
+      requestPageActionConsent,
+      resolvePageAction,
       pendingConnection,
       pendingClarification: resolvePendingClarification({
         turnSources,
@@ -239,6 +261,9 @@ function ActiveAgentChatProvider({
       stop,
       pageEffects,
       replyToPageCall,
+      pendingPageAction,
+      requestPageActionConsent,
+      resolvePageAction,
       lastMessageIsFromUser,
       pendingConnection,
     ],

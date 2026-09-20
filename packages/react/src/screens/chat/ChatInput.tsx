@@ -31,6 +31,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { type PageMark } from '../../page-marks/page-mark';
 import { awaitSnapshotUrl } from '../../page-marks/mark-thumbnail';
 import { buildPageClientContext } from '../../page-controls/send-context';
+import { PageActionCard } from '../../components/PageActionCard';
 import { PageContextPill } from '../../page-context/PageContextPill';
 import { usePageEntity } from '../../page-context/usePageEntity';
 import { PageMarkOverlay } from '../../page-marks/PageMarkOverlay';
@@ -111,6 +112,7 @@ export function ChatInput({
     queuedUserMessages,
     pendingClarification,
     pendingConnection,
+    pendingPageAction,
   } = useAgentChatUi();
   const { sessionState } = useSessions();
   const { t } = useTranslation();
@@ -399,6 +401,12 @@ export function ChatInput({
         <ConnectionCard
           key={pendingConnection.request_id}
           request={pendingConnection}
+        />
+      )}
+      {pendingPageAction && (
+        <PageActionCard
+          key={pendingPageAction.callId}
+          request={pendingPageAction}
         />
       )}
       <input {...dropzone__getInputProps()} />
