@@ -118,12 +118,25 @@ describe('the agent pointer', () => {
     expect(document.querySelectorAll('[data-opencx-cursor]')).toHaveLength(1);
   });
 
-  it('releasing it takes it off the page', async () => {
-    const cursor = await travelTo(target());
+  it('stays after a step, so a flow is one hand and not several', async () => {
+    const first = await travelTo(target());
+    const node = cursorNode();
+    first.done();
+
+    // The step ended; the hand has not. A second control in the same flow
+    // picks up the very same node from where it stopped.
+    await new Promise((r) => setTimeout(r, 300));
+    expect(cursorNode()).toBe(node);
+
+    await travelTo(target());
+    expect(cursorNode()).toBe(node);
+  });
+
+  it('leaves when the work stops', async () => {
+    await travelTo(target());
     expect(cursorNode()).not.toBeNull();
 
-    cursor.release();
-    await new Promise((r) => setTimeout(r, 400));
+    dismissAgentCursor();
     expect(cursorNode()).toBeNull();
   });
 

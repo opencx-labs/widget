@@ -119,18 +119,38 @@ type Cursor = {
   release(): void;
 };
 
-/** One at a time: a second effect takes the pointer from the first. */
+/**
+ * The hand, for as long as it is working.
+ *
+ * It is deliberately NOT one cursor per action. A flow is several steps —
+ * click through, read the new screen, click again — and a pointer that
+ * faded out and back in between each one would read as several different
+ * things happening rather than one continuous piece of work. It arrives
+ * once, stays where it last was, walks to the next control from there, and
+ * leaves when the work stops.
+ */
 let active: Cursor | null = null;
+
+/** Pending "the work seems to have stopped" release. */
+let idleTimer: ReturnType<typeof setTimeout> | undefined;
+
+/**
+ * How long the pointer waits between steps before deciding the flow is
+ * over. Long enough to cover a model thinking between two tool calls,
+ * short enough that it is not left sitting on a page nobody is acting on.
+ */
+const CURSOR_IDLE_MS = 4000;
 
 /**
  * Take the pointer off the page NOW.
  *
- * `release` fades, which is right at the end of an effect and wrong when a
- * new effect is starting: the fade outlives the call, so three effects in
- * quick succession left three ghosts drifting behind the live one. Anything
- * still carrying the marker is removed outright here.
+ * `release` fades, which is right at the end of the work and wrong when
+ * something else is starting: the fade outlives the call, so effects in
+ * quick succession left ghosts drifting behind the live one. Anything still
+ * carrying the marker is removed outright here.
  */
 export function dismissAgentCursor(): void {
+  clearTimeout(idleTimer);
   active?.release();
   active = null;
   document
@@ -138,15 +158,28 @@ export function dismissAgentCursor(): void {
     .forEach((stale) => stale.remove());
 }
 
+/** The flow is still going: hold the pointer where it is. */
+function keepAlive(): void {
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(dismissAgentCursor, CURSOR_IDLE_MS);
+}
+
 /**
- * Put a pointer on the page at a starting point. Returns null when the
- * document will not have it — the caller then does its own thing silently,
- * because a missing animation must never stop the actual work.
+ * Put a pointer on the page, or hand back the one already there.
+ *
+ * Returns null when the document will not have it — the caller then does
+ * its own thing silently, because a missing animation must never stop the
+ * actual work.
  */
 export function showAgentCursor(from?: {
   x: number;
   y: number;
 }): Cursor | null {
+  // Already working: the same hand continues from wherever it stopped.
+  if (active) {
+    keepAlive();
+    return active;
+  }
   try {
     dismissAgentCursor();
 
@@ -263,6 +296,7 @@ export function showAgentCursor(from?: {
     };
 
     active = cursor;
+    keepAlive();
     return cursor;
   } catch {
     // Decoration. A document that will not take it is not an error.
@@ -286,9 +320,9 @@ export function centreOf(el: HTMLElement): { x: number; y: number } {
 export async function travelTo(
   el: HTMLElement,
   { press = false }: { press?: boolean } = {},
-): Promise<{ release: () => void }> {
+): Promise<{ done: () => void }> {
   const cursor = showAgentCursor();
-  if (!cursor) return { release: () => {} };
+  if (!cursor) return { done: () => {} };
   try {
     el.scrollIntoView?.({
       behavior: prefersReducedMotion() ? 'auto' : 'smooth',
@@ -301,5 +335,7 @@ export async function travelTo(
   } catch {
     // Decoration only.
   }
-  return { release: () => cursor.release() };
+  // The STEP is done, not the hand. It stays where it is and starts the
+  // idle clock; another step within that window picks it up from here.
+  return { done: keepAlive };
 }

@@ -22,7 +22,7 @@ const MAX_HANDLED_PAGE_EFFECTS = 200;
  */
 export function AgentChatPageEffects() {
   const { pageMarkHighlightDurationMs } = useConfig();
-  const { pageEffects, replyToPageCall } = useAgentChatUi();
+  const { pageEffects, replyToPageCall, isStreaming } = useAgentChatUi();
   const { theme, cssVars } = useTheme();
   const pageMarkTheme = resolvePageMarkTheme({
     cssVars,
@@ -39,6 +39,14 @@ export function AgentChatPageEffects() {
     },
     [],
   );
+
+  // The hand stays through a whole flow, so something has to tell it the
+  // flow is over. The turn settling is that something — the idle timer is
+  // only the backstop for a turn that never settles cleanly.
+  useEffect(() => {
+    if (isStreaming) return;
+    dismissAgentCursor();
+  }, [isStreaming]);
 
   useEffect(() => {
     const handled = handledEffectKeysRef.current;
@@ -96,7 +104,7 @@ export function AgentChatPageEffects() {
           zIndex: pageMarkTheme.inkZIndex,
           durationMs: pageMarkHighlightDurationMs,
         });
-        cursor.release();
+        cursor.done();
         replyToPageCall(callId, found ? 'done' : 'gone');
         if (!found) {
           log.warn('highlight_element: the mark could not be drawn', input);

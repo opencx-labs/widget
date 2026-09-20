@@ -77,7 +77,7 @@ export function AgentChatPageActions() {
         const cursor = await travelTo(element, { press: true });
 
         const result = await actOnPage({ ref, action, value });
-        cursor.release();
+        cursor.done();
 
         // Read the page again and send it back with the outcome. An action
         // often lands the visitor somewhere else, and an agent holding
