@@ -7,6 +7,7 @@ import {
   highlightElementInputSchema,
   highlightElementOnHostPage,
 } from '../../../page-marks/agent-mark';
+import { guardRef } from '../../../page-controls/guard';
 import { resolvePageMarkTheme } from '../../../page-marks/page-mark-theme';
 
 const MAX_HANDLED_PAGE_EFFECTS = 200;
@@ -52,7 +53,19 @@ export function AgentChatPageEffects() {
         });
         continue;
       }
-      const found = highlightElementOnHostPage(parsed.data, {
+      // The reference is looked up and the element re-checked here, in the
+      // instant before the ink goes down: still the same node, still on
+      // screen, still not behind something. A page can re-render between the
+      // reading that minted the ref and this tool call arriving.
+      const guarded = guardRef(parsed.data.ref);
+      if (!guarded.ok) {
+        log.warn('highlight_element: not drawn', {
+          ref: parsed.data.ref,
+          reason: guarded.reason,
+        });
+        continue;
+      }
+      const found = highlightElementOnHostPage(guarded.element, parsed.data, {
         accentColor: pageMarkTheme.accent,
         surfaceColor: pageMarkTheme.surface,
         foregroundColor: pageMarkTheme.foreground,
@@ -60,7 +73,7 @@ export function AgentChatPageEffects() {
         durationMs: pageMarkHighlightDurationMs,
       });
       if (!found) {
-        log.warn('highlight_element: element not found on page', parsed.data);
+        log.warn('highlight_element: the mark could not be drawn', parsed.data);
       }
     }
   }, [

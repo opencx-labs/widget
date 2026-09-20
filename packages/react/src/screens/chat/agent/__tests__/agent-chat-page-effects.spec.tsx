@@ -47,6 +47,10 @@ vi.mock('../../../../hooks/useTheme', () => ({
 }));
 
 import { AgentChatPageEffects } from '../AgentChatPageEffects';
+import {
+  beginSnapshot,
+  resetRefsForTest,
+} from '../../../../page-controls/control-ref';
 
 describe('AgentChatPageEffects', () => {
   let container: HTMLDivElement;
@@ -73,21 +77,39 @@ describe('AgentChatPageEffects', () => {
     await act(async () => root.render(<AgentChatPageEffects />));
   };
 
+  /**
+   * A control the page reader has already offered the agent: mounted, given
+   * a real box (jsdom lays nothing out, and the guard asks for one before it
+   * lets the ink down), and registered so its reference resolves.
+   */
   const addTarget = () => {
     const target = document.createElement('button');
     target.id = 'create-key';
     target.scrollIntoView = vi.fn();
+    target.getBoundingClientRect = () =>
+      ({
+        x: 10,
+        y: 10,
+        left: 10,
+        top: 10,
+        width: 80,
+        height: 32,
+        right: 90,
+        bottom: 42,
+      }) as DOMRect;
     document.body.appendChild(target);
-    return target;
+    resetRefsForTest();
+    const ref = beginSnapshot()(target);
+    return { target, ref };
   };
 
   it('performs each normalized effect once with resolved theme layers', async () => {
-    const target = addTarget();
+    const { target, ref } = addTarget();
     pageEffects = [
       {
         key: 'sess-1:call-1',
         type: 'highlight-element',
-        input: { selector: '#create-key', label: 'here' },
+        input: { ref, label: 'here' },
       },
     ];
     await render();
@@ -110,12 +132,12 @@ describe('AgentChatPageEffects', () => {
   it('uses the configured highlight duration', async () => {
     vi.useFakeTimers();
     pageMarkHighlightDurationMs = 1250;
-    addTarget();
+    const { ref } = addTarget();
     pageEffects = [
       {
         key: 'sess-1:call-duration',
         type: 'highlight-element',
-        input: { selector: '#create-key' },
+        input: { ref },
       },
     ];
     await render();
@@ -126,5 +148,33 @@ describe('AgentChatPageEffects', () => {
     expect(overlays()).toHaveLength(1);
     await act(async () => vi.advanceTimersByTime(301));
     expect(overlays()).toHaveLength(0);
+  });
+
+  // A reference is not a permission slip: the element is looked up and
+  // re-checked at the instant of drawing, so a page that moved on between
+  // the reading and the tool call gets no mark at all.
+  it('draws nothing when the reference no longer means anything', async () => {
+    const { target, ref } = addTarget();
+    target.remove();
+    pageEffects = [
+      { key: 'sess-1:call-stale', type: 'highlight-element', input: { ref } },
+    ];
+    await render();
+
+    expect(document.querySelectorAll('[data-opencx-overlay]')).toHaveLength(0);
+  });
+
+  it('draws nothing for a reference the reader never handed out', async () => {
+    addTarget();
+    pageEffects = [
+      {
+        key: 'sess-1:call-forged',
+        type: 'highlight-element',
+        input: { ref: '#create-key' },
+      },
+    ];
+    await render();
+
+    expect(document.querySelectorAll('[data-opencx-overlay]')).toHaveLength(0);
   });
 });
