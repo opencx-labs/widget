@@ -1,16 +1,22 @@
 // The same gate, against OpenCX's own pages instead of a fixture somebody
 // wrote to pass it.
 //
-// The markup in `real-pages.json` is production HTML from open.cx and
-// docs.open.cx, captured 2026-09-20 and stripped of scripts, stylesheet
-// links, iframes and inline handlers so it mounts inert. Real component
-// library, real nav, real accessible names, real depth — and nothing that
-// can execute or phone home.
+// `real-pages.json` holds two kinds of real OpenCX markup, both inert —
+// scripts, stylesheet links, iframes and inline handlers stripped:
 //
-// What this is NOT: the authenticated dashboard. That page is full of real
-// customer sessions, and neither reading it into a fixture nor acting on it
-// live is something to do casually. These are the internal pages that carry
-// no customer data.
+//   `open_cx*` / `docs_*`  production HTML from open.cx and docs.open.cx,
+//                          captured 2026-09-20.
+//   `dashboard_*`          the AUTHENTICATED dashboard, rendered by its own
+//                          page tests against mock data (opencx's
+//                          `CAPTURE_DASHBOARD_DOM=…`). This is the surface
+//                          that matters — switches, tooltips, entitlement
+//                          links, the real design system — and rendering it
+//                          from the tests is how to get it without going
+//                          anywhere near a live customer session.
+//
+// Still missing, and worth saying: the inbox. Its controls (composer,
+// status pickers, filters) are the densest in the product, and its page
+// test needs a session fixture this change does not build.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { accessibleName } from '../accessible-name';
 import { resetRefsForTest } from '../control-ref';
