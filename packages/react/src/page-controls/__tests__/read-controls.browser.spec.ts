@@ -86,6 +86,20 @@ describe('what the reader sees', () => {
     ]);
   });
 
+  it('keeps a space where the page has a line break', () => {
+    // A real dashboard banner: two block-level lines inside one link.
+    // `textContent` glues them together, and the agent then cannot match
+    // the name against anything a customer would say.
+    mount(`
+      <a href="/disputes" id="banner">
+        <div>2 open disputes</div>
+        <div>Respond before the deadline.</div>
+      </a>
+    `);
+
+    expect(names()).toEqual(['2 open disputes Respond before the deadline.']);
+  });
+
   it('drops a control it cannot name, rather than inventing one', () => {
     mount(`<button class="btn-primary p-0"></button><button>Save</button>`);
 

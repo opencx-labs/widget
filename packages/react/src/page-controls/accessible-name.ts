@@ -22,13 +22,28 @@ const collapse = (text: string): string => text.replace(/\s+/g, ' ').trim();
 const truncate = (text: string): string =>
   text.length > NAME_MAX ? `${text.slice(0, NAME_MAX)}…` : text;
 
-/** Text content, minus anything explicitly hidden from assistive tech. */
+/**
+ * Text content, minus anything explicitly hidden from assistive tech, with
+ * block boundaries kept as spaces.
+ *
+ * `textContent` concatenates with nothing between, so a real dashboard's
+ * banner read as "2 open disputesRespond before the deadline…" — one word
+ * where a person sees two lines, and a name the agent cannot match against
+ * anything the customer would say. Browsers insert a space at a block
+ * boundary when they compute a name; so does this.
+ */
+const BLOCK_LEVEL =
+  'address,article,aside,blockquote,br,dd,details,div,dl,dt,fieldset,figcaption,figure,footer,form,h1,h2,h3,h4,h5,h6,header,hr,li,main,nav,ol,p,pre,section,summary,table,td,th,tr,ul';
+
 function visibleText(el: Element): string {
   const clone = el.cloneNode(true);
   if (!(clone instanceof Element)) return '';
   clone
     .querySelectorAll('[aria-hidden="true"], script, style, noscript')
     .forEach((hidden) => hidden.remove());
+  clone
+    .querySelectorAll(BLOCK_LEVEL)
+    .forEach((block) => block.insertAdjacentText('beforebegin', ' '));
   return collapse(clone.textContent ?? '');
 }
 
