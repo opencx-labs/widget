@@ -83,6 +83,15 @@ export type AgentChatUiValue = {
       | 'no_change'
       | 'declined',
     detail?: string,
+    page?: {
+      controls: {
+        ref: string;
+        role: string;
+        name: string;
+        disabled?: boolean;
+      }[];
+      truncated: boolean;
+    },
   ) => void;
   /**
    * The clarification the agent is waiting on — the composer shows the

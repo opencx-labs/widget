@@ -20,11 +20,9 @@
 
 const TRAVEL_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)';
 
-export const CURSOR_APPEAR_MS = 220;
+export const CURSOR_APPEAR_MS = 260;
 /** The long haul. A hand crossing a dashboard takes about this. */
-export const CURSOR_TRAVEL_MS = 1150;
-/** The corrective flick at the end — humans overshoot and come back. */
-export const CURSOR_SETTLE_MS = 190;
+export const CURSOR_TRAVEL_MS = 1600;
 /** A hand stops before it presses; without this the two moves read as one jerk. */
 export const CURSOR_REST_MS = 180;
 export const CURSOR_PRESS_MS = 240;
@@ -35,9 +33,6 @@ export const CURSOR_PRESS_MS = 240;
  * that made the first version read as a sprite on a rail.
  */
 const ARC = 0.13;
-
-/** How far past the target the first movement lands, before correcting. */
-const OVERSHOOT = 0.028;
 
 /**
  * Minimum-jerk position profile — the one motor control actually produces:
@@ -61,10 +56,15 @@ function onCurve(
 }
 
 /**
- * The keyframes for one reach: a bowed path, sampled on a minimum-jerk
- * clock, aiming slightly past the target. The correction back onto it is a
- * second, much shorter movement — which is what a hand does, and what makes
- * the arrival read as deliberate rather than as a slide coming to rest.
+ * The keyframes for one reach: a bowed path sampled on a minimum-jerk
+ * clock, landing on the target and stopping.
+ *
+ * An earlier version aimed past the target and corrected back, copying the
+ * corrective sub-movement people make. On a real reach across a dashboard
+ * that is twenty-odd pixels of travelling backwards, and it reads as a
+ * bounce — as something going wrong — rather than as a hand. The real
+ * version is a few pixels over a few tens of milliseconds, which at this
+ * scale is invisible, so it buys nothing and costs the arrival.
  */
 function reachFrames(
   from: { x: number; y: number },
@@ -82,14 +82,9 @@ function reachFrames(
     x: from.x + dx / 2 - (dy / distance) * distance * ARC,
     y: from.y + dy / 2 + (dx / distance) * distance * ARC,
   };
-  const past = {
-    x: to.x + (dx / distance) * distance * OVERSHOOT,
-    y: to.y + (dy / distance) * distance * OVERSHOOT,
-  };
-
   const frames: { transform: string }[] = [];
   for (let i = 0; i <= steps; i += 1) {
-    const point = onCurve(from, control, past, minimumJerk(i / steps));
+    const point = onCurve(from, control, to, minimumJerk(i / steps));
     frames.push({
       transform: `translate(${point.x - HOTSPOT_X}px, ${point.y - HOTSPOT_Y}px)`,
     });
@@ -234,15 +229,13 @@ export function showAgentCursor(from?: {
           return;
         }
 
-        // The reach: bowed, minimum-jerk, ending just past the target.
-        // `linear` on purpose — the whole shape of the motion lives in the
-        // sampling, and an easing on top would flatten it back out.
+        // The reach: bowed, minimum-jerk, landing on the target. `linear`
+        // on purpose — the whole shape of the motion lives in the sampling,
+        // and an easing on top would flatten it back out.
         host.style.transition = `opacity ${CURSOR_APPEAR_MS}ms ease`;
         const frames = reachFrames(at, { x, y });
-        // Where the reach ends, stated rather than inferred: a keyframe
-        // left empty is filled from the underlying style, which is still
-        // the start position, and the cursor snaps back before correcting.
-        const overshootAt = frames[frames.length - 1]?.transform ?? land;
+        // The last frame IS the target, so the animation's held value and
+        // the inline style agree and there is nothing left to correct.
         const reach = host.animate(frames, {
           duration: CURSOR_TRAVEL_MS,
           easing: 'linear',
@@ -251,16 +244,7 @@ export function showAgentCursor(from?: {
         await reach.finished.catch(() => undefined);
         if (gone) return;
 
-        // The correction: short, and onto the target exactly.
-        const settle = host.animate(
-          [{ transform: overshootAt }, { transform: land }],
-          {
-            duration: CURSOR_SETTLE_MS,
-            easing: TRAVEL_EASE,
-            fill: 'forwards',
-          },
-        );
-        await settle.finished.catch(() => undefined);
+        host.style.transform = land;
         at = { x, y };
         await wait(CURSOR_REST_MS);
       },

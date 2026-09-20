@@ -6,6 +6,7 @@ import { travelTo } from '../../../page-controls/cursor';
 import { actOnPageInputSchema } from '../../../page-controls/act-input';
 import { accessibleName } from '../../../page-controls/accessible-name';
 import { resolveRef } from '../../../page-controls/control-ref';
+import { readPageControls } from '../../../page-controls/read-controls';
 import { needsConsent } from '../../../page-controls/needs-consent';
 
 const MAX_HANDLED_ACTIONS = 200;
@@ -77,7 +78,20 @@ export function AgentChatPageActions() {
 
         const result = await actOnPage({ ref, action, value });
         cursor.release();
-        replyToPageCall(effect.callId, result.outcome, result.detail);
+
+        // Read the page again and send it back with the outcome. An action
+        // often lands the visitor somewhere else, and an agent holding
+        // references to the screen it just left can only ask them to send
+        // another message — which is not a flow.
+        const after = result.outcome === 'done' ? readPageControls() : null;
+        replyToPageCall(
+          effect.callId,
+          result.outcome,
+          result.detail,
+          after
+            ? { controls: after.controls, truncated: after.truncated }
+            : undefined,
+        );
       })();
     }
   }, [pageEffects, replyToPageCall, requestPageActionConsent]);

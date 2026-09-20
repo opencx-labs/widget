@@ -746,12 +746,27 @@ export function useAgentChat({
         | 'no_change'
         | 'declined',
       detail?: string,
+      page?: {
+        controls: {
+          ref: string;
+          role: string;
+          name: string;
+          disabled?: boolean;
+        }[];
+        truncated: boolean;
+      },
     ) => {
       if (!sessionId) return;
       void api.sendPageReply(sessionId, {
         callId,
         outcome,
         ...(detail ? { detail } : {}),
+        // The page as it is after the action. Without it a flow that
+        // crosses screens stops dead: the agent is holding refs to the
+        // screen it just left.
+        ...(page?.controls.length
+          ? { controls: page.controls, truncated: page.truncated }
+          : {}),
       });
     },
     [api, sessionId],

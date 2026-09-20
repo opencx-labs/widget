@@ -295,6 +295,13 @@ export class ApiCaller {
         | 'no_change'
         | 'declined';
       detail?: string;
+      controls?: {
+        ref: string;
+        role: string;
+        name: string;
+        disabled?: boolean;
+      }[];
+      truncated?: boolean;
     },
   ): Promise<void> => {
     try {

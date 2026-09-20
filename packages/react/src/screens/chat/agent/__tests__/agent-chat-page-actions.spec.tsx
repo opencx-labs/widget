@@ -40,7 +40,10 @@ vi.mock('@opencx/widget-react-headless', () => ({
 }));
 
 import { AgentChatPageActions } from '../AgentChatPageActions';
-import { beginSnapshot, resetRefsForTest } from '../../../../page-controls/control-ref';
+import {
+  beginSnapshot,
+  resetRefsForTest,
+} from '../../../../page-controls/control-ref';
 
 describe('AgentChatPageActions', () => {
   // Once for the file, never between tests — see the note in beforeEach.
