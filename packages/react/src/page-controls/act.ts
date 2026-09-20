@@ -1,3 +1,4 @@
+import { isWidgetOwned } from '../page-marks/page-element';
 import { guardRef } from './guard';
 import { setNativeValue } from './native-setter';
 import { firePointerSequence } from './pointer-sequence';
@@ -20,43 +21,72 @@ import {
  * control's own state move. If none of that happened, we say so.
  */
 
-/** A cheap fingerprint of "has anything happened here". */
-function pageFingerprint(doc: Document): string {
-  return [
-    doc.location.href,
-    doc.body.childElementCount,
-    doc.body.textContent?.length ?? 0,
-  ].join('|');
-}
+/**
+ * Watch the page from BEFORE the action until it stops moving, and say
+ * whether it moved.
+ *
+ * The observer is the evidence, and it has to be attached first. Two
+ * earlier versions of this were wrong in opposite ways: comparing a cheap
+ * fingerprint — url, child count, text length — missed a component-library
+ * menu that opened by flipping one attribute, and attaching the observer
+ * after the action missed every synchronous click handler, which is most of
+ * them. Watch first, then act, then wait for quiet.
+ */
+function watchPage(doc: Document, budgetMs: number) {
+  let mutated = false;
+  let quiet: ReturnType<typeof setTimeout> | undefined;
+  let finish: (() => void) | undefined;
 
-/** Wait for the page to stop changing, or for the settle budget to run out. */
-function waitForSettle(doc: Document, budgetMs: number): Promise<void> {
-  return new Promise((resolve) => {
-    let quiet: ReturnType<typeof setTimeout> | undefined;
-    const done = () => {
-      clearTimeout(quiet);
-      clearTimeout(ceiling);
-      observer.disconnect();
-      resolve();
-    };
-    const observer = new MutationObserver(() => {
-      clearTimeout(quiet);
-      quiet = setTimeout(done, 100);
+  const observer = new MutationObserver((records) => {
+    // Our own overlays must not count as the page reacting. A text node's
+    // parent is what tells us whose subtree it belongs to.
+    const pageMoved = records.some((record) => {
+      const node =
+        record.target instanceof Element
+          ? record.target
+          : record.target.parentElement;
+      return node !== null && !isWidgetOwned(node);
     });
-    observer.observe(doc.documentElement, {
-      subtree: true,
-      childList: true,
-      attributes: true,
-      characterData: true,
-    });
-    // A page that never mutates settles at the first quiet window; a page
-    // that never stops mutating settles at the ceiling. Either way bounded.
-    quiet = setTimeout(done, 100);
-    const ceiling = setTimeout(done, budgetMs);
+    if (pageMoved) mutated = true;
+    clearTimeout(quiet);
+    quiet = setTimeout(() => finish?.(), 100);
   });
+  observer.observe(doc.documentElement, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    characterData: true,
+  });
+
+  return {
+    /** Settle, then report. Bounded by the budget however busy the page is. */
+    settle: () =>
+      new Promise<{ mutated: boolean }>((resolve) => {
+        const done = () => {
+          clearTimeout(quiet);
+          clearTimeout(ceiling);
+          observer.disconnect();
+          resolve({ mutated });
+        };
+        finish = done;
+        // A page that never mutates settles at the first quiet window; one
+        // that never stops settles at the ceiling.
+        quiet = setTimeout(done, 100);
+        const ceiling = setTimeout(done, budgetMs);
+      }),
+    /** Stop watching without waiting — for the paths that never act. */
+    cancel: () => {
+      clearTimeout(quiet);
+      observer.disconnect();
+    },
+  };
 }
 
-/** Everything the widget refuses to touch, whatever it has been asked. */
+/**
+ * What `guardRef`'s shared list does not cover. The credential check is
+ * duplicated there deliberately — two independent refusals on the one thing
+ * that must never happen is cheap.
+ */
 function refuseReason(el: HTMLElement): string | null {
   if (el.tagName.toLowerCase() === 'input') {
     const type = (el.getAttribute('type') ?? 'text').toLowerCase();
@@ -106,17 +136,27 @@ async function act({
   settleMs?: number;
 }): Promise<ActResult> {
   const guarded = guardRef(ref);
-  if (!guarded.ok) return { outcome: guarded.reason };
+  if (!guarded.ok) {
+    // "Hands off" is a refusal, not a failure to find something.
+    return guarded.reason === 'off-limits'
+      ? { outcome: 'unsupported', detail: guarded.detail }
+      : { outcome: guarded.reason };
+  }
 
   const el = guarded.element;
   const refused = refuseReason(el);
   if (refused) return { outcome: 'unsupported', detail: refused };
 
   const doc = el.ownerDocument;
-  const before = pageFingerprint(doc);
+  const urlBefore = doc.location.href;
+  // Started immediately before the page is touched and never before a
+  // validation that might bail out — so nothing is watched that never acts,
+  // and nothing acts that is not being watched.
+  let watcher: ReturnType<typeof watchPage> | undefined;
 
   switch (action) {
     case 'click': {
+      watcher = watchPage(doc, settleMs);
       firePointerSequence(el);
       break;
     }
@@ -128,7 +168,9 @@ async function act({
         };
       }
       el.focus?.();
+      watcher = watchPage(doc, settleMs);
       if (!setNativeValue(el, value)) {
+        watcher.cancel();
         return {
           outcome: 'unsupported',
           detail: 'That control is not something text can be typed into.',
@@ -160,6 +202,7 @@ async function act({
           detail: 'That option is not in the list.',
         };
       }
+      watcher = watchPage(doc, settleMs);
       setNativeValue(el, option.value);
       break;
     }
@@ -185,12 +228,13 @@ async function act({
           detail: `It is already ${wanted ? 'on' : 'off'}.`,
         };
       }
+      watcher = watchPage(doc, settleMs);
       firePointerSequence(el);
       break;
     }
   }
 
-  await waitForSettle(doc, settleMs);
+  const { mutated } = (await watcher?.settle()) ?? { mutated: false };
 
   // Did it take? Ask the page, not the code that just ran.
   if (action === 'fill' || action === 'select') {
@@ -225,11 +269,12 @@ async function act({
       : { outcome: 'no_change', detail: 'It did not change.' };
   }
 
-  // A click's only honest evidence is that something about the page moved.
-  return pageFingerprint(doc) === before
-    ? {
+  // A click's only honest evidence is that the page moved: a mutation
+  // anywhere outside our own overlays, or a navigation.
+  return mutated || doc.location.href !== urlBefore
+    ? { outcome: 'done' }
+    : {
         outcome: 'no_change',
         detail: 'The control was clicked and nothing on the page changed.',
-      }
-    : { outcome: 'done' };
+      };
 }

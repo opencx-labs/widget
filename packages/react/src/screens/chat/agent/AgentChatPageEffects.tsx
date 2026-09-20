@@ -66,7 +66,11 @@ export function AgentChatPageEffects() {
         });
         // The turn is waiting: say WHICH no it was, so the agent can tell
         // the customer to close the dialog rather than "it didn't work".
-        replyToPageCall(effect.callId, guarded.reason);
+        if (guarded.reason === 'off-limits') {
+          replyToPageCall(effect.callId, 'unsupported', guarded.detail);
+        } else {
+          replyToPageCall(effect.callId, guarded.reason);
+        }
         continue;
       }
       const found = highlightElementOnHostPage(guarded.element, parsed.data, {

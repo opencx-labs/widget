@@ -1,10 +1,8 @@
-import { isWidgetOwned } from '../page-marks/page-element';
 import { accessibleName } from './accessible-name';
 import { beginSnapshot } from './control-ref';
+import { offLimitsReason } from './off-limits';
 import {
   MAX_CONTROLS,
-  NEVER_READ_INPUT_TYPES,
-  PRIVATE_REGION_ATTRIBUTE,
   type PageControl,
   type PageControlSnapshot,
 } from './types';
@@ -97,19 +95,6 @@ function isVisible(el: HTMLElement): boolean {
   return rect.width > 0 && rect.height > 0;
 }
 
-/** Everything the reader refuses to describe, whatever else is true. */
-function isOffLimits(el: HTMLElement): boolean {
-  if (isWidgetOwned(el)) return true;
-  if (el.closest(`[${PRIVATE_REGION_ATTRIBUTE}]`)) return true;
-  if (el.getAttribute('aria-hidden') === 'true') return true;
-  if (el.closest('[aria-hidden="true"]')) return true;
-  if (el.tagName.toLowerCase() === 'input') {
-    const type = (el.getAttribute('type') ?? 'text').toLowerCase();
-    if (NEVER_READ_INPUT_TYPES.has(type)) return true;
-  }
-  return false;
-}
-
 function isDisabled(el: HTMLElement): boolean {
   if ('disabled' in el && el.disabled === true) return true;
   return el.getAttribute('aria-disabled') === 'true';
@@ -127,7 +112,7 @@ export function readPageControls(
       doc.querySelectorAll<HTMLElement>(INTERACTIVE_SELECTOR),
     );
     for (const el of candidates) {
-      if (isOffLimits(el)) continue;
+      if (offLimitsReason(el)) continue;
       if (!isVisible(el)) continue;
       const name = accessibleName(el);
       if (!name) continue;

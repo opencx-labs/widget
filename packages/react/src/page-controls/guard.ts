@@ -1,4 +1,5 @@
 import { resolveRef } from './control-ref';
+import { OFF_LIMITS_DETAIL, offLimitsReason } from './off-limits';
 
 /**
  * The check that runs immediately before the widget touches a control —
@@ -20,7 +21,14 @@ export type GuardOutcome =
   /** Still in the document, but not on screen. */
   | { ok: false; reason: 'hidden' }
   /** On screen, but something else is in front of it. */
-  | { ok: false; reason: 'covered' };
+  | { ok: false; reason: 'covered' }
+  /**
+   * The page says hands off — a region marked private, something hidden
+   * from assistive tech, a credential field, our own UI. Re-checked HERE
+   * and not only when the page was read, because a page can mark a region
+   * private after the reference to it was handed out.
+   */
+  | { ok: false; reason: 'off-limits'; detail: string };
 
 /**
  * Is this element the thing a visitor would actually hit at that spot? The
@@ -53,6 +61,16 @@ function isTopmost(el: HTMLElement): boolean {
 export function guardRef(ref: string): GuardOutcome {
   const element = resolveRef(ref);
   if (!element) return { ok: false, reason: 'gone' };
+
+  // Before anything else: is this still something we are allowed to touch?
+  const forbidden = offLimitsReason(element);
+  if (forbidden) {
+    return {
+      ok: false,
+      reason: 'off-limits',
+      detail: OFF_LIMITS_DETAIL[forbidden],
+    };
+  }
 
   const visible =
     typeof element.checkVisibility === 'function'
