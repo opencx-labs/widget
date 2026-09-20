@@ -12,8 +12,10 @@
  * drift apart this would be theatre, and theatre about what an agent did to
  * someone's account is worse than no animation at all.
  *
- * Widget-owned, `pointer-events: none`, `position: fixed`. It never touches
- * a customer element and never intercepts a click.
+ * Widget-owned and `pointer-events: none` throughout. It lives inside a
+ * fixed, clipped, full-viewport layer so travelling near an edge cannot
+ * grow the host page's scroll area, and it never touches a customer
+ * element or intercepts a click.
  */
 
 const TRAVEL_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)';
@@ -153,25 +155,48 @@ export function showAgentCursor(from?: {
   try {
     dismissAgentCursor();
 
-    const host = document.createElement('div');
-    host.setAttribute('data-opencx-overlay', '');
+    /**
+     * A clipping layer, and it is not cosmetic.
+     *
+     * A fixed-position node on `<html>` still counts towards the document's
+     * scrollable area. The reach bows off the straight line, so partway to
+     * a control near an edge the cursor goes past the viewport, the host
+     * page grows a scrollbar, and everything on it shifts sideways —
+     * exactly when the customer is being asked to watch one specific
+     * control. `overflow: hidden` on a full-viewport layer means the
+     * pointer can travel anywhere without the page knowing it exists.
+     */
+    const layer = document.createElement('div');
+    layer.setAttribute('data-opencx-overlay', '');
     // Its own marker as well as the shared one: the ink and the pointer are
     // both widget overlays, and anything reasoning about "is the mark still
     // up" needs to tell them apart.
-    host.setAttribute('data-opencx-cursor', '');
-    host.setAttribute('aria-hidden', 'true');
-    Object.assign(host.style, {
+    layer.setAttribute('data-opencx-cursor', '');
+    layer.setAttribute('aria-hidden', 'true');
+    Object.assign(layer.style, {
       position: 'fixed',
+      inset: '0',
+      overflow: 'hidden',
+      pointerEvents: 'none',
+      zIndex: '2147483646',
+      contain: 'strict',
+    } satisfies Partial<CSSStyleDeclaration>);
+
+    const host = document.createElement('div');
+    // The pointer itself, distinct from the layer that clips it.
+    host.setAttribute('data-opencx-cursor-tip', '');
+    Object.assign(host.style, {
+      position: 'absolute',
       left: '0',
       top: '0',
       width: '14px',
       height: '14px',
-      zIndex: '2147483646',
       pointerEvents: 'none',
       opacity: '0',
       transition: `opacity ${CURSOR_APPEAR_MS}ms ease`,
       willChange: 'transform',
     } satisfies Partial<CSSStyleDeclaration>);
+    layer.appendChild(host);
 
     // The rounding is a same-colour stroke with round joins under the fill,
     // not a radius on every vertex: one number to tune, and the silhouette
@@ -190,7 +215,7 @@ export function showAgentCursor(from?: {
     // second one continues the hand's movement instead of restarting it.
     let at = start;
     host.style.transform = `translate(${start.x - HOTSPOT_X}px, ${start.y - HOTSPOT_Y}px)`;
-    document.documentElement.appendChild(host);
+    document.documentElement.appendChild(layer);
 
     const glyph = host.querySelector('path');
     // Read back once so the browser has the start position before the first
@@ -213,7 +238,12 @@ export function showAgentCursor(from?: {
         // `linear` on purpose — the whole shape of the motion lives in the
         // sampling, and an easing on top would flatten it back out.
         host.style.transition = `opacity ${CURSOR_APPEAR_MS}ms ease`;
-        const reach = host.animate(reachFrames(at, { x, y }), {
+        const frames = reachFrames(at, { x, y });
+        // Where the reach ends, stated rather than inferred: a keyframe
+        // left empty is filled from the underlying style, which is still
+        // the start position, and the cursor snaps back before correcting.
+        const overshootAt = frames[frames.length - 1]?.transform ?? land;
+        const reach = host.animate(frames, {
           duration: CURSOR_TRAVEL_MS,
           easing: 'linear',
           fill: 'forwards',
@@ -222,11 +252,14 @@ export function showAgentCursor(from?: {
         if (gone) return;
 
         // The correction: short, and onto the target exactly.
-        const settle = host.animate([{}, { transform: land }], {
-          duration: CURSOR_SETTLE_MS,
-          easing: TRAVEL_EASE,
-          fill: 'forwards',
-        });
+        const settle = host.animate(
+          [{ transform: overshootAt }, { transform: land }],
+          {
+            duration: CURSOR_SETTLE_MS,
+            easing: TRAVEL_EASE,
+            fill: 'forwards',
+          },
+        );
         await settle.finished.catch(() => undefined);
         at = { x, y };
         await wait(CURSOR_REST_MS);
@@ -241,7 +274,7 @@ export function showAgentCursor(from?: {
         if (gone) return;
         gone = true;
         host.style.opacity = '0';
-        window.setTimeout(() => host.remove(), CURSOR_APPEAR_MS + 60);
+        window.setTimeout(() => layer.remove(), CURSOR_APPEAR_MS + 60);
       },
     };
 

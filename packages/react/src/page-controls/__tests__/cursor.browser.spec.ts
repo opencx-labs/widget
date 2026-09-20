@@ -10,8 +10,13 @@ import {
   travelTo,
 } from '../cursor';
 
-const cursorNode = () =>
+/** The clipping layer. */
+const cursorLayer = () =>
   document.querySelector<HTMLElement>('[data-opencx-cursor]');
+
+/** The pointer inside it — what actually moves. */
+const cursorNode = () =>
+  document.querySelector<HTMLElement>('[data-opencx-cursor-tip]');
 
 const target = () => {
   const el = document.querySelector<HTMLElement>('#target');
@@ -35,13 +40,30 @@ afterEach(() => {
 describe('the agent pointer', () => {
   it('is widget-owned and cannot intercept anything', () => {
     showAgentCursor();
-    const node = cursorNode();
+    const layer = cursorLayer();
 
-    expect(node).not.toBeNull();
-    expect(node?.getAttribute('data-opencx-overlay')).toBe('');
-    expect(node?.getAttribute('aria-hidden')).toBe('true');
-    expect(getComputedStyle(node as Element).pointerEvents).toBe('none');
-    expect(getComputedStyle(node as Element).position).toBe('fixed');
+    expect(layer).not.toBeNull();
+    expect(layer?.getAttribute('data-opencx-overlay')).toBe('');
+    expect(layer?.getAttribute('aria-hidden')).toBe('true');
+    expect(getComputedStyle(layer as Element).pointerEvents).toBe('none');
+    expect(getComputedStyle(layer as Element).position).toBe('fixed');
+    expect(getComputedStyle(cursorNode() as Element).pointerEvents).toBe(
+      'none',
+    );
+  });
+
+  it('travelling past the viewport cannot grow the page', async () => {
+    const before = {
+      width: document.documentElement.scrollWidth,
+      height: document.documentElement.scrollHeight,
+    };
+    // A reach whose arc swings well outside the viewport.
+    showAgentCursor({ x: window.innerWidth - 4, y: window.innerHeight - 4 });
+    await travelTo(target());
+
+    expect(document.documentElement.scrollWidth).toBe(before.width);
+    expect(document.documentElement.scrollHeight).toBe(before.height);
+    expect(getComputedStyle(cursorLayer() as Element).overflow).toBe('hidden');
   });
 
   it("lands on the control's centre — the same point a click aims at", async () => {
