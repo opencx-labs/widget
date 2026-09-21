@@ -21,15 +21,25 @@ import { JsonRenderFallback, registry } from './registry';
  * Applies leaf-`repeat` recovery, guards empty/partial specs, and renders under
  * a per-spec state provider (so `{ "$state": "/path" }` refs resolve against
  * THIS spec's own state) wrapped in an error boundary.
+ *
+ * `active` says the spec is still being streamed: containers with nothing to
+ * paint yet show a shimmer instead of their settled empty state. History and
+ * settled turns leave it off.
  */
-export function SpecRenderer({ spec }: { spec: Spec | null }) {
+export function SpecRenderer({
+  spec,
+  active = false,
+}: {
+  spec: Spec | null;
+  active?: boolean;
+}) {
   const { anchorTarget, onUiAction } = useConfig();
   const { t } = useTranslation();
   const host = useMemo<JsonRenderHost>(
     () => ({ t, anchorTarget: anchorTarget ?? '_blank', onUiAction }),
     [t, anchorTarget, onUiAction],
   );
-  return <HostedSpec spec={spec} host={host} />;
+  return <HostedSpec spec={spec} host={host} active={active} />;
 }
 
 /**
@@ -56,9 +66,11 @@ export function HostedSpecRenderer({
 function HostedSpec({
   spec,
   host,
+  active = false,
 }: {
   spec: Spec | null;
   host: JsonRenderHost;
+  active?: boolean;
 }) {
   const normalized = useMemo(
     () => (spec ? inlineRepeatLeaves(spec) : null),
@@ -76,6 +88,7 @@ function HostedSpec({
           <Renderer
             spec={normalized}
             registry={registry}
+            loading={active}
             fallback={JsonRenderFallback}
           />
         </JSONUIProvider>
