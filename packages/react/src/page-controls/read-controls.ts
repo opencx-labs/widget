@@ -50,6 +50,46 @@ const INTERACTIVE_SELECTOR = [
   '[role="searchbox"]',
 ].join(',');
 
+/**
+ * Rows, cards and list items that a page has made clickable without saying
+ * so in its markup.
+ *
+ * A React `onClick` on a `<tr>` cannot be seen from the DOM — there is no
+ * API for it — so a table of settlements looks exactly like a table of
+ * text, and an agent asked to open one has nothing to offer but the
+ * navigation. That is not a hypothetical: it is what happens on the first
+ * real screen this was pointed at.
+ *
+ * `cursor: pointer` is the signal, and it is not a guess. It is the page
+ * telling the visitor, in the only way a page can, that this responds to a
+ * click — the same thing a sighted person reads before they click it. We
+ * take the page at its word rather than inferring anything about handlers.
+ *
+ * Bounded on purpose: only containers that hold a row of content, and only
+ * when they contain no real control of their own, because then the control
+ * is what should be offered, not its wrapper.
+ */
+const CLICKABLE_CONTAINER_SELECTOR = [
+  'tr',
+  'li',
+  '[role="row"]',
+  '[role="listitem"]',
+  '[role="gridcell"]',
+  '[tabindex]',
+  '[onclick]',
+].join(',');
+
+/** A cap on style reads, so a huge table cannot cost the send path a frame. */
+const MAX_STYLE_PROBES = 400;
+
+function looksClickable(el: HTMLElement): boolean {
+  try {
+    return el.ownerDocument.defaultView?.getComputedStyle(el).cursor === 'pointer';
+  } catch {
+    return false;
+  }
+}
+
 /** Tag → the role a browser would report, for the elements we collect. */
 function roleOf(el: HTMLElement): string {
   const explicit = el.getAttribute('role');
@@ -71,6 +111,19 @@ function roleOf(el: HTMLElement): string {
     return 'textbox';
   }
   return 'textbox';
+}
+
+/**
+ * What to call a clickable container. A row is a row; calling it a button
+ * would tell the agent it is something it is not.
+ */
+function containerRoleOf(el: HTMLElement): string {
+  const explicit = el.getAttribute('role');
+  if (explicit?.trim()) return explicit.trim().toLowerCase();
+  const tag = el.tagName.toLowerCase();
+  if (tag === 'tr') return 'row';
+  if (tag === 'li') return 'listitem';
+  return 'button';
 }
 
 /**
@@ -105,6 +158,7 @@ export function readPageControls(
   doc: Document = document,
 ): PageControlSnapshot {
   const controls: PageControl[] = [];
+  const seen = new Set<HTMLElement>();
   let truncated = false;
   try {
     const mint = beginSnapshot();
@@ -123,6 +177,35 @@ export function readPageControls(
       const control: PageControl = { ref: mint(el), role: roleOf(el), name };
       if (isDisabled(el)) control.disabled = true;
       controls.push(control);
+      seen.add(el);
+    }
+
+    // Second pass: the rows and cards the page made clickable with style
+    // rather than with markup. Cheap checks first, the style read last.
+    let probes = 0;
+    if (!truncated) {
+      const containers = Array.from(
+        doc.querySelectorAll<HTMLElement>(CLICKABLE_CONTAINER_SELECTOR),
+      );
+      for (const el of containers) {
+        if (controls.length >= MAX_CONTROLS) {
+          truncated = true;
+          break;
+        }
+        if (probes >= MAX_STYLE_PROBES) break;
+        if (seen.has(el)) continue;
+        if (offLimitsReason(el)) continue;
+        // A wrapper around a real control is not itself the control: offer
+        // the button, not the cell it sits in.
+        if (el.querySelector(INTERACTIVE_SELECTOR)) continue;
+        if (!isVisible(el)) continue;
+        const name = accessibleName(el);
+        if (!name) continue;
+        probes += 1;
+        if (!looksClickable(el)) continue;
+        controls.push({ ref: mint(el), role: containerRoleOf(el), name });
+        seen.add(el);
+      }
     }
   } catch {
     // Reading the page is a courtesy; a hostile or exotic DOM must never

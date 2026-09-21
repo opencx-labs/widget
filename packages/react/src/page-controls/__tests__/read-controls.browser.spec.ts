@@ -226,3 +226,78 @@ describe('cost', () => {
     expect(elapsed).toBeLessThan(20);
   });
 });
+
+/**
+ * The shape that broke on the first real screen: a settlements table whose
+ * rows are clickable with a React handler and nothing else. No href, no
+ * role, no tabindex — invisible from the DOM, so an agent asked to open one
+ * had only the navigation to offer, clicked that, and correctly reported
+ * that nothing changed.
+ */
+describe('rows a page made clickable with style, not markup', () => {
+  it('offers a clickable table row, named by its content', () => {
+    mount(`
+      <nav><a href="/settlements">Settlements</a></nav>
+      <table>
+        <tbody>
+          <tr style="cursor: pointer"><td>1180.000.2026</td><td>Open</td><td>$0.00</td></tr>
+          <tr style="cursor: pointer"><td>1180.001.2026</td><td>Pending</td><td>$508.50</td></tr>
+        </tbody>
+      </table>
+    `);
+
+    const { controls } = readPageControls();
+    const rows = controls.filter((control) => control.role === 'row');
+    expect(rows.map((row) => row.name)).toEqual([
+      '1180.000.2026 Open $0.00',
+      '1180.001.2026 Pending $508.50',
+    ]);
+    // Positive control: the navigation is still there, so this is the rows
+    // being ADDED rather than the reader changing what it collects.
+    expect(controls.some((control) => control.name === 'Settlements')).toBe(true);
+  });
+
+  it('leaves a plain table alone', () => {
+    // The whole rule is `cursor: pointer`. Without it a table is text, and
+    // offering its rows would invite clicks that do nothing.
+    mount(`
+      <table><tbody>
+        <tr><td>1180.000.2026</td><td>Open</td></tr>
+      </tbody></table>
+    `);
+
+    expect(readPageControls().controls).toEqual([]);
+  });
+
+  it('offers the control inside a clickable row, not the row', () => {
+    // A row wrapping a real button is not itself the thing to press.
+    mount(`
+      <table><tbody>
+        <tr style="cursor: pointer"><td><button>Download statement</button></td></tr>
+      </tbody></table>
+    `);
+
+    const { controls } = readPageControls();
+    expect(controls.map((control) => `${control.role}:${control.name}`)).toEqual([
+      'button:Download statement',
+    ]);
+  });
+
+  it('never offers a clickable row inside a private region', () => {
+    mount(`
+      <div data-opencx-private>
+        <table><tbody>
+          <tr style="cursor: pointer"><td>Card ending 4242</td></tr>
+        </tbody></table>
+      </div>
+      <table><tbody>
+        <tr style="cursor: pointer"><td>Public row</td></tr>
+      </tbody></table>
+    `);
+
+    const names = readPageControls().controls.map((control) => control.name);
+    // Positive control: the public row proves the pass ran at all.
+    expect(names).toContain('Public row');
+    expect(names).not.toContain('Card ending 4242');
+  });
+});
