@@ -1,5 +1,23 @@
 # @opencx/widget-react
 
+## 5.0.0-beta.8
+
+### Patch Changes
+
+- Chart value labels are no longer clipped: the axis reserves room for the widest label it actually draws, so thousands and currency amounts read in full.
+- Show agent cards as cards, never as raw patch text: a card that arrives without its fence still renders, a card cut mid-stream keeps its placeholder instead of flashing its source, and text the agent wrote beside a card stays visible.
+  - @opencx/widget-core@5.0.0-beta.8
+  - @opencx/widget-react-headless@5.0.0-beta.8
+
+## 5.0.0-beta.7
+
+### Patch Changes
+
+- Connect personal accounts in the widget, answer approval forms, and manage saved connections and approvals from the sessions screen. Keep account access isolated and improve session switching and interrupted-response recovery.
+- Updated dependencies
+  - @opencx/widget-core@5.0.0-beta.7
+  - @opencx/widget-react-headless@5.0.0-beta.7
+
 ## 5.0.0-beta.6
 
 ### Patch Changes

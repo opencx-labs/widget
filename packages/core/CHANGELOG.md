@@ -1,5 +1,13 @@
 # @opencx/widget-core
 
+## 5.0.0-beta.8
+
+## 5.0.0-beta.7
+
+### Patch Changes
+
+- Connect personal accounts in the widget, answer approval forms, and manage saved connections and approvals from the sessions screen. Keep account access isolated and improve session switching and interrupted-response recovery.
+
 ## 5.0.0-beta.6
 
 ### Patch Changes
