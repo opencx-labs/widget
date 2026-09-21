@@ -241,6 +241,8 @@ describe('useAgentChat clientContext + page effects', () => {
     expect(hookValue?.pageEffects).toEqual([
       {
         key: 'sess-1:call-1',
+        // The adapter answers this exact call once it has performed it.
+        callId: 'call-1',
         type: 'highlight-element',
         input: { selector: '#create-key', label: 'here' },
       },

@@ -39,3 +39,7 @@ local-pack/
 
 # Local code-review artifacts
 .claude/reviews
+
+# Vitest browser-mode run artefacts (failure screenshots, attachments)
+.vitest-attachments/
+__screenshots__/

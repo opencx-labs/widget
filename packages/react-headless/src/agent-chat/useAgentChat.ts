@@ -32,12 +32,33 @@ import { stopAgentChatTurn } from './stop-agent-chat-turn';
 const MAX_QUEUED_SENDS = 20;
 
 const HIGHLIGHT_ELEMENT_TOOL_NAME = 'highlight_element';
+const ACT_ON_PAGE_TOOL_NAME = 'act_on_page';
+
+/**
+ * Something the visitor has to say yes to before it happens. Raised by the
+ * adapter that is about to act — it is the one that knows which control the
+ * reference points at, and what that control is called.
+ */
+export type PendingPageAction = {
+  callId: string;
+  /** What is about to be done: clicked, filled in, switched on. */
+  action: string;
+  /** The control's own name on the page, read off the page, not the model. */
+  controlName: string;
+};
 
 /** A normalized browser effect for a styled renderer to perform on its host. */
 export type AgentChatPageEffect = {
   key: string;
-  type: 'highlight-element';
+  type: 'highlight-element' | 'act-on-page';
   input: unknown;
+  /**
+   * The tool call this effect belongs to. The adapter performs the effect,
+   * sees what happened, and answers with `replyToPageCall(callId, …)` —
+   * which is how the turn finds out anything at all about the page it just
+   * touched.
+   */
+  callId: string;
 };
 
 type QueuedSend = StagedUserTurn & {
@@ -680,7 +701,14 @@ export function useAgentChat({
     const effects: AgentChatPageEffect[] = [];
     for (const part of last.parts) {
       if (!isToolUIPart(part)) continue;
-      if (getToolName(part) !== HIGHLIGHT_ELEMENT_TOOL_NAME) continue;
+      const toolName = getToolName(part);
+      const type =
+        toolName === HIGHLIGHT_ELEMENT_TOOL_NAME
+          ? ('highlight-element' as const)
+          : toolName === ACT_ON_PAGE_TOOL_NAME
+            ? ('act-on-page' as const)
+            : null;
+      if (!type) continue;
       if (
         part.state !== 'input-available' &&
         part.state !== 'output-available'
@@ -689,14 +717,108 @@ export function useAgentChat({
       }
       effects.push({
         key: `${sessionId ?? 'pending'}:${part.toolCallId}`,
-        type: 'highlight-element',
+        type,
         input: part.input,
+        callId: part.toolCallId,
       });
     }
     return effects;
   }, [messages, sessionId, performsClientTools]);
 
+  /**
+   * The adapter's way of telling the turn what happened. It is the only
+   * thing that makes a page tool honest: without it the server knows it
+   * asked and nothing else, which is why such tools used to be described to
+   * the model as "never claim this worked".
+   *
+   * Never throws — a lost answer costs the tool call its timeout, which the
+   * server already handles, and must never break the host page.
+   */
+  const replyToPageCall = useCallback(
+    (
+      callId: string,
+      outcome:
+        | 'done'
+        | 'covered'
+        | 'gone'
+        | 'hidden'
+        | 'unsupported'
+        | 'no_change'
+        | 'declined',
+      detail?: string,
+      page?: {
+        controls: {
+          ref: string;
+          role: string;
+          name: string;
+          disabled?: boolean;
+        }[];
+        truncated: boolean;
+      },
+    ) => {
+      if (!sessionId) return;
+      void api.sendPageReply(sessionId, {
+        callId,
+        outcome,
+        ...(detail ? { detail } : {}),
+        // The page as it is after the action. Without it a flow that
+        // crosses screens stops dead: the agent is holding refs to the
+        // screen it just left.
+        ...(page?.controls.length
+          ? { controls: page.controls, truncated: page.truncated }
+          : {}),
+      });
+    },
+    [api, sessionId],
+  );
+
+  /**
+   * The one thing waiting on the visitor. One at a time on purpose: two
+   * Allow chips at once is a thing people click through, and this is the
+   * moment that is supposed to make them look.
+   */
+  const [pendingPageAction, setPendingPageAction] =
+    useState<PendingPageAction | null>(null);
+  const consentResolvers = useRef(
+    new Map<string, (allowed: boolean) => void>(),
+  );
+
+  /**
+   * Ask the visitor about one committing action. Resolves true only if they
+   * say yes to THIS control; a decline resolves false and is final — the
+   * adapter reports it and never offers the agent another route to the same
+   * click.
+   */
+  const requestPageActionConsent = useCallback(
+    (request: PendingPageAction) =>
+      new Promise<boolean>((resolve) => {
+        consentResolvers.current.set(request.callId, resolve);
+        setPendingPageAction(request);
+      }),
+    [],
+  );
+
+  const resolvePageAction = useCallback((callId: string, allowed: boolean) => {
+    const resolver = consentResolvers.current.get(callId);
+    consentResolvers.current.delete(callId);
+    setPendingPageAction((current) =>
+      current?.callId === callId ? null : current,
+    );
+    resolver?.(allowed);
+  }, []);
+
   const isStreaming = status === 'submitted' || status === 'streaming';
+
+  // A turn that ended while a chip was still up gets a NO, not a silence:
+  // an unanswered question must never become an assumed yes later.
+  useEffect(() => {
+    if (isStreaming) return;
+    const resolvers = consentResolvers.current;
+    if (resolvers.size === 0) return;
+    resolvers.forEach((resolve) => resolve(false));
+    resolvers.clear();
+    setPendingPageAction(null);
+  }, [isStreaming]);
 
   // Under `throttle`, the final messages tick can TRAIL the status flip, so
   // the boundary read may see a snapshot without the terminal
@@ -889,6 +1011,10 @@ export function useAgentChat({
     removeQueued,
     stop: stopTurn,
     pageEffects,
+    replyToPageCall,
+    pendingPageAction,
+    requestPageActionConsent,
+    resolvePageAction,
     handledConnectionRequestIds,
     sourceSessionId: ownsSessionState ? sessionId : null,
   };

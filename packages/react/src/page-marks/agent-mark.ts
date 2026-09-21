@@ -1,6 +1,5 @@
 import { annotate, type AnnotationType } from '@shardsui/notation';
 import { z } from 'zod';
-import { resolveElementByHint } from './page-element';
 import { adoptNotationInk } from './page-mark';
 import { log } from '@opencx/widget-core';
 
@@ -40,8 +39,14 @@ const HIGHLIGHT_MARK_TYPES = [
 ] as const;
 
 export const highlightElementInputSchema = z.object({
-  selector: z.string().optional(),
-  text: z.string().optional(),
+  /**
+   * The control to point at, as a reference the widget itself handed out
+   * with the customer's message. There is no selector and no text to match:
+   * the agent can only ever name something the page reader offered it, and
+   * a reference that no longer resolves is a no-op, never a mark thrown
+   * around whatever has since moved into that place.
+   */
+  ref: z.string().min(1),
   label: z.string().optional(),
   /**
    * Optional mark style. `.catch(undefined)` so a model-invented type degrades
@@ -91,11 +96,14 @@ export function dismissActiveHighlight() {
  * smooth scroll), and float an optional pointing callout. The page stays fully
  * interactive throughout — nothing is dimmed and no click is trapped.
  *
- * Returns false when the hint doesn't resolve to an element (the page may have
- * changed since the context was captured) — callers treat that as a no-op.
+ * Takes the element, not a way of finding one: WHICH element is the caller's
+ * decision (`guardRef` — the reference the reader handed out, checked to be
+ * the same node, on screen and not covered). The pen only draws. Returns
+ * false when the ink could not be laid down at all.
  */
 export function highlightElementOnHostPage(
-  input: HighlightElementInput,
+  el: HTMLElement,
+  input: Omit<HighlightElementInput, 'ref'>,
   {
     accentColor = 'hsl(0 0% 9%)',
     surfaceColor = 'hsl(0 0% 9%)',
@@ -112,8 +120,11 @@ export function highlightElementOnHostPage(
     seed?: number;
   } = {},
 ): boolean {
-  const el = resolveElementByHint(input);
-  if (!el) return false;
+  // Notation hangs its ink beside the target, so a detached element has
+  // nowhere to draw. The caller already guarded the reference; this is the
+  // last instant before the ink, and a mark drawn nowhere must report
+  // itself as a miss rather than as a mark.
+  if (!el.isConnected) return false;
 
   // The hand moves on: release the previous mark before throwing this one.
   activeDismiss?.();
