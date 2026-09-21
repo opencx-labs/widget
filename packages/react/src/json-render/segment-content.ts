@@ -160,7 +160,17 @@ function isRenderableSpec(spec: Spec): boolean {
   return isNonEmptySpec(spec) && spec.elements[spec.root] !== undefined;
 }
 
-/** A JSON line the stream cut before its closing brace. */
+/** How every patch line opens, the yardstick a cut fragment is measured against. */
+const PATCH_LINE_OPENING = '{"op":';
+
+/**
+ * A JSON line the stream cut before its closing brace — and only one that
+ * could still have become a patch: it already names `op`, or it stopped
+ * inside the opening `{"op":` itself. Something else the model started on its
+ * own line (`{"explanation":`) is its own text and stays visible.
+ */
 function isCutPatchLine(trimmed: string): boolean {
-  return trimmed.startsWith('{') && !trimmed.endsWith('}');
+  if (!trimmed.startsWith('{') || trimmed.endsWith('}')) return false;
+  if (/"op"\s*:/.test(trimmed)) return true;
+  return PATCH_LINE_OPENING.startsWith(trimmed.replace(/\s+/g, ''));
 }

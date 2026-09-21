@@ -141,6 +141,24 @@ describe('segmentContent — trailing cut-off patch line (guard 2)', () => {
     expect(segmentContent(text)).toEqual([{ type: 'markdown', content: text }]);
   });
 
+  it('keeps a trailing fragment that was never going to be a patch', () => {
+    // The model started a different object on its own line. It is the agent's
+    // text, not the run's tail, so the card renders AND the text survives.
+    const segments = segmentContent(
+      `${PATCH_ROOT}\n${PATCH_CARD}\n${PATCH_METRIC}\n{"explanation":`,
+    );
+    expect(segments).toEqual([
+      { type: 'ui', spec: expect.objectContaining({ root: 'main' }) },
+      { type: 'markdown', content: '{"explanation":' },
+    ]);
+    // Positive control on the same shape: a cut PATCH line is still the tail.
+    expect(
+      segmentContent(`${PATCH_ROOT}\n${PATCH_CARD}\n${PATCH_METRIC}\n${CUT_LINE}`).map(
+        (s) => s.type,
+      ),
+    ).toEqual(['ui']);
+  });
+
   it('still skips a cut line inside an unclosed fence (existing rule unchanged)', () => {
     const segments = segmentContent(
       `\`\`\`spec\n${PATCH_ROOT}\n${PATCH_CARD}\n${CUT_LINE}`,
