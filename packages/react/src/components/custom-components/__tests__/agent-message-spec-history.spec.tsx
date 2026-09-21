@@ -93,6 +93,23 @@ describe('AgentMessageDefaultComponent — persisted spec fences', () => {
     expect(html.textContent).not.toContain('```spec');
   });
 
+  it('renders a stored AI reply whose spec was never fenced as UI, never as raw JSON', () => {
+    // The live transform drained these lines into a card regardless of the
+    // missing fence; the stored text must not come back as `{"op":…` prose.
+    const bare = FENCED_MESSAGE.split('\n')
+      .filter((line) => line !== '```spec' && line !== '```')
+      .join('\n');
+    const html = render(
+      // @ts-expect-error partial WidgetComponentProps fixture (see above)
+      <AgentMessageDefaultComponent {...messageProps('AI', bare)} />,
+    );
+    expect(html.textContent).toContain('Here is your order summary');
+    expect(html.textContent).toContain('Anything else?');
+    expect(html.textContent).toContain('Order #1024');
+    expect(html.textContent).toContain('$42');
+    expect(html.textContent).not.toContain('"op"');
+  });
+
   it('renders a plain AI message exactly as before (fast path, one bubble)', () => {
     const html = render(
       // @ts-expect-error partial WidgetComponentProps fixture (see above)

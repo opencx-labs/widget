@@ -14,6 +14,7 @@ import { cn } from '../components/lib/utils/cn';
 import { useJsonRenderHost } from './host';
 import { Chart as ChartView } from './Chart';
 import { widgetCatalog } from './catalog';
+import { StreamingShimmer } from './StreamingShimmer';
 import {
   badgePropsSchema,
   calloutPropsSchema,
@@ -42,6 +43,11 @@ import {
  * `defineRegistry`'s type checking makes this map exhaustive against the
  * catalog: renderer and catalog can't drift.
  *
+ * `loading` is the renderer's "this spec is still streaming" flag
+ * (`SpecRenderer`'s `active`). A container whose content has not arrived yet
+ * shows the shimmer instead of a bare frame or its settled empty state — a
+ * Card's children, a List's items and a Table's rows all land patches after
+ * the container itself.
  */
 
 const GAP_CLASS = { sm: 'gap-1.5', md: 'gap-3', lg: 'gap-4' } as const;
@@ -66,7 +72,7 @@ function gridColumns(columns: 1 | 2 | 3): string {
 
 export const { registry } = defineRegistry(widgetCatalog, {
   components: {
-    Card: ({ props, children }) => {
+    Card: ({ props, children, loading }) => {
       const p = parseProps(cardPropsSchema, props, {});
       return (
         <div className="flex flex-col gap-2 rounded-xl border border-muted-foreground/15 p-3">
@@ -84,12 +90,12 @@ export const { registry } = defineRegistry(widgetCatalog, {
               )}
             </div>
           )}
-          {children}
+          {containerBody(children, loading)}
         </div>
       );
     },
 
-    Stack: ({ props, children }) => {
+    Stack: ({ props, children, loading }) => {
       const p = parseProps(stackPropsSchema, props, {});
       const align = {
         start: 'items-start',
@@ -113,19 +119,19 @@ export const { registry } = defineRegistry(widgetCatalog, {
             justify,
           )}
         >
-          {children}
+          {containerBody(children, loading)}
         </div>
       );
     },
 
-    Grid: ({ props, children }) => {
+    Grid: ({ props, children, loading }) => {
       const p = parseProps(gridPropsSchema, props, {});
       return (
         <div
           className={cn('grid', GAP_CLASS[p.gap ?? 'md'])}
           style={{ gridTemplateColumns: gridColumns(p.columns ?? 1) }}
         >
-          {children}
+          {containerBody(children, loading)}
         </div>
       );
     },
@@ -190,16 +196,22 @@ export const { registry } = defineRegistry(widgetCatalog, {
       );
     },
 
-    List: ({ props }) => {
+    List: ({ props, loading }) => {
       const p = parseProps(listPropsSchema, props, { items: [] });
       if (p.items.length === 0) {
-        return <EmptyState translationKey="json_no_items" />;
+        return loading ? (
+          <StreamingShimmer />
+        ) : (
+          <EmptyState translationKey="json_no_items" />
+        );
       }
       return <CompactList items={p.items} maxVisible={p.maxVisible} />;
     },
 
-    Table: ({ props }) => {
+    Table: ({ props, loading }) => {
       const p = parseProps(tablePropsSchema, props, { columns: [], rows: [] });
+      // Header-only mid-stream is still "nothing to read yet".
+      if (loading && p.rows.length === 0) return <StreamingShimmer />;
       if (p.columns.length === 0) {
         return <EmptyState translationKey="json_no_data" />;
       }
@@ -321,6 +333,20 @@ const CALLOUT_STYLES = {
     cls: 'border-l-red-500 bg-red-500/5 text-foreground',
   },
 } as const;
+
+/**
+ * A layout container's body: its rendered children, or the shimmer while the
+ * spec is still streaming and none have landed. `toArray` drops the `null`
+ * the renderer emits for a child key whose element has not arrived yet, so a
+ * `Card` whose first patch already names its children still counts as empty.
+ */
+function containerBody(
+  children: React.ReactNode,
+  loading: boolean | undefined,
+): React.ReactNode {
+  if (React.Children.toArray(children).length > 0) return children;
+  return loading ? <StreamingShimmer /> : null;
+}
 
 function EmptyState({
   translationKey,
