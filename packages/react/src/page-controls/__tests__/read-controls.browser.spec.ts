@@ -254,7 +254,9 @@ describe('rows a page made clickable with style, not markup', () => {
     ]);
     // Positive control: the navigation is still there, so this is the rows
     // being ADDED rather than the reader changing what it collects.
-    expect(controls.some((control) => control.name === 'Settlements')).toBe(true);
+    expect(controls.some((control) => control.name === 'Settlements')).toBe(
+      true,
+    );
   });
 
   it('leaves a plain table alone', () => {
@@ -278,9 +280,9 @@ describe('rows a page made clickable with style, not markup', () => {
     `);
 
     const { controls } = readPageControls();
-    expect(controls.map((control) => `${control.role}:${control.name}`)).toEqual([
-      'button:Download statement',
-    ]);
+    expect(
+      controls.map((control) => `${control.role}:${control.name}`),
+    ).toEqual(['button:Download statement']);
   });
 
   it('never offers a clickable row inside a private region', () => {

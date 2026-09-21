@@ -84,7 +84,9 @@ const MAX_STYLE_PROBES = 400;
 
 function looksClickable(el: HTMLElement): boolean {
   try {
-    return el.ownerDocument.defaultView?.getComputedStyle(el).cursor === 'pointer';
+    return (
+      el.ownerDocument.defaultView?.getComputedStyle(el).cursor === 'pointer'
+    );
   } catch {
     return false;
   }
