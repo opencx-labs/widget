@@ -1,4 +1,20 @@
 /**
+ * jsdom lays nothing out and ships no `ResizeObserver`, while every supported
+ * browser has one. An inert stand-in lets components that observe layout
+ * mount in tests; a spec that needs to deliver notifications stubs its own
+ * (`vi.stubGlobal`) over this one.
+ */
+if (typeof ResizeObserver === 'undefined') {
+  Object.assign(globalThis, {
+    ResizeObserver: class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  });
+}
+
+/**
  * jsdom lacks `CSS.escape` (and sometimes the `CSS` namespace entirely), while
  * every supported browser has it. Polyfill the minimum here so tests exercise
  * the same `CSS.escape` code path that runs in production instead of a

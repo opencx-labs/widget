@@ -28,6 +28,10 @@ export type StreamFollow = {
  *
  * `followKey` is the dependency list whose changes represent "new content"
  * (e.g. `[messages, liveItems]`); the follow effect re-runs on each change.
+ * Content that grows WITHOUT a `followKey` change — a lazily loaded chart
+ * chunk resolving, an image decoding, a reopened session's historical turn
+ * source landing from its own fetch — is followed through a `ResizeObserver`
+ * on the container's rows (below), never through timers.
  */
 export function useStreamFollow(followKey: DependencyList): StreamFollow {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -37,6 +41,9 @@ export function useStreamFollow(followKey: DependencyList): StreamFollow {
   // that case.
   const autoFollowRef = useRef(true);
   const [showScrollDown, setShowScrollDown] = useState(false);
+  const observerRef = useRef<ResizeObserver | null>(null);
+  // One Set for the hook's life: which rows the observer currently watches.
+  const [observedRows] = useState(() => new Set<Element>());
 
   const handleScroll = useCallback(() => {
     const el = containerRef.current;
@@ -63,6 +70,47 @@ export function useStreamFollow(followKey: DependencyList): StreamFollow {
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, followKey);
+
+  // Late growth keeps a pinned list at the bottom. The scroll container's own
+  // box never changes when its content grows, so the observer watches the
+  // rows (its direct children): any descendant getting taller — a chart chunk
+  // mounting inside a turn — grows its row's box, and the callback re-pins.
+  // Fires after layout, before paint, so the pin lands in the same frame; a
+  // released viewport (`autoFollowRef` false) is never yanked.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => {
+      if (!autoFollowRef.current) return;
+      el.scrollTop = el.scrollHeight;
+    });
+    observerRef.current = observer;
+    return () => {
+      observer.disconnect();
+      observerRef.current = null;
+      observedRows.clear();
+    };
+  }, [observedRows]);
+
+  // Rows mount and unmount on renders that leave `followKey` untouched (a
+  // historical turn source landing after the transcript), so the observed set
+  // is reconciled after EVERY commit: new rows observed, detached rows
+  // released. Idempotent and a handful of elements — cheap at stream rate.
+  useEffect(() => {
+    const el = containerRef.current;
+    const observer = observerRef.current;
+    if (!el || !observer) return;
+    observedRows.forEach((row) => {
+      if (row.isConnected) return;
+      observer.unobserve(row);
+      observedRows.delete(row);
+    });
+    Array.from(el.children).forEach((row) => {
+      if (observedRows.has(row)) return;
+      observer.observe(row);
+      observedRows.add(row);
+    });
+  });
 
   return { containerRef, handleScroll, showScrollDown, scrollToBottom };
 }

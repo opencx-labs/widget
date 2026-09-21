@@ -52,9 +52,27 @@ describe('segmentContent', () => {
     expect(segmentContent(text)).toEqual([{ type: 'markdown', content: text }]);
   });
 
-  it('treats bare JSONL patch lines outside any fence as markdown', () => {
+  it('compiles a fence-less run of bare JSONL patch lines as UI (see segment-content-bare-patches.spec)', () => {
     const text = `${PATCH_ROOT}\n${PATCH_CARD}`;
+    const segments = segmentContent(text);
+    expect(segments.map((s) => s.type)).toEqual(['ui']);
+    const ui = segments[0];
+    if (ui?.type !== 'ui') throw new Error('expected ui segment');
+    expect(ui.spec.root).toBe('main');
+    expect(ui.spec.elements.main?.type).toBe('Card');
+  });
+
+  it('preserves a fence whose root element never arrived (elements without a root render nothing)', () => {
+    // `isNonEmptySpec` alone accepts `{ root: '', elements: {…} }` — the
+    // renderer then paints nothing and the agent's source would be gone.
+    const text = `\`\`\`spec\n${PATCH_CARD}\n\`\`\``;
     expect(segmentContent(text)).toEqual([{ type: 'markdown', content: text }]);
+    // Positive control on the same data: the root patch makes it renderable.
+    expect(
+      segmentContent(`\`\`\`spec\n${PATCH_ROOT}\n${PATCH_CARD}\n\`\`\``).map(
+        (s) => s.type,
+      ),
+    ).toEqual(['ui']);
   });
 
   it('compiles what arrived in an unclosed fence (turn cut mid-stream) — no placeholder segment', () => {

@@ -90,7 +90,11 @@ export function StreamingTurn({
           />
         ) : item.kind === 'spec' ? (
           SpecComponent && (
-            <SpecComponent key={`spec-${index}`} parts={item.parts} />
+            <SpecComponent
+              key={`spec-${index}`}
+              parts={item.parts}
+              active={turn.active}
+            />
           )
         ) : item.kind === 'questions' ||
           item.kind === 'plan' ||
@@ -142,12 +146,23 @@ function endsWithRunningSteps(items: readonly StreamingTurnItem[]): boolean {
  * Assembles the accumulating spec from the turn's `data-spec` patches and
  * renders it through the shared `SpecRenderer` seam (same defenses as the
  * persisted-history path).
+ *
+ * `active` is the turn's own flag: while it streams, containers whose content
+ * has not arrived show a shimmer; once the turn settles they show their
+ * ordinary empty state. Optional so an embedder's custom spec component (and
+ * a direct render) keeps compiling without it.
  */
-export type StreamingSpecComponentProps = { parts: SpecDataPart[] };
+export type StreamingSpecComponentProps = {
+  parts: SpecDataPart[];
+  active?: boolean;
+};
 
-export function StreamingSpec({ parts }: StreamingSpecComponentProps) {
+export function StreamingSpec({
+  parts,
+  active = false,
+}: StreamingSpecComponentProps) {
   // `mapUiPartsToItems` produces a fresh parts array on every stream
   // snapshot, so the reference itself is the change signal.
   const spec = useMemo(() => buildSpec(parts), [parts]);
-  return <SpecRenderer spec={spec} />;
+  return <SpecRenderer spec={spec} active={active} />;
 }
