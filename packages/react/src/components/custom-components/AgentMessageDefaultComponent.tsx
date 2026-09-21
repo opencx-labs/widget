@@ -76,7 +76,18 @@ export function AgentMessageDefaultComponent(
 
   const { variant = 'default' } = data;
 
-  const bubble = (text: string, key?: string, withAfter = true) => (
+  // The quoted message lives INSIDE the bubble, like every chat app: the
+  // bubble grows around it, so quote and reply read as one unit instead of a
+  // stray full-width paragraph above a short bubble. Both a teammate's reply
+  // and the AI's own follow-up (after it asked the team) carry one.
+  const quote = props.replyTo ? <ReplyQuote replyTo={props.replyTo} /> : null;
+
+  const bubble = (
+    text: string,
+    key?: string,
+    withAfter = true,
+    withQuote = true,
+  ) => (
     <div key={key} className="flex flex-row gap-2">
       <div
         {...dc(dataComponentNames?.message ?? 'chat/agent_msg/msg')}
@@ -106,6 +117,7 @@ export function AgentMessageDefaultComponent(
           classNames?.message,
         )}
       >
+        {withQuote && quote}
         <RichText messageType={type} messageId={id}>
           {text}
         </RichText>
@@ -120,6 +132,10 @@ export function AgentMessageDefaultComponent(
   const lastMarkdownIndex =
     segments?.reduce((last, s, i) => (s.type === 'markdown' ? i : last), -1) ??
     -1;
+  // The quote answers the whole reply, so it belongs to the first prose bubble
+  // only — not repeated above every segment of a multi-part turn.
+  const firstMarkdownIndex =
+    segments?.findIndex((s) => s.type === 'markdown') ?? -1;
 
   return (
     <div
@@ -130,9 +146,6 @@ export function AgentMessageDefaultComponent(
         classNames?.messageContainer,
       )}
     >
-      {props.type === 'AGENT' && props.replyTo && (
-        <ReplyQuote replyTo={props.replyTo} />
-      )}
       {attachments && attachments.length > 0 && (
         <div className="w-full gap-1 flex flex-row flex-wrap items-center justify-start">
           {attachments?.map((attachment) => (
@@ -149,6 +162,7 @@ export function AgentMessageDefaultComponent(
                 segment.content,
                 `md-${i}`,
                 i === lastMarkdownIndex,
+                i === firstMarkdownIndex,
               );
             }
             return (

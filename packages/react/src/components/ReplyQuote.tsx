@@ -7,6 +7,10 @@ import { cn } from './lib/utils/cn';
  * The earlier message a teammate's reply answers. When a person joins a
  * conversation the AI has been carrying, this is what tells the customer which
  * of their messages is being answered. Click jumps to the original.
+ *
+ * Rendered INSIDE the reply's bubble (see `AgentMessageDefaultComponent`), the
+ * way every chat app does it: a tinted panel with an accent edge that the
+ * bubble grows around, never a loose paragraph floating above a short bubble.
  */
 export function ReplyQuote({
   replyTo,
@@ -30,16 +34,17 @@ export function ReplyQuote({
         });
       }}
       className={cn(
-        'max-w-full min-w-0 text-start',
-        'border-s-2 border-primary/40 ps-2 py-0.5',
-        'text-xs leading-snug text-muted-foreground hover:text-foreground transition-colors',
+        'not-prose mb-2 block w-full min-w-0 text-start',
+        'rounded-xl border-s-2 border-primary/50 bg-primary/[0.07] ps-2.5 pe-2 py-1.5',
+        'text-xs leading-snug text-muted-foreground',
+        'transition-colors hover:bg-primary/10 hover:text-foreground',
       )}
     >
-      {replyTo.senderName && (
-        <span className="block font-medium text-foreground">
-          {replyTo.senderName}
-        </span>
-      )}
+      {/* The visitor's own message carries no sender name — say "You" rather
+          than leaving the quote unlabelled. */}
+      <span className="block font-medium text-foreground/80">
+        {replyTo.senderName ?? 'You'}
+      </span>
       <span className="line-clamp-2 break-words">{replyTo.text}</span>
     </button>
   );

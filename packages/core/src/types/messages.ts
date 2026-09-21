@@ -71,6 +71,14 @@ export type WidgetUserMessage = {
   };
 };
 
+/** The earlier message of this conversation a reply answers, as a short quote. */
+export type WidgetMessageReplyTo = {
+  id: string;
+  text: string;
+  /** Whose message is quoted; null for the visitor's own. */
+  senderName: string | null;
+};
+
 export type WidgetAiMessage<TActionData = unknown> = {
   id: string;
   type: 'AI';
@@ -89,6 +97,8 @@ export type WidgetAiMessage<TActionData = unknown> = {
   timestamp: string | null;
   agent?: Agent;
   attachments?: MessageAttachmentType[];
+  /** Set when the AI follows up on an earlier message, e.g. after asking the team. */
+  replyTo?: WidgetMessageReplyTo;
 };
 
 export type WidgetAgentMessage = {
@@ -104,12 +114,7 @@ export type WidgetAgentMessage = {
   agent?: Agent;
   attachments?: MessageAttachmentType[];
   /** The earlier message of this conversation a teammate's reply answers. */
-  replyTo?: {
-    id: string;
-    text: string;
-    /** Whose message is quoted; null for the visitor's own. */
-    senderName: string | null;
-  };
+  replyTo?: WidgetMessageReplyTo;
 };
 
 export type WidgetSystemMessage__StateCheckpoint = {

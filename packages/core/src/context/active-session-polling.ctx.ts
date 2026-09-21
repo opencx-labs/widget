@@ -1,6 +1,7 @@
 import type { ApiCaller } from '../api/api-caller';
 import type { ActionCallDto, MessageDto } from '../types/dtos';
 import {
+  type WidgetMessageReplyTo,
   type WidgetMessageU,
   type WidgetSystemMessageU,
 } from '../types/messages';
@@ -243,20 +244,7 @@ export class ActiveSessionPollingCtx {
           id: null,
           isAi: false,
         },
-        ...(history.replyTo
-          ? {
-              replyTo: {
-                id: history.replyTo.publicId,
-                text: history.replyTo.text,
-                senderName:
-                  history.replyTo.sender.kind === 'user'
-                    ? null
-                    : history.replyTo.sender.kind === 'ai'
-                      ? (this.config.bot?.name ?? null)
-                      : (history.replyTo.sender.name ?? null),
-              },
-            }
-          : {}),
+        ...this.constructReplyTo(history),
       };
     }
 
@@ -287,6 +275,7 @@ export class ActiveSessionPollingCtx {
               }
             : undefined,
         },
+        ...this.constructReplyTo(history),
       };
     }
 
@@ -298,6 +287,30 @@ export class ActiveSessionPollingCtx {
     }
 
     return null;
+  };
+
+  /**
+   * The quoted message carried by a reply — a teammate answering a specific
+   * message, or the AI following up on one after asking the team. Spread into
+   * the message so an absent quote adds no key at all.
+   */
+  constructReplyTo = (
+    history: MessageDto,
+  ): { replyTo?: WidgetMessageReplyTo } => {
+    if (!history.replyTo) return {};
+    const { publicId, text, sender } = history.replyTo;
+    return {
+      replyTo: {
+        id: publicId,
+        text,
+        senderName:
+          sender.kind === 'user'
+            ? null
+            : sender.kind === 'ai'
+              ? (this.config.bot?.name ?? null)
+              : (sender.name ?? null),
+      },
+    };
   };
 
   constructSystemMessage = (
