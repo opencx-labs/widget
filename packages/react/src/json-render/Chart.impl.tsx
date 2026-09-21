@@ -15,6 +15,7 @@ import {
   YAxis,
 } from 'recharts';
 import type { ChartProps } from './props';
+import { requiredYAxisWidth } from './chart-axis';
 import { useJsonRenderHost } from './host';
 
 /**
@@ -42,6 +43,41 @@ function useContainerWidth(): {
     return () => observer.disconnect();
   }, []);
   return { ref, width };
+}
+
+const Y_TICK_FONT_SIZE = 11;
+/** First-paint axis width; the measured width replaces it before paint. */
+const Y_AXIS_INITIAL_WIDTH = 32;
+
+/**
+ * Size the Y axis from the tick labels recharts painted (see `chart-axis.ts`):
+ * a fixed `YAxis.width` clips any label wider than it, and there is no
+ * auto-width axis in recharts 2.x. Re-measured whenever the painted labels can
+ * change — the data, the chart type, the height (tick count) or the container
+ * width — in a layout effect so the corrected axis paints in the same frame.
+ * Converges in one pass: the Y ticks do not depend on the axis width, so the
+ * re-render after `setWidth` measures the same labels and settles.
+ */
+function useYAxisWidth(
+  ref: React.RefObject<HTMLDivElement | null>,
+  {
+    type,
+    data,
+    height,
+    containerWidth,
+  }: Pick<ChartProps, 'type' | 'data'> & {
+    height: number;
+    containerWidth: number;
+  },
+): number {
+  const [width, setWidth] = React.useState(Y_AXIS_INITIAL_WIDTH);
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const needed = requiredYAxisWidth(el, width, Y_TICK_FONT_SIZE);
+    if (needed !== null && needed !== width) setWidth(needed);
+  }, [ref, width, type, data, height, containerWidth]);
+  return width;
 }
 
 /**
@@ -77,10 +113,28 @@ export default function ChartImpl({
 }: ChartProps) {
   const h = height ?? 220;
   const { ref, width } = useContainerWidth();
+  const yAxisWidth = useYAxisWidth(ref, {
+    type,
+    data,
+    height: h,
+    containerWidth: width,
+  });
 
   if (data.length === 0) {
     return <ChartEmpty height={h} />;
   }
+
+  // Shared by the cartesian charts: the axis is exactly as wide as its labels,
+  // so the plot keeps every px it can on small numbers and 7-digit or
+  // currency-formatted ticks never lose their leading digits.
+  const yAxis = (
+    <YAxis
+      tickLine={false}
+      axisLine={false}
+      fontSize={Y_TICK_FONT_SIZE}
+      width={yAxisWidth}
+    />
+  );
 
   return (
     <div ref={ref} className="w-full text-foreground" style={{ height: h }}>
@@ -131,7 +185,7 @@ export default function ChartImpl({
             width={width}
             height={h}
             data={data}
-            margin={{ top: 8, right: 8, bottom: 0, left: -16 }}
+            margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
           >
             <CartesianGrid strokeOpacity={0.15} vertical={false} />
             <XAxis
@@ -141,7 +195,7 @@ export default function ChartImpl({
               tickMargin={10}
               fontSize={11}
             />
-            <YAxis tickLine={false} axisLine={false} fontSize={11} width={32} />
+            {yAxis}
             <Tooltip contentStyle={TOOLTIP_STYLE} />
             <Line
               type="monotone"
@@ -156,7 +210,7 @@ export default function ChartImpl({
             width={width}
             height={h}
             data={data}
-            margin={{ top: 8, right: 8, bottom: 0, left: -16 }}
+            margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
           >
             <CartesianGrid strokeOpacity={0.15} vertical={false} />
             <XAxis
@@ -166,7 +220,7 @@ export default function ChartImpl({
               tickMargin={10}
               fontSize={11}
             />
-            <YAxis tickLine={false} axisLine={false} fontSize={11} width={32} />
+            {yAxis}
             <Tooltip
               contentStyle={TOOLTIP_STYLE}
               cursor={{ fillOpacity: 0.06 }}
