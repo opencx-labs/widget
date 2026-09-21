@@ -1,5 +1,25 @@
 # @opencx/widget
 
+## 5.0.0-beta.9
+
+### Patch Changes
+
+- 0a4f49f: Let the agent click, type and choose on the page for the visitor, when the organization turns it on.
+
+  Anything that commits — paying, submitting, deleting, cancelling — shows the visitor a chip naming that exact control first, and a No is final. Password fields, file pickers, controls inside another site embedded in the page and regions marked `data-opencx-private` are never touched. The agent is told what actually happened, including when a control was used and nothing on the page changed.
+
+- 0a4f49f: Report a page action as done only when the page really moved, and keep private regions out at the moment of acting.
+
+  A menu that opens by flipping one attribute now counts as something happening, a control inside a region marked private is refused even if it was read before the mark appeared, and the same is true for anything hidden from assistive technology.
+
+- 0a4f49f: Tell the agent what actually happened on the page, while it is still answering.
+
+  The widget performs a page effect, looks at the result, and reports it back: drawn, covered by something else, or no longer there. The agent says what happened instead of hedging, and a page that never answers is reported as silence rather than as success.
+
+- 0a4f49f: Read the controls a visitor can see and send their names with each message, so the agent can answer where something is without the visitor marking it first.
+
+  Names only: what a field contains never leaves the browser, and password fields, file pickers, anything hidden from screen readers and the widget's own interface are skipped. A region marked `data-opencx-private` is excluded whole. Only pages that share page context read anything at all.
+
 ## 5.0.0-beta.8
 
 ## 5.0.0-beta.7
