@@ -118,7 +118,7 @@ suite('reply quote mapping', () => {
   test('a quoted AI message is labelled with the configured bot name', () => {
     const mapped = buildPolling({
       token: 'tok',
-      bot: { name: 'Payla Assistant' },
+      bot: { name: 'Payla Assistant', avatarUrl: null },
     }).mapHistoryToMessage(
       row({
         sender: { kind: 'agent', name: 'Dev Agent' },
