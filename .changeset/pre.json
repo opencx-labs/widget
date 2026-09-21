@@ -15,6 +15,8 @@
     "personal-account-connections",
     "selectable-question-capabilities",
     "translate-remaining-hardcoded-labels",
+    "v5-chart-axis",
+    "v5-json-render-guards",
     "widget-delivery-controls",
     "widget-follow-up-order",
     "widget-production-build",

@@ -153,9 +153,9 @@ describe('segmentContent — trailing cut-off patch line (guard 2)', () => {
     ]);
     // Positive control on the same shape: a cut PATCH line is still the tail.
     expect(
-      segmentContent(`${PATCH_ROOT}\n${PATCH_CARD}\n${PATCH_METRIC}\n${CUT_LINE}`).map(
-        (s) => s.type,
-      ),
+      segmentContent(
+        `${PATCH_ROOT}\n${PATCH_CARD}\n${PATCH_METRIC}\n${CUT_LINE}`,
+      ).map((s) => s.type),
     ).toEqual(['ui']);
   });
 
