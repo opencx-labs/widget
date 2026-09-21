@@ -28,11 +28,10 @@ import { Tooltippy } from '../../components/lib/tooltip';
 import { cn } from '../../components/lib/utils/cn';
 import { useIsSmallScreen } from '../../hooks/useIsSmallScreen';
 import { useTranslation } from '../../hooks/useTranslation';
-import {
-  pickedElementsFromMarks,
-  type PageMark,
-} from '../../page-marks/page-mark';
+import { type PageMark } from '../../page-marks/page-mark';
 import { awaitSnapshotUrl } from '../../page-marks/mark-thumbnail';
+import { buildPageClientContext } from '../../page-controls/send-context';
+import { PageActionCard } from '../../components/PageActionCard';
 import { PageContextPill } from '../../page-context/PageContextPill';
 import { usePageEntity } from '../../page-context/usePageEntity';
 import { PageMarkOverlay } from '../../page-marks/PageMarkOverlay';
@@ -113,6 +112,7 @@ export function ChatInput({
     queuedUserMessages,
     pendingClarification,
     pendingConnection,
+    pendingPageAction,
   } = useAgentChatUi();
   const { sessionState } = useSessions();
   const { t } = useTranslation();
@@ -316,13 +316,10 @@ export function ChatInput({
       // is the rich payload for THIS turn; `picked_elements` is the key the
       // backend persists, re-surfaces on later turns, and hands back to the
       // surfaces that show the message afterwards.
-      clientContext:
-        submittedMarks.length > 0
-          ? {
-              page_marks: submittedMarks,
-              picked_elements: pickedElementsFromMarks(submittedMarks),
-            }
-          : undefined,
+      clientContext: buildPageClientContext({
+        marks: submittedMarks,
+        readsPage: pageMarksEnabled,
+      }),
       onAccepted: () => {
         if (didAccept) return;
         didAccept = true;
@@ -404,6 +401,12 @@ export function ChatInput({
         <ConnectionCard
           key={pendingConnection.request_id}
           request={pendingConnection}
+        />
+      )}
+      {pendingPageAction && (
+        <PageActionCard
+          key={pendingPageAction.callId}
+          request={pendingPageAction}
         />
       )}
       <input {...dropzone__getInputProps()} />

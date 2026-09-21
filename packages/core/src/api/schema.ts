@@ -763,6 +763,72 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/backend/widget/v5/chat/{sessionId}/page-reply': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          sessionId: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            callId: string;
+            outcome:
+              | 'done'
+              | 'covered'
+              | 'gone'
+              | 'hidden'
+              | 'unsupported'
+              | 'no_change'
+              | 'declined';
+            detail?: string;
+            controls?: {
+              ref: string;
+              role: string;
+              name: string;
+              disabled?: boolean;
+            }[];
+            truncated?: boolean;
+          };
+        };
+      };
+      responses: {
+        /** @description Default Response */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorDto'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/backend/widget/v5/connections/approval-preferences': {
     parameters: {
       query?: never;

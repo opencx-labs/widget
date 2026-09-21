@@ -7,6 +7,8 @@ import {
   highlightElementInputSchema,
   highlightElementOnHostPage,
 } from '../../../page-marks/agent-mark';
+import { dismissAgentCursor, travelTo } from '../../../page-controls/cursor';
+import { guardRef } from '../../../page-controls/guard';
 import { resolvePageMarkTheme } from '../../../page-marks/page-mark-theme';
 
 const MAX_HANDLED_PAGE_EFFECTS = 200;
@@ -20,7 +22,7 @@ const MAX_HANDLED_PAGE_EFFECTS = 200;
  */
 export function AgentChatPageEffects() {
   const { pageMarkHighlightDurationMs } = useConfig();
-  const { pageEffects } = useAgentChatUi();
+  const { pageEffects, replyToPageCall, isStreaming } = useAgentChatUi();
   const { theme, cssVars } = useTheme();
   const pageMarkTheme = resolvePageMarkTheme({
     cssVars,
@@ -30,7 +32,21 @@ export function AgentChatPageEffects() {
   const handledEffectKeysRef = useRef(new Set<string>());
 
   // The ink lives in the HOST document: an unmounting widget takes it along.
-  useEffect(() => () => dismissActiveHighlight(), []);
+  useEffect(
+    () => () => {
+      dismissActiveHighlight();
+      dismissAgentCursor();
+    },
+    [],
+  );
+
+  // The hand stays through a whole flow, so something has to tell it the
+  // flow is over. The turn settling is that something — the idle timer is
+  // only the backstop for a turn that never settles cleanly.
+  useEffect(() => {
+    if (isStreaming) return;
+    dismissAgentCursor();
+  }, [isStreaming]);
 
   useEffect(() => {
     const handled = handledEffectKeysRef.current;
@@ -50,21 +66,54 @@ export function AgentChatPageEffects() {
         log.warn('highlight_element: invalid tool input', {
           issues: parsed.error.issues,
         });
+        replyToPageCall(effect.callId, 'unsupported');
         continue;
       }
-      const found = highlightElementOnHostPage(parsed.data, {
-        accentColor: pageMarkTheme.accent,
-        surfaceColor: pageMarkTheme.surface,
-        foregroundColor: pageMarkTheme.foreground,
-        zIndex: pageMarkTheme.inkZIndex,
-        durationMs: pageMarkHighlightDurationMs,
-      });
-      if (!found) {
-        log.warn('highlight_element: element not found on page', parsed.data);
+      // The reference is looked up and the element re-checked here, in the
+      // instant before the ink goes down: still the same node, still on
+      // screen, still not behind something. A page can re-render between the
+      // reading that minted the ref and this tool call arriving.
+      const guarded = guardRef(parsed.data.ref);
+      if (!guarded.ok) {
+        log.warn('highlight_element: not drawn', {
+          ref: parsed.data.ref,
+          reason: guarded.reason,
+        });
+        // The turn is waiting: say WHICH no it was, so the agent can tell
+        // the customer to close the dialog rather than "it didn't work".
+        if (guarded.reason === 'off-limits') {
+          replyToPageCall(effect.callId, 'unsupported', guarded.detail);
+        } else {
+          replyToPageCall(effect.callId, guarded.reason);
+        }
+        continue;
       }
+      // The pointer travels there first, so the mark has a hand behind it
+      // instead of appearing out of nowhere. The travel overlaps the turn's
+      // own wait, and a document that will not take the cursor simply gets
+      // the ink straight away.
+      const element = guarded.element;
+      const callId = effect.callId;
+      const input = parsed.data;
+      void (async () => {
+        const cursor = await travelTo(element);
+        const found = highlightElementOnHostPage(element, input, {
+          accentColor: pageMarkTheme.accent,
+          surfaceColor: pageMarkTheme.surface,
+          foregroundColor: pageMarkTheme.foreground,
+          zIndex: pageMarkTheme.inkZIndex,
+          durationMs: pageMarkHighlightDurationMs,
+        });
+        cursor.done();
+        replyToPageCall(callId, found ? 'done' : 'gone');
+        if (!found) {
+          log.warn('highlight_element: the mark could not be drawn', input);
+        }
+      })();
     }
   }, [
     pageEffects,
+    replyToPageCall,
     pageMarkHighlightDurationMs,
     pageMarkTheme.accent,
     pageMarkTheme.surface,

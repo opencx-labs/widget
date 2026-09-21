@@ -17,9 +17,14 @@
     "translate-remaining-hardcoded-labels",
     "v5-chart-axis",
     "v5-json-render-guards",
+    "v5-page-controls",
+    "widget-acts-on-page",
     "widget-delivery-controls",
     "widget-follow-up-order",
+    "widget-page-accuracy",
+    "widget-page-reply",
     "widget-production-build",
+    "widget-reads-page-controls",
     "widget-tool-details-setting",
     "widget-v5-beta"
   ]

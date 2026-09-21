@@ -10,6 +10,8 @@ export default defineConfig({
     },
     printConsoleTrace: true,
     environment: 'jsdom',
+    // The browser-mode project owns these (vitest.browser.config.ts).
+    exclude: ['**/node_modules/**', '**/dist/**', 'src/**/*.browser.spec.*'],
     setupFiles: ['./vitest.setup.ts'],
     globals: true,
     passWithNoTests: true,

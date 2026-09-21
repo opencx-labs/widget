@@ -132,6 +132,17 @@ function mountTarget(rect?: Partial<DOMRect>): HTMLButtonElement {
   return btn;
 }
 
+/**
+ * The element the caller decided on. The pen no longer looks anything up:
+ * which element to mark is `guardRef`'s job (its own browser-mode spec),
+ * and this spec is about the ink.
+ */
+function target(): HTMLElement {
+  const el = document.querySelector<HTMLElement>('#create-key');
+  if (!el) throw new Error('test target not mounted');
+  return el;
+}
+
 const container = () => document.querySelector('div[data-opencx-overlay]');
 const inkSvg = () => document.querySelector('svg.notation');
 
@@ -139,9 +150,7 @@ describe('highlightElementOnHostPage', () => {
   it('inks the element found by selector and adopts the ink as widget-owned', () => {
     stubComputedStyle();
     const btn = mountTarget();
-    expect(
-      highlightElementOnHostPage({ selector: '#create-key' }, { zIndex: 17 }),
-    ).toBe(true);
+    expect(highlightElementOnHostPage(target(), {}, { zIndex: 17 })).toBe(true);
     expect(btn.scrollIntoView).toHaveBeenCalledWith(
       expect.objectContaining({ block: 'center' }),
     );
@@ -159,14 +168,14 @@ describe('highlightElementOnHostPage', () => {
   it('chooses the mark like a hand would: underline inlines, box regions', () => {
     stubComputedStyle({ display: 'inline' });
     mountTarget({ width: 64, height: 18, right: 104, bottom: 58 });
-    highlightElementOnHostPage({ selector: '#create-key' });
+    highlightElementOnHostPage(target(), {});
     expect(lastInk().options.type).toBe('underline');
     dismissActiveHighlight();
 
     stubComputedStyle({ display: 'block' });
     document.body.innerHTML = '';
     mountTarget({ width: 600, height: 300, right: 640, bottom: 340 });
-    highlightElementOnHostPage({ selector: '#create-key' });
+    highlightElementOnHostPage(target(), {});
     expect(lastInk().options.type).toBe('box');
   });
 
@@ -174,15 +183,12 @@ describe('highlightElementOnHostPage', () => {
     stubComputedStyle();
     mountTarget();
     highlightElementOnHostPage(
-      highlightElementInputSchema.parse({
-        selector: '#create-key',
-        type: 'arrow',
-      }),
+      target(),
+      highlightElementInputSchema.parse({ ref: 's1c1', type: 'arrow' }),
     );
     expect(lastInk().options.type).toBe('arrow');
     expect(
-      highlightElementInputSchema.parse({ selector: '#a', type: 'sparkle' })
-        .type,
+      highlightElementInputSchema.parse({ ref: 's1c1', type: 'sparkle' }).type,
     ).toBeUndefined();
   });
 
@@ -190,7 +196,8 @@ describe('highlightElementOnHostPage', () => {
     stubComputedStyle({ direction: 'rtl' });
     mountTarget();
     highlightElementOnHostPage(
-      { selector: '#create-key' },
+      target(),
+      {},
       { accentColor: 'rebeccapurple', seed: 7 },
     );
     expect(lastInk().options).toMatchObject({
@@ -200,18 +207,16 @@ describe('highlightElementOnHostPage', () => {
     });
   });
 
-  it('falls back to text when the selector is stale, and reports a miss as false', () => {
+  it('an element that left the document mid-draw is a miss, not a stray mark', () => {
     stubComputedStyle();
-    mountTarget();
-    expect(
-      highlightElementOnHostPage({ selector: '#gone', text: 'Create Key' }),
-    ).toBe(true);
+    const btn = mountTarget();
+    expect(highlightElementOnHostPage(btn, {})).toBe(true);
     expect(notation.created).toHaveLength(1);
 
-    document.body.innerHTML = '';
-    expect(
-      highlightElementOnHostPage({ selector: '#gone', text: 'nothing' }),
-    ).toBe(false);
+    // Detached between the caller's check and the draw — the pen finds no
+    // parent to hang the ink beside.
+    btn.remove();
+    expect(highlightElementOnHostPage(btn, {})).toBe(false);
     // A miss never touches the pen and never disturbs a prior highlight.
     expect(notation.created).toHaveLength(1);
     expect(lastInk().hideCount).toBe(0);
@@ -220,15 +225,12 @@ describe('highlightElementOnHostPage', () => {
   it('renders an arrowed callout only when a label is given', () => {
     stubComputedStyle();
     mountTarget();
-    highlightElementOnHostPage({ selector: '#create-key' });
+    highlightElementOnHostPage(target(), {});
     expect(container()?.querySelector('[data-cx-role="callout"]')).toBeNull();
     dismissActiveHighlight();
     vi.advanceTimersByTime(400); // let the dismissed overlay finish fading
 
-    highlightElementOnHostPage({
-      selector: '#create-key',
-      label: 'Create your key here',
-    });
+    highlightElementOnHostPage(target(), { label: 'Create your key here' });
     const callout = container()?.querySelector('[data-cx-role="callout"]');
     expect(callout?.textContent).toContain('Create your key here');
     expect(callout?.querySelector('div')?.getAttribute('style')).toContain(
@@ -239,7 +241,7 @@ describe('highlightElementOnHostPage', () => {
   it('auto-dismisses by un-drawing: hide, then release, then the callout goes', async () => {
     stubComputedStyle();
     mountTarget();
-    highlightElementOnHostPage({ selector: '#create-key', label: 'here' });
+    highlightElementOnHostPage(target(), { label: 'here' });
     expect(container()).not.toBeNull();
 
     await vi.advanceTimersByTimeAsync(8000);
@@ -252,13 +254,13 @@ describe('highlightElementOnHostPage', () => {
   it('dismisses early on click and on Escape', async () => {
     stubComputedStyle();
     mountTarget();
-    highlightElementOnHostPage({ selector: '#create-key' });
+    highlightElementOnHostPage(target(), {});
     document.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(lastInk().hideCount).toBe(1);
     await vi.advanceTimersByTimeAsync(500);
     expect(container()).toBeNull();
 
-    highlightElementOnHostPage({ selector: '#create-key' });
+    highlightElementOnHostPage(target(), {});
     document.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
     );
@@ -270,9 +272,9 @@ describe('highlightElementOnHostPage', () => {
   it('keeps one highlight at a time: a new one un-draws the previous', () => {
     stubComputedStyle();
     mountTarget();
-    highlightElementOnHostPage({ selector: '#create-key' });
+    highlightElementOnHostPage(target(), {});
     const first = lastInk();
-    highlightElementOnHostPage({ selector: '#create-key', label: 'again' });
+    highlightElementOnHostPage(target(), { label: 'again' });
     expect(first.hideCount).toBe(1);
     expect(notation.created).toHaveLength(2);
   });
@@ -282,7 +284,7 @@ describe('highlightElementOnHostPage', () => {
     const btn = mountTarget();
     btn.style.zIndex = '5';
     btn.style.boxShadow = '0 0 1px red';
-    highlightElementOnHostPage({ selector: '#create-key' });
+    highlightElementOnHostPage(target(), {});
 
     expect(btn.style.isolation).toBe('');
     expect(btn.style.position).toBe('');
@@ -297,7 +299,7 @@ describe('highlightElementOnHostPage', () => {
 
     vi.stubGlobal('matchMedia', matchMedia(true));
     let btn = mountTarget();
-    highlightElementOnHostPage({ selector: '#create-key' });
+    highlightElementOnHostPage(target(), {});
     expect(btn.scrollIntoView).toHaveBeenCalledWith(
       expect.objectContaining({ behavior: 'auto' }),
     );
@@ -306,7 +308,7 @@ describe('highlightElementOnHostPage', () => {
 
     vi.stubGlobal('matchMedia', matchMedia(false));
     btn = mountTarget();
-    highlightElementOnHostPage({ selector: '#create-key' });
+    highlightElementOnHostPage(target(), {});
     expect(btn.scrollIntoView).toHaveBeenCalledWith(
       expect.objectContaining({ behavior: 'smooth' }),
     );
@@ -314,21 +316,29 @@ describe('highlightElementOnHostPage', () => {
 });
 
 describe('highlightElementInputSchema', () => {
-  it('accepts any subset of selector/text/label/type and rejects wrong types', () => {
-    expect(highlightElementInputSchema.safeParse({}).success).toBe(true);
+  it('requires a reference — there is no selector and no text to guess with', () => {
     expect(
       highlightElementInputSchema.safeParse({
-        selector: '#a',
-        text: 'b',
+        ref: 's1c4',
         label: 'c',
         type: 'circle',
       }).success,
     ).toBe(true);
-    expect(highlightElementInputSchema.safeParse({ selector: 1 }).success).toBe(
+    // A ref is the whole contract: without one there is nothing to point at.
+    expect(highlightElementInputSchema.safeParse({}).success).toBe(false);
+    expect(highlightElementInputSchema.safeParse({ ref: '' }).success).toBe(
       false,
     );
-    expect(highlightElementInputSchema.safeParse({ label: {} }).success).toBe(
+    expect(highlightElementInputSchema.safeParse({ ref: 1 }).success).toBe(
       false,
     );
+    expect(
+      highlightElementInputSchema.safeParse({ ref: 's1c4', label: {} }).success,
+    ).toBe(false);
+    // The old selector/text hints are not a way in any more.
+    expect(
+      highlightElementInputSchema.safeParse({ selector: '#a', text: 'b' })
+        .success,
+    ).toBe(false);
   });
 });

@@ -55,3 +55,27 @@ if (typeof cssNamespace.escape !== 'function') {
     return out;
   };
 }
+
+/**
+ * jsdom has no `PointerEvent`. The widget clicks the way a mouse does —
+ * pointerover → pointerdown → mouseup → click — because that is the only
+ * sequence a real component library responds to, so without this the whole
+ * acting path throws here and every test of it would pass for the wrong
+ * reason. Chromium's own behaviour is covered by the browser-mode specs;
+ * this is the minimum that lets jsdom dispatch the same events.
+ */
+if (typeof globalThis.PointerEvent === 'undefined') {
+  class PointerEventPolyfill extends MouseEvent {
+    readonly pointerId: number;
+    readonly pointerType: string;
+    readonly isPrimary: boolean;
+
+    constructor(type: string, init: PointerEventInit = {}) {
+      super(type, init);
+      this.pointerId = init.pointerId ?? 0;
+      this.pointerType = init.pointerType ?? '';
+      this.isPrimary = init.isPrimary ?? false;
+    }
+  }
+  Object.assign(globalThis, { PointerEvent: PointerEventPolyfill });
+}

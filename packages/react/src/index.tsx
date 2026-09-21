@@ -22,6 +22,7 @@ import { WidgetPopoverTrigger } from './WidgetPopoverTrigger';
 import { WidgetPopoverAnchor } from './WidgetPopoverAnchor';
 import { WidgetCompanion } from './companion/WidgetCompanion';
 import { PageMarksProvider } from './page-marks/PageMarksProvider';
+import { AgentChatPageActions } from './screens/chat/agent/AgentChatPageActions';
 import { AgentChatPageEffects } from './screens/chat/agent/AgentChatPageEffects';
 import {
   StreamingSpec,
@@ -163,6 +164,7 @@ const Widget = React.forwardRef<
         <WidgetTriggerProvider>
           <PageMarksProvider>
             <AgentChatPageEffects />
+            <AgentChatPageActions />
             <WidgetImperativeHandler widgetRef={ref} />
             {options.inline ? <WidgetContent /> : <WidgetDisplayRoot />}
           </PageMarksProvider>
