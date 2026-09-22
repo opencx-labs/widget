@@ -73,10 +73,10 @@ function row(
 }
 
 suite('reply quote mapping', () => {
-  test("a teammate's reply quotes the visitor's own message, labelled by absence", () => {
+  test("a teammate's reply preserves the quoted visitor identity", () => {
     const mapped = buildPolling().mapHistoryToMessage(
       row({
-        sender: { kind: 'agent', name: 'Dev Agent' },
+        sender: { kind: 'agent', name: 'Human Agent' },
         replyTo: {
           publicId: QUOTED_ID,
           text: 'what is the cross-border fee?',
@@ -86,12 +86,10 @@ suite('reply quote mapping', () => {
     );
 
     expect(mapped?.type).toBe('AGENT');
-    // `null` is the signal the UI turns into "You" — a name here would
-    // attribute the visitor's own words to someone else.
     expect(mapped).toHaveProperty('replyTo', {
       id: QUOTED_ID,
       text: 'what is the cross-border fee?',
-      senderName: null,
+      sender: { kind: 'user' },
     });
   });
 
@@ -111,31 +109,34 @@ suite('reply quote mapping', () => {
     expect(mapped).toHaveProperty('replyTo', {
       id: QUOTED_ID,
       text: 'what is the cross-border fee?',
-      senderName: null,
+      sender: { kind: 'user' },
     });
   });
 
-  test('a quoted AI message is labelled with the configured bot name', () => {
-    const mapped = buildPolling({
-      token: 'tok',
-      bot: { name: 'Payla Assistant', avatarUrl: null },
-    }).mapHistoryToMessage(
-      row({
-        sender: { kind: 'agent', name: 'Dev Agent' },
-        replyTo: {
-          publicId: QUOTED_ID,
-          text: 'let me check that internally',
-          sender: { kind: 'ai' },
-        },
-      }),
-    );
+  test.each<WidgetConfig>([
+    { token: 'tok' },
+    { token: 'tok', bot: { name: 'Payla Assistant', avatarUrl: null } },
+  ])(
+    'a quoted AI message keeps its identity independently of embed branding (%j)',
+    (config) => {
+      const mapped = buildPolling(config).mapHistoryToMessage(
+        row({
+          sender: { kind: 'agent', name: 'Human Agent' },
+          replyTo: {
+            publicId: QUOTED_ID,
+            text: 'let me check that internally',
+            sender: { kind: 'ai' },
+          },
+        }),
+      );
 
-    expect(mapped).toHaveProperty('replyTo', {
-      id: QUOTED_ID,
-      text: 'let me check that internally',
-      senderName: 'Payla Assistant',
-    });
-  });
+      expect(mapped).toHaveProperty('replyTo', {
+        id: QUOTED_ID,
+        text: 'let me check that internally',
+        sender: { kind: 'ai' },
+      });
+    },
+  );
 
   test('a quoted teammate message keeps that teammate name', () => {
     const mapped = buildPolling().mapHistoryToMessage(
@@ -144,7 +145,7 @@ suite('reply quote mapping', () => {
         replyTo: {
           publicId: QUOTED_ID,
           text: 'on it',
-          sender: { kind: 'agent', name: 'Dev Agent' },
+          sender: { kind: 'agent', name: 'Human Agent' },
         },
       }),
     );
@@ -152,7 +153,7 @@ suite('reply quote mapping', () => {
     expect(mapped).toHaveProperty('replyTo', {
       id: QUOTED_ID,
       text: 'on it',
-      senderName: 'Dev Agent',
+      sender: { kind: 'agent', name: 'Human Agent' },
     });
   });
 
@@ -179,7 +180,7 @@ suite('reply quote mapping', () => {
     ).not.toHaveProperty('replyTo');
     expect(
       polling.mapHistoryToMessage(
-        row({ sender: { kind: 'agent', name: 'Dev Agent' } }),
+        row({ sender: { kind: 'agent', name: 'Human Agent' } }),
       ),
     ).not.toHaveProperty('replyTo');
   });

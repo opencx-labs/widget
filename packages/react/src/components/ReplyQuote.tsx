@@ -1,22 +1,27 @@
 import type { WidgetAgentMessage } from '@opencx/widget-core';
 import React from 'react';
+import { useBot, useConfig } from '@opencx/widget-react-headless';
 import { dc } from '../utils/data-component';
 import { cn } from './lib/utils/cn';
 
-/**
- * The earlier message a teammate's reply answers. When a person joins a
- * conversation the AI has been carrying, this is what tells the customer which
- * of their messages is being answered. Click jumps to the original.
- *
- * Rendered INSIDE the reply's bubble (see `AgentMessageDefaultComponent`), the
- * way every chat app does it: a tinted panel with an accent edge that the
- * bubble grows around, never a loose paragraph floating above a short bubble.
- */
+/** An in-bubble quote that links to its original message. */
 export function ReplyQuote({
   replyTo,
 }: {
   replyTo: NonNullable<WidgetAgentMessage['replyTo']>;
 }) {
+  const bot = useBot();
+  const { humanAgent } = useConfig();
+  const { sender } = replyTo;
+  const senderName =
+    sender.kind === 'user'
+      ? 'You'
+      : sender.kind === 'ai'
+        ? bot.name
+        : sender.kind === 'agent'
+          ? humanAgent?.name || sender.name || 'Team'
+          : sender.name;
+
   return (
     <button
       {...dc('chat/agent_msg/reply_to')}
@@ -40,11 +45,11 @@ export function ReplyQuote({
         'transition-colors hover:bg-primary/10 hover:text-foreground',
       )}
     >
-      {/* The visitor's own message carries no sender name — say "You" rather
-          than leaving the quote unlabelled. */}
-      <span className="block font-medium text-foreground/80">
-        {replyTo.senderName ?? 'You'}
-      </span>
+      {senderName && (
+        <span className="block font-medium text-foreground/80">
+          {senderName}
+        </span>
+      )}
       <span className="line-clamp-2 break-words">{replyTo.text}</span>
     </button>
   );

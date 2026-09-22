@@ -303,12 +303,7 @@ export class ActiveSessionPollingCtx {
       replyTo: {
         id: publicId,
         text,
-        senderName:
-          sender.kind === 'user'
-            ? null
-            : sender.kind === 'ai'
-              ? (this.config.bot?.name ?? null)
-              : (sender.name ?? null),
+        sender,
       },
     };
   };

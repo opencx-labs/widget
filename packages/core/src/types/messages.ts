@@ -1,4 +1,4 @@
-import type { MessageAttachmentType } from './dtos';
+import type { MessageAttachmentType, MessageDto } from './dtos';
 import type { SafeExtract, StringOrLiteral } from './helpers';
 import type { Agent } from './agent';
 import type { WidgetMention } from './widget-config';
@@ -71,12 +71,12 @@ export type WidgetUserMessage = {
   };
 };
 
-/** The earlier message of this conversation a reply answers, as a short quote. */
+/** The earlier message of this session a reply answers, as a short quote. */
 export type WidgetMessageReplyTo = {
   id: string;
   text: string;
-  /** Whose message is quoted; null for the visitor's own. */
-  senderName: string | null;
+  /** Preserve identity; the UI applies transcript branding when rendering. */
+  sender: NonNullable<MessageDto['replyTo']>['sender'];
 };
 
 export type WidgetAiMessage<TActionData = unknown> = {
