@@ -6,8 +6,32 @@ import { segmentContent } from '../../json-render/segment-content.js';
 import { dc } from '../../utils/data-component.js';
 import { AttachmentPreview } from '../AttachmentPreview.js';
 import { cn } from '../lib/utils/cn.js';
+import { ReplyQuote } from '../ReplyQuote.js';
 import { RichText } from '../RichText.js';
 import { MessageAfterComponent } from './MessageAfterComponent.js';
+
+/**
+ * `prose` ships its own gray palette; repoint every color it paints (body,
+ * links, inline code, bullets, rules, code blocks) at the widget's theme
+ * tokens so a dark scheme — or an embedder's palette — carries into replies.
+ */
+const MESSAGE_PROSE_TOKENS = [
+  '[--tw-prose-body:hsl(var(--opencx-secondary-foreground))]',
+  '[--tw-prose-headings:hsl(var(--opencx-secondary-foreground))]',
+  '[--tw-prose-lead:hsl(var(--opencx-secondary-foreground))]',
+  '[--tw-prose-bold:hsl(var(--opencx-secondary-foreground))]',
+  '[--tw-prose-links:hsl(var(--opencx-secondary-foreground))]',
+  '[--tw-prose-code:hsl(var(--opencx-secondary-foreground))]',
+  '[--tw-prose-counters:hsl(var(--opencx-muted-foreground))]',
+  '[--tw-prose-bullets:hsl(var(--opencx-muted-foreground))]',
+  '[--tw-prose-quotes:hsl(var(--opencx-muted-foreground))]',
+  '[--tw-prose-quote-borders:hsl(var(--opencx-border))]',
+  '[--tw-prose-hr:hsl(var(--opencx-border))]',
+  '[--tw-prose-th-borders:hsl(var(--opencx-border))]',
+  '[--tw-prose-td-borders:hsl(var(--opencx-border))]',
+  '[--tw-prose-pre-bg:hsl(var(--opencx-muted))]',
+  '[--tw-prose-pre-code:hsl(var(--opencx-foreground))]',
+].join(' ');
 
 export function AgentMessageDefaultComponent(
   props: WidgetComponentProps & {
@@ -52,7 +76,18 @@ export function AgentMessageDefaultComponent(
 
   const { variant = 'default' } = data;
 
-  const bubble = (text: string, key?: string, withAfter = true) => (
+  // The quoted message lives INSIDE the bubble, like every chat app: the
+  // bubble grows around it, so quote and reply read as one unit instead of a
+  // stray full-width paragraph above a short bubble. Both a teammate's reply
+  // and the AI's own follow-up (after it asked the team) carry one.
+  const quote = props.replyTo ? <ReplyQuote replyTo={props.replyTo} /> : null;
+
+  const bubble = (
+    text: string,
+    key?: string,
+    withAfter = true,
+    withQuote = true,
+  ) => (
     <div key={key} className="flex flex-row gap-2">
       <div
         {...dc(dataComponentNames?.message ?? 'chat/agent_msg/msg')}
@@ -65,6 +100,7 @@ export function AgentMessageDefaultComponent(
           'transition-all',
           'w-fit py-3 px-4 rounded-3xl bg-secondary text-secondary-foreground',
           'leading-snug text-sm prose prose-sm prose-a:decoration-primary prose-a:underline',
+          MESSAGE_PROSE_TOKENS,
           'break-words [word-break:break-word]', // `[word-break:break-word]` is deprecated but works in the browser, while `break-words` which is `[overflow-wrap: break-word]` does not work
           // No need to add "whitespace-pre-wrap" in the agent or bot message because it is markup and content appear on separate lines as expected
           // Adding "whitespace-pre-wrap" will result in unnecessarily huge line breaks
@@ -81,6 +117,7 @@ export function AgentMessageDefaultComponent(
           classNames?.message,
         )}
       >
+        {withQuote && quote}
         <RichText messageType={type} messageId={id}>
           {text}
         </RichText>
@@ -95,10 +132,15 @@ export function AgentMessageDefaultComponent(
   const lastMarkdownIndex =
     segments?.reduce((last, s, i) => (s.type === 'markdown' ? i : last), -1) ??
     -1;
+  // The quote answers the whole reply, so it belongs to the first prose bubble
+  // only — not repeated above every segment of a multi-part turn.
+  const firstMarkdownIndex =
+    segments?.findIndex((s) => s.type === 'markdown') ?? -1;
 
   return (
     <div
       {...dc(dataComponentNames?.messageContainer ?? 'chat/agent_msg/root')}
+      data-message-id={id}
       className={cn(
         'w-5/6 flex flex-col items-start gap-1',
         classNames?.messageContainer,
@@ -120,6 +162,7 @@ export function AgentMessageDefaultComponent(
                 segment.content,
                 `md-${i}`,
                 i === lastMarkdownIndex,
+                i === firstMarkdownIndex,
               );
             }
             return (

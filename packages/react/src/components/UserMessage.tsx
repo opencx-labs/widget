@@ -20,6 +20,7 @@ export function UserMessage({
   return (
     <div
       {...dc('chat/user_msg/root')}
+      data-message-id={message.id}
       className="w-5/6 flex flex-col items-end gap-1"
     >
       {message.markedElements && message.markedElements.length > 0 && (

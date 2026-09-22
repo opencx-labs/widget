@@ -58,6 +58,7 @@ export type OpenCxComponentNameU =
   | 'chat/user_msg/root'
   | 'chat/user_msg/msg'
   | 'chat/user_msg/marked_elements'
+  | 'chat/agent_msg/reply_to'
   /* --------------------- Chat Input --------------------- */
   | 'chat/input_box/root'
   | 'chat/input_box/inner_root'

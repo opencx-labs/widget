@@ -1832,6 +1832,15 @@ export interface components {
         note?: string;
         snapshotUrl?: string;
       }[];
+      replyTo?: {
+        publicId: string;
+        text: string;
+        sender: {
+          kind: components['schemas']['SenderTypeEnum'];
+          name?: string | null;
+          avatar?: string | null;
+        };
+      };
     };
     WidgetSessionAndHistoryDto: {
       /** @description WidgetSession */

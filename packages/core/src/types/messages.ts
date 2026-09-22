@@ -1,4 +1,4 @@
-import type { MessageAttachmentType } from './dtos';
+import type { MessageAttachmentType, MessageDto } from './dtos';
 import type { SafeExtract, StringOrLiteral } from './helpers';
 import type { Agent } from './agent';
 import type { WidgetMention } from './widget-config';
@@ -71,6 +71,14 @@ export type WidgetUserMessage = {
   };
 };
 
+/** The earlier message of this session a reply answers, as a short quote. */
+export type WidgetMessageReplyTo = {
+  id: string;
+  text: string;
+  /** Preserve identity; the UI applies transcript branding when rendering. */
+  sender: NonNullable<MessageDto['replyTo']>['sender'];
+};
+
 export type WidgetAiMessage<TActionData = unknown> = {
   id: string;
   type: 'AI';
@@ -89,6 +97,8 @@ export type WidgetAiMessage<TActionData = unknown> = {
   timestamp: string | null;
   agent?: Agent;
   attachments?: MessageAttachmentType[];
+  /** Set when the AI follows up on an earlier message, e.g. after asking the team. */
+  replyTo?: WidgetMessageReplyTo;
 };
 
 export type WidgetAgentMessage = {
@@ -103,6 +113,8 @@ export type WidgetAgentMessage = {
   timestamp: string | null;
   agent?: Agent;
   attachments?: MessageAttachmentType[];
+  /** The earlier message of this conversation a teammate's reply answers. */
+  replyTo?: WidgetMessageReplyTo;
 };
 
 export type WidgetSystemMessage__StateCheckpoint = {

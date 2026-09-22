@@ -935,6 +935,14 @@ export interface WidgetConfig {
     bubbles?: boolean;
 
     /**
+     * Show the sender's avatar beside each reply group, so a customer can tell
+     * the AI from a teammate. Independent of `bubbles`. Applies to the
+     * `companion` display mode; the `popover` mode always shows avatars.
+     * @default the value of `bubbles`
+     */
+    avatars?: boolean;
+
+    /**
      * URL of an icon that replaces the built-in animated face, on the
      * floating pill and in the quick-ask input bar.
      */
