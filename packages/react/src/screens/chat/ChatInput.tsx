@@ -27,6 +27,7 @@ import { Button } from '../../components/lib/button';
 import { Tooltippy } from '../../components/lib/tooltip';
 import { cn } from '../../components/lib/utils/cn';
 import { useIsSmallScreen } from '../../hooks/useIsSmallScreen';
+import { useInitialQuestionRequired } from '../../hooks/useInitialQuestionRequired';
 import { useTranslation } from '../../hooks/useTranslation';
 import { type PageMark } from '../../page-marks/page-mark';
 import { awaitSnapshotUrl } from '../../page-marks/mark-thumbnail';
@@ -65,16 +66,7 @@ import { useSentTextRecall } from './useSentTextRecall';
  */
 const TEXTAREA_BOX_CLASS = 'max-h-16 [field-sizing:content] w-full px-2';
 
-/**
- * The stock composer — white card, multi-line textarea, attach + send.
- * Exported so companion's quick-ask state renders the exact same composer
- * (not a bespoke bar), inheriting every customization automatically.
- */
-export function ChatInput({
-  trailingActions,
-  placeholder,
-  hideAttachTools,
-}: {
+type ChatInputProps = {
   /**
    * Extra controls rendered in the composer's action row, just before the
    * send button. Companion uses it to slot a conversation-history button into
@@ -93,7 +85,20 @@ export function ChatInput({
    * the full tool row lives in the expanded chat panel.
    */
   hideAttachTools?: boolean;
-} = {}) {
+};
+
+/** The shared composer, hidden while a new chat requires an initial question. */
+export function ChatInput(props: ChatInputProps = {}) {
+  const initialQuestionRequired = useInitialQuestionRequired();
+  if (initialQuestionRequired) return null;
+  return <ChatComposer {...props} />;
+}
+
+function ChatComposer({
+  trailingActions,
+  placeholder,
+  hideAttachTools,
+}: ChatInputProps) {
   const { isSmallScreen } = useIsSmallScreen();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const composerRootRef = useRef<HTMLDivElement>(null);
