@@ -1,6 +1,6 @@
 # v4-to-v5 compatibility patch: local verification
 
-Verified locally on 2026-09-23 against the beta.10 source. Nothing was published or deployed.
+Browser verification used the beta.10 source on 2026-09-23. The patch was then rebased onto main (125d501), excluding the separate beta.10 version/changelog commit, and all builds, type checks, lint and 1,178 tests passed again. This v5 patch has not been published or deployed.
 
 ## Changes
 
