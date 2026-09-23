@@ -1,5 +1,11 @@
 # @opencx/widget-react
 
+## 4.0.63
+
+### Patch Changes
+
+- Backport #81: opt-in `requireInitialQuestion` hides the composer until an initial question is sent. Default behavior is unchanged.
+
 ## 4.0.62
 
 ### Patch Changes
