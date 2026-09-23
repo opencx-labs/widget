@@ -20,6 +20,7 @@ import type { WidgetCompanionLayoutU } from '@opencx/widget-core';
 import { buildFrameHtml } from '../components/FrameDocument';
 import { usePageMarks } from '../page-marks/PageMarksProvider';
 import { useCanHover } from '../hooks/useCanHover';
+import { useInitialQuestionRequired } from '../hooks/useInitialQuestionRequired';
 import { useTheme } from '../hooks/useTheme';
 import { useTranslation } from '../hooks/useTranslation';
 import { useTriggerLabel } from '../hooks/useTriggerLabel';
@@ -75,6 +76,7 @@ export function WidgetCompanion() {
   const { t, dir } = useTranslation();
   const { sessionState } = useSessions();
   const { messagesState } = useMessages();
+  const initialQuestionRequired = useInitialQuestionRequired();
   const { isArmed: isPageMarkModeArmed } = usePageMarks();
   const { region, dockWidth, dockContentRef } = useCompanionMeasurements();
 
@@ -271,10 +273,19 @@ export function WidgetCompanion() {
   const openPanel = useCallback(() => {
     const screen = widgetCtx.routerCtx.state.get().screen;
     const hasSession = !!widgetCtx.sessionCtx.sessionState.get().session?.id;
-    // The welcome (data collection) screen needs the full panel; the bare
-    // input bar is only for starting/continuing a conversation.
-    setState(screen === 'welcome' || hasSession ? 'chat' : 'input');
-  }, [widgetCtx]);
+    // Data collection and required initial questions need the full panel.
+    setState(
+      screen === 'welcome' || hasSession || initialQuestionRequired
+        ? 'chat'
+        : 'input',
+    );
+  }, [widgetCtx, initialQuestionRequired]);
+
+  // Configuration or conversation changes can require a choice while the
+  // quick-ask bar is already open. Keep the questions within reach.
+  useEffect(() => {
+    if (state === 'input' && initialQuestionRequired) setState('chat');
+  }, [state, initialQuestionRequired]);
 
   const launchFromPill = useCallback(() => {
     if (shouldIgnoreLaunch()) return;
@@ -304,13 +315,20 @@ export function WidgetCompanion() {
     setState((prev) => {
       if (
         prev === 'chat' &&
+        !initialQuestionRequired &&
         widgetCtx.sessionCtx.sessionState.get().session?.id
       ) {
         return 'input';
       }
       return 'pill';
     });
-  }, [defaultLayout, panelLayout, setPanelLayout, widgetCtx]);
+  }, [
+    defaultLayout,
+    panelLayout,
+    setPanelLayout,
+    widgetCtx,
+    initialQuestionRequired,
+  ]);
 
   // Escape is a dismissal, not the × button's staged minimize: from
   // fullscreen it drops the MODE (back to the layout the panel came from),

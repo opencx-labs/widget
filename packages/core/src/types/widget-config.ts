@@ -572,6 +572,14 @@ export interface WidgetConfig {
   initialQuestions?: string[];
 
   /**
+   * Hide the message composer until the contact chooses an initial question.
+   * Applies to conversations with no messages; starting a new chat requires
+   * another choice. Ignored when there are no non-empty `initialQuestions`.
+   * @default false
+   */
+  requireInitialQuestion?: boolean;
+
+  /**
    * Where to display the suggested initial questions.
    * @default 'above-chat-input'
    */
