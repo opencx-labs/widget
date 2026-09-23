@@ -457,7 +457,12 @@ export function ChatFooter() {
             {noMessages &&
               initialQuestions &&
               initialQuestionsPosition !== 'below-initial-messages' && (
-                <div className="flex items-center flex-row justify-end gap-2 flex-wrap px-2">
+                <div
+                  className={cn(
+                    'flex items-center flex-row justify-end gap-2 flex-wrap px-2',
+                    initialQuestionRequired && 'pb-4',
+                  )}
+                >
                   {initialQuestions?.map((iq, index) => (
                     <SuggestedReplyButton
                       key={`${iq}-${index}`}
