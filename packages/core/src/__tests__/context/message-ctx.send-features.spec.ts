@@ -136,13 +136,12 @@ suite('MessageCtx bot-chat send — features on the wire', () => {
         capabilities: { structuredQuestions },
       });
       await messageCtx.sendMessage({ content: 'hello' });
-      if (structuredQuestions === undefined) {
-        expect(lastSendBody()).not.toHaveProperty('capabilities');
-      } else {
-        expect(lastSendBody().capabilities).toEqual({
-          structured_questions: structuredQuestions,
-        });
-      }
+      expect(lastSendBody().capabilities).toEqual({
+        connections: false,
+        ...(structuredQuestions === undefined
+          ? {}
+          : { structured_questions: structuredQuestions }),
+      });
     }
   });
 

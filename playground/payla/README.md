@@ -11,8 +11,7 @@ Everything runs on `localhost` — **no deploy, no tunnels.**
 - **Backend** — a Cloudflare Worker (Hono) + D1 with real, mutable data.
 - **Widget** — `@opencx/widget` v5, copied from the local `packages/embed` build into
   `public/opencx-widget/` by `scripts/sync-widget.mjs` (runs on `predev`/`prebuild`). The
-  whole `dist-embed/` travels: `script.js` is only the loader, and it injects `widget.js`
-  plus its lazy chunks from the same directory.
+  self-contained `script.js` is sufficient; the sync also supports older builds.
 
 ## How it fits together
 

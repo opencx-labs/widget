@@ -39,7 +39,7 @@ These options are included in the next beta after `5.0.0-beta.1`:
 </WidgetProvider>
 ```
 
-`streaming: false` chooses polling without changing the server's agent version.
+`streaming` defaults to `false`, preserving v4 polling without changing the server's agent version. Set `streaming: true` to opt into streaming when the backend supports it. Personal service connections also require `capabilities.connections: true`.
 The organization controls maximum activity visibility. An embed may narrow
 `toolActivity` to `status` (name and status without inputs/results) or `hidden`,
 and disable `reasoning`. It cannot override an organization restriction.

@@ -66,6 +66,22 @@ afterEach(() => {
 });
 
 describe('MessageCtx send acceptance', () => {
+  it('preserves deliveredAt for legacy components on queued and sent messages', async () => {
+    const { api, messageCtx } = buildCtx({
+      streaming: false,
+      withSession: true,
+    });
+    vi.spyOn(api, 'sendMessage').mockResolvedValue({
+      data: { success: true },
+      response: new Response(),
+    });
+    const queued = messageCtx.buildQueuedUserMessage({ content: 'Queued' });
+    expect(queued?.userMessage.deliveredAt).toBe(queued?.userMessage.timestamp);
+    await messageCtx.sendMessage({ content: 'Sent' });
+    const sent = messageCtx.state.get().messages.find((m) => m.type === 'USER');
+    expect(sent?.timestamp).toBeTruthy();
+    expect(sent?.type === 'USER' && sent.deliveredAt).toBe(sent?.timestamp);
+  });
   it('sends background context without staging or re-appending a user bubble', async () => {
     const { api, messageCtx } = buildCtx({
       streaming: false,
@@ -117,6 +133,7 @@ describe('MessageCtx send acceptance', () => {
         {
           id: 'silent-user',
           type: 'USER',
+          deliveredAt: null,
           content: 'first',
           timestamp: new Date().toISOString(),
         },

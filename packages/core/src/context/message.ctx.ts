@@ -216,19 +216,12 @@ export const buildSendMessageBody = ({
   language: config.language,
   features: resolveSendFeatures(config),
   presentation: config.presentation,
-  capabilities: [
-    config.capabilities?.connections,
-    config.capabilities?.structuredQuestions,
-    config.capabilities?.richReplies,
-    config.capabilities?.pageEffects,
-  ].some((value) => value !== undefined)
-    ? {
-        connections: config.capabilities?.connections,
-        structured_questions: config.capabilities?.structuredQuestions,
-        rich_replies: config.capabilities?.richReplies,
-        page_effects: config.capabilities?.pageEffects,
-      }
-    : undefined,
+  capabilities: {
+    connections: config.capabilities?.connections === true,
+    structured_questions: config.capabilities?.structuredQuestions,
+    rich_replies: config.capabilities?.richReplies,
+    page_effects: config.capabilities?.pageEffects,
+  },
   exit_mode_prompt: input.exitModePrompt,
   initial_messages:
     initialMessages.length > 0
@@ -826,14 +819,16 @@ export class MessageCtx {
       return content;
     })();
 
+    const timestamp = new Date().toISOString();
     return {
       id: genUuid(),
       type: 'USER',
+      deliveredAt: timestamp,
       content: messageContent,
       attachments,
       markedElements,
       mentions,
-      timestamp: new Date().toISOString(),
+      timestamp,
     };
   };
 

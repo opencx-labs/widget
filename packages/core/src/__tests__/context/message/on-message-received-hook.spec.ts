@@ -109,6 +109,7 @@ const seedMessageStateAsAlreadyLoaded = (widgetCtx: WidgetCtx) => {
   const seed: WidgetMessageU = {
     id: genUuid(),
     type: 'USER',
+    deliveredAt: null,
     content: '__seed__',
     timestamp: new Date(0).toISOString(),
   };
@@ -570,6 +571,7 @@ suite('hooks.onMessageReceived', () => {
         const userMessage: WidgetMessageU = {
           id: genUuid(),
           type: 'USER',
+          deliveredAt: null,
           content: 'hi',
           timestamp: null,
         };

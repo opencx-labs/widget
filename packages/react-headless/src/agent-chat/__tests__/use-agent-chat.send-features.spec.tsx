@@ -42,6 +42,7 @@ function buildUserMessage(content: string): WidgetUserMessage {
   return {
     id: `msg-${content}`,
     type: 'USER',
+    deliveredAt: null,
     content,
     timestamp: new Date().toISOString(),
     pending: true,
@@ -133,7 +134,7 @@ describe('useAgentChat stream body — features', () => {
   it('defaults headless clients to no question renderer and rereads support on every send', async () => {
     let config: WidgetConfig = { token: 't' };
     const undeclared = await bodyFor(config);
-    expect(undeclared.capabilities).toBeUndefined();
+    expect(undeclared.capabilities).toMatchObject({ connections: false });
     for (const structuredQuestions of [true, false]) {
       // Complete the preceding stream so the next send starts a new turn.
       for (const status of ['streaming', 'ready'] as const) {
@@ -154,6 +155,7 @@ describe('useAgentChat stream body — features', () => {
       config = { token: 't', capabilities: { structuredQuestions } };
       const body = await bodyFor(config);
       expect(body.capabilities).toEqual({
+        connections: false,
         structured_questions: structuredQuestions,
       });
     }

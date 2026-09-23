@@ -375,7 +375,8 @@ export interface WidgetConfig {
   token: string;
 
   /**
-   * Set false to use classic send/poll delivery, even with the new agent.
+   * Set true to opt into streaming when the organization supports it.
+   * Omitted or false preserves v4 send/poll delivery, even with the new agent.
    * Runtime changes wait for accepted sends and reply reconciliation to finish.
    */
   streaming?: boolean;
@@ -388,7 +389,7 @@ export interface WidgetConfig {
   };
 
   capabilities?: {
-    /** This client renders connection requests and returns after authorization. */
+    /** Opt in to connection requests and authorization. Defaults to false. */
     connections?: boolean;
     /** This client renders rich reply parts, live and from history. */
     richReplies?: boolean;

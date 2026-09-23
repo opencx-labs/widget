@@ -30,9 +30,17 @@ const token = ({
       .replace(/\+/g, '-')
       .replace(/\//g, '_');
   return `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({
-    org_id: 'org-1',
-    contact: { id: 'contact-1', verified: true },
-    mcp_access: { server_ids: ['server-2', 'server-1'], account_id: accountId },
+    sub: {
+      type: 'widget-contact',
+      payload: {
+        org_id: 'org-1',
+        contact: { id: 'contact-1', verified: true },
+        mcp_access: {
+          server_ids: ['server-2', 'server-1'],
+          account_id: accountId,
+        },
+      },
+    },
     exp: expiresAt,
   })}.signature-${expiresAt}`;
 };
