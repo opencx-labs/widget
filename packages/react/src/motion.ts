@@ -68,3 +68,32 @@ export const INPUT_SHADOW =
 
 export const CHAT_SHADOW =
   '0 24px 48px -16px rgba(0,0,0,0.18), 0 4px 16px 0 rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.05), inset 0 1px 0 0 rgba(255,255,255,0.5)';
+
+export type CompanionShadows = {
+  pill: string;
+  dock: string;
+  input: string;
+  chat: string;
+};
+
+/**
+ * The same four slots per scheme. Dark keeps only a 5% hairline ring — the
+ * same weight as light's 5% black — drops the inset highlight entirely (any
+ * light line on a dark surface reads as a border), and leans on deeper drops.
+ */
+export function companionShadows(scheme: 'light' | 'dark'): CompanionShadows {
+  if (scheme === 'light')
+    return {
+      pill: PILL_SHADOW,
+      dock: DOCK_SHADOW,
+      input: INPUT_SHADOW,
+      chat: CHAT_SHADOW,
+    };
+  return {
+    pill: '0 2px 12px 0 rgba(0,0,0,0.5), 0 1px 4px 0 rgba(0,0,0,0), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 0 rgba(255,255,255,0)',
+    dock: '0 8px 28px 0 rgba(0,0,0,0.45), 0 1px 4px 0 rgba(0,0,0,0), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 0 rgba(255,255,255,0)',
+    input:
+      '0 12px 40px 0 rgba(0,0,0,0.5), 0 2px 8px 0 rgba(0,0,0,0.2), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 0 rgba(255,255,255,0)',
+    chat: '0 24px 48px -16px rgba(0,0,0,0.6), 0 4px 16px 0 rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 0 rgba(255,255,255,0)',
+  };
+}

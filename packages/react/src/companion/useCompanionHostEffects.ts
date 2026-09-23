@@ -195,7 +195,10 @@ export function useCompanionHostEffects({
   const isSidebar = layout === 'sidebar';
   const isDocked = sidebarMode === 'docked';
   const frameWidth = effectiveSidebarWidth(region, sidebarWidth);
-  const canvas = companion?.sidebar?.canvasColor ?? SIDEBAR_CANVAS;
+  const canvas =
+    companion?.sidebar?.canvasColor ||
+    readCssVar(cssVars, '--opencx-canvas') ||
+    SIDEBAR_CANVAS;
   const pageBackground = `hsl(${readCssVar(cssVars, '--opencx-background')})`;
   const frameStateRef = useRef({
     open: state !== 'pill',
