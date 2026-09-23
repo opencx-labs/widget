@@ -37,6 +37,19 @@ function readCssVar(
   return vars[name] ?? '';
 }
 
+const TRANSPARENT =
+  /^(transparent|rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*0\s*\))$/;
+
+/** The host page's painted background: body first, then the root; null when both are transparent. */
+export function hostPageBackground(): string | null {
+  if (typeof document === 'undefined' || !document.body) return null;
+  for (const el of [document.body, document.documentElement]) {
+    const color = getComputedStyle(el).backgroundColor;
+    if (color && !TRANSPARENT.test(color.trim())) return color;
+  }
+  return null;
+}
+
 /**
  * Owns every effect that mutates the host page: persisted sidebar sizing,
  * pointer/keyboard resize, optional app-frame mounting, and fullscreen scroll
@@ -196,7 +209,12 @@ export function useCompanionHostEffects({
   const isDocked = sidebarMode === 'docked';
   const frameWidth = effectiveSidebarWidth(region, sidebarWidth);
   const canvas = companion?.sidebar?.canvasColor ?? SIDEBAR_CANVAS;
-  const pageBackground = `hsl(${readCssVar(cssVars, '--opencx-background')})`;
+  // The framed page keeps its own background: the host's is what its content
+  // was designed against. The widget token only fills in when the host paints
+  // nothing (transparent body and root), which would otherwise show the canvas.
+  const pageBackground =
+    hostPageBackground() ??
+    `hsl(${readCssVar(cssVars, '--opencx-background')})`;
   const frameStateRef = useRef({
     open: state !== 'pill',
     width: frameWidth,
