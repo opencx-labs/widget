@@ -35,6 +35,7 @@ import { MotionDiv__VerticalReveal } from '../../components/lib/MotionDiv__Verti
 import { Button } from '../../components/lib/button';
 import { Tooltippy } from '../../components/lib/tooltip';
 import { cn } from '../../components/lib/utils/cn';
+import { useInitialQuestionRequired } from '../../hooks/useInitialQuestionRequired';
 import { useIsSmallScreen } from '../../hooks/useIsSmallScreen';
 import { useTranslation } from '../../hooks/useTranslation';
 import {
@@ -436,6 +437,7 @@ export function ChatFooter() {
   const { messagesState } = useMessages();
 
   const noMessages = messagesState.messages.length === 0;
+  const initialQuestionRequired = useInitialQuestionRequired();
 
   return (
     <footer>
@@ -465,7 +467,7 @@ export function ChatFooter() {
                 </div>
               )}
 
-            <ChatInput />
+            {!initialQuestionRequired && <ChatInput />}
             <ChatFooterItems />
           </MotionDiv__VerticalReveal>
         )}
