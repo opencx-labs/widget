@@ -11,6 +11,10 @@ declare global {
   interface Window {
     initOpenScript: typeof initOpenScript;
     openCXWidgetVersion: string;
+    __opencxEmbedRuntime?: {
+      init: typeof initOpenScript;
+      version: string;
+    };
   }
 }
 
@@ -32,6 +36,14 @@ function initOpenScript(options: WidgetConfig) {
   root.render(<Widget options={options} />);
 }
 
+// Retain the initializer as well as its root: a repeated IIFE carries another
+// React/Widget copy. Rendering that copy through the old root can reset state
+// or mix React runtimes. The first loaded runtime owns this page until reload.
+const runtime = (window.__opencxEmbedRuntime ??= {
+  init: initOpenScript,
+  version,
+});
+
 // Available synchronously once the classic script tag has finished loading.
-window.initOpenScript = initOpenScript;
-window.openCXWidgetVersion = version;
+window.initOpenScript = runtime.init;
+window.openCXWidgetVersion = runtime.version;

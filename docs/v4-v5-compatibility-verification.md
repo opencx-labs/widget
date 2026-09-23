@@ -18,7 +18,7 @@ Existing beta integrations using streaming/connections must set the explicit opt
 - Core: 370 tests passed.
 - React headless: 249 tests passed, including the actual backend token envelope. The renewal regression failed before the fix and passed after it.
 - React UI: 558 tests passed.
-- Embed: 1 test passed.
+- Embed: 3 tests passed after the repeated-script-load fix. Both new regression tests failed before the fix and passed afterward. Embed type check, lint and production build were rerun successfully.
 - All four package type checks and lint passed. Lint has an existing unused-variable warning in cursor.browser.spec.ts.
 - Production builds and production JSX validation passed for all four packages.
 - Payla widget synchronization: 3 tests passed.

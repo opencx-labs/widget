@@ -19,6 +19,10 @@ For all the available options, check [the documentation](https://docs.open.cx/wi
 to your own server, as with v4. No sibling module or lazy chunks are required.
 Apply your site's existing script CSP policy to the script tag.
 
+Repeated script loads reuse the first loaded widget runtime and its React root.
+Calling `initOpenScript` again updates its options. To switch widget versions,
+reload the page.
+
 ## Opt into v5 runtime features
 
 An unchanged configuration keeps classic send/poll delivery. To enable streaming
