@@ -1,5 +1,5 @@
 import { log } from '@opencx/widget-core';
-import { useAgentChatUi } from '@opencx/widget-react-headless';
+import { useAgentChatUi, useWidget } from '@opencx/widget-react-headless';
 import { useEffect, useRef } from 'react';
 import { actOnPage } from '../../../page-controls/act';
 import { travelTo } from '../../../page-controls/cursor';
@@ -23,6 +23,7 @@ const MAX_HANDLED_ACTIONS = 200;
  * thing the agent must never do is fill a silence with a success.
  */
 export function AgentChatPageActions() {
+  const { widgetCtx } = useWidget();
   const { pageEffects, replyToPageCall, requestPageActionConsent } =
     useAgentChatUi();
   const handledRef = useRef(new Set<string>());
@@ -49,6 +50,12 @@ export function AgentChatPageActions() {
       const { ref, action, value } = parsed.data;
 
       void (async () => {
+        const enabled = () =>
+          widgetCtx.features.pageContext && widgetCtx.features.clientTools;
+        if (!enabled()) {
+          replyToPageCall(effect.callId, 'declined');
+          return;
+        }
         const element = resolveRef(ref);
         if (!element) {
           replyToPageCall(effect.callId, 'gone');
@@ -76,6 +83,11 @@ export function AgentChatPageActions() {
         // before the hand got there.
         const cursor = await travelTo(element, { press: true });
 
+        if (!enabled()) {
+          cursor.done();
+          replyToPageCall(effect.callId, 'declined');
+          return;
+        }
         const result = await actOnPage({ ref, action, value });
         cursor.done();
 
@@ -83,7 +95,8 @@ export function AgentChatPageActions() {
         // often lands the visitor somewhere else, and an agent holding
         // references to the screen it just left can only ask them to send
         // another message — which is not a flow.
-        const after = result.outcome === 'done' ? readPageControls() : null;
+        const after =
+          enabled() && result.outcome === 'done' ? readPageControls() : null;
         replyToPageCall(
           effect.callId,
           result.outcome,
@@ -94,7 +107,7 @@ export function AgentChatPageActions() {
         );
       })();
     }
-  }, [pageEffects, replyToPageCall, requestPageActionConsent]);
+  }, [pageEffects, replyToPageCall, requestPageActionConsent, widgetCtx]);
 
   return null;
 }

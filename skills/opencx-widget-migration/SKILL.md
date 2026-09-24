@@ -59,7 +59,10 @@ organization's backend configuration. These are independent choices.
   `timestamp`, including queued messages and restored history.
 - **Runtime defaults:** unchanged configurations keep polling and disable personal
   service connections. Existing beta users must opt in with `streaming: true`
-  and `capabilities.connections: true` to retain those features.
+  and `capabilities.connections: true` to retain those features. Page collection
+  requires `features.pageContext: true`; agent actions additionally require
+  `features.clientTools: true`. Both require organization support. Companion
+  does not enable either flag. Host-supplied context remains shared.
 - **Initialization failure:** `Widget` and `WidgetProvider` render nothing by
   default after a failed initialization and log an error. In React, provide
   `errorComponent={(error) => ...}` if the host needs a visible failure state.

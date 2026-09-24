@@ -47,3 +47,51 @@ The test backend initially started existing local background jobs. It was stoppe
 This establishes the paths above, not universal compatibility for every customer integration. It does not test real third-party OAuth authorization, uploads, voice, every custom React component, every browser/CSP combination, or production infrastructure. Zod 4 and stricter HTML sanitization remain v5 changes. The self-contained embed is approximately 2.21 MB raw / 657 KB gzip, trading a larger initial script for the v4 single-file contract.
 
 Package versions and npm dist-tags are unchanged. This is a local patch, not a stable v5 release approval.
+
+## Page privacy follow-up (2026-09-24)
+
+The earlier compatibility checks were not a privacy clearance. The follow-up
+reproduced private descendant text, private referenced labels, editable values,
+and hidden descendant text entering page context. It also reproduced private
+mark targets and capture/upload paths that did not enforce private regions.
+Synthetic markers were used; these checks do not establish a past customer leak.
+
+Fixed:
+
+- Page reading requires `features.pageContext: true`. Actions additionally require
+  `features.clientTools: true` and organization support for both. Omitted flags
+  explicitly send false to both message transports. Normal and Companion modes
+  share this boundary.
+- Collected text excludes private/hidden regions, referenced private labels, and
+  field/editable values. Direct private/field marking is rejected.
+- Captures containing private/hidden content, fields or opaque embedded media are
+  omitted. Safe previews stay local until Send; upload rechecks region privacy.
+- Collected page URLs strip credentials, query parameters and fragments.
+- Pending agent actions recheck access after consent/cursor travel, and page
+  replies do not forward control snapshots after page access is disabled.
+
+Validation on the privacy patch:
+
+| Gate                                                           | Result                                                                                        |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Core tests                                                     | 373 passed                                                                                    |
+| React headless tests                                           | 249 passed                                                                                    |
+| React tests                                                    | 568 passed                                                                                    |
+| Embed tests                                                    | 3 passed                                                                                      |
+| Chromium privacy and existing page-reader tests                | 21 passed                                                                                     |
+| Type checks, lint, production builds and production JSX guards | All four packages passed; pre-existing cursor.browser.spec.ts unused-variable warning remains |
+
+Reproduce package gates with `pnpm -r test`, `pnpm -r type-check`, `pnpm -r lint`,
+and `pnpm build`. For browser checks, install Chromium with `pnpm exec playwright
+install chromium --only-shell`, then run:
+
+```sh
+pnpm --filter @opencx/widget-react exec vitest run --config vitest.browser.config.ts src/page-controls/__tests__/privacy.browser.spec.ts src/page-controls/__tests__/read-controls.browser.spec.ts
+```
+
+Browser tests use real Chromium DOM/layout and safe JPEG capture. Upload transport
+is stubbed; no live customer account or backend was used for this privacy pass.
+Host-supplied context/custom data, deliberately attached files and typed messages
+remain explicit inputs. Visible unmarked business data and URL paths are not
+secret-detected. These fixes do not constitute an exhaustive security audit or
+approval to promote v5 to latest. No packages were published.

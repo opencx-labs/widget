@@ -166,17 +166,25 @@ describe('useAgentChat stream body — features', () => {
       token: 't',
       features: { preamble: false, inlineUi: true },
     });
-    expect(body.features).toEqual({ preamble: false, inline_ui: true });
+    expect(body.features).toEqual({
+      preamble: false,
+      inline_ui: true,
+      page_context: false,
+      client_tools: false,
+    });
     expect(body.bot_token).toBe('t');
     expect(body.session_id).toBe('sess-1');
     expect(body.uuid).toBe('msg-hello');
   });
 
-  it('leaves `features` undefined when the option is not set', async () => {
+  it('keeps page reading and tools disabled when options are absent', async () => {
     // Like `headers` / `query_params` beside it: an undefined field, which the
     // JSON serialization drops — the wire body carries no `features` key.
     const body = await bodyFor({ token: 't' });
-    expect(body.features).toBeUndefined();
-    expect(JSON.parse(JSON.stringify(body))).not.toHaveProperty('features');
+    expect(body.features).toEqual({ page_context: false, client_tools: false });
+    expect(JSON.parse(JSON.stringify(body)).features).toEqual({
+      page_context: false,
+      client_tools: false,
+    });
   });
 });

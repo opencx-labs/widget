@@ -1,3 +1,4 @@
+import { safePageUrl } from '../page-privacy';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   clampRectToViewport,
@@ -16,7 +17,7 @@ import {
   type PageMark,
 } from './page-mark';
 import { usePageMarks } from './PageMarksProvider';
-import { beginSnapshotUpload, beginThumbnail } from './mark-thumbnail';
+import { beginThumbnail } from './mark-thumbnail';
 
 const CURSOR_STYLE_ATTR = 'data-opencx-mark-cursor';
 /** Elements a mark carries to the AI. */
@@ -74,7 +75,6 @@ const cornerCursor = (corner: Corner): MarkCursor =>
 export function usePageMarking({
   enabled,
   onAttach,
-  uploadSnapshot,
   accentColor,
   zIndex,
 }: {
@@ -82,11 +82,6 @@ export function usePageMarking({
   enabled: boolean;
   /** Notification only — the provider owns the mark either way. */
   onAttach?: (mark: PageMark) => void;
-  /**
-   * Uploads a mark's thumbnail as a message file and resolves its URL (null
-   * on failure). Without it, marks are sent text-only after a reload.
-   */
-  uploadSnapshot?: (file: File) => Promise<string | null>;
   accentColor: string;
   /** Host-page ink layer, normally resolved from the configured widget z-index. */
   zIndex: number;
@@ -424,7 +419,7 @@ export function usePageMarking({
       const mark: PageMark = {
         shape: current.shape,
         ...(trimmed ? { note: trimmed } : {}),
-        pageUrl: window.location.href,
+        pageUrl: safePageUrl(window.location.href),
         rect: current.rect,
         elements: sampled.map(describeElement),
       };
@@ -432,9 +427,6 @@ export function usePageMarking({
       // sampling puts it first). Rides a WeakMap, never the payload.
       if (sampled[0]) {
         beginThumbnail(mark, sampled[0]);
-        // Persist the same pixels: uploaded now, not at send, so the send
-        // rarely has to wait and a detached mark costs nothing but an orphan.
-        if (uploadSnapshot) beginSnapshotUpload(mark, uploadSnapshot);
       }
       inkRef.current = null;
       setDraft(null);
@@ -442,7 +434,7 @@ export function usePageMarking({
       attachPageMark(mark, ink);
       onAttach?.(mark);
     },
-    [attachPageMark, enabled, onAttach, setArmed, uploadSnapshot],
+    [attachPageMark, enabled, onAttach, setArmed],
   );
 
   const toggle = useCallback(() => {

@@ -22,8 +22,12 @@ let consentAsked: Array<{
   controlName: string;
 }> = [];
 let consentAnswer = true;
+let onConsent = () => {};
+
+const widgetCtx = { features: { pageContext: true, clientTools: true } };
 
 vi.mock('@opencx/widget-react-headless', () => ({
+  useWidget: () => ({ widgetCtx }),
   useAgentChatUi: () => ({
     pageEffects,
     replyToPageCall: (callId: string, outcome: string, detail?: string) =>
@@ -34,6 +38,7 @@ vi.mock('@opencx/widget-react-headless', () => ({
       controlName: string;
     }) => {
       consentAsked.push(request);
+      onConsent();
       return consentAnswer;
     },
   }),
@@ -73,6 +78,9 @@ describe('AgentChatPageActions', () => {
     replies = [];
     consentAsked = [];
     consentAnswer = true;
+    onConsent = () => {};
+    widgetCtx.features.pageContext = true;
+    widgetCtx.features.clientTools = true;
     // NOT reset between tests on purpose. Resetting restarts the reference
     // counter, so an action still in flight from the previous test would
     // resolve THIS test's identically-numbered ref and click its button.
@@ -144,6 +152,27 @@ describe('AgentChatPageActions', () => {
         controlName: 'Cancel subscription',
       },
     ]);
+  });
+
+  it('does not act when page access is revoked during consent', async () => {
+    const ref = control('<button id="t">Delete account</button>');
+    const clicked = vi.fn();
+    document.querySelector('#t')?.addEventListener('click', clicked);
+    onConsent = () => {
+      widgetCtx.features.pageContext = false;
+    };
+    pageEffects = [
+      {
+        key: 'revoked',
+        callId: 'revoked',
+        type: 'act-on-page',
+        input: { ref, action: 'click' },
+      },
+    ];
+    await render();
+    await vi.waitFor(() => expect(repliesFor('revoked')).toHaveLength(1));
+    expect(repliesFor('revoked')[0]?.outcome).toBe('declined');
+    expect(clicked).not.toHaveBeenCalled();
   });
 
   it('a No is answered as declined, and nothing is clicked', async () => {

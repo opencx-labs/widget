@@ -17,7 +17,12 @@ export default defineConfig({
   // Pre-bundled up front: a mid-run re-optimize reloads the page under the
   // running test, which vitest reports as a flake.
   optimizeDeps: {
-    include: ['@shardsui/notation', 'zod'],
+    include: [
+      '@shardsui/notation',
+      'zod',
+      'html-to-image',
+      '@opencx/widget-core',
+    ],
   },
   test: {
     name: 'react-browser',

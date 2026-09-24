@@ -207,7 +207,7 @@ describe('useAgentChat feature narrowing', () => {
       { ...baseConfig, features: { pageContext: false } },
       { content: 'hello' },
     );
-    expect(body.features).toEqual({ page_context: false });
+    expect(body.features).toEqual({ page_context: false, client_tools: false });
   });
 
   it('config.features.clientTools=false: client_tools=false on the wire', async () => {
@@ -215,7 +215,7 @@ describe('useAgentChat feature narrowing', () => {
       { ...baseConfig, features: { clientTools: false } },
       { content: 'hello' },
     );
-    expect(body.features).toEqual({ client_tools: false });
+    expect(body.features).toEqual({ page_context: false, client_tools: false });
   });
 
   it('client tools on: a streamed highlight tool part becomes a page effect', async () => {

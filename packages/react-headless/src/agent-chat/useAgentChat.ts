@@ -117,8 +117,7 @@ export function useAgentChat({
   configRef.current = config;
 
   // Org features narrowed by the current embed options.
-  const { pageContext: sendsPageContext, clientTools: performsClientTools } =
-    widgetCtx.features;
+  const { clientTools: performsClientTools } = widgetCtx.features;
 
   // The whole wire body rides each send's options (`bodyFor`); the transport
   // only owns the URLs and auth. The contact JWT can be minted AFTER this
@@ -291,9 +290,9 @@ export function useAgentChat({
         sessionId: next.sessionId,
         content: next.userMessage.content,
         initialMessages: next.initialMessages,
-        sendsPageContext,
+        sendsPageContext: widgetCtx.features.pageContext,
       }),
-    [sendsPageContext],
+    [widgetCtx],
   );
 
   // A null → id transition is the first send creating its session; clearing
@@ -764,12 +763,12 @@ export function useAgentChat({
         // The page as it is after the action. Without it a flow that
         // crosses screens stops dead: the agent is holding refs to the
         // screen it just left.
-        ...(page?.controls.length
+        ...(widgetCtx.features.pageContext && page?.controls.length
           ? { controls: page.controls, truncated: page.truncated }
           : {}),
       });
     },
-    [api, sessionId],
+    [api, sessionId, widgetCtx],
   );
 
   /**

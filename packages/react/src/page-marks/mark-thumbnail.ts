@@ -1,5 +1,5 @@
 import { toJpeg } from 'html-to-image';
-import { isWidgetOwned } from './page-element';
+import { canCapturePageElement } from '../page-privacy';
 
 /**
  * Pill thumbnails for marked regions: the region's focus element is
@@ -8,7 +8,7 @@ import { isWidgetOwned } from './page-element';
  * rides a WeakMap beside the annotation, exactly like the ink registry, and is
  * NEVER serialized into the send payload (a screenshot in `clientContext`
  * would bloat every send). What outlives the composer is the UPLOAD: the
- * thumbnail goes up as a message file the moment it lands, and its URL is
+ * thumbnail goes up as a message file only when the visitor sends, and its URL is
  * written onto the mark (`snapshotUrl`) so the sent bubble after a reload and
  * the inbox show the same picture the composer did.
  *
@@ -24,6 +24,7 @@ const MAX_EDGE_PX = 480;
 const CAPTURE_TIMEOUT_MS = 3000;
 
 const thumbnails = new WeakMap<object, Promise<string | null>>();
+const captureElements = new WeakMap<object, HTMLElement>();
 
 /**
  * Rasterize an element to a JPEG data URL, or null when it can't be done
@@ -31,6 +32,7 @@ const thumbnails = new WeakMap<object, Promise<string | null>>();
  * pill falls back to its text form on null.
  */
 async function captureThumbnail(el: HTMLElement): Promise<string | null> {
+  if (!canCapturePageElement(el)) return null;
   const rect = el.getBoundingClientRect();
   if (rect.width < 1 || rect.height < 1) return null;
 
@@ -47,7 +49,7 @@ async function captureThumbnail(el: HTMLElement): Promise<string | null> {
     backgroundColor: '#ffffff',
     // Never let the widget photograph itself (ink SVGs, portaled chrome, the
     // embed root inside a picked ancestor).
-    filter: (node) => !(node instanceof Element) || !isWidgetOwned(node),
+    filter: (node) => !(node instanceof Element) || canCapturePageElement(node),
   });
   const timeout = new Promise<null>((resolve) =>
     setTimeout(() => resolve(null), CAPTURE_TIMEOUT_MS),
@@ -61,6 +63,7 @@ async function captureThumbnail(el: HTMLElement): Promise<string | null> {
 
 /** Kick off (and register) a snapshot keyed by its annotation object. */
 export function beginThumbnail(key: object, el: HTMLElement) {
+  captureElements.set(key, el);
   thumbnails.set(key, captureThumbnail(el));
 }
 
@@ -76,10 +79,13 @@ export function beginSnapshotUpload(
   mark: { snapshotUrl?: string },
   upload: (file: File) => Promise<string | null>,
 ) {
+  if (snapshotUploads.has(mark)) return;
   const thumbnail = thumbnails.get(mark);
   if (!thumbnail) return;
   const uploaded = thumbnail
     .then((dataUrl) => {
+      const element = captureElements.get(mark);
+      if (!element?.isConnected || !canCapturePageElement(element)) return null;
       const file = dataUrl ? fileFromDataUrl(dataUrl, 'page-mark.jpg') : null;
       return file ? upload(file) : null;
     })
