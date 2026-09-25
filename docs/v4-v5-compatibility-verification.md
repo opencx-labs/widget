@@ -135,3 +135,14 @@ original background and shadow). Checked question selection, required-mode unloc
 mobile overflow, and Escape from the questions frame; no page errors. All 581
 React tests and the React/embed production builds passed. This used the local
 mock backend, not a production agent.
+
+### Ordered starter entrance
+
+Starter questions now fade up individually over 300ms, beginning after 200ms,
+with 100ms between questions (stagger capped after the sixth question). Reduced
+motion removes movement and delay. The shell spring and geometry are unchanged.
+React and embed production builds, React type checking, and the embed production
+JSX guard passed. The local Chromium check again confirmed identical settled
+composer geometry with/without questions, required-choice unlock, mobile overflow,
+and Escape dismissal, with no page errors. This is local mock-backend validation;
+the earlier real-backend checks above were not rerun for this animation-only edit.

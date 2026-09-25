@@ -1,5 +1,7 @@
 import { useConfig } from '@opencx/widget-react-headless';
 import React, { useLayoutEffect, useRef } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
+import { EASE_OUT } from '../motion';
 import { handleCompanionFrameKeyDown } from './companion-keyboard';
 import { FrameDocument } from '../components/FrameDocument';
 import { SuggestedReplyButton } from '../components/SuggestedReplyButton';
@@ -17,6 +19,7 @@ export function CompanionQuestions({
   onToggleFullscreen: () => void;
 }) {
   const { initialQuestions } = useConfig();
+  const reduceMotion = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const node = ref.current;
@@ -48,14 +51,25 @@ export function CompanionQuestions({
         {initialQuestions
           ?.filter((question) => question.trim().length > 0)
           .map((question, index) => (
-            <SuggestedReplyButton
+            <motion.div
               key={`${question}-${index}`}
-              suggestion={question}
-              type="button"
-              variant="secondary"
-              wobble={false}
-              className="max-w-full whitespace-normal break-words rounded-full bg-muted-foreground px-4 py-2 text-start text-base text-background hover:bg-foreground [@media(pointer:coarse)]:min-h-12"
-            />
+              className="max-w-full"
+              initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: reduceMotion ? 0 : 0.3,
+                delay: reduceMotion ? 0 : 0.2 + Math.min(index, 5) * 0.1,
+                ease: EASE_OUT,
+              }}
+            >
+              <SuggestedReplyButton
+                suggestion={question}
+                type="button"
+                variant="secondary"
+                wobble={false}
+                className="max-w-full whitespace-normal break-words rounded-full bg-muted-foreground px-4 py-2 text-start text-base text-background hover:bg-foreground [@media(pointer:coarse)]:min-h-12"
+              />
+            </motion.div>
           ))}
       </div>
     </FrameDocument>

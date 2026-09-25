@@ -582,7 +582,7 @@ export function WidgetCompanion() {
         {/* Suggestions have their own frame above the shell. They never
             participate in its measured height, corners, shadow or spring. */}
         {showsQuickQuestions && (
-          <motion.div
+          <div
             data-companion-starters
             style={{
               position: 'absolute',
@@ -591,12 +591,6 @@ export function WidgetCompanion() {
               transform: 'translateX(-50%)',
               width: contentWidth,
               height: questionsHeight,
-            }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{
-              duration: shouldReduceMotion ? 0 : 0.12,
-              delay: shouldReduceMotion ? 0 : 0.2,
             }}
           >
             <CompanionFrame
@@ -619,7 +613,7 @@ export function WidgetCompanion() {
                 )}
               />
             </CompanionFrame>
-          </motion.div>
+          </div>
         )}
         {/* Morphing shell — its surface is the background theme token, so
             palette changes recolor companion chrome like any stock screen */}
