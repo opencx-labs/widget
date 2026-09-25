@@ -1,9 +1,13 @@
-import { useConfig } from '@opencx/widget-react-headless';
+import { useInitialQuestionRequired } from '../hooks/useInitialQuestionRequired';
+import { SuggestedReplyButton } from '../components/SuggestedReplyButton';
+import { useConfig, useMessages } from '@opencx/widget-react-headless';
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { FrameDocument } from '../components/FrameDocument';
 import { SuppressTooltips } from '../components/lib/tooltip';
 import { RootScreen } from '../screens';
 import { ChatInput } from '../screens/chat/ChatInput';
+import { ChatFooterItems } from '../screens/chat/ChatFooterItems';
+import { cn } from '../components/lib/utils/cn';
 import { RADII } from './companion-geometry';
 import {
   FLAT_AVATARS_CSS,
@@ -132,7 +136,15 @@ export function CompanionContent({
   /** Live height of the quick-ask composer, so the shell card grows with it */
   onInputHeightChange: (height: number) => void;
 }) {
-  const { companion } = useConfig();
+  const { companion, initialQuestions } = useConfig();
+  const initialQuestionRequired = useInitialQuestionRequired();
+  const { messagesState } = useMessages();
+  const questions =
+    messagesState.messages.length === 0
+      ? (initialQuestions?.filter((question) => question.trim().length > 0) ??
+        [])
+      : [];
+  const showsQuestions = questions.length > 0;
   const { t } = useTranslation();
   const rootRef = useRef<HTMLDivElement>(null);
   const inputPaneRef = useRef<HTMLDivElement>(null);
@@ -240,6 +252,8 @@ export function CompanionContent({
         <div
           ref={inputPaneRef}
           data-companion-input
+          data-companion-starters={showsQuestions || undefined}
+          className={cn('flex flex-col', showsQuestions && 'gap-3 p-3')}
           style={{
             position: 'absolute',
             left: 0,
@@ -253,12 +267,40 @@ export function CompanionContent({
         >
           {/* The shell clips this composer to a thin strip, so a `side="top"`
               tooltip would bleed above the bar as a dark sliver. */}
-          <SuppressTooltips>
-            <ChatInput
-              hideAttachTools={hideAttachTools}
-              placeholder={placeholder}
-            />
-          </SuppressTooltips>
+          {showsQuestions && (
+            <div
+              data-companion-questions
+              className="flex min-w-0 max-h-[40vh] flex-col items-start gap-2 overflow-y-auto p-1"
+            >
+              {questions.map((question, index) => (
+                <SuggestedReplyButton
+                  key={`${question}-${index}`}
+                  suggestion={question}
+                  type="button"
+                  variant="secondary"
+                  wobble={false}
+                  className="max-w-full whitespace-normal break-words rounded-full bg-muted-foreground px-4 py-2 text-start text-base text-background hover:bg-foreground [@media(pointer:coarse)]:min-h-12"
+                />
+              ))}
+            </div>
+          )}
+          {!initialQuestionRequired && (
+            <div
+              data-companion-quick-composer
+              className={cn(
+                showsQuestions &&
+                  'rounded-[var(--opencx-companion-input-radius)] bg-background shadow-lg ring-1 ring-black/5',
+              )}
+            >
+              <SuppressTooltips>
+                <ChatInput
+                  hideAttachTools={hideAttachTools}
+                  placeholder={placeholder}
+                />
+              </SuppressTooltips>
+            </div>
+          )}
+          {showsQuestions && <ChatFooterItems />}
           {canExpand ? (
             // Minimized mid-conversation: the whole follow-up bar is one click
             // target that pops back up into the open chat — no separate control.

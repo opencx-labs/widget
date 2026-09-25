@@ -39,8 +39,21 @@ vi.mock('../../screens/chat/ChatInput', () => ({
 
 vi.mock('../PanelControls', () => ({ PanelControls: () => null }));
 
+let requireInitialQuestion = false;
+let initialQuestions = ['Track my order'];
+let hasMessages = false;
+const sendQuestion = vi.fn();
 vi.mock('@opencx/widget-react-headless', () => ({
-  useConfig: () => ({ companion: undefined }),
+  useConfig: () => ({
+    companion: undefined,
+    requireInitialQuestion,
+    initialQuestions,
+  }),
+  useSessions: () => ({ sessionState: { session: null } }),
+  useMessages: () => ({
+    messagesState: { messages: hasMessages ? [{}] : [] },
+    sendMessage: sendQuestion,
+  }),
 }));
 
 vi.mock('../../hooks/useTranslation', () => ({
@@ -48,8 +61,8 @@ vi.mock('../../hooks/useTranslation', () => ({
 }));
 
 vi.mock('../../components/lib/button', () => ({
-  Button: ({ children }: { children: React.ReactNode }) => (
-    <button type="button">{children}</button>
+  Button: (props: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button {...props} type="button" />
   ),
 }));
 
@@ -60,6 +73,10 @@ describe('companion composer focus', () => {
   let root: Root;
 
   beforeEach(() => {
+    requireInitialQuestion = false;
+    initialQuestions = ['Track my order'];
+    hasMessages = false;
+    sendQuestion.mockClear();
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -98,6 +115,46 @@ describe('companion composer focus', () => {
     document.activeElement instanceof HTMLElement
       ? document.activeElement.dataset['testid']
       : undefined;
+
+  it('shows optional floating questions above an editable composer', async () => {
+    render('input');
+    expect(container.querySelector('textarea')).not.toBeNull();
+    const question = container.querySelector<HTMLButtonElement>(
+      '[data-component="chat/suggested_reply_btn"]',
+    );
+    expect(question?.textContent).toBe('Track my order');
+    await act(async () => question?.click());
+    expect(sendQuestion).toHaveBeenCalledWith({ content: 'Track my order' });
+    hasMessages = true;
+    render('input');
+    expect(container.querySelector('[data-companion-questions]')).toBeNull();
+  });
+
+  it('keeps typing available when required questions contain only blanks', () => {
+    requireInitialQuestion = true;
+    initialQuestions = ['', '  '];
+    render('input');
+    expect(container.querySelector('textarea')).not.toBeNull();
+    expect(container.querySelector('[data-companion-questions]')).toBeNull();
+  });
+
+  it('requires a question in quick-ask and unlocks after sending', async () => {
+    requireInitialQuestion = true;
+    render('input');
+    expect(container.querySelector('textarea')).toBeNull();
+    const question = container.querySelector<HTMLButtonElement>(
+      '[data-component="chat/suggested_reply_btn"]',
+    );
+    expect(question?.textContent).toBe('Track my order');
+    await act(async () => question?.click());
+    expect(sendQuestion).toHaveBeenCalledWith({ content: 'Track my order' });
+    hasMessages = true;
+    render('input');
+    expect(container.querySelector('textarea')).not.toBeNull();
+    hasMessages = false;
+    render('input');
+    expect(container.querySelector('textarea')).toBeNull();
+  });
 
   it('focuses the quick-ask composer when the resting bar opens', () => {
     render('input');

@@ -95,3 +95,28 @@ Host-supplied context/custom data, deliberately attached files and typed message
 remain explicit inputs. Visible unmarked business data and URL paths are not
 secret-detected. These fixes do not constitute an exhaustive security audit or
 approval to promote v5 to latest. No packages were published.
+
+## v4 feature parity follow-up (2026-09-26)
+
+Ported the source changes from release/v4 at `0b280d7` (PRs #82 and #83):
+`requireInitialQuestion`, the shared requirement hook, conditional composer,
+and `pb-4` question-container padding. No v4 version numbers or release tags
+were copied. Companion quick-ask also respects the requirement, since it mounts
+a composer separately from the standard footer.
+
+Companion additionally presents optional starter questions as floating pills above
+its quick-ask bar, using the existing `initialQuestions` and
+`requireInitialQuestion` options. Required mode hides the input; optional mode
+leaves it editable. No greeting panel is inserted behind the pills. Standard
+popover/inline question placement remains unchanged.
+
+Production-bundle Chromium checks at 1280×900 and 390×844 confirmed three visible
+starter pills, an editable optional-mode input, no required-mode input, no
+horizontal question overflow on mobile, and selection opening the conversation.
+The preview used a local mock backend; it was not a real-agent test.
+
+The updated React suite passed all 581 tests, including both question placements,
+required/optional/empty configuration, follow-ups, reset, failed-first-send
+rollback, padding, and Companion quick-ask. React type check and lint passed
+(with the existing cursor test warning). All four production builds and JSX
+guards passed; React/embed were rebuilt after the floating-layout update.

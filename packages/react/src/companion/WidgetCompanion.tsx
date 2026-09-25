@@ -70,7 +70,7 @@ export function WidgetCompanion() {
   const activeChatCount = openChats.length;
   const workingChatCount = openChats.filter((chat) => chat.working).length;
   const { widgetCtx, contentIframeRef } = useWidget();
-  const { companion, assets, customComponents } = useConfig();
+  const { companion, assets, customComponents, initialQuestions } = useConfig();
   const { theme, cssVars } = useTheme();
   const { t, dir } = useTranslation();
   const { sessionState } = useSessions();
@@ -132,6 +132,10 @@ export function WidgetCompanion() {
   const hasBeenChatRef = useRef(false);
 
   const isPill = state === 'pill';
+  const showsQuickQuestions =
+    state === 'input' &&
+    messagesState.messages.length === 0 &&
+    initialQuestions?.some((question) => question.trim().length > 0) === true;
   const hasCountAction = activeChatCount > 0;
   const picker = useChatPicker();
   const closePickerRef = useRef(picker.close);
@@ -605,7 +609,9 @@ export function WidgetCompanion() {
             // Static surface — spring-interpolating a dark→light background
             // reads as a big dark blob mid-morph. The resting look is a
             // separate overlay (RestingPill) that fades its opacity instead.
-            background: 'hsl(var(--opencx-background))',
+            background: showsQuickQuestions
+              ? 'transparent'
+              : 'hsl(var(--opencx-background))',
           }}
           // First paint lands directly on the resting pill; no mount morph
           initial={false}
@@ -613,17 +619,27 @@ export function WidgetCompanion() {
             x: dockGrowX,
             width: currentDims.width,
             height: currentDims.height,
-            borderTopLeftRadius: currentDims.borderRadius,
-            borderTopRightRadius: currentDims.borderRadius,
-            borderBottomLeftRadius: currentDims.borderRadius,
-            borderBottomRightRadius: currentDims.borderRadius,
-            boxShadow: isPill
-              ? docked
-                ? DOCK_SHADOW
-                : PILL_SHADOW
-              : state === 'input'
-                ? INPUT_SHADOW
-                : CHAT_SHADOW,
+            borderTopLeftRadius: showsQuickQuestions
+              ? 0
+              : currentDims.borderRadius,
+            borderTopRightRadius: showsQuickQuestions
+              ? 0
+              : currentDims.borderRadius,
+            borderBottomLeftRadius: showsQuickQuestions
+              ? 0
+              : currentDims.borderRadius,
+            borderBottomRightRadius: showsQuickQuestions
+              ? 0
+              : currentDims.borderRadius,
+            boxShadow: showsQuickQuestions
+              ? 'none'
+              : isPill
+                ? docked
+                  ? DOCK_SHADOW
+                  : PILL_SHADOW
+                : state === 'input'
+                  ? INPUT_SHADOW
+                  : CHAT_SHADOW,
           }}
           // Hover: scale only — animating boxShadow repaints a large region
           // on an interaction that fires tens of times a day. The dock gets
