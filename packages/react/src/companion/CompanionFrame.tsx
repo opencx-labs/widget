@@ -13,12 +13,14 @@ import { WIDGET_FRAME_TITLE } from '../components/FrameDocument';
  */
 export function CompanionFrame({
   initialContent,
+  title = WIDGET_FRAME_TITLE,
   style,
   iframeRef,
   children,
 }: {
   /** Full HTML document written once into the frame (styles in <head>) */
   initialContent: string;
+  title?: string;
   style: React.CSSProperties;
   /** Receives the iframe element (shared widget contentIframeRef) */
   iframeRef?: React.MutableRefObject<HTMLIFrameElement | null>;
@@ -51,12 +53,7 @@ export function CompanionFrame({
 
   return (
     <>
-      <iframe
-        ref={handleRef}
-        title={WIDGET_FRAME_TITLE}
-        style={style}
-        allowFullScreen
-      />
+      <iframe ref={handleRef} title={title} style={style} allowFullScreen />
       {mountNode && createPortal(children, mountNode)}
     </>
   );

@@ -120,3 +120,18 @@ required/optional/empty configuration, follow-ups, reset, failed-first-send
 rollback, padding, and Companion quick-ask. React type check and lint passed
 (with the existing cursor test warning). All four production builds and JSX
 guards passed; React/embed were rebuilt after the floating-layout update.
+
+### Opening-animation correction
+
+The initial starter layout incorrectly included questions/footer in the animated
+shell's height and changed its background, radius and shadow. Restored the
+original shell sizing, surface, radius, shadow and motion configuration. Starter
+questions now use a separate, measured iframe above the shell and fade in
+independently; the composer keeps its original markup and measured height.
+
+With normal motion enabled in Chromium, compared the built embed with and without
+questions: the settled optional-mode shell was identical (440×50, 16px radius,
+original background and shadow). Checked question selection, required-mode unlock,
+mobile overflow, and Escape from the questions frame; no page errors. All 581
+React tests and the React/embed production builds passed. This used the local
+mock backend, not a production agent.

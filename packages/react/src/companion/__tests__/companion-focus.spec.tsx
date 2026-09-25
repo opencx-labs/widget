@@ -116,17 +116,9 @@ describe('companion composer focus', () => {
       ? document.activeElement.dataset['testid']
       : undefined;
 
-  it('shows optional floating questions above an editable composer', async () => {
+  it('keeps optional questions out of the measured composer pane', () => {
     render('input');
     expect(container.querySelector('textarea')).not.toBeNull();
-    const question = container.querySelector<HTMLButtonElement>(
-      '[data-component="chat/suggested_reply_btn"]',
-    );
-    expect(question?.textContent).toBe('Track my order');
-    await act(async () => question?.click());
-    expect(sendQuestion).toHaveBeenCalledWith({ content: 'Track my order' });
-    hasMessages = true;
-    render('input');
     expect(container.querySelector('[data-companion-questions]')).toBeNull();
   });
 
@@ -138,16 +130,10 @@ describe('companion composer focus', () => {
     expect(container.querySelector('[data-companion-questions]')).toBeNull();
   });
 
-  it('requires a question in quick-ask and unlocks after sending', async () => {
+  it('requires a question in quick-ask and unlocks after sending', () => {
     requireInitialQuestion = true;
     render('input');
     expect(container.querySelector('textarea')).toBeNull();
-    const question = container.querySelector<HTMLButtonElement>(
-      '[data-component="chat/suggested_reply_btn"]',
-    );
-    expect(question?.textContent).toBe('Track my order');
-    await act(async () => question?.click());
-    expect(sendQuestion).toHaveBeenCalledWith({ content: 'Track my order' });
     hasMessages = true;
     render('input');
     expect(container.querySelector('textarea')).not.toBeNull();

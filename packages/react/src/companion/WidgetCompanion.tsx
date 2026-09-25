@@ -1,3 +1,4 @@
+import { CompanionQuestions } from './CompanionQuestions';
 import { motion, useReducedMotion } from 'framer-motion';
 import React, {
   useCallback,
@@ -136,6 +137,7 @@ export function WidgetCompanion() {
     state === 'input' &&
     messagesState.messages.length === 0 &&
     initialQuestions?.some((question) => question.trim().length > 0) === true;
+  const [questionsHeight, setQuestionsHeight] = useState(0);
   const hasCountAction = activeChatCount > 0;
   const picker = useChatPicker();
   const closePickerRef = useRef(picker.close);
@@ -577,6 +579,48 @@ export function WidgetCompanion() {
         onDragEnd={onDragEnd}
         transition={morphTransition}
       >
+        {/* Suggestions have their own frame above the shell. They never
+            participate in its measured height, corners, shadow or spring. */}
+        {showsQuickQuestions && (
+          <motion.div
+            data-companion-starters
+            style={{
+              position: 'absolute',
+              bottom: 'calc(100% + 12px)',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: contentWidth,
+              height: questionsHeight,
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{
+              duration: shouldReduceMotion ? 0 : 0.12,
+              delay: shouldReduceMotion ? 0 : 0.2,
+            }}
+          >
+            <CompanionFrame
+              title="Suggested questions"
+              initialContent={initialContent}
+              style={{
+                width: '100%',
+                height: '100%',
+                border: 0,
+                background: 'transparent',
+              }}
+            >
+              <CompanionQuestions
+                onHeightChange={setQuestionsHeight}
+                onDismiss={dismissPanel}
+                onToggleFullscreen={handleToggleFullscreen}
+                maxHeight={Math.max(
+                  48,
+                  region.height - currentDims.height - bottomOffset - 32,
+                )}
+              />
+            </CompanionFrame>
+          </motion.div>
+        )}
         {/* Morphing shell — its surface is the background theme token, so
             palette changes recolor companion chrome like any stock screen */}
         <motion.div
@@ -609,9 +653,7 @@ export function WidgetCompanion() {
             // Static surface — spring-interpolating a dark→light background
             // reads as a big dark blob mid-morph. The resting look is a
             // separate overlay (RestingPill) that fades its opacity instead.
-            background: showsQuickQuestions
-              ? 'transparent'
-              : 'hsl(var(--opencx-background))',
+            background: 'hsl(var(--opencx-background))',
           }}
           // First paint lands directly on the resting pill; no mount morph
           initial={false}
@@ -619,27 +661,17 @@ export function WidgetCompanion() {
             x: dockGrowX,
             width: currentDims.width,
             height: currentDims.height,
-            borderTopLeftRadius: showsQuickQuestions
-              ? 0
-              : currentDims.borderRadius,
-            borderTopRightRadius: showsQuickQuestions
-              ? 0
-              : currentDims.borderRadius,
-            borderBottomLeftRadius: showsQuickQuestions
-              ? 0
-              : currentDims.borderRadius,
-            borderBottomRightRadius: showsQuickQuestions
-              ? 0
-              : currentDims.borderRadius,
-            boxShadow: showsQuickQuestions
-              ? 'none'
-              : isPill
-                ? docked
-                  ? DOCK_SHADOW
-                  : PILL_SHADOW
-                : state === 'input'
-                  ? INPUT_SHADOW
-                  : CHAT_SHADOW,
+            borderTopLeftRadius: currentDims.borderRadius,
+            borderTopRightRadius: currentDims.borderRadius,
+            borderBottomLeftRadius: currentDims.borderRadius,
+            borderBottomRightRadius: currentDims.borderRadius,
+            boxShadow: isPill
+              ? docked
+                ? DOCK_SHADOW
+                : PILL_SHADOW
+              : state === 'input'
+                ? INPUT_SHADOW
+                : CHAT_SHADOW,
           }}
           // Hover: scale only — animating boxShadow repaints a large region
           // on an interaction that fires tens of times a day. The dock gets
