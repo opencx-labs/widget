@@ -69,8 +69,8 @@ export function resolveWidgetAgent({
 }
 
 /**
- * The one narrowing rule for every per-embed feature toggle: the org's
- * effective feature can only be switched OFF by `config.features`, never on.
+ * Non-page features can inherit organization settings. Page reading and
+ * actions below require explicit embed opt-in as well as server support.
  */
 function narrowFeature(
   orgEnabled: boolean,
@@ -104,14 +104,12 @@ export function resolveClientFeatures(
   return {
     dictation: narrowFeature(agent.features.dictation, toggles?.dictation),
     attachments: agent.features.attachments,
-    pageContext: narrowFeature(
-      agent.features.pageContext,
-      toggles?.pageContext,
-    ),
-    clientTools: narrowFeature(
-      agent.features.clientTools,
-      toggles?.clientTools,
-    ),
+    pageContext: agent.features.pageContext && toggles?.pageContext === true,
+    clientTools:
+      agent.features.clientTools &&
+      agent.features.pageContext &&
+      toggles?.pageContext === true &&
+      toggles?.clientTools === true,
   };
 }
 

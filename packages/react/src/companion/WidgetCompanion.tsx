@@ -1,3 +1,4 @@
+import { CompanionQuestions } from './CompanionQuestions';
 import { motion, useReducedMotion } from 'framer-motion';
 import React, {
   useCallback,
@@ -70,7 +71,7 @@ export function WidgetCompanion() {
   const activeChatCount = openChats.length;
   const workingChatCount = openChats.filter((chat) => chat.working).length;
   const { widgetCtx, contentIframeRef } = useWidget();
-  const { companion, assets, customComponents } = useConfig();
+  const { companion, assets, customComponents, initialQuestions } = useConfig();
   const { theme, cssVars } = useTheme();
   const { t, dir } = useTranslation();
   const { sessionState } = useSessions();
@@ -132,6 +133,11 @@ export function WidgetCompanion() {
   const hasBeenChatRef = useRef(false);
 
   const isPill = state === 'pill';
+  const showsQuickQuestions =
+    state === 'input' &&
+    messagesState.messages.length === 0 &&
+    initialQuestions?.some((question) => question.trim().length > 0) === true;
+  const [questionsHeight, setQuestionsHeight] = useState(0);
   const hasCountAction = activeChatCount > 0;
   const picker = useChatPicker();
   const closePickerRef = useRef(picker.close);
@@ -573,6 +579,42 @@ export function WidgetCompanion() {
         onDragEnd={onDragEnd}
         transition={morphTransition}
       >
+        {/* Suggestions have their own frame above the shell. They never
+            participate in its measured height, corners, shadow or spring. */}
+        {showsQuickQuestions && (
+          <div
+            data-companion-starters
+            style={{
+              position: 'absolute',
+              bottom: 'calc(100% + 12px)',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: contentWidth,
+              height: questionsHeight,
+            }}
+          >
+            <CompanionFrame
+              title="Suggested questions"
+              initialContent={initialContent}
+              style={{
+                width: '100%',
+                height: '100%',
+                border: 0,
+                background: 'transparent',
+              }}
+            >
+              <CompanionQuestions
+                onHeightChange={setQuestionsHeight}
+                onDismiss={dismissPanel}
+                onToggleFullscreen={handleToggleFullscreen}
+                maxHeight={Math.max(
+                  48,
+                  region.height - currentDims.height - bottomOffset - 32,
+                )}
+              />
+            </CompanionFrame>
+          </div>
+        )}
         {/* Morphing shell — its surface is the background theme token, so
             palette changes recolor companion chrome like any stock screen */}
         <motion.div

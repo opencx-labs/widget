@@ -77,6 +77,7 @@ function buildUserMessage(content: string): WidgetUserMessage {
   return {
     id: `msg-${content}`,
     type: 'USER',
+    deliveredAt: null,
     content,
     timestamp: new Date().toISOString(),
     pending: true,

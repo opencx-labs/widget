@@ -4,45 +4,45 @@ import { ApiCaller } from '../../api/api-caller';
 import { WidgetCtx, WidgetInitializationError } from '../../context/widget.ctx';
 import { TestUtils } from '../test-utils';
 
-/**
- * The SERVER decides which engine an embed runs: `/config` always returns the
- * org's agent (`name`, `avatar_url`, `streaming`). `streaming: true` selects
- * the v5 streaming engine, `false` the classic blocking send. The widget
- * stores the branding (snake_case mapped to camelCase).
- */
-suite('streaming engine selection (server-decided)', () => {
-  test('streaming org: agent branding is stored and the streaming engine is selected', async () => {
-    TestUtils.mock.ApiCaller.getExternalWidgetConfig(ApiCaller, {
-      data: {
-        org: { id: 'org-1', name: 'Org One' },
-        sessionsPollingIntervalSeconds: 60,
-        sessionPollingIntervalSeconds: 10,
-        modes: [],
-        agent: {
-          name: 'Agent Two',
-          avatar_url: 'https://cdn.example.com/a2.png',
-          streaming: true,
-          features: TestUtils.agentFeatures(),
+/** The org must support streaming AND the client must explicitly opt in. */
+suite('streaming engine selection (explicit client opt-in)', () => {
+  test.each([undefined, false, true])(
+    'streaming org respects client opt-in: %s',
+    async (streaming) => {
+      TestUtils.mock.ApiCaller.getExternalWidgetConfig(ApiCaller, {
+        data: {
+          org: { id: 'org-1', name: 'Org One' },
+          sessionsPollingIntervalSeconds: 60,
+          sessionPollingIntervalSeconds: 10,
+          modes: [],
+          agent: {
+            name: 'Agent Two',
+            avatar_url: 'https://cdn.example.com/a2.png',
+            streaming: true,
+            features: TestUtils.agentFeatures(),
+          },
         },
-      },
-    });
+      });
 
-    const widgetCtx = await WidgetCtx.initialize({ config: { token: '' } });
+      const widgetCtx = await WidgetCtx.initialize({
+        config: { token: '', streaming },
+      });
 
-    expect(widgetCtx.agent).toEqual({
-      name: 'Agent Two',
-      avatarUrl: 'https://cdn.example.com/a2.png',
-      streaming: true,
-      features: {
-        dictation: false,
-        attachments: false,
-        pageContext: false,
-        clientTools: false,
-      },
-    });
-    expect(widgetCtx.streaming).toBe(true);
-    expect(widgetCtx.messageCtx.streaming).toBe(true);
-  });
+      expect(widgetCtx.agent).toEqual({
+        name: 'Agent Two',
+        avatarUrl: 'https://cdn.example.com/a2.png',
+        streaming: true,
+        features: {
+          dictation: false,
+          attachments: false,
+          pageContext: false,
+          clientTools: false,
+        },
+      });
+      expect(widgetCtx.streaming).toBe(streaming === true);
+      expect(widgetCtx.messageCtx.streaming).toBe(streaming === true);
+    },
+  );
 
   test('non-streaming org: the blocking engine is selected, null avatar stays null', async () => {
     TestUtils.mock.ApiCaller.getExternalWidgetConfig(ApiCaller, {

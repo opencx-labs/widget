@@ -375,7 +375,8 @@ export interface WidgetConfig {
   token: string;
 
   /**
-   * Set false to use classic send/poll delivery, even with the new agent.
+   * Set true to opt into streaming when the organization supports it.
+   * Omitted or false preserves v4 send/poll delivery, even with the new agent.
    * Runtime changes wait for accepted sends and reply reconciliation to finish.
    */
   streaming?: boolean;
@@ -388,7 +389,7 @@ export interface WidgetConfig {
   };
 
   capabilities?: {
-    /** This client renders connection requests and returns after authorization. */
+    /** Opt in to connection requests and authorization. Defaults to false. */
     connections?: boolean;
     /** This client renders rich reply parts, live and from history. */
     richReplies?: boolean;
@@ -405,8 +406,8 @@ export interface WidgetConfig {
 
   /**
    * Per-embed feature toggles. Each one can only NARROW what your
-   * organization enabled server-side — `true` (or omitted) leaves the org
-   * setting in charge; `false` switches the feature off for this embed.
+   * organization enabled server-side. Page context and client tools require
+   * explicit `true`; other omitted toggles inherit the organization setting.
    */
   features?: {
     /**
@@ -431,20 +432,17 @@ export interface WidgetConfig {
     dictation?: boolean;
 
     /**
-     * Whether the visitor can mark things on your page from the composer
-     * and the agent reads them, along with the well-known `page` / `entity`
-     * keys of the `context` you pass. Only available when your organization
-     * enabled it. Switch it off for an embed on a page the visitor should
-     * not be able to mark.
-     * @default org setting
+     * Opt in to reading host-page control names and attaching page marks.
+     * Requires organization support. Host-supplied `context` is independent
+     * and remains forwarded even when this is false.
+     * @default false
      */
     pageContext?: boolean;
 
     /**
-     * Whether the agent may act on your page (highlight elements) as part of
-     * its reply. Only available when your organization enabled it. Switch it
-     * off for an embed on a page the agent should never draw on.
-     * @default org setting
+     * Opt in to agent actions on the host page. Requires pageContext: true
+     * and organization support for both features.
+     * @default false
      */
     clientTools?: boolean;
   };
@@ -570,6 +568,14 @@ export interface WidgetConfig {
    * @example - ['What is my account balance?', 'How do I pay my bill?', 'How do I change my address?']
    */
   initialQuestions?: string[];
+
+  /**
+   * Hide the message composer until the contact chooses an initial question.
+   * Applies to conversations with no messages; starting a new chat requires
+   * another choice. Ignored when there are no non-empty `initialQuestions`.
+   * @default false
+   */
+  requireInitialQuestion?: boolean;
 
   /**
    * Where to display the suggested initial questions.

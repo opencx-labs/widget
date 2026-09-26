@@ -74,17 +74,31 @@ suite('WidgetCtx.features (server-enabled, embed-narrowed)', () => {
     expect(ctx.agent.presentation).toBeUndefined();
   });
 
-  test('org on + embed silent → every feature is on', async () => {
+  test('org on + embed silent → page reading and actions stay off', async () => {
     serverFeatures(everythingOn);
     const ctx = await init();
     expect(ctx.features).toEqual({
       dictation: true,
       attachments: true,
-      pageContext: true,
-      clientTools: true,
+      pageContext: false,
+      clientTools: false,
     });
-    expect(ctx.messageCtx.sendsPageContext).toBe(true);
+    expect(ctx.messageCtx.sendsPageContext).toBe(false);
   });
+
+  test.each([false, true])(
+    'explicit page opt-in works in companion=%s',
+    async (companion) => {
+      serverFeatures(everythingOn);
+      const ctx = await init({
+        displayMode: companion ? 'companion' : 'popover',
+        features: { pageContext: true, clientTools: true },
+      });
+      expect(ctx.features.pageContext).toBe(true);
+      expect(ctx.features.clientTools).toBe(true);
+      ctx.resetChat();
+    },
+  );
 
   test('org on + embed `false` → off (narrowing)', async () => {
     serverFeatures(everythingOn);
@@ -126,13 +140,13 @@ suite('WidgetCtx.features (server-enabled, embed-narrowed)', () => {
     });
   });
 
-  test('each embed toggle narrows only its own feature', async () => {
+  test('page context off also disables page actions', async () => {
     serverFeatures({ page_context: true, client_tools: true, dictation: true });
     const ctx = await init({
       features: { pageContext: false },
     });
     expect(ctx.features.pageContext).toBe(false);
-    expect(ctx.features.clientTools).toBe(true);
+    expect(ctx.features.clientTools).toBe(false);
     expect(ctx.features.dictation).toBe(true);
   });
 

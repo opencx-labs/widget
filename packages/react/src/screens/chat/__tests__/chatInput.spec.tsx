@@ -1,3 +1,4 @@
+import { beginSnapshotUpload } from '../../../page-marks/mark-thumbnail';
 import { createComposerDraftMock } from './composer-draft';
 import type { SendMessageInput } from '@opencx/widget-core';
 import React, { act } from 'react';
@@ -112,6 +113,7 @@ vi.mock('@opencx/widget-react-headless', () => ({
 }));
 
 vi.mock('../../../page-marks/mark-thumbnail', () => ({
+  beginSnapshotUpload: vi.fn(),
   // The pill draws a lone mark's own pixels, so it reads the thumbnail store
   // as well as the snapshot upload. No capture happens under jsdom.
   getThumbnail: () => undefined,
@@ -387,7 +389,9 @@ describe('ChatInput send acceptance', () => {
         elements: [{ name: 'div "Mode"' }],
       },
     ];
+    vi.mocked(beginSnapshotUpload).mockClear();
     await renderInput();
+    expect(beginSnapshotUpload).not.toHaveBeenCalled();
 
     const button = container.querySelector<HTMLButtonElement>(
       'button[aria-label="send_message"]',
@@ -395,6 +399,7 @@ describe('ChatInput send acceptance', () => {
     expect(button?.disabled).toBe(false);
     await act(async () => button?.click());
 
+    expect(beginSnapshotUpload).toHaveBeenCalledOnce();
     expect(capturedInput?.content).toBe('what is this?');
     // Both keys: the rich marks for this turn, and the flat picked elements
     // the backend persists and re-surfaces on later turns.

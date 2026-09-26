@@ -50,6 +50,7 @@ vi.mock('@ai-sdk/react', () => ({
 const buildUserMessage = (content: string): WidgetUserMessage => ({
   id: `msg-${content}`,
   type: 'USER',
+  deliveredAt: null,
   content,
   timestamp: new Date().toISOString(),
   pending: true,
@@ -227,7 +228,11 @@ describe('WidgetProvider agent-chat ownership', () => {
     await act(async () => {
       root.render(
         <WidgetProvider
-          options={{ token: 't', displayMode }}
+          options={{
+            token: 't',
+            displayMode,
+            capabilities: { connections: true },
+          }}
           components={[{ key: 'fallback', component: () => null }]}
         >
           <Probe sendInLayout={sendInLayout} />

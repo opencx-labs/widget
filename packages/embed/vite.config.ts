@@ -3,13 +3,9 @@ import { defineConfig } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
 /**
- * The widget module — `dist-embed/widget.js` plus its lazy chunks.
- *
- * `format: 'es'` is what makes the lazy boundaries real: an `iife` bundle
- * cannot code-split, so rollup inlined every `import()` (recharts and its d3
- * deps, the heaviest thing in the registry) into the initial payload. The
- * public URL customers embed stays `script.js` — see `vite.loader.config.ts`,
- * which builds the classic-script loader that pulls this module in.
+ * Preserve the v4 embed contract: copying script.js is sufficient, including
+ * on hosts whose CORS/CSP policy does not permit a separate module request.
+ * React package consumers can still split their own application bundles.
  */
 export default defineConfig({
   plugins: [reactPlugin(), tsconfigPaths()],
@@ -23,10 +19,10 @@ export default defineConfig({
     rollupOptions: {
       input: 'src/index.tsx',
       output: {
-        format: 'es',
+        format: 'iife',
+        inlineDynamicImports: true,
         dir: 'dist-embed',
-        entryFileNames: 'widget.js',
-        chunkFileNames: '[name]-[hash].js',
+        entryFileNames: 'script.js',
       },
     },
   },

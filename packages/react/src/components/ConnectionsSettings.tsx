@@ -27,7 +27,7 @@ export function ConnectionsSettings({
   const [error, setError] = useState('');
   useEffect(() => {
     let cancelled = false;
-    if (config.capabilities?.connections === false) return;
+    if (config.capabilities?.connections !== true) return;
     void Promise.all([
       widgetCtx.api.listConnections(),
       widgetCtx.api.listApprovalPreferences(),
@@ -55,20 +55,21 @@ export function ConnectionsSettings({
       setBusy(false);
     }
   };
-  if (!open)
+  if (!open || config.capabilities?.connections !== true)
     return (
       <>
         <Header />
-        {connections.length > 0 && (
-          <Button
-            variant="ghost"
-            className="mx-3 my-1 h-9 justify-start gap-2 text-sm"
-            onClick={() => setOpen(true)}
-          >
-            <Unplug className="size-4" /> Connections{' '}
-            <ChevronRight className="ml-auto size-4" />
-          </Button>
-        )}
+        {config.capabilities?.connections === true &&
+          connections.length > 0 && (
+            <Button
+              variant="ghost"
+              className="mx-3 my-1 h-9 justify-start gap-2 text-sm"
+              onClick={() => setOpen(true)}
+            >
+              <Unplug className="size-4" /> Connections{' '}
+              <ChevronRight className="ml-auto size-4" />
+            </Button>
+          )}
         {children}
       </>
     );

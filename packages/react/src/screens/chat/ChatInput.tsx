@@ -29,7 +29,10 @@ import { cn } from '../../components/lib/utils/cn';
 import { useIsSmallScreen } from '../../hooks/useIsSmallScreen';
 import { useTranslation } from '../../hooks/useTranslation';
 import { type PageMark } from '../../page-marks/page-mark';
-import { awaitSnapshotUrl } from '../../page-marks/mark-thumbnail';
+import {
+  awaitSnapshotUrl,
+  beginSnapshotUpload,
+} from '../../page-marks/mark-thumbnail';
 import { buildPageClientContext } from '../../page-controls/send-context';
 import { PageActionCard } from '../../components/PageActionCard';
 import { PageContextPill } from '../../page-context/PageContextPill';
@@ -185,7 +188,7 @@ export function ChatInput({
   // panel unmounts the composer.
   const showPageMarks = pageMarksEnabled && !isSmallScreen;
   const pageMarkingEnabled = showPageMarks && hideAttachTools !== true;
-  const { marks, detach, marking } = usePageMarkComposer({
+  const { marks, detach, marking, uploadSnapshot } = usePageMarkComposer({
     enabled: pageMarkingEnabled,
     inputRef,
   });
@@ -252,12 +255,11 @@ export function ChatInput({
     // Everything the send carries is captured NOW: the snapshot wait below
     // yields to the event loop, and the composer may change underneath it.
     const submittedText = inputText;
-    const submittedMarks = [...marks];
+    const submittedMarks = pageMarksEnabled ? [...marks] : [];
     const submittedFiles = [...successFiles];
     const submittedFileIds = allFiles.map((file) => file.id);
-    // A mark's snapshot upload usually landed while the visitor typed; give a
-    // straggler a moment (the URL is written onto the mark itself), then send
-    // — a slow upload costs the picture, never the message.
+    // Upload only after Send. Attaching or discarding a mark stays local.
+    submittedMarks.forEach((mark) => beginSnapshotUpload(mark, uploadSnapshot));
     void Promise.all(
       submittedMarks.map((mark) =>
         awaitSnapshotUrl(mark, SNAPSHOT_UPLOAD_GRACE_MS),

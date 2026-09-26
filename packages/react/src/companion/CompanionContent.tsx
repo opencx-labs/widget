@@ -1,3 +1,4 @@
+import { useInitialQuestionRequired } from '../hooks/useInitialQuestionRequired';
 import { useConfig } from '@opencx/widget-react-headless';
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { FrameDocument } from '../components/FrameDocument';
@@ -133,6 +134,7 @@ export function CompanionContent({
   onInputHeightChange: (height: number) => void;
 }) {
   const { companion } = useConfig();
+  const initialQuestionRequired = useInitialQuestionRequired();
   const { t } = useTranslation();
   const rootRef = useRef<HTMLDivElement>(null);
   const inputPaneRef = useRef<HTMLDivElement>(null);
@@ -254,10 +256,12 @@ export function CompanionContent({
           {/* The shell clips this composer to a thin strip, so a `side="top"`
               tooltip would bleed above the bar as a dark sliver. */}
           <SuppressTooltips>
-            <ChatInput
-              hideAttachTools={hideAttachTools}
-              placeholder={placeholder}
-            />
+            {!initialQuestionRequired && (
+              <ChatInput
+                hideAttachTools={hideAttachTools}
+                placeholder={placeholder}
+              />
+            )}
           </SuppressTooltips>
           {canExpand ? (
             // Minimized mid-conversation: the whole follow-up bar is one click

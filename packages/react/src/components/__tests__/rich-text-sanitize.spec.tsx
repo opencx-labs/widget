@@ -12,7 +12,7 @@ vi.mock('@opencx/widget-react-headless', () => ({
 }));
 
 import { DialogerProvider } from '../Dialoger';
-import { RichText } from '../RichText';
+import { ConfiguredRichText, RichText } from '../RichText';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
@@ -30,7 +30,8 @@ Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
 let roots: Root[] = [];
 
-function render(markdown: string): HTMLDivElement {
+function render(markdown: string, configured = false): HTMLDivElement {
+  const Text = configured ? ConfiguredRichText : RichText;
   const container = document.createElement('div');
   document.body.appendChild(container);
   const root = createRoot(container);
@@ -38,7 +39,7 @@ function render(markdown: string): HTMLDivElement {
   act(() =>
     root.render(
       <DialogerProvider>
-        <RichText>{markdown}</RichText>
+        <Text>{markdown}</Text>
       </DialogerProvider>,
     ),
   );
@@ -108,5 +109,37 @@ describe('RichText sanitization (untrusted model/agent output)', () => {
     const code = el.querySelector('code');
     expect(code).not.toBeNull();
     expect(code?.className ?? '').toContain('language-js');
+  });
+});
+
+describe('configured footer HTML', () => {
+  it('preserves v4 color, typography and spacing', () => {
+    const el = render(
+      '<span style="color: red; font-weight: bold; margin-top: 4px">Styled footer</span>',
+      true,
+    );
+    const span = el.querySelector('span')!;
+    expect(span.style.color).toBe('red');
+    expect(span.style.fontWeight).toBe('bold');
+    expect(span.style.marginTop).toBe('4px');
+  });
+
+  it('still removes scripts, handlers and styles that load resources', () => {
+    const el = render(
+      '<script>alert(1)</script><span onclick="alert(1)" style="color: red; background-image: url(https://evil.example); width: expression(alert(1)); font-family: url(https://evil.example)">Footer</span>',
+      true,
+    );
+    expect(el.querySelector('script')).toBeNull();
+    const span = el.querySelector('span')!;
+    expect(span.getAttribute('onclick')).toBeNull();
+    expect(span.style.color).toBe('red');
+    expect(span.style.backgroundImage).toBe('');
+    expect(span.style.width).toBe('');
+    expect(span.style.fontFamily).toBe('');
+  });
+
+  it('does not enable inline styles in agent replies', () => {
+    const el = render('<span style="color: red">Reply</span>');
+    expect(el.querySelector('span')?.getAttribute('style')).toBeNull();
   });
 });

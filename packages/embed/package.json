@@ -10,8 +10,9 @@
   "scripts": {
     "clean": "rm -rf node_modules dist-embed .turbo",
     "clean:dist": "rm -rf dist-embed .turbo",
-    "build": "NODE_ENV=production vite build -c vite.config.ts && NODE_ENV=production vite build -c vite.loader.config.ts && node ../../scripts/check-production-build.mjs dist-embed",
+    "build": "NODE_ENV=production vite build -c vite.config.ts && node ../../scripts/check-production-build.mjs dist-embed",
     "test": "vitest run",
+    "test:e2e": "node --test e2e/*.e2e.mjs",
     "type-check": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",

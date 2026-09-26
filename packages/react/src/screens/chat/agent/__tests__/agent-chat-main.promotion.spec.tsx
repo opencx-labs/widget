@@ -121,6 +121,7 @@ import { AgentChatMain } from '../AgentChatMain';
 const userRow: WidgetMessageU = {
   id: 'u1',
   type: 'USER',
+  deliveredAt: null,
   content: 'how many sessions?',
   timestamp: null,
 };

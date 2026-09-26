@@ -70,7 +70,7 @@ export class WidgetCtx {
     // and reconciliation. Never let a prop update detach their owner.
     if (this.messageCtx?.hasPendingAgentWork) return true;
     if (this.messageCtx?.state.get().isSendingMessage) return false;
-    return this.agent.streaming && this.getRequestConfig().streaming !== false;
+    return this.agent.streaming && this.getRequestConfig().streaming === true;
   }
 
   /**

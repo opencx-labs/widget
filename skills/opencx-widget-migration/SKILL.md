@@ -44,25 +44,25 @@ For script embeds, use:
 ```
 
 Keep the default popover unless the customer also requests the companion. The
-companion is selected by `displayMode: 'companion'`; streaming is selected by the
+companion is selected by `displayMode: 'companion'`; streaming requires `streaming: true` and support in the
 organization's backend configuration. These are independent choices.
 
 ## Review migration-sensitive behavior
 
-- **Self-hosted assets:** v5's `script.js` loads `widget.js`, which can load a lazy
-  chart chunk. Publish the entire `dist-embed` directory at a versioned URL; retain
-  old assets for already-open pages. A short cache lifetime for `widget.js` alone
-  does not protect an open tab whose old module later requests a deleted chunk.
-  Cross-origin module requests need CORS. The loader forwards its nonce; verify
-  the host CSP also allows initialization and lazy imports.
-- **Sanitized HTML:** bot/agent replies and `chatFooterItems` are sanitized. Custom
-  inline styles, scripts, iframes, and other disallowed markup may disappear.
-  Use `cssOverrides` for styling and supported render slots for custom UI.
-  Re-test existing markup rather than promising all v4 customizations are unchanged.
-- **User message shape:** `WidgetUserMessage.deliveredAt` is removed. Read
-  `timestamp` instead. Account for optional `pending`, `markedElements`, and
-  `mentions` when a custom renderer displays user messages. This can affect runtime
-  JavaScript consumers too, not only TypeScript compilation.
+- **Self-hosted assets:** the compatibility build restores a self-contained
+  `script.js`. Earlier betas used `widget.js` and lazy chunks; check the exact
+  installed release when helping an existing beta user.
+- **Sanitized HTML:** bot/agent replies remain sanitized. Configured footers
+  preserve safe color, typography and spacing. Scripts, handlers, embedded frames,
+  resource-loading CSS and positioning are still removed. Re-test custom markup.
+- **User message shape:** `deliveredAt` is restored as a deprecated alias of
+  `timestamp`, including queued messages and restored history.
+- **Runtime defaults:** unchanged configurations keep polling and disable personal
+  service connections. Existing beta users must opt in with `streaming: true`
+  and `capabilities.connections: true` to retain those features. Page collection
+  requires `features.pageContext: true`; agent actions additionally require
+  `features.clientTools: true`. Both require organization support. Companion
+  does not enable either flag. Host-supplied context remains shared.
 - **Initialization failure:** `Widget` and `WidgetProvider` render nothing by
   default after a failed initialization and log an error. In React, provide
   `errorComponent={(error) => ...}` if the host needs a visible failure state.
@@ -83,6 +83,8 @@ import type { WidgetConfig } from '@opencx/widget-core';
 const options: WidgetConfig = {
   token: 'WIDGET_TOKEN',
   displayMode: 'companion',
+  streaming: true,
+  capabilities: { connections: true },
   companion: {
     layouts: ['compact', 'sidebar', 'fullscreen'],
     defaultLayout: 'compact',

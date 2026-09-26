@@ -10,7 +10,10 @@ const api = vi.hoisted(() => ({
   revokeApprovalPreference: vi.fn(),
 }));
 vi.mock('@opencx/widget-react-headless', () => {
-  const context = { widgetCtx: { api }, config: {} };
+  const context = {
+    widgetCtx: { api },
+    config: { capabilities: { connections: true as boolean | undefined } },
+  };
   return { useWidget: () => context };
 });
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });

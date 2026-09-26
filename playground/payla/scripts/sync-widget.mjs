@@ -1,6 +1,6 @@
 // Mirrors the LOCAL OpenCX widget build (@opencx/widget, packages/embed) into
 // public/ so the app embeds it from a local path instead of unpkg. script.js is
-// only the loader: widget.js and every hashed lazy chunk must travel with it.
+// self-contained; the directory copy also supports older local builds.
 // Runs automatically before `pnpm dev` / `pnpm build`. Non-fatal if the widget
 // isn't built yet — build it first: (widget root) `pnpm --filter @opencx/widget build`.
 import {
@@ -26,16 +26,13 @@ export function syncWidgetBuild({
 } = {}) {
   const sourceDirectory = resolve(source);
   const loaderEntry = join(sourceDirectory, 'script.js');
-  const moduleEntry = join(sourceDirectory, 'widget.js');
 
-  // Validate the complete minimum build before touching a previously synced
-  // directory. A loader without its module is worse than leaving the last
-  // known-good local copy in place.
-  if (!existsSync(loaderEntry) || !existsSync(moduleEntry)) {
+  // Require the public entry before replacing the last good local build.
+  if (!existsSync(loaderEntry)) {
     logger.warn(
       `[sync-widget] ⚠ complete local widget build not found at:\n  ${sourceDirectory}`,
     );
-    logger.warn(`[sync-widget]   Expected both script.js and widget.js.`);
+    logger.warn(`[sync-widget]   Expected script.js.`);
     logger.warn(`[sync-widget]   Build it once from the widget repo root:`);
     logger.warn(
       `[sync-widget]     pnpm install && pnpm --filter @opencx/widget build`,

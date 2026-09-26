@@ -188,7 +188,7 @@ function ActiveAgentChatProvider({
     sessionId: string | null;
     request: ConnectionRequest | null;
   }>({ sessionId: currentSessionId, request: null });
-  const connectionsEnabled = config.capabilities?.connections !== false;
+  const connectionsEnabled = config.capabilities?.connections === true;
   const pendingConnection =
     connectionsEnabled &&
     currentSessionId !== null &&
