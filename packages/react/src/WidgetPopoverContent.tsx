@@ -20,6 +20,13 @@ import { RootScreen } from './screens';
 
 const initialContent = buildFrameHtml();
 
+// Framer Motion 11's accelerated opacity animation cancels its WAAPI effect
+// before the final inline opacity/display is painted. Closing can expose the
+// previous opacity:1 for one frame. An update subscriber keeps this wrapper's
+// opacity on the same JS frame loop as its scale/y and transitionEnd, avoiding
+// that handoff without changing the spring or hiding the panel prematurely.
+const keepShellAnimationSynchronized = () => {};
+
 export function WidgetContent() {
   const { isOpen } = useWidgetTrigger();
   const { contentIframeRef } = useWidget();
@@ -28,6 +35,7 @@ export function WidgetContent() {
 
   return (
     <motion.div
+      onUpdate={keepShellAnimationSynchronized}
       animate={isOpen ? 'visible' : 'hidden'}
       initial="hidden"
       // Grow out of the FAB corner (bottom-right, where the trigger sits) so

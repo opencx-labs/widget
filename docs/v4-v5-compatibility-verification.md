@@ -167,3 +167,18 @@ consent loaders, CDN caching, real authentication and non-Chromium browsers rema
 outside this test. See `packages/embed/e2e/README.md` for sources and simplifications.
 Run with `pnpm --filter @opencx/widget test:e2e` after building and installing
 Playwright Chromium. No widget runtime change was needed for these cases.
+
+### Close-flicker regression
+
+The initial E2E checks asserted final visibility and missed a one-frame flash
+during close. A frame-by-frame regression reproduced opacity going from 0.001
+back to 1 before `display:none`. Framer Motion 11 cancels its accelerated opacity
+effect before the final inline styles paint. An update subscriber on the popover
+wrapper keeps opacity on the same JS frame loop as scale/y and transitionEnd;
+the existing spring is unchanged.
+
+The new monotonic-close assertion failed before the fix and all six customer
+desktop/mobile cases passed afterward. The original local Trunkrs preview was
+remeasured: 117 closing/closed frames with no opacity rebound. React type check,
+targeted lint, React/embed builds and the production JSX guard passed. These
+checks remain Chromium-only and do not constitute a v5 stable release approval.

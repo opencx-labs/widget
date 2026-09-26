@@ -234,6 +234,26 @@ for (const name of ['trunkrs', 'deonlinedrogist', 'qoyod']) {
               'rtl',
             );
           }
+          await page.evaluate(() => {
+            window.closeOpacitySamples = [];
+            const end = performance.now() + 1000;
+            const tick = () => {
+              const iframe = document.querySelector(
+                'iframe[title="OpenCX Live Chat"]',
+              );
+              const style = getComputedStyle(iframe.parentElement);
+              const closed =
+                document
+                  .querySelector('#opencx-root [data-state]')
+                  ?.getAttribute('data-state') === 'closed';
+              if (closed)
+                window.closeOpacitySamples.push(
+                  style.display === 'none' ? 0 : Number(style.opacity),
+                );
+              if (performance.now() < end) requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+          });
           if (mobile)
             await frame
               .locator(
@@ -249,6 +269,16 @@ for (const name of ['trunkrs', 'deonlinedrogist', 'qoyod']) {
               'none',
             );
           });
+          const closeSamples = await page.evaluate(
+            () => window.closeOpacitySamples,
+          );
+          assert.ok(closeSamples.length > 2, 'sample actual closing frames');
+          for (let i = 1; i < closeSamples.length; i++) {
+            assert.ok(
+              closeSamples[i] <= closeSamples[i - 1] + 0.05,
+              `close must not flash back: ${closeSamples[i - 1]} -> ${closeSamples[i]}`,
+            );
+          }
           if (name === 'trunkrs') await trigger.locator('button').click();
           else await page.locator('.j-chat-link').click();
           await frame
