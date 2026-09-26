@@ -146,3 +146,24 @@ JSX guard passed. The local Chromium check again confirmed identical settled
 composer geometry with/without questions, required-choice unlock, mobile overflow,
 and Escape dismissal, with no page errors. This is local mock-backend validation;
 the earlier real-backend checks above were not rerun for this animation-only edit.
+
+## Public-site integration fixtures (2026-09-26)
+
+Added sanitized Trunkrs, DeOnlineDrogist and Qoyod integration patterns under
+`packages/embed/e2e/`, exercising the built production embed with real Chromium
+layout and normal motion. Customer tokens/assets are replaced; every network
+request is intercepted locally and unexpected requests fail. No OpenAI key or
+live customer/backend access is required.
+
+Six desktop/mobile cases passed: customer-triggered visible opening, Trunkrs
+contact form and extra fields, message/reply delivery, close/reopen, Qoyod RTL
+and country token selection, DeOnlineDrogist host context, one root and no page
+errors. Legacy delivery remains v2 with page-context, client-tools and connections
+disabled even when the mock backend advertises support. Qoyod's post-reopen
+visibility is checked after its delayed reconciliation timers run.
+
+These are reduced integration fixtures, not full customer sites. Production CSP,
+consent loaders, CDN caching, real authentication and non-Chromium browsers remain
+outside this test. See `packages/embed/e2e/README.md` for sources and simplifications.
+Run with `pnpm --filter @opencx/widget test:e2e` after building and installing
+Playwright Chromium. No widget runtime change was needed for these cases.
