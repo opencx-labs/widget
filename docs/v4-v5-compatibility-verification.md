@@ -182,3 +182,58 @@ desktop/mobile cases passed afterward. The original local Trunkrs preview was
 remeasured: 117 closing/closed frames with no opacity rebound. React type check,
 targeted lint, React/embed builds and the production JSX guard passed. These
 checks remain Chromium-only and do not constitute a v5 stable release approval.
+
+## Final readiness follow-up (2026-09-28)
+
+This section supersedes the earlier automated counts and Chromium-only limitation.
+The real Payla/backend evidence above remains dated 2026-09-23; it was not rerun
+on this final build. The backend currently listening on localhost:8080 belongs
+to another checkout, so it was not repurposed for this run.
+
+### Fixes
+
+- Addressed Greptile's missing quick-ask footer: configured notices render before
+  the first message in both optional and required-question Companion states.
+- Addressed the collapsed required-question shell: required choices live inside
+  the measured panel, with a close control. Choosing a question unlocks typing.
+  Optional questions remain above the composer. Spring parameters and the
+  existing 300ms / 100ms-stagger question animation are unchanged.
+- Found and fixed dictation cleanup when microphone permission resolves before
+  a failed token-mint request. The session now owns the stream immediately so
+  teardown stops its tracks. Also prevent a pending SDP setup from starting a
+  provider handshake after Stop. Both regressions failed before the fix.
+  This reproduces an active-microphone cleanup bug, not evidence that customer
+  audio was transmitted or that a historical customer data leak occurred.
+
+### Final local gates
+
+| Gate                                               | Result                                                       |
+| -------------------------------------------------- | ------------------------------------------------------------ |
+| Core / headless / React / embed unit tests         | 376 / 249 / 582 / 3 passed (1,210 total)                     |
+| Production bundle E2E                              | 14 passed per engine: Chromium, Firefox, WebKit (42 total)   |
+| Rendered Chromium page privacy/read-controls tests | 21 passed                                                    |
+| Build-guard regression tests                       | 6 passed                                                     |
+| All four production builds and JSX artifact guards | Passed                                                       |
+| All four package type checks and lint              | Passed; existing cursor-test unused-variable warning remains |
+
+The production-bundle cases cover the three sanitized public integration
+patterns at desktop/mobile viewport sizes; open/send/reply/close/reopen and
+close-opacity monotonicity; required/optional Companion questions with normal
+and reduced motion; configured footer visibility; a required panel with no
+footer; duplicate script evaluation preserving a live conversation/draft;
+a concrete self-only CSP with a nonced bootstrap; authenticated multipart upload
+and attachment metadata; microphone denial; and cleanup after a failed mint.
+All requests are intercepted. Media devices and backend replies are synthetic.
+Firefox's bulk-fill shortcut did not insert text into the just-opened iframe;
+real keyboard events pass. WebKit required mocking the whole mediaDevices object
+for the synthetic microphone, rather than mutating a method on its native getter.
+
+### Release boundary
+
+Local regression gates are green. Review the final PR head before merging.
+Do not treat these fixtures as current production or real-provider proof:
+real transcription, third-party OAuth, arbitrary host CSP/custom React components,
+and a final-build real-backend customer pilot remain outside this run.
+Existing beta consumers must explicitly opt into streaming/connections/page access
+as documented. Zod 4 and HTML sanitization remain intentional v5 differences.
+No package versions, npm tags, deployment, or release state were changed.

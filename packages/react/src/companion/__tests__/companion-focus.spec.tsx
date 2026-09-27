@@ -48,6 +48,7 @@ vi.mock('@opencx/widget-react-headless', () => ({
     companion: undefined,
     requireInitialQuestion,
     initialQuestions,
+    chatFooterItems: [{ message: 'Fixture privacy notice' }],
   }),
   useSessions: () => ({ sessionState: { session: null } }),
   useMessages: () => ({
@@ -134,12 +135,26 @@ describe('companion composer focus', () => {
     requireInitialQuestion = true;
     render('input');
     expect(container.querySelector('textarea')).toBeNull();
+    const question = container.querySelector<HTMLButtonElement>(
+      '[data-companion-input] [data-component="chat/suggested_reply_btn"]',
+    );
+    expect(question?.textContent).toBe('Track my order');
+    act(() => question?.click());
+    expect(sendQuestion).toHaveBeenCalledWith({ content: 'Track my order' });
     hasMessages = true;
     render('input');
     expect(container.querySelector('textarea')).not.toBeNull();
     hasMessages = false;
     render('input');
     expect(container.querySelector('textarea')).toBeNull();
+  });
+
+  it('shows configured footer text before the first message', () => {
+    render('input');
+    expect(container.textContent).toContain('Fixture privacy notice');
+    requireInitialQuestion = true;
+    render('input');
+    expect(container.textContent).toContain('Fixture privacy notice');
   });
 
   it('focuses the quick-ask composer when the resting bar opens', () => {

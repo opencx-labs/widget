@@ -1,7 +1,7 @@
 import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { chromium } from 'playwright';
+import { chromium, firefox, webkit } from 'playwright';
 import { fixtureHtml } from './fixtures/public-setups.mjs';
 
 let browser;
@@ -11,7 +11,9 @@ before(async () => {
     new URL('../dist-embed/script.js', import.meta.url),
     'utf8',
   );
-  browser = await chromium.launch();
+  const engine = process.env.WIDGET_TEST_BROWSER ?? 'chromium';
+  assert.ok(['chromium', 'firefox', 'webkit'].includes(engine));
+  browser = await { chromium, firefox, webkit }[engine].launch();
 });
 after(async () => browser?.close());
 
@@ -43,12 +45,13 @@ for (const name of ['trunkrs', 'deonlinedrogist', 'qoyod']) {
           reducedMotion: 'no-preference',
           serviceWorkers: 'block',
         });
+        let page;
+        const errors = [],
+          requests = [],
+          unexpected = [];
         try {
-          const page = await context.newPage();
+          page = await context.newPage();
           page.setDefaultTimeout(10000);
-          const errors = [],
-            requests = [],
-            unexpected = [];
           page.on('pageerror', (error) => errors.push(error.message));
           page.on('console', (msg) => {
             if (
@@ -189,19 +192,27 @@ for (const name of ['trunkrs', 'deonlinedrogist', 'qoyod']) {
             );
           });
           if (name === 'trunkrs') {
-            await frame.locator('input[name="name"]').fill('Synthetic Visitor');
+            await frame
+              .locator('input[name="name"]')
+              .pressSequentially('Synthetic Visitor');
             await frame
               .locator('input[name="email"]')
-              .fill('visitor@example.invalid');
+              .pressSequentially('visitor@example.invalid');
             await frame
               .locator('input[placeholder^="Trunkrs-nummer"]')
-              .fill('41000000');
+              .pressSequentially('41000000');
             await frame
               .locator('input[placeholder^="Post code"]')
-              .fill('0000AA');
+              .pressSequentially('0000AA');
             await frame.locator('form button').click();
           }
-          await frame.locator('textarea').fill('Local compatibility test');
+          await frame
+            .locator('textarea')
+            .pressSequentially('Local compatibility test');
+          assert.equal(
+            await frame.locator('textarea').inputValue(),
+            'Local compatibility test',
+          );
           await frame.locator('textarea').press('Enter');
           await frame
             .getByText('LOCAL_COMPAT_REPLY', { exact: true })
@@ -310,6 +321,37 @@ for (const name of ['trunkrs', 'deonlinedrogist', 'qoyod']) {
             'fixture must not call live services or unexpected routes',
           );
           assert.deepEqual(errors, []);
+        } catch (error) {
+          console.error(
+            JSON.stringify(
+              {
+                errors,
+                requests,
+                unexpected,
+                frames: await Promise.all(
+                  page.frames().map(async (frame) => ({
+                    url: frame.url(),
+                    text: await frame
+                      .locator('body')
+                      .innerText()
+                      .catch(() => ''),
+                    inputs: await frame
+                      .locator('input, textarea')
+                      .evaluateAll((nodes) =>
+                        nodes.map((n) => ({
+                          value: n.value,
+                          valid: n.validity.valid,
+                        })),
+                      )
+                      .catch(() => []),
+                  })),
+                ),
+              },
+              null,
+              2,
+            ),
+          );
+          throw error;
         } finally {
           await context.close();
         }

@@ -4,6 +4,10 @@ import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { FrameDocument } from '../components/FrameDocument';
 import { SuppressTooltips } from '../components/lib/tooltip';
 import { RootScreen } from '../screens';
+import { ChatFooterItems } from '../screens/chat/ChatFooterItems';
+import { CompanionQuestionButtons } from './CompanionQuestions';
+import { XIcon } from 'lucide-react';
+import { FrameIconButton } from './FrameIconButton';
 import { ChatInput } from '../screens/chat/ChatInput';
 import { RADII } from './companion-geometry';
 import {
@@ -256,13 +260,27 @@ export function CompanionContent({
           {/* The shell clips this composer to a thin strip, so a `side="top"`
               tooltip would bleed above the bar as a dark sliver. */}
           <SuppressTooltips>
-            {!initialQuestionRequired && (
+            {initialQuestionRequired ? (
+              <div className="flex items-start gap-2 p-3">
+                <div className="flex max-h-60 min-w-0 flex-1 flex-col items-start gap-2 overflow-y-auto">
+                  <CompanionQuestionButtons />
+                </div>
+                <FrameIconButton
+                  label={t('companion_close')}
+                  onClick={onDismiss}
+                  className="size-8"
+                >
+                  <XIcon className="size-4" />
+                </FrameIconButton>
+              </div>
+            ) : (
               <ChatInput
                 hideAttachTools={hideAttachTools}
                 placeholder={placeholder}
               />
             )}
           </SuppressTooltips>
+          <ChatFooterItems />
           {canExpand ? (
             // Minimized mid-conversation: the whole follow-up bar is one click
             // target that pops back up into the open chat — no separate control.

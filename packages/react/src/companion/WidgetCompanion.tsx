@@ -1,3 +1,4 @@
+import { useInitialQuestionRequired } from '../hooks/useInitialQuestionRequired';
 import { CompanionQuestions } from './CompanionQuestions';
 import { motion, useReducedMotion } from 'framer-motion';
 import React, {
@@ -133,8 +134,10 @@ export function WidgetCompanion() {
   const hasBeenChatRef = useRef(false);
 
   const isPill = state === 'pill';
+  const initialQuestionRequired = useInitialQuestionRequired();
   const showsQuickQuestions =
     state === 'input' &&
+    !initialQuestionRequired &&
     messagesState.messages.length === 0 &&
     initialQuestions?.some((question) => question.trim().length > 0) === true;
   const [questionsHeight, setQuestionsHeight] = useState(0);
