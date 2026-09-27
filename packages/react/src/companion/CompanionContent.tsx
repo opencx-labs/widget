@@ -257,42 +257,42 @@ export function CompanionContent({
             ['--opencx-companion-input-radius' as string]: `${RADII.input}px`,
           }}
         >
-          {/* The shell clips this composer to a thin strip, so a `side="top"`
+          <div className="relative">
+            {/* The shell clips this composer to a thin strip, so a `side="top"`
               tooltip would bleed above the bar as a dark sliver. */}
-          <SuppressTooltips>
-            {initialQuestionRequired ? (
-              <div className="flex items-start gap-2 p-3">
-                <div className="flex max-h-60 min-w-0 flex-1 flex-col items-start gap-2 overflow-y-auto">
-                  <CompanionQuestionButtons />
+            <SuppressTooltips>
+              {initialQuestionRequired ? (
+                <div className="flex items-start gap-2 p-3">
+                  <div className="flex max-h-60 min-w-0 flex-1 flex-col items-start gap-2 overflow-y-auto">
+                    <CompanionQuestionButtons />
+                  </div>
+                  <FrameIconButton
+                    label={t('companion_close')}
+                    onClick={onDismiss}
+                    className="size-8"
+                  >
+                    <XIcon className="size-4" />
+                  </FrameIconButton>
                 </div>
-                <FrameIconButton
-                  label={t('companion_close')}
-                  onClick={onDismiss}
-                  className="size-8"
-                >
-                  <XIcon className="size-4" />
-                </FrameIconButton>
-              </div>
-            ) : (
-              <ChatInput
-                hideAttachTools={hideAttachTools}
-                placeholder={placeholder}
+              ) : (
+                <ChatInput
+                  hideAttachTools={hideAttachTools}
+                  placeholder={placeholder}
+                />
+              )}
+            </SuppressTooltips>
+            {canExpand ? (
+              // Only the composer expands the minimized conversation. Keep the
+              // configured footer outside this overlay so its links stay usable.
+              <button
+                type="button"
+                aria-label={t('companion_expand_chat')}
+                onClick={onExpand}
+                className="absolute inset-0 z-10 cursor-pointer"
               />
-            )}
-          </SuppressTooltips>
+            ) : null}
+          </div>
           <ChatFooterItems />
-          {canExpand ? (
-            // Minimized mid-conversation: the whole follow-up bar is one click
-            // target that pops back up into the open chat — no separate control.
-            // The overlay sits above the (non-interactive here) composer so a
-            // click anywhere expands.
-            <button
-              type="button"
-              aria-label={t('companion_expand_chat')}
-              onClick={onExpand}
-              className="absolute inset-0 z-10 cursor-pointer"
-            />
-          ) : null}
         </div>
       ) : (
         <div

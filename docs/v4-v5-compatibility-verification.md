@@ -237,3 +237,19 @@ and a final-build real-backend customer pilot remain outside this run.
 Existing beta consumers must explicitly opt into streaming/connections/page access
 as documented. Zod 4 and HTML sanitization remain intentional v5 differences.
 No package versions, npm tags, deployment, or release state were changed.
+
+## Minimized footer review follow-up (2026-09-28)
+
+Greptile reviewed `138fe24`, confirmed the three prior findings resolved, and
+reported that the minimized Companion expand overlay intercepted footer links.
+A real pointer-click regression reproduced that interception before the fix.
+The expand overlay is now contained by the composer; the footer is outside it.
+Footer clicks reach their links, and clicking the composer still reopens the
+existing conversation. This does not change the shell animation parameters.
+
+Verification on the rebuilt bundle: 15 cases per engine (45 total) passed in
+Chromium, Firefox and WebKit. The 7 focused Companion tests, React type check,
+targeted lint, React/embed production builds and JSX guards passed. Earlier full
+unit/privacy results remain from `138fe24`; those unaffected suites were not
+rerun for this DOM-scoping change. Final-head review/CI and a real-backend smoke
+remain release gates. No package was published.

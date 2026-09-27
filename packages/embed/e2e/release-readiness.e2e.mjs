@@ -393,3 +393,40 @@ test(
     );
   },
 );
+
+test(
+  'minimized Companion footer links receive clicks while the composer still expands chat',
+  { timeout: 30000 },
+  async (t) => {
+    const { page, frame, open } = await fixture(t, {
+      displayMode: 'companion',
+      chatFooterItems: [
+        { message: 'Read our [privacy notice](https://fixture.test/privacy)' },
+      ],
+    });
+    await open();
+    await frame.locator('textarea').pressSequentially('Start conversation');
+    await frame.locator('textarea').press('Enter');
+    await frame.getByText('FIXTURE_REPLY_1', { exact: true }).waitFor();
+    await frame.locator('[data-component="companion/close_btn"]').click();
+    const expand = frame.getByRole('button', {
+      name: 'Expand chat',
+      exact: true,
+    });
+    await expand.waitFor();
+    const link = frame.getByRole('link', { name: 'privacy notice' });
+    await link.evaluate((el) => {
+      el.addEventListener('click', (event) => {
+        // Intercept navigation only after an actual pointer click reaches the
+        // anchor. An overlaid expand button must not intercept this click.
+        event.preventDefault();
+        window.parent.fixtureFooterClicks =
+          (window.parent.fixtureFooterClicks ?? 0) + 1;
+      });
+    });
+    await link.click({ timeout: 2000 });
+    assert.equal(await page.evaluate(() => window.fixtureFooterClicks), 1);
+    await expand.click();
+    await frame.getByText('FIXTURE_REPLY_1', { exact: true }).waitFor();
+  },
+);
