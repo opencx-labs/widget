@@ -36,6 +36,7 @@ suite('streaming engine selection (explicit client opt-in)', () => {
           dictation: false,
           attachments: false,
           pageContext: false,
+          pageActions: false,
           clientTools: false,
         },
       });
@@ -88,6 +89,7 @@ suite('streaming engine selection (explicit client opt-in)', () => {
         dictation: false,
         attachments: true,
         pageContext: false,
+        pageActions: false,
         clientTools: false,
       },
     });

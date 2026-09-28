@@ -24,12 +24,15 @@ let consentAsked: Array<{
 let consentAnswer = true;
 let onConsent = () => {};
 
-const widgetCtx = { features: { pageContext: true, clientTools: true } };
+const widgetCtx = {
+  features: { pageContext: true, clientTools: true, pageActions: true },
+};
 
 vi.mock('@opencx/widget-react-headless', () => ({
   useWidget: () => ({ widgetCtx }),
   useAgentChatUi: () => ({
     pageEffects,
+    isStreaming: true,
     replyToPageCall: (callId: string, outcome: string, detail?: string) =>
       replies.push({ callId, outcome, detail }),
     requestPageActionConsent: async (request: {

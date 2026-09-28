@@ -55,6 +55,27 @@ real authentication, actual provider transcription, physical mobile browsers,
 or arbitrary customer CSP/custom React components. Backend and media responses
 are controlled fixtures.
 
+## Rich replies and page features
+
+`page-features.e2e.mjs` runs the production embed against a local HTTP server that
+implements the widget wire contract and streams actual SSE events. It covers
+popover and Companion rich cards/tables, history reload, unsafe links/HTML, page
+context opt-out and opt-in, exclusion of private controls and field values,
+pointing without action authority, and both Allow/No paths for a committing click.
+An approved action must leave Companion open; a real visitor outside click still
+closes it. Each case checks exact DOM outcomes and returned page replies.
+
+Run with `WIDGET_TEST_BROWSER=chromium`, `firefox` or `webkit`:
+
+```sh
+node --test e2e/page-features.e2e.mjs
+```
+
+`WIDGET_E2E_DEBUG=1` logs the synthetic requests and rendered text for diagnosis.
+All data is local and fake; unexpected external requests fail the test. These
+cases do not test real backend authorization, settings persistence, model tool
+selection or generic forms, which are absent from the rich-reply catalog.
+
 ## Published v4 to candidate v5 differential tests
 
 `v4-upgrade.upgrade.mjs` runs the **published npm v4.0.63 embed** first, then

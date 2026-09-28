@@ -1,3 +1,10 @@
+const agentPointerEvents = new WeakSet<Event>();
+
+/** Widget dismissal must distinguish our page actions from visitor clicks. */
+export function isAgentPointerEvent(event: Event): boolean {
+  return agentPointerEvents.has(event);
+}
+
 /**
  * Click the way a pointer does, not the way `el.click()` does.
  *
@@ -25,8 +32,12 @@ export function firePointerSequence(el: HTMLElement): void {
     clientY,
   };
 
+  const dispatch = (event: Event) => {
+    agentPointerEvents.add(event);
+    return el.dispatchEvent(event);
+  };
   const pointer = (type: string) =>
-    el.dispatchEvent(
+    dispatch(
       new PointerEvent(type, {
         ...base,
         pointerId: 1,
@@ -35,9 +46,7 @@ export function firePointerSequence(el: HTMLElement): void {
       }),
     );
   const mouse = (type: string, detail = 0) =>
-    el.dispatchEvent(
-      new MouseEvent(type, { ...base, detail, button: 0, buttons: 1 }),
-    );
+    dispatch(new MouseEvent(type, { ...base, detail, button: 0, buttons: 1 }));
 
   pointer('pointerover');
   pointer('pointerenter');

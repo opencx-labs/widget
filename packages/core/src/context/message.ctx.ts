@@ -169,6 +169,10 @@ export const resolveSendFeatures = (
     page_context: features?.pageContext === true,
     client_tools:
       features?.pageContext === true && features?.clientTools === true,
+    page_actions:
+      features?.pageContext === true &&
+      features?.clientTools === true &&
+      features?.pageActions === true,
   };
   if (!features) return body;
   if (features.preamble !== undefined) body.preamble = features.preamble;

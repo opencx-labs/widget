@@ -61,6 +61,7 @@ const STREAMING: WidgetAgent = {
     attachments: false,
     pageContext: false,
     clientTools: false,
+    pageActions: false,
   },
 };
 const BLOCKING: WidgetAgent = { ...STREAMING, streaming: false };

@@ -1,5 +1,9 @@
 import { log } from '@opencx/widget-core';
-import { useAgentChatUi, useConfig } from '@opencx/widget-react-headless';
+import {
+  useAgentChatUi,
+  useConfig,
+  useWidget,
+} from '@opencx/widget-react-headless';
 import { useEffect, useRef } from 'react';
 import { useTheme } from '../../../hooks/useTheme';
 import {
@@ -10,6 +14,7 @@ import {
 import { dismissAgentCursor, travelTo } from '../../../page-controls/cursor';
 import { guardRef } from '../../../page-controls/guard';
 import { resolvePageMarkTheme } from '../../../page-marks/page-mark-theme';
+import { usePageEffectIsCurrent } from './use-page-effect-is-current';
 
 const MAX_HANDLED_PAGE_EFFECTS = 200;
 
@@ -23,6 +28,8 @@ const MAX_HANDLED_PAGE_EFFECTS = 200;
 export function AgentChatPageEffects() {
   const { pageMarkHighlightDurationMs } = useConfig();
   const { pageEffects, replyToPageCall, isStreaming } = useAgentChatUi();
+  const { widgetCtx } = useWidget();
+  const isCurrent = usePageEffectIsCurrent(pageEffects, isStreaming);
   const { theme, cssVars } = useTheme();
   const pageMarkTheme = resolvePageMarkTheme({
     cssVars,
@@ -61,6 +68,15 @@ export function AgentChatPageEffects() {
         handled.delete(oldest);
       }
 
+      const enabled = () =>
+        isCurrent(effect.key) &&
+        widgetCtx.features.pageContext &&
+        widgetCtx.features.clientTools;
+      if (!enabled()) {
+        replyToPageCall(effect.callId, 'declined');
+        continue;
+      }
+
       const parsed = highlightElementInputSchema.safeParse(effect.input);
       if (!parsed.success) {
         log.warn('highlight_element: invalid tool input', {
@@ -96,18 +112,40 @@ export function AgentChatPageEffects() {
       const callId = effect.callId;
       const input = parsed.data;
       void (async () => {
-        const cursor = await travelTo(element);
-        const found = highlightElementOnHostPage(element, input, {
-          accentColor: pageMarkTheme.accent,
-          surfaceColor: pageMarkTheme.surface,
-          foregroundColor: pageMarkTheme.foreground,
-          zIndex: pageMarkTheme.inkZIndex,
-          durationMs: pageMarkHighlightDurationMs,
-        });
-        cursor.done();
-        replyToPageCall(callId, found ? 'done' : 'gone');
-        if (!found) {
-          log.warn('highlight_element: the mark could not be drawn', input);
+        let cursor: Awaited<ReturnType<typeof travelTo>> | undefined;
+        try {
+          cursor = await travelTo(element);
+          if (!enabled()) {
+            replyToPageCall(callId, 'declined');
+            return;
+          }
+          const current = guardRef(input.ref);
+          if (!current.ok) {
+            replyToPageCall(
+              callId,
+              current.reason === 'off-limits' ? 'unsupported' : current.reason,
+            );
+            return;
+          }
+          const found = highlightElementOnHostPage(element, input, {
+            accentColor: pageMarkTheme.accent,
+            surfaceColor: pageMarkTheme.surface,
+            foregroundColor: pageMarkTheme.foreground,
+            zIndex: pageMarkTheme.inkZIndex,
+            durationMs: pageMarkHighlightDurationMs,
+          });
+          replyToPageCall(callId, found ? 'done' : 'gone');
+          if (!found) {
+            log.warn('highlight_element: the mark could not be drawn', input);
+          }
+        } catch {
+          replyToPageCall(
+            callId,
+            'unsupported',
+            'The page highlight could not be completed.',
+          );
+        } finally {
+          cursor?.done();
         }
       })();
     }
@@ -119,6 +157,8 @@ export function AgentChatPageEffects() {
     pageMarkTheme.surface,
     pageMarkTheme.foreground,
     pageMarkTheme.inkZIndex,
+    isCurrent,
+    widgetCtx,
   ]);
 
   return null;

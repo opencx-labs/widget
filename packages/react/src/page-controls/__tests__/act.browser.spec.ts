@@ -25,6 +25,24 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
+it('does not send host exception contents back to the agent', async () => {
+  mount(
+    '<input id="field" aria-label="Search" style="width:160px;height:32px">',
+  );
+  const field = document.querySelector<HTMLInputElement>('#field');
+  if (!field) throw new Error('fixture missing');
+  field.focus = () => {
+    throw new Error('PRIVATE_HOST_ERROR_SECRET');
+  };
+  const result = await actOnPage({
+    ref: refFor('#field'),
+    action: 'fill',
+    value: 'public text',
+  });
+  expect(result.outcome).toBe('unsupported');
+  expect(JSON.stringify(result)).not.toContain('PRIVATE_HOST_ERROR_SECRET');
+});
+
 describe('clicking', () => {
   it('fires the whole pointer sequence, so a menu built on pointerdown opens', async () => {
     mount(`
@@ -152,6 +170,42 @@ describe('typing', () => {
 });
 
 describe('dropdowns and switches', () => {
+  it('reports no change when a controlled dropdown rejects the selection', async () => {
+    mount(
+      '<select id="plan" style="width:160px;height:28px"><option value="m">Monthly</option><option value="y">Yearly</option></select>',
+    );
+    const select = document.querySelector<HTMLSelectElement>('#plan');
+    if (!select) throw new Error('missing dropdown');
+    const reject = () => {
+      select.value = 'm';
+    };
+    select.addEventListener('change', reject);
+    const ref = refFor('#plan');
+    expect(
+      (
+        await actOnPage({
+          ref,
+          action: 'select',
+          value: 'Yearly',
+          settleMs: 100,
+        })
+      ).outcome,
+    ).toBe('no_change');
+    expect(select.value).toBe('m');
+    select.removeEventListener('change', reject);
+    expect(
+      (
+        await actOnPage({
+          ref,
+          action: 'select',
+          value: 'Yearly',
+          settleMs: 100,
+        })
+      ).outcome,
+    ).toBe('done');
+    expect(select.value).toBe('y');
+  });
+
   it('chooses an option by its value or by what it says', async () => {
     mount(`
       <select id="plan" style="width:160px;height:28px">

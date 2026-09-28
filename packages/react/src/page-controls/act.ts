@@ -110,16 +110,15 @@ export async function actOnPage(input: {
 }): Promise<ActResult> {
   try {
     return await act(input);
-  } catch (error) {
+  } catch {
     // A turn is waiting on this. An exception must come back as an answer —
     // an unanswered call is silence, and silence is the one thing an agent
     // must never be left to fill in for itself.
     return {
       outcome: 'unsupported',
-      detail:
-        error instanceof Error && error.message
-          ? `That could not be done on this page: ${error.message}`
-          : 'That could not be done on this page.',
+      // Host code can throw private URLs, field values or account details.
+      // Page replies are sent to the agent; never forward exception contents.
+      detail: 'That could not be done on this page.',
     };
   }
 }
@@ -153,6 +152,7 @@ async function act({
   // validation that might bail out — so nothing is watched that never acts,
   // and nothing acts that is not being watched.
   let watcher: ReturnType<typeof watchPage> | undefined;
+  let selectedValue: string | undefined;
 
   switch (action) {
     case 'click': {
@@ -203,6 +203,7 @@ async function act({
         };
       }
       watcher = watchPage(doc, settleMs);
+      selectedValue = option.value;
       setNativeValue(el, option.value);
       break;
     }
@@ -250,8 +251,11 @@ async function act({
         detail: 'The field did not keep what was typed.',
       };
     }
-    if (action === 'select' && current === null) {
-      return { outcome: 'no_change', detail: 'The dropdown did not move.' };
+    if (action === 'select' && current !== selectedValue) {
+      return {
+        outcome: 'no_change',
+        detail: 'The dropdown did not keep the selected option.',
+      };
     }
     return { outcome: 'done' };
   }

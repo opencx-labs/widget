@@ -32,7 +32,8 @@ export function beginSnapshot(): (el: HTMLElement) => string {
   generations.unshift(generation);
   generations.length = Math.min(generations.length, GENERATIONS_KEPT);
   let n = 0;
-  const prefix = `s${(sequence = (sequence + 1) % 1000)}`;
+  // References must never alias a newer control during a long-lived SPA visit.
+  const prefix = `s${++sequence}`;
   return (el: HTMLElement) => {
     const ref = `${prefix}c${(n += 1)}`;
     generation.set(ref, new WeakRef(el));

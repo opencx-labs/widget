@@ -1,10 +1,10 @@
 ---
-"@opencx/widget-core": patch
-"@opencx/widget-react-headless": patch
-"@opencx/widget-react": patch
-"@opencx/widget": patch
+'@opencx/widget-core': patch
+'@opencx/widget-react-headless': patch
+'@opencx/widget-react': patch
+'@opencx/widget': patch
 ---
 
 Let the agent click, type and choose on the page for the visitor, when the organization turns it on.
 
-Anything that commits — paying, submitting, deleting, cancelling — shows the visitor a chip naming that exact control first, and a No is final. Password fields, file pickers, controls inside another site embedded in the page and regions marked `data-opencx-private` are never touched. The agent is told what actually happened, including when a control was used and nothing on the page changed.
+Recognized committing controls show the visitor a confirmation naming the control; declining prevents that call from executing. Recognition currently uses English committing words and form markup, so it cannot cover every consequential action or auto-saving field on an arbitrary site. Password fields, file pickers, controls inside another site embedded in the page and regions marked `data-opencx-private` are never touched. Replies report observed browser changes; they do not prove a remote business transaction completed.

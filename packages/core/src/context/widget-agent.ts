@@ -23,6 +23,7 @@ export type WidgetAgent = {
     attachments: boolean;
     pageContext: boolean;
     clientTools: boolean;
+    pageActions: boolean;
   };
 };
 
@@ -51,6 +52,7 @@ export function resolveWidgetAgent({
         attachments: true,
         pageContext: false,
         clientTools: false,
+        pageActions: false,
       },
     };
   }
@@ -64,6 +66,7 @@ export function resolveWidgetAgent({
       attachments: agent.features.attachments,
       pageContext: agent.features.page_context,
       clientTools: agent.features.client_tools,
+      pageActions: agent.features.page_actions === true,
     },
   };
 }
@@ -99,6 +102,8 @@ export function resolveClientFeatures(
    * the host page).
    */
   clientTools: boolean;
+  /** The widget may click and type, independently of highlighting. */
+  pageActions: boolean;
 } {
   const toggles = config.features;
   return {
@@ -110,6 +115,13 @@ export function resolveClientFeatures(
       agent.features.pageContext &&
       toggles?.pageContext === true &&
       toggles?.clientTools === true,
+    pageActions:
+      agent.features.pageActions &&
+      agent.features.clientTools &&
+      agent.features.pageContext &&
+      toggles?.pageContext === true &&
+      toggles?.clientTools === true &&
+      toggles?.pageActions === true,
   };
 }
 

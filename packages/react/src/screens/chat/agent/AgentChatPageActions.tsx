@@ -8,6 +8,7 @@ import { accessibleName } from '../../../page-controls/accessible-name';
 import { resolveRef } from '../../../page-controls/control-ref';
 import { readPageControls } from '../../../page-controls/read-controls';
 import { needsConsent } from '../../../page-controls/needs-consent';
+import { usePageEffectIsCurrent } from './use-page-effect-is-current';
 
 const MAX_HANDLED_ACTIONS = 200;
 
@@ -24,9 +25,14 @@ const MAX_HANDLED_ACTIONS = 200;
  */
 export function AgentChatPageActions() {
   const { widgetCtx } = useWidget();
-  const { pageEffects, replyToPageCall, requestPageActionConsent } =
-    useAgentChatUi();
+  const {
+    pageEffects,
+    replyToPageCall,
+    requestPageActionConsent,
+    isStreaming,
+  } = useAgentChatUi();
   const handledRef = useRef(new Set<string>());
+  const isCurrent = usePageEffectIsCurrent(pageEffects, isStreaming);
 
   useEffect(() => {
     const handled = handledRef.current;
@@ -50,64 +56,93 @@ export function AgentChatPageActions() {
       const { ref, action, value } = parsed.data;
 
       void (async () => {
-        const enabled = () =>
-          widgetCtx.features.pageContext && widgetCtx.features.clientTools;
-        if (!enabled()) {
-          replyToPageCall(effect.callId, 'declined');
-          return;
-        }
-        const element = resolveRef(ref);
-        if (!element) {
-          replyToPageCall(effect.callId, 'gone');
-          return;
-        }
-
-        if (needsConsent(element, action)) {
-          // Named from the PAGE, never from the tool call: the visitor is
-          // deciding about the control in front of them, not about a
-          // description the agent wrote.
-          const allowed = await requestPageActionConsent({
-            callId: effect.callId,
-            action,
-            controlName: accessibleName(element) || 'this control',
-          });
-          if (!allowed) {
+        let cursor: Awaited<ReturnType<typeof travelTo>> | undefined;
+        try {
+          const enabled = () =>
+            isCurrent(effect.key) &&
+            widgetCtx.features.pageContext &&
+            widgetCtx.features.clientTools &&
+            widgetCtx.features.pageActions;
+          if (!enabled()) {
             replyToPageCall(effect.callId, 'declined');
             return;
           }
+          const element = resolveRef(ref);
+          if (!element) {
+            replyToPageCall(effect.callId, 'gone');
+            return;
+          }
+
+          let consentName: string | undefined;
+          if (needsConsent(element, action)) {
+            // Named from the PAGE, never from the tool call: the visitor is
+            // deciding about the control in front of them, not about a
+            // description the agent wrote.
+            consentName = accessibleName(element) || 'this control';
+            const allowed = await requestPageActionConsent({
+              callId: effect.callId,
+              action,
+              controlName: consentName,
+            });
+            if (!allowed) {
+              replyToPageCall(effect.callId, 'declined');
+              return;
+            }
+          }
+
+          if (!enabled()) {
+            replyToPageCall(effect.callId, 'declined');
+            return;
+          }
+
+          // The pointer goes first, and the press lands before the event
+          // does. Firing the click while the cursor is still travelling is
+          // the one thing that makes this read as fake: the page would move
+          // before the hand got there.
+          cursor = await travelTo(element, { press: true });
+
+          if (
+            !enabled() ||
+            (needsConsent(element, action) &&
+              consentName !== (accessibleName(element) || 'this control'))
+          ) {
+            replyToPageCall(effect.callId, 'declined');
+            return;
+          }
+          const result = await actOnPage({ ref, action, value });
+
+          // Read the page again and send it back with the outcome. An action
+          // often lands the visitor somewhere else, and an agent holding
+          // references to the screen it just left can only ask them to send
+          // another message — which is not a flow.
+          const after =
+            enabled() && result.outcome === 'done' ? readPageControls() : null;
+          replyToPageCall(
+            effect.callId,
+            result.outcome,
+            result.detail,
+            after
+              ? { controls: after.controls, truncated: after.truncated }
+              : undefined,
+          );
+        } catch {
+          replyToPageCall(
+            effect.callId,
+            'unsupported',
+            'The page action could not be completed.',
+          );
+        } finally {
+          cursor?.done();
         }
-
-        // The pointer goes first, and the press lands before the event
-        // does. Firing the click while the cursor is still travelling is
-        // the one thing that makes this read as fake: the page would move
-        // before the hand got there.
-        const cursor = await travelTo(element, { press: true });
-
-        if (!enabled()) {
-          cursor.done();
-          replyToPageCall(effect.callId, 'declined');
-          return;
-        }
-        const result = await actOnPage({ ref, action, value });
-        cursor.done();
-
-        // Read the page again and send it back with the outcome. An action
-        // often lands the visitor somewhere else, and an agent holding
-        // references to the screen it just left can only ask them to send
-        // another message — which is not a flow.
-        const after =
-          enabled() && result.outcome === 'done' ? readPageControls() : null;
-        replyToPageCall(
-          effect.callId,
-          result.outcome,
-          result.detail,
-          after
-            ? { controls: after.controls, truncated: after.truncated }
-            : undefined,
-        );
       })();
     }
-  }, [pageEffects, replyToPageCall, requestPageActionConsent, widgetCtx]);
+  }, [
+    pageEffects,
+    replyToPageCall,
+    requestPageActionConsent,
+    widgetCtx,
+    isCurrent,
+  ]);
 
   return null;
 }

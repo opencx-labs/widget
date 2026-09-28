@@ -440,11 +440,18 @@ export interface WidgetConfig {
     pageContext?: boolean;
 
     /**
-     * Opt in to agent actions on the host page. Requires pageContext: true
-     * and organization support for both features.
+     * Opt in to agent highlights on the host page. Requires pageContext: true
+     * and organization support. This does not authorize clicks or typing.
      * @default false
      */
     clientTools?: boolean;
+    /**
+     * Opt in to clicks, typing and selections on the host page. Requires
+     * pageContext and clientTools, plus organization support for page actions.
+     * Visitor confirmation is handled separately by the page-action policy.
+     * @default false
+     */
+    pageActions?: boolean;
   };
 
   /**

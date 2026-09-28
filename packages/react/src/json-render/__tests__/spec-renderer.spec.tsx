@@ -1,4 +1,4 @@
-import type { Spec } from '@json-render/core';
+import { compileSpecStream, type Spec } from '@json-render/core';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -47,6 +47,35 @@ const oneElement = (type: string, props: Record<string, unknown>): Spec => ({
 });
 
 describe('SpecRenderer', () => {
+  it('contains malformed streamed elements and recovers on a valid revision', () => {
+    const malformed = compileSpecStream(
+      [
+        JSON.stringify({ op: 'add', path: '/root', value: 'el' }),
+        JSON.stringify({ op: 'add', path: '/elements/el', value: null }),
+      ].join('\n'),
+      { root: '', elements: {} },
+    );
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    roots.push(root);
+    const show = (spec: Spec) =>
+      act(() =>
+        root.render(
+          <>
+            <p>The rest of the answer stays visible</p>
+            <SpecRenderer spec={spec} />
+          </>,
+        ),
+      );
+    expect(() => show(malformed)).not.toThrow();
+    expect(container.textContent).toContain(
+      'The rest of the answer stays visible',
+    );
+    show(oneElement('Text', { text: 'Recovered card' }));
+    expect(container.textContent).toContain('Recovered card');
+  });
+
   it('renders a Metric (label + value)', () => {
     const html = render(
       oneElement('Metric', {

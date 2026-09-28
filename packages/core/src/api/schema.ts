@@ -1492,12 +1492,13 @@ export interface components {
         rich_replies?: boolean;
         page_effects?: boolean;
       } | null;
-      /** @description Per-embed feature narrowing: each flag can only switch OFF a feature the organization enabled for its agent (preamble = progress updates before and during longer tasks; inline_ui = inline rendered components in replies; page_context = the agent sees the page context sent with the message; client_tools = the agent may act on the page). Absent = the organization settings apply. */
+      /** @description Per-embed feature narrowing: each flag can only switch OFF a feature the organization enabled for its agent (preamble = progress updates before and during longer tasks; inline_ui = inline rendered components in replies; page_context = the agent sees the page context sent with the message; client_tools = the agent may point at the page; page_actions = the agent may click and type on the page). Absent = the organization settings apply. */
       features?: {
         preamble?: boolean;
         inline_ui?: boolean;
         page_context?: boolean;
         client_tools?: boolean;
+        page_actions?: boolean;
       } | null;
       /** @description Custom data to be sent with each contact message */
       custom_data?: {
@@ -1757,6 +1758,8 @@ export interface components {
       attachments: boolean;
       page_context: boolean;
       client_tools: boolean;
+      /** Absent on older backends, which do not authorize page actions. */
+      page_actions?: boolean;
     };
     WidgetAgentDto: {
       name: string;

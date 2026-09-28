@@ -117,7 +117,8 @@ export function useAgentChat({
   configRef.current = config;
 
   // Org features narrowed by the current embed options.
-  const { clientTools: performsClientTools } = widgetCtx.features;
+  const { clientTools: performsClientTools, pageActions: performsPageActions } =
+    widgetCtx.features;
 
   // The whole wire body rides each send's options (`bodyFor`); the transport
   // only owns the URLs and auth. The contact JWT can be minted AFTER this
@@ -193,6 +194,8 @@ export function useAgentChat({
   // polling merge appends new rows to the END of the transcript, so the next
   // queued user bubble must wait or it renders ABOVE the finished reply.
   const turnPhaseRef = useRef<TurnPhase>('idle');
+  // Stop withdraws DOM authority before the SDK reports that its stream ended.
+  const [pageEffectsStopped, setPageEffectsStopped] = useState(false);
   // Preparation is serialized separately from streaming: on a fresh chat the
   // first send may be creating the session. Followers must wait for that id and
   // enqueue behind the first send, rather than being dropped or overtaking it.
@@ -324,6 +327,7 @@ export function useAgentChat({
     sendPreparationTailRef.current = Promise.resolve();
     queueRef.current = new AgentChatQueue<QueuedSend>(MAX_QUEUED_SENDS);
     turnPhaseRef.current = 'idle';
+    setPageEffectsStopped(false);
     lastDrainedRef.current = null;
     pendingReleaseKeyRef.current = null;
     setCompletedStream(null);
@@ -475,6 +479,7 @@ export function useAgentChat({
     const next = queueRef.current.dequeueNext();
     if (!next) return;
     turnPhaseRef.current = 'in-flight';
+    setPageEffectsStopped(false);
     lastDrainedRef.current = next;
     setCompletedStream(null);
     stopAcknowledgedRef.current = false;
@@ -600,6 +605,7 @@ export function useAgentChat({
   // BELOW the partial reply.
   const stopTurn = useCallback(() => {
     turnPhaseRef.current = 'stopping';
+    setPageEffectsStopped(true);
     stopAcknowledgedRef.current = false;
     // A session reset/switch mid-stop already discarded this turn's state;
     // its late ACK must not reconcile or re-arm the drain for the new one.
@@ -694,7 +700,12 @@ export function useAgentChat({
   // theming, dedupe, and DOM effects. Client tools off (org or embed) → a
   // streamed tool part is ignored, never performed.
   const pageEffects = useMemo<AgentChatPageEffect[]>(() => {
-    if (!performsClientTools) return [];
+    if (
+      pageEffectsStopped ||
+      !performsClientTools ||
+      (status !== 'streaming' && status !== 'submitted')
+    )
+      return [];
     const last = messages.at(-1);
     if (!last || last.role !== 'assistant') return [];
     const effects: AgentChatPageEffect[] = [];
@@ -708,12 +719,9 @@ export function useAgentChat({
             ? ('act-on-page' as const)
             : null;
       if (!type) continue;
-      if (
-        part.state !== 'input-available' &&
-        part.state !== 'output-available'
-      ) {
-        continue;
-      }
+      if (type === 'act-on-page' && !performsPageActions) continue;
+      // Completed calls can reappear on resume/history. Never execute them again.
+      if (part.state !== 'input-available') continue;
       effects.push({
         key: `${sessionId ?? 'pending'}:${part.toolCallId}`,
         type,
@@ -722,7 +730,14 @@ export function useAgentChat({
       });
     }
     return effects;
-  }, [messages, sessionId, performsClientTools]);
+  }, [
+    messages,
+    sessionId,
+    performsClientTools,
+    performsPageActions,
+    status,
+    pageEffectsStopped,
+  ]);
 
   /**
    * The adapter's way of telling the turn what happened. It is the only
@@ -763,7 +778,7 @@ export function useAgentChat({
         // The page as it is after the action. Without it a flow that
         // crosses screens stops dead: the agent is holding refs to the
         // screen it just left.
-        ...(widgetCtx.features.pageContext && page?.controls.length
+        ...(widgetCtx.features.pageContext && page
           ? { controls: page.controls, truncated: page.truncated }
           : {}),
       });
@@ -791,6 +806,9 @@ export function useAgentChat({
   const requestPageActionConsent = useCallback(
     (request: PendingPageAction) =>
       new Promise<boolean>((resolve) => {
+        // A new prompt replaces the previous one; nothing may wait invisibly.
+        consentResolvers.current.forEach((pending) => pending(false));
+        consentResolvers.current.clear();
         consentResolvers.current.set(request.callId, resolve);
         setPendingPageAction(request);
       }),
@@ -808,16 +826,24 @@ export function useAgentChat({
 
   const isStreaming = status === 'submitted' || status === 'streaming';
 
+  useEffect(
+    () => () => {
+      consentResolvers.current.forEach((resolve) => resolve(false));
+      consentResolvers.current.clear();
+    },
+    [sessionId],
+  );
+
   // A turn that ended while a chip was still up gets a NO, not a silence:
   // an unanswered question must never become an assumed yes later.
   useEffect(() => {
-    if (isStreaming) return;
+    if (isStreaming && !pageEffectsStopped) return;
     const resolvers = consentResolvers.current;
     if (resolvers.size === 0) return;
     resolvers.forEach((resolve) => resolve(false));
     resolvers.clear();
     setPendingPageAction(null);
-  }, [isStreaming]);
+  }, [isStreaming, pageEffectsStopped]);
 
   // Under `throttle`, the final messages tick can TRAIL the status flip, so
   // the boundary read may see a snapshot without the terminal

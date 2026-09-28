@@ -4,15 +4,29 @@ For all the available options, check [the documentation](https://docs.open.cx/wi
 
 ## Page access in v5
 
-Page reading and agent actions are off by default in both popover and Companion.
-Enable them only on pages intended to be shared with the agent, with organization
-support and explicit embed options:
+Page reading, pointing and actions are off by default in both popover and Companion.
+Each permission requires organization support and explicit embed options:
 
 ```ts
-features: { pageContext: true, clientTools: true }
+features: {
+  pageContext: true, // Read page context and allow visitor marks.
+  clientTools: true, // Also allow the agent to highlight controls.
+  pageActions: true, // Also allow clicks, typing and selection.
+}
 ```
 
-Use only `pageContext: true` to allow reading/marking without agent actions.
+Omit `pageActions` for read-and-point access. Use only `pageContext: true` for
+reading and visitor marks. Actions require all three options and a backend that
+explicitly enables `page_actions`; older backends cannot grant action access.
+Beta integrations that previously used `clientTools` for actions must also opt
+into `pageActions`. Existing v4 integrations keep page access off by default.
+
+The current confirmation policy recognizes committing English control names and
+form submission buttons. It cannot identify every consequential action on an
+arbitrary website, including non-English labels and fields that auto-save. A
+successful page-action result confirms an observed browser change, not completion
+of a remote business transaction.
+
 Mark sensitive regions with `data-opencx-private`. Names and marked text exclude
 private/hidden descendants and form values; screenshots are omitted for regions
 containing private/hidden content, fields, or opaque embedded media. Mark previews

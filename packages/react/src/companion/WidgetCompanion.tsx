@@ -21,6 +21,7 @@ import {
 import type { WidgetCompanionLayoutU } from '@opencx/widget-core';
 import { buildFrameHtml } from '../components/FrameDocument';
 import { usePageMarks } from '../page-marks/PageMarksProvider';
+import { isAgentPointerEvent } from '../page-controls/pointer-sequence';
 import { useCanHover } from '../hooks/useCanHover';
 import { useTheme } from '../hooks/useTheme';
 import { useTranslation } from '../hooks/useTranslation';
@@ -391,6 +392,9 @@ export function WidgetCompanion() {
     )
       return;
     function handleClick(e: MouseEvent) {
+      // An approved page action belongs to this conversation. Its synthetic
+      // press must not collapse the panel before the result is shown.
+      if (isAgentPointerEvent(e)) return;
       const container = containerRef.current;
       if (!container) return;
       if (!e.composedPath().includes(container)) closePanel();

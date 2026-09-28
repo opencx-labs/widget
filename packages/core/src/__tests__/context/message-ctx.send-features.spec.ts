@@ -66,11 +66,17 @@ suite('resolveSendFeatures', () => {
       preamble: false,
       inline_ui: false,
       page_context: false,
+      page_actions: false,
       client_tools: false,
     });
     expect(
       resolveSendFeatures({ token: 't', features: { inlineUi: true } }),
-    ).toEqual({ inline_ui: true, page_context: false, client_tools: false });
+    ).toEqual({
+      inline_ui: true,
+      page_context: false,
+      page_actions: false,
+      client_tools: false,
+    });
   });
 
   test('requires page context opt-in before enabling client tools', () => {
@@ -79,35 +85,49 @@ suite('resolveSendFeatures', () => {
         token: 't',
         features: { pageContext: false, clientTools: false },
       }),
-    ).toEqual({ page_context: false, client_tools: false });
+    ).toEqual({
+      page_context: false,
+      page_actions: false,
+      client_tools: false,
+    });
     expect(
       resolveSendFeatures({ token: 't', features: { clientTools: true } }),
-    ).toEqual({ page_context: false, client_tools: false });
+    ).toEqual({
+      page_context: false,
+      page_actions: false,
+      client_tools: false,
+    });
     // `dictation` is composer-only: it never rides the send body.
     expect(
       resolveSendFeatures({ token: 't', features: { dictation: false } }),
-    ).toEqual({ page_context: false, client_tools: false });
+    ).toEqual({
+      page_context: false,
+      page_actions: false,
+      client_tools: false,
+    });
   });
 
   test('explicit opt-in enables page reading and optionally actions', () => {
     expect(
       resolveSendFeatures({ token: 't', features: { pageContext: true } }),
-    ).toEqual({ page_context: true, client_tools: false });
+    ).toEqual({ page_context: true, page_actions: false, client_tools: false });
     expect(
       resolveSendFeatures({
         token: 't',
         features: { pageContext: true, clientTools: true },
       }),
-    ).toEqual({ page_context: true, client_tools: true });
+    ).toEqual({ page_context: true, page_actions: false, client_tools: true });
   });
 
   test('defaults page reading and actions off on the wire', () => {
     expect(resolveSendFeatures({ token: 't' })).toEqual({
       page_context: false,
+      page_actions: false,
       client_tools: false,
     });
     expect(resolveSendFeatures({ token: 't', features: {} })).toEqual({
       page_context: false,
+      page_actions: false,
       client_tools: false,
     });
     expect(
@@ -115,7 +135,11 @@ suite('resolveSendFeatures', () => {
         token: 't',
         features: { preamble: undefined, inlineUi: undefined },
       }),
-    ).toEqual({ page_context: false, client_tools: false });
+    ).toEqual({
+      page_context: false,
+      page_actions: false,
+      client_tools: false,
+    });
   });
 });
 
@@ -179,6 +203,7 @@ suite('MessageCtx bot-chat send — features on the wire', () => {
       preamble: false,
       inline_ui: false,
       page_context: false,
+      page_actions: false,
       client_tools: false,
     });
   });
@@ -189,6 +214,7 @@ suite('MessageCtx bot-chat send — features on the wire', () => {
 
     expect(lastSendBody().features).toEqual({
       page_context: false,
+      page_actions: false,
       client_tools: false,
     });
   });
@@ -209,7 +235,11 @@ suite('MessageCtx bot-chat send — features on the wire', () => {
     });
 
     const body = lastSendBody();
-    expect(body.features).toEqual({ page_context: false, client_tools: false });
+    expect(body.features).toEqual({
+      page_context: false,
+      page_actions: false,
+      client_tools: false,
+    });
     expect(body.clientContext).toEqual({
       page: { url: '/inbox' },
       tenant: 'acme',
@@ -226,7 +256,11 @@ suite('MessageCtx bot-chat send — features on the wire', () => {
 
     const body = lastSendBody();
     expect(body.clientContext).toEqual({ page: { url: '/inbox' } });
-    expect(body.features).toEqual({ page_context: false, client_tools: false });
+    expect(body.features).toEqual({
+      page_context: false,
+      page_actions: false,
+      client_tools: false,
+    });
   });
 
   test('page context on → the widget page marks merge over the host context', async () => {
@@ -254,6 +288,7 @@ suite('MessageCtx bot-chat send — features on the wire', () => {
 
     expect(lastSendBody().features).toEqual({
       page_context: false,
+      page_actions: false,
       client_tools: false,
     });
   });

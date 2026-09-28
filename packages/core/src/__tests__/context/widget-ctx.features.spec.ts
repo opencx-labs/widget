@@ -53,6 +53,7 @@ suite('WidgetCtx.features (server-enabled, embed-narrowed)', () => {
       dictation: false,
       attachments: true,
       pageContext: true,
+      pageActions: false,
       clientTools: false,
     });
   });
@@ -81,6 +82,7 @@ suite('WidgetCtx.features (server-enabled, embed-narrowed)', () => {
       dictation: true,
       attachments: true,
       pageContext: false,
+      pageActions: false,
       clientTools: false,
     });
     expect(ctx.messageCtx.sendsPageContext).toBe(false);
@@ -108,6 +110,7 @@ suite('WidgetCtx.features (server-enabled, embed-narrowed)', () => {
         inlineUi: false,
         dictation: false,
         pageContext: false,
+        pageActions: false,
         clientTools: false,
       },
     });
@@ -116,6 +119,7 @@ suite('WidgetCtx.features (server-enabled, embed-narrowed)', () => {
       // Attachments have no embed toggle: the org decides alone.
       attachments: true,
       pageContext: false,
+      pageActions: false,
       clientTools: false,
     });
     expect(ctx.messageCtx.sendsPageContext).toBe(false);
@@ -136,6 +140,7 @@ suite('WidgetCtx.features (server-enabled, embed-narrowed)', () => {
       dictation: false,
       attachments: false,
       pageContext: false,
+      pageActions: false,
       clientTools: false,
     });
   });

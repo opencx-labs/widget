@@ -75,7 +75,7 @@ function registeredSend(): (input: SendMessageInput) => Promise<void> | void {
 }
 
 /** The narrowed answers a real WidgetCtx would give; flipped per test. */
-const features = { pageContext: true, clientTools: true };
+const features = { pageContext: true, clientTools: true, pageActions: true };
 
 const fakeWidgetCtx = {
   agent: {},
@@ -86,6 +86,7 @@ const fakeWidgetCtx = {
       headers: {},
     }),
     stopStream: vi.fn(async () => {}),
+    sendPageReply: vi.fn(async () => {}),
     getAgentTurnMessages: vi.fn(async () => null),
   },
   messageCtx: fakeMessageCtx,
@@ -96,6 +97,7 @@ const fakeWidgetCtx = {
       attachments: true,
       pageContext: features.pageContext,
       clientTools: features.clientTools,
+      pageActions: features.pageActions,
     };
   },
 } as unknown as WidgetCtx;
@@ -146,6 +148,7 @@ describe('useAgentChat feature narrowing', () => {
     vi.clearAllMocks();
     features.pageContext = true;
     features.clientTools = true;
+    features.pageActions = true;
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -207,7 +210,11 @@ describe('useAgentChat feature narrowing', () => {
       { ...baseConfig, features: { pageContext: false } },
       { content: 'hello' },
     );
-    expect(body.features).toEqual({ page_context: false, client_tools: false });
+    expect(body.features).toEqual({
+      page_context: false,
+      page_actions: false,
+      client_tools: false,
+    });
   });
 
   it('config.features.clientTools=false: client_tools=false on the wire', async () => {
@@ -215,7 +222,11 @@ describe('useAgentChat feature narrowing', () => {
       { ...baseConfig, features: { clientTools: false } },
       { content: 'hello' },
     );
-    expect(body.features).toEqual({ page_context: false, client_tools: false });
+    expect(body.features).toEqual({
+      page_context: false,
+      page_actions: false,
+      client_tools: false,
+    });
   });
 
   it('client tools on: a streamed highlight tool part becomes a page effect', async () => {
@@ -245,5 +256,129 @@ describe('useAgentChat feature narrowing', () => {
       setChatState({ status: 'streaming', messages: [highlightTurn] });
     });
     expect(hookValue?.pageEffects).toEqual([]);
+  });
+
+  it('pointing alone never exposes a click request to the page adapter', async () => {
+    features.pageActions = false;
+    const actionTurn = {
+      ...highlightTurn,
+      parts: [
+        {
+          type: 'tool-act_on_page',
+          toolCallId: 'action-1',
+          state: 'input-available',
+          input: { ref: 's1c1', action: 'click' },
+        },
+      ],
+    };
+    await act(async () => root.render(<Probe config={baseConfig} />));
+    await act(async () =>
+      setChatState({ status: 'streaming', messages: [actionTurn] }),
+    );
+    expect(hookValue?.pageEffects).toEqual([]);
+    features.pageActions = true;
+    await act(async () => root.render(<Probe config={baseConfig} />));
+    expect(hookValue?.pageEffects).toHaveLength(1);
+  });
+
+  it.each(['tool-act_on_page', 'tool-highlight_element'])(
+    'does not replay a completed %s call',
+    async (type) => {
+      await act(async () => root.render(<Probe config={baseConfig} />));
+      const part = {
+        type,
+        toolCallId: 'completed',
+        state: 'input-available',
+        input: { ref: 's1c1', action: 'click' },
+      };
+      await act(async () =>
+        setChatState({
+          status: 'streaming',
+          messages: [{ ...highlightTurn, parts: [part] }],
+        }),
+      );
+      expect(hookValue?.pageEffects).toHaveLength(1);
+      await act(async () =>
+        setChatState({
+          status: 'streaming',
+          messages: [
+            {
+              ...highlightTurn,
+              parts: [
+                {
+                  ...part,
+                  state: 'output-available',
+                  output: { status: 'done' },
+                },
+              ],
+            },
+          ],
+        }),
+      );
+      expect(hookValue?.pageEffects).toEqual([]);
+    },
+  );
+
+  it('drops effects as soon as the turn stops', async () => {
+    await act(async () => root.render(<Probe config={baseConfig} />));
+    await act(async () =>
+      setChatState({ status: 'streaming', messages: [highlightTurn] }),
+    );
+    expect(hookValue?.pageEffects).toHaveLength(1);
+    await act(async () =>
+      setChatState({ status: 'ready', messages: [highlightTurn] }),
+    );
+    expect(hookValue?.pageEffects).toEqual([]);
+  });
+
+  it('declines replaced and unmounted consent requests instead of leaving invisible prompts pending', async () => {
+    await act(async () => root.render(<Probe config={baseConfig} />));
+    await act(async () => setChatState({ status: 'streaming', messages: [] }));
+    let first: Promise<boolean> | undefined;
+    let second: Promise<boolean> | undefined;
+    await act(async () => {
+      first = hookValue?.requestPageActionConsent({
+        callId: 'first',
+        action: 'click',
+        controlName: 'Delete first',
+      });
+    });
+    await act(async () => {
+      second = hookValue?.requestPageActionConsent({
+        callId: 'second',
+        action: 'click',
+        controlName: 'Delete second',
+      });
+    });
+    expect(first).toBeDefined();
+    expect(second).toBeDefined();
+    await expect(first).resolves.toBe(false);
+    expect(hookValue?.pendingPageAction?.callId).toBe('second');
+    await act(async () => root.render(null));
+    await expect(second).resolves.toBe(false);
+  });
+
+  it('withdraws page effects immediately when stop is requested, even before the SDK status changes', async () => {
+    await act(async () => root.render(<Probe config={baseConfig} />));
+    await act(async () =>
+      setChatState({ status: 'streaming', messages: [highlightTurn] }),
+    );
+    expect(hookValue?.pageEffects).toHaveLength(1);
+    await act(async () => hookValue?.stop());
+    expect(hookValue?.pageEffects).toEqual([]);
+  });
+
+  it('sends an empty post-action snapshot to clear controls from the previous page', async () => {
+    await act(async () => root.render(<Probe config={baseConfig} />));
+    hookValue?.replyToPageCall('call', 'done', undefined, {
+      controls: [],
+      truncated: false,
+    });
+    expect(fakeWidgetCtx.api.sendPageReply).toHaveBeenCalledWith('sess-1', {
+      callId: 'call',
+      outcome: 'done',
+      controls: [],
+      truncated: false,
+    });
   });
 });

@@ -170,6 +170,7 @@ describe('useAgentChat stream body — features', () => {
       preamble: false,
       inline_ui: true,
       page_context: false,
+      page_actions: false,
       client_tools: false,
     });
     expect(body.bot_token).toBe('t');
@@ -181,9 +182,14 @@ describe('useAgentChat stream body — features', () => {
     // Like `headers` / `query_params` beside it: an undefined field, which the
     // JSON serialization drops — the wire body carries no `features` key.
     const body = await bodyFor({ token: 't' });
-    expect(body.features).toEqual({ page_context: false, client_tools: false });
+    expect(body.features).toEqual({
+      page_context: false,
+      page_actions: false,
+      client_tools: false,
+    });
     expect(JSON.parse(JSON.stringify(body)).features).toEqual({
       page_context: false,
+      page_actions: false,
       client_tools: false,
     });
   });
