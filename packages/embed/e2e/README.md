@@ -58,10 +58,17 @@ are controlled fixtures.
 ## Published v4 to candidate v5 differential tests
 
 `v4-upgrade.upgrade.mjs` runs the **published npm v4.0.63 embed** first, then
-reloads the same browser context with the candidate production v5 bundle. The
+opens the same page with the candidate production v5 bundle in the same browser
+context. The
 configuration factory (including callbacks and React components), visitor
 storage, and backend conversation stay the same. A fresh v5 context also checks
 the cold-start configuration and send payload against the v4 baseline.
+
+The old document is closed after its assertions; the browser context stays alive
+so storage and cookies survive. Error collection starts before either bundle
+runs and stops before destroying its document. This separates WebKit's old-page
+request-cancellation noise from v5 runtime errors. It tests a normal new page
+load after upgrading the bundle, rather than replacing the running React tree.
 
 Prepare the immutable baseline once, then build all workspace dependencies:
 

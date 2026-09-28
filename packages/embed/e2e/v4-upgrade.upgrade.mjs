@@ -38,17 +38,24 @@ async function fixture(t, profile, mobile, initialVersion = 'v4') {
       : { width: 1280, height: 900 },
     serviceWorkers: 'block',
   });
-  const page = await context.newPage();
-  page.setDefaultTimeout(8000);
+  let page, frame, trigger;
   const errors = [];
-  page.on('pageerror', (e) => errors.push(`${version}: ${e.message}`));
-  page.on('console', (msg) => {
-    if (
-      msg.type() === 'error' &&
-      /createRoot|Invalid hook|React error/i.test(msg.text())
-    )
-      errors.push(`${version}: ${msg.text()}`);
-  });
+  async function createPage() {
+    page = await context.newPage();
+    page.setDefaultTimeout(8000);
+    const loadedVersion = version;
+    page.on('pageerror', (e) => errors.push(`${loadedVersion}: ${e.message}`));
+    page.on('console', (msg) => {
+      if (
+        msg.type() === 'error' &&
+        /createRoot|Invalid hook|React error/i.test(msg.text())
+      )
+        errors.push(`${loadedVersion}: ${msg.text()}`);
+    });
+    frame = page.frameLocator('iframe[title="OpenCX Live Chat"]');
+    trigger = page.frameLocator('iframe[title="OpenCX Live Chat Trigger"]');
+    await page.goto('https://upgrade.test/');
+  }
   await context.route('**/*', async (route) => {
     const url = new URL(route.request().url());
     if (url.origin !== 'https://upgrade.test') {
@@ -72,8 +79,6 @@ async function fixture(t, profile, mobile, initialVersion = 'v4') {
       });
     return backend.route(route, version);
   });
-  const frame = page.frameLocator('iframe[title="OpenCX Live Chat"]');
-  const trigger = page.frameLocator('iframe[title="OpenCX Live Chat Trigger"]');
   async function open() {
     if (profile !== 'inline') {
       if (profile === 'custom-trigger')
@@ -249,6 +254,7 @@ async function fixture(t, profile, mobile, initialVersion = 'v4') {
       await mode.waitFor({ state: 'attached' });
       // The published v4 canvas is desktop-only (useCanvas explicitly gates
       // !isSmallScreen). Preserve that contract on both sides of the upgrade.
+      await mode.waitFor({ state: mobile ? 'hidden' : 'visible' });
       assert.equal(await mode.isVisible(), !mobile, 'legacy canvas visibility');
       if (!mobile)
         await page.waitForFunction(() => {
@@ -354,7 +360,7 @@ async function fixture(t, profile, mobile, initialVersion = 'v4') {
     );
     return result;
   }
-  await page.goto('https://upgrade.test/');
+  await createPage();
   t.after(async () => {
     try {
       await writeFile(
@@ -375,8 +381,12 @@ async function fixture(t, profile, mobile, initialVersion = 'v4') {
   });
   return {
     context,
-    page,
-    frame,
+    get page() {
+      return page;
+    },
+    get frame() {
+      return frame;
+    },
     backend,
     open,
     enterChat,
@@ -385,8 +395,20 @@ async function fixture(t, profile, mobile, initialVersion = 'v4') {
     customization,
     closeAndReopen,
     async upgrade() {
+      assert.deepEqual(
+        errors,
+        [],
+        'v4 document has no runtime errors before upgrade',
+      );
+      // Keep the browser context (visitor storage/cookies) and backend. Open
+      // the v5 document after ending v4 so WebKit's cancelled OLD-document
+      // requests cannot be misattributed to v5. New-document errors are
+      // captured before any v5 script executes.
+      page.removeAllListeners('pageerror');
+      page.removeAllListeners('console');
+      await page.close();
       version = 'v5';
-      await page.reload();
+      await createPage();
     },
   };
 }
