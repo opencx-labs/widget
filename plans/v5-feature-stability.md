@@ -396,3 +396,35 @@ current-head review/CI and the repository's required approval. Existing mini-app
 tools target internal dashboard apps; clarify the intended visitor/team audience
 before granting those capabilities to widget sessions. Nothing was published or
 deployed.
+
+## Workspace restoration and privacy acceptance (2026-09-28)
+
+- Backend [PR #3264](https://github.com/opencx-labs/opencx/pull/3264), revision
+  `649572b3cf61757b6abd3657679ad2a678915a53`, restores enabled workspace tools
+  to widget sessions. It has not been merged or deployed.
+- **60 tests passed across 13 focused files**, with `--retry 0`, against the
+  isolated local database, Redis and object storage. This includes the actual
+  widget upload route, responder/tool loop, CSV calculation, export, storage
+  redirect and HTTP download. Model tool selection is controlled; this does not
+  claim live-model or customer traffic acceptance.
+- The same suite covers feature/entitlement changes, organization/session
+  isolation, cancellation, revocation, lost locks, concurrent retries, resource
+  bounds and execution without host files, environment or network commands.
+  Uploads are checked against the contact, verification state and account.
+- Reproduced and fixed temporary attachment IDs missing real uploaded files,
+  forged file references, duplicate exports, imports overwriting later edits on
+  retry, and ownership metadata appearing in public object headers. Positive
+  controls and real object-storage assertions exercise these boundaries.
+- Backend typecheck, changed-file lint, production build and a compiled-worker
+  calculation passed. The build contains 296 public API paths and 11,870 emitted
+  JavaScript modules. No route or DTO schema was changed.
+- Updated the Workspace usage guide and checked its rendered local page and
+  frontmatter. Local documentation search requires CLI authentication, so search
+  ranking was not verified.
+
+**Release status: not yet ready for all Advanced features.** Workspace now has
+local implementation and acceptance evidence; its backend PR needs review/CI.
+Mini-app authoring still needs the visitor-versus-internal-team scope decision
+and acceptance. Finish the remaining v5 documentation reconciliation and obtain
+current-head approval for widget PR #84. No package, dist-tag or deployment was
+changed.
