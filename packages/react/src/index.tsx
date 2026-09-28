@@ -141,6 +141,13 @@ const Widget = React.forwardRef<
           ...options,
           capabilities: {
             ...options.capabilities,
+            workspaceDownloads:
+              options.capabilities?.workspaceDownloads ??
+              !components.some(({ key }) =>
+                ['BOT_MESSAGE', 'AGENT_MESSAGE', 'AGENT_CHAT_SPEC'].includes(
+                  key.toUpperCase(),
+                ),
+              ),
             richReplies:
               options.capabilities?.richReplies ??
               !components.some(({ key }) =>

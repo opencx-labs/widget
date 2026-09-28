@@ -428,3 +428,67 @@ Mini-app authoring still needs the visitor-versus-internal-team scope decision
 and acceptance. Finish the remaining v5 documentation reconciliation and obtain
 current-head approval for widget PR #84. No package, dist-tag or deployment was
 changed.
+
+
+## Workspace review fixes and authenticated downloads (2026-09-28)
+
+This follow-up supersedes the public storage-link flow described in the earlier
+workspace acceptance entry. Both PRs still require current-head review and CI.
+
+- Exported reports now use an authenticated widget route scoped to the original
+  organization, session, contact, verification state and account. Public storage
+  redirects reject these exports, including previously cached redirect URLs.
+- The standard widget handles private downloads from Markdown and rich-list
+  links, including history reload. It sends authentication only to the exact
+  configured API route, follows no redirects, and cancels or rejects downloads
+  when identity/session changes. Custom message renderers must explicitly declare
+  `capabilities.workspaceDownloads` after implementing the download flow.
+- Redaction clears working files, tombstones and deletes exported objects, and
+  increments a database revision. Stale tools, active workers, imports and exports
+  cannot repopulate the old workspace. Object-cleanup failure is visible and retryable.
+- Uploads bind atomically to their first persisted widget session. Copying a URL
+  to another session cannot make it importable. Binding rolls back with message
+  persistence, ignores duplicate messages, checks owner/account/verification, and
+  registers source attachments for existing redaction handling.
+- Workspace tools stay limited to widget surfaces, including polling. Attachment
+  enumeration now includes older uploads beyond 200 messages. Export uploads run
+  outside the database transaction. The text-processing dependency is pinned away
+  from its broken release.
+- Cancellation coverage includes persistence already in flight, final transaction
+  completion and lock release. A cancelled operation restores the prior snapshot
+  only when its own exact result is still present, preserving the remaining expiry.
+
+### Local evidence
+
+- 28 backend privacy checks across binding, redaction, imports, exports and
+  authenticated downloads passed. The complete execution/redaction pair then
+  passed 20 tests, including both new final-cancellation regressions.
+- 18 feature-surface checks, four attachment-enumeration checks, five existing
+  message-insert checks and three actual widget upload/responder/download checks
+  passed. The responder uses controlled model tool selection with the real local
+  database, cache and object storage; this is not customer traffic.
+- Widget core download/permission checks: 7 passed. React download, capability,
+  sanitizer and rich-renderer checks: 47 passed. Production download browser
+  cases: 12 passed, four each in Chromium, Firefox and WebKit.
+- Widget type checks, changed-file lint, production React/embed builds and
+  production JSX guards passed. Backend typecheck and changed-file lint passed.
+  The local migration was applied and database types regenerated; internal
+  workspace revisions stay absent from public session DTOs.
+- Updated widget guide, configuration reference and migration instructions;
+  frontmatter passed for all three. The Workspace guide and migration page were
+  verified in the local rendered docs. Search remains unverified because the
+  local docs search requires authentication.
+- Tested production embed SHA-256:
+  `70b574d8ada6da3fe448e8e7fdc720afeedb98ccc887e0686e2320d8fc601a4c`.
+
+### Remaining release gates
+
+- Fresh review/CI and required approval on widget PR #84 and backend PR #3264.
+- The prior backend CI run failed its existing raw-history-writer guard on
+  `call-flow/service/record-event.ts` (introduced by #3237, outside this patch)
+  and timed out on one prohibited-topic handoff case. That exact handoff case
+  passed locally in 12.458 seconds; the remote run is still a failure. The IVR
+  path needs a deliberate PII handling fix, not an allowlist exception.
+- Mini-app authoring still needs the visitor-versus-internal-team scope decision
+  and acceptance. Customer component registries remain a separate missing feature.
+- No package, version, dist-tag, merge or deployment is changed by this work.

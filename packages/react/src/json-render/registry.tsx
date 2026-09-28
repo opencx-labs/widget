@@ -560,7 +560,7 @@ function CompactList({
   const limit = maxVisible ?? 10;
   // Same configured link target as RichText anchors — the embed decides where
   // links open (defaulting to the host page's top frame).
-  const { anchorTarget, t } = useJsonRenderHost();
+  const { anchorTarget, t, Link = 'a' } = useJsonRenderHost();
   const [expanded, setExpanded] = useState(false);
   const showExpand = items.length > limit;
   const visible = expanded ? items : items.slice(0, limit);
@@ -597,7 +597,7 @@ function CompactList({
           />
         );
         return item.href ? (
-          <a
+          <Link
             key={rowKey}
             href={item.href}
             target={anchorTarget || '_top'}
@@ -609,7 +609,7 @@ function CompactList({
             )}
           >
             {content}
-          </a>
+          </Link>
         ) : (
           <div
             key={rowKey}

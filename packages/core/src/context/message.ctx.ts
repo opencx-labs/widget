@@ -223,6 +223,7 @@ export const buildSendMessageBody = ({
     structured_questions: config.capabilities?.structuredQuestions,
     rich_replies: config.capabilities?.richReplies,
     page_effects: config.capabilities?.pageEffects,
+    workspace_downloads: config.capabilities?.workspaceDownloads,
   },
   exit_mode_prompt: input.exitModePrompt,
   initial_messages:

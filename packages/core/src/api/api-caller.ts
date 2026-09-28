@@ -214,6 +214,77 @@ export class ApiCaller {
     this.client = this.createOpenAPIClient({ baseUrl, headers });
   };
 
+  /** Only our configured API's exact private-file route may receive auth. */
+  workspaceDownloadFromUrl = (href: string) => {
+    const { baseUrl } = this.getStreamAuthContext();
+    try {
+      const url = new URL(href);
+      const base = new URL(
+        `${baseUrl.replace(/\/$/, '')}/backend/widget/v5/workspace/`,
+      );
+      if (
+        url.origin !== base.origin ||
+        url.username ||
+        url.password ||
+        url.search ||
+        url.hash ||
+        !url.pathname.startsWith(base.pathname)
+      )
+        return null;
+      const uuid =
+        '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+      const match = new RegExp(`^(${uuid})/files/(${uuid})$`, 'i').exec(
+        url.pathname.slice(base.pathname.length),
+      );
+      if (!match?.[1] || !match[2]) return null;
+      return { sessionId: match[1], fileId: match[2] };
+    } catch {
+      return null;
+    }
+  };
+
+  downloadWorkspaceFile = async (
+    href: string,
+    sessionId: string,
+    signal: AbortSignal,
+  ) => {
+    const file = this.workspaceDownloadFromUrl(href);
+    if (!file || file.sessionId !== sessionId)
+      throw new Error('This file is not available in this session.');
+    signal.throwIfAborted();
+    const { headers } = this.getStreamAuthContext();
+    const token = this.userToken;
+    if (!token) throw new Error('Sign in again to download this file.');
+    const response = await fetch(href, {
+      headers,
+      signal,
+      credentials: 'omit',
+      redirect: 'error',
+      cache: 'no-store',
+    });
+    if (!response.ok)
+      throw new Error(
+        response.status === 401
+          ? 'Sign in again to download this file.'
+          : 'This file is no longer available.',
+      );
+    const blob = await response.blob();
+    signal.throwIfAborted();
+    if (this.userToken !== token)
+      throw new Error('Your sign-in changed. Please download again.');
+    const disposition = response.headers.get('content-disposition') ?? '';
+    const encodedName = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1];
+    let name = 'report';
+    if (encodedName) {
+      try {
+        name = decodeURIComponent(encodedName);
+      } catch {
+        /* Use the safe fallback for a malformed filename. */
+      }
+    }
+    return { blob, name: name.replace(/[\x00-\x1f\x7f/\\]/g, '_') };
+  };
+
   /**
    * AUTH headers only (X-Bot-Token / Authorization), stripped of
    * content-type/accept. The transport sets its own Content-Type, and a second

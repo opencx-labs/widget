@@ -27,7 +27,11 @@ export type WidgetAgent = {
   };
 };
 
-type ServerAgent = Dto['WidgetAgentDto'];
+/** Older backends omit the page-action permission; treat it as disabled. */
+type ServerAgent = Omit<Dto['WidgetAgentDto'], 'features'> & {
+  features: Omit<Dto['WidgetAgentFeaturesDto'], 'page_actions'> &
+    Partial<Pick<Dto['WidgetAgentFeaturesDto'], 'page_actions'>>;
+};
 
 /**
  * snake_case (backend DTO) → camelCase (widget types) at the boundary.

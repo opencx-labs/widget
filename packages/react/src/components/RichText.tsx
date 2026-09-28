@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { MemoizedReactMarkdown } from './MemoizedReactMarkdown';
 import rehypeRaw from 'rehype-raw';
@@ -11,6 +12,7 @@ import {
   filterConfiguredStyles,
 } from './configured-text-styles';
 import { stripCitationRefs } from '../utils/strip-citation-refs';
+import { ReplyLink } from './ReplyLink';
 
 /**
  * Everything rendered here is UNTRUSTED: AI replies, agent messages and
@@ -58,6 +60,50 @@ function RichTextContent({
   configuredStyles = false,
 }: RichTextProps & { configuredStyles?: boolean }) {
   const { anchorTarget } = useConfig();
+  const components = useMemo<Components>(
+    () => ({
+      a: ({ children, ...props }) => {
+        if (!configuredStyles) {
+          return (
+            <ReplyLink
+              target={props.target || anchorTarget || '_top'}
+              {...props}
+            >
+              {children}
+            </ReplyLink>
+          );
+        }
+        return (
+          <a target={props.target || anchorTarget || '_top'} {...props}>
+            {children}
+          </a>
+        );
+      },
+      img: ({ src, alt, ...props }) => {
+        if (!src) return <img src={src} alt={alt} {...props} />;
+        return (
+          <Dialoger
+            trigger={
+              <img
+                src={src}
+                alt={alt}
+                {...props}
+                className="cursor-pointer rounded-xl"
+              />
+            }
+          >
+            <DialogerContent
+              className="size-full max-w-full rounded-3xl flex items-center justify-center bg-transparent border-none gap-0"
+              withClose
+            >
+              <ZoomableImage src={src} alt={alt} />
+            </DialogerContent>
+          </Dialoger>
+        );
+      },
+    }),
+    [anchorTarget, configuredStyles],
+  );
 
   return (
     <MemoizedReactMarkdown
@@ -73,37 +119,7 @@ function RichTextContent({
             ]
           : [rehypeRaw, [rehypeSanitize, richTextSanitizeSchema]]
       }
-      components={{
-        a: ({ children, ...props }) => {
-          return (
-            <a target={props.target || anchorTarget || '_top'} {...props}>
-              {children}
-            </a>
-          );
-        },
-        img: ({ src, alt, ...props }) => {
-          if (!src) return <img src={src} alt={alt} {...props} />;
-          return (
-            <Dialoger
-              trigger={
-                <img
-                  src={src}
-                  alt={alt}
-                  {...props}
-                  className="cursor-pointer rounded-xl"
-                />
-              }
-            >
-              <DialogerContent
-                className="size-full max-w-full rounded-3xl flex items-center justify-center bg-transparent border-none gap-0"
-                withClose
-              >
-                <ZoomableImage src={src} alt={alt} />
-              </DialogerContent>
-            </Dialoger>
-          );
-        },
-      }}
+      components={components}
       // Do not pass className directly to ReactMarkdown component because that will create a container div wrapping the rich text
     >
       {stripCitationRefs(children)}
