@@ -154,7 +154,12 @@ export function WidgetProvider({
     ) {
       return;
     }
-    initialization.widgetCtx.api.setAuthToken(config.user?.token ?? '');
+    // ContactCtx owns anonymous auth, including tokens restored from storage.
+    // Only config-provided tokens need renewal here; clearing an absent token
+    // erases the anonymous token that initialization just restored.
+    if (config.user?.token) {
+      initialization.widgetCtx.api.setAuthToken(config.user.token);
+    }
   }, [config.user?.token, identity, initialization]);
 
   if (

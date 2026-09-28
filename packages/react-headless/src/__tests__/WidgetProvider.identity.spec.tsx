@@ -123,6 +123,56 @@ describe('WidgetProvider verified identity lifecycle', () => {
     await vi.waitFor(() => expect(currentWidgetCtx).not.toBeNull());
   };
 
+  it('retains a restored anonymous contact token when initialization finishes and options rerender', async () => {
+    const values = new Map([
+      [
+        'opencx-widget:org-token-widget-token:contact-token',
+        'stored-contact-token',
+      ],
+      [
+        'opencx-widget:org-token-widget-token:external-contact-id',
+        'stored-device-id',
+      ],
+    ]);
+    const storage: ExternalStorage = {
+      get: async (key) => values.get(key) ?? null,
+      set: async (key, value) => {
+        values.set(key, value);
+      },
+      remove: async (key) => {
+        values.delete(key);
+      },
+    };
+    for (const title of ['First render', 'Updated title']) {
+      await act(async () => {
+        root.render(
+          <WidgetProvider
+            storage={storage}
+            components={[{ key: 'fallback', component: () => null }]}
+            options={{
+              token: 'widget-token',
+              collectUserData: false,
+              textContent: { chatScreen: { headerTitle: title } },
+            }}
+          >
+            <Probe />
+          </WidgetProvider>,
+        );
+      });
+      await vi.waitFor(() => expect(currentWidgetCtx).not.toBeNull());
+      const widget = currentWidgetCtx;
+      if (!widget) throw new Error('Widget was not initialized');
+      await widget.api.getSessions({ cursor: undefined, filters: {} });
+      const request = vi.mocked(fetch).mock.calls.at(-1)?.[0];
+      if (!(request instanceof Request))
+        throw new Error('Missing transport request');
+      expect(request.headers.get('authorization')).toBe(
+        'Bearer stored-contact-token',
+      );
+    }
+    expect(configRequests).toBe(1);
+  });
+
   it('renews the real transport for the same owner and resets for an account change', async () => {
     const firstToken = token({ accountId: 'account-a', expiresAt: 1 });
     const renewedToken = token({ accountId: 'account-a', expiresAt: 2 });
