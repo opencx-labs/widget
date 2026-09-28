@@ -7,4 +7,4 @@
 
 Let the agent click, type and choose on the page for the visitor, when the organization turns it on.
 
-Recognized committing controls show the visitor a confirmation naming the control; declining prevents that call from executing. Recognition currently uses English committing words and form markup, so it cannot cover every consequential action or auto-saving field on an arbitrary site. Password fields, file pickers, controls inside another site embedded in the page and regions marked `data-opencx-private` are never touched. Replies report observed browser changes; they do not prove a remote business transaction completed.
+Every page action asks for visitor confirmation, naming the control and showing the proposed value when filling a field or choosing an option. Declining or revoking page access prevents the action. This applies regardless of the page's language, including fields that auto-save. Password fields, file pickers, controls inside another site embedded in the page and regions marked `data-opencx-private` are never touched. Replies report observed browser changes; they do not prove a remote business transaction completed.

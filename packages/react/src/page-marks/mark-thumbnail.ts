@@ -91,6 +91,8 @@ export function beginSnapshotUpload(
     })
     .catch(() => null)
     .then((url) => {
+      const element = captureElements.get(mark);
+      if (!element?.isConnected || !canCapturePageElement(element)) return null;
       if (url) mark.snapshotUrl = url;
       return url;
     });
@@ -135,4 +137,10 @@ export function fileFromDataUrl(dataUrl: string, name: string): File | null {
 /** The key's in-flight/settled snapshot, if one was started. */
 export function getThumbnail(key: object): Promise<string | null> | undefined {
   return thumbnails.get(key);
+}
+
+/** Preserve a validated mark's local preview without sharing mutable metadata. */
+export function copyThumbnail(source: object, target: object) {
+  const thumbnail = thumbnails.get(source);
+  if (thumbnail) thumbnails.set(target, thumbnail);
 }

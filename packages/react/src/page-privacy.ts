@@ -77,6 +77,7 @@ export function safePageUrl(value: string): string {
 /** Form values and opaque embedded pixels cannot be reliably redacted. */
 export function canCapturePageElement(el: Element): boolean {
   return (
+    el.getRootNode() === document &&
     !isPageElementPrivate(el) &&
     !el.closest(PAGE_VALUE_SELECTOR) &&
     !el.matches('canvas,iframe,video,object,embed') &&

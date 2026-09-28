@@ -36,7 +36,7 @@ export function WidgetContent() {
   // The popover stays mounted while closed to preserve its conversation and
   // exit animation. Microphone capture must end when it closes, not on unmount.
   useEffect(() => {
-    if (!isOpen) widgetCtx.dictationCtx.stop();
+    if (!isOpen) widgetCtx.dictationCtx.stop({ executeFinalCommand: false });
   }, [isOpen, widgetCtx]);
 
   return (

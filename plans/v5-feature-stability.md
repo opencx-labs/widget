@@ -410,10 +410,10 @@ tools target internal dashboard apps; clarify the intended visitor/team audience
 before granting those capabilities to widget sessions. Nothing was published or
 deployed.
 
-## Remaining widget review work after scope cleanup (2026-09-29)
+## Widget review findings after scope cleanup (2026-09-29)
 
-The review of `5b09c35` reported these findings, which require reproduction and
-resolution on the cleaned candidate:
+The review of `5b09c35` reported the following findings. They are addressed by
+the follow-up below; current-head review is still required:
 
 - A streamed page-action call can go unanswered when page actions are disabled.
 - Closing dictation can flush a pending spoken send command.
@@ -421,9 +421,8 @@ resolution on the cleaned candidate:
 - Disabling page access can leave Send enabled for a mark-only draft.
 - The action-consent changeset describes the older selective confirmation policy.
 
-After resolving these findings, rerun the affected checks and obtain current-head
-review/CI and required repository approval. The cleanup does not publish packages
-or change versions/tags.
+Obtain current-head review/CI and required repository approval before merging.
+The cleanup does not publish packages or change versions/tags.
 
 ### Cleanup verification
 
@@ -448,3 +447,42 @@ Browser command, from `packages/embed`:
 ```sh
 WIDGET_TEST_BROWSER=chromium node --test e2e/public-setups.e2e.mjs e2e/release-readiness.e2e.mjs e2e/v4-upgrade.upgrade.mjs
 ```
+
+### Review fixes and verification (2026-09-29)
+
+All five findings above have fixes and local verification:
+
+- Permission revocation answers unclaimed page calls with `declined` and cancels
+  pending consent. An adapter already handling a call supplies its actual
+  outcome, so revoking access after a click cannot falsely report it as declined.
+  Replies are deduplicated and cannot include controls after page access ends.
+- Close, unmount and disposal stop dictation without executing a pending spoken
+  send command. Explicit Send flushes the final text once, and acceptance clears
+  that exact draft while preserving subsequent edits.
+- Marks retain local references to every original DOM node. Both serialized
+  representations are rebuilt from those nodes at Send, including after snapshot
+  preparation. Private, removed, replaced, editable and shadow-tree sources are
+  rejected; new private descendants are filtered and stale snapshots omitted.
+  Late upload completion cannot restore an unsafe URL. Validated payloads are
+  independent of later mutations; safe local previews and empty-region notes
+  remain supported.
+- Revoking page access detaches marks and disables mark-only Send. If access
+  changes during snapshot preparation, discarded notes cannot become message
+  text. Deliberately typed text and configured v4 context remain supported.
+- The action changeset now states that every page action requires consent.
+
+Verification: **124 focused tests** (17 core, 20 headless, 87 React), **36
+production release cases** (12 per engine), **21 native browser privacy cases**
+(7 per engine), **25 unchanged-v4 upgrade cases** and **6 customer-style fixtures**
+in Chromium all passed. Engines: Chromium, Firefox and WebKit. All four package
+builds, JSX guards and type checks passed; changed-source lint and diff checks
+passed. The built embed SHA-256 is
+`f3dc57058426f79854734846876c3edc9d207febdf3390bc73d7bc488361396c`.
+
+The new regressions reproduced failures before their fixes. Independent candidate
+review also reproduced a private shadow-root move and identified draft-clear and
+already-executed-action races; those cases are covered by the final tests.
+Browser traffic, media devices and transcription are synthetic. The browser
+cases establish widget behavior, not a new real-backend or microphone-hardware
+acceptance run. Current-head external review/CI and required approval remain.
+Workspace stays excluded; nothing was merged, deployed or published.

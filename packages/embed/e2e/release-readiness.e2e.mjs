@@ -454,6 +454,141 @@ test(
   },
 );
 
+for (const displayMode of ['popover', 'companion']) {
+  test(
+    `${displayMode}: closing with a pending spoken send keeps the draft private`,
+    { timeout: 30000 },
+    async (t) => {
+      const { page, frame, requests, open } = await fixture(t, {
+        ...(displayMode === 'companion' ? { displayMode } : {}),
+        features: { dictation: true },
+        router: { chatScreenOnly: true },
+      });
+      await page.evaluate(() => {
+        window.fixtureMicStops = 0;
+        window.fixturePeerCloses = 0;
+        const track = { stop: () => window.fixtureMicStops++ };
+        Object.defineProperty(navigator, 'mediaDevices', {
+          configurable: true,
+          value: {
+            getUserMedia: async () => ({
+              getTracks: () => [track],
+              getAudioTracks: () => [track],
+            }),
+          },
+        });
+        window.AudioContext = class {
+          createMediaStreamSource() {
+            return { connect() {} };
+          }
+          createAnalyser() {
+            return {
+              frequencyBinCount: 1,
+              getByteTimeDomainData(values) {
+                values.fill(128);
+              },
+            };
+          }
+          async close() {}
+        };
+        window.RTCPeerConnection = class extends EventTarget {
+          addTrack() {}
+          createDataChannel() {
+            const channel = new EventTarget();
+            channel.close = () => {};
+            window.fixtureDictationChannel = channel;
+            return channel;
+          }
+          // Controlled provider boundary: no external SDP or audio traffic.
+          createOffer() {
+            return new Promise(() => {});
+          }
+          close() {
+            window.fixturePeerCloses++;
+          }
+        };
+      });
+      await open();
+      if (displayMode === 'companion') {
+        // Start a session so Companion shows the full composer and its tools.
+        await frame.locator('textarea').fill('Open fixture session');
+        await frame.locator('textarea').press('Enter');
+        await frame.getByText('FIXTURE_REPLY_1', { exact: true }).waitFor();
+      }
+      const initialSends = requests.filter(
+        (r) => r.path === '/backend/widget/v2/chat/send',
+      ).length;
+      await frame.locator('textarea').fill('Typed: ');
+      await frame
+        .locator('[data-component="chat/input_box/dictate_btn"]')
+        .click();
+      await page.waitForFunction(() => !!window.fixtureDictationChannel);
+      // Emit and close in one browser task, before the spoken-command timer.
+      await page.evaluate((mode) => {
+        window.fixtureDictationChannel.dispatchEvent(
+          new MessageEvent('message', {
+            data: JSON.stringify({
+              type: 'conversation.item.input_audio_transcription.delta',
+              delta: 'Hello. Send it',
+            }),
+          }),
+        );
+        const title =
+          mode === 'companion'
+            ? 'OpenCX Live Chat'
+            : 'OpenCX Live Chat Trigger';
+        const doc = document.querySelector(
+          `iframe[title="${title}"]`,
+        ).contentDocument;
+        doc
+          .querySelector(
+            mode === 'companion'
+              ? '[data-component="companion/close_btn"]'
+              : 'button',
+          )
+          .click();
+      }, displayMode);
+      await page.waitForFunction(() => window.fixtureMicStops === 1);
+      await page.waitForTimeout(1450);
+      assert.equal(
+        requests.filter((r) => r.path === '/backend/widget/v2/chat/send')
+          .length,
+        initialSends,
+        'closing must not send the pending command or draft',
+      );
+      assert.equal(await page.evaluate(() => window.fixturePeerCloses), 1);
+      if (displayMode === 'companion') {
+        // Closing an established conversation minimizes to the quick-ask bar.
+        await frame
+          .getByRole('button', { name: 'Expand chat', exact: true })
+          .click();
+      } else await open();
+      assert.equal(
+        await frame.locator('textarea').inputValue(),
+        'Typed: Hello. ',
+      );
+      await frame.locator('textarea').click();
+      await frame.locator('textarea').press('Enter');
+      try {
+        await frame
+          .getByText(`FIXTURE_REPLY_${initialSends + 1}`, { exact: true })
+          .waitFor();
+      } catch (error) {
+        t.diagnostic(
+          JSON.stringify(requests.filter((r) => r.path.endsWith('/chat/send'))),
+        );
+        t.diagnostic(await frame.locator('body').innerText());
+        throw error;
+      }
+      assert.equal(
+        requests.filter((r) => r.path === '/backend/widget/v2/chat/send')
+          .length,
+        initialSends + 1,
+      );
+    },
+  );
+}
+
 test(
   'minimized Companion footer links receive clicks while the composer still expands chat',
   { timeout: 30000 },

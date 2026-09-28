@@ -5,6 +5,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { PageMark } from '../../page-marks/page-mark';
 import { resetRefsForTest } from '../control-ref';
 import { buildPageClientContext } from '../send-context';
+import { registerPageMarkSources } from '../../page-marks/mark-source';
+import { describeElement } from '../../page-marks/page-element';
+import { safePageUrl } from '../../page-privacy';
 
 const mark: PageMark = {
   shape: 'box',
@@ -17,6 +20,13 @@ const mark: PageMark = {
 beforeEach(() => {
   resetRefsForTest();
   document.body.innerHTML = `<button>Change plan</button><a href="/x">Invoices</a>`;
+  const source = document.createElement('div');
+  source.id = 'mode';
+  source.textContent = 'Live';
+  document.body.appendChild(source);
+  mark.elements = [describeElement(source)];
+  mark.pageUrl = safePageUrl(window.location.href);
+  registerPageMarkSources(mark, [source]);
 });
 
 afterEach(() => {

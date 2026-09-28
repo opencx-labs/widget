@@ -253,3 +253,23 @@ targeted lint, React/embed production builds and JSX guards passed. Earlier full
 unit/privacy results remain from `138fe24`; those unaffected suites were not
 rerun for this DOM-scoping change. Final-head review/CI and a real-backend smoke
 remain release gates. No package was published.
+
+## Post-cleanup review fixes (2026-09-29)
+
+Addressed all five review findings on the workspace-free candidate: page-call
+replies after revocation, close-time spoken-send suppression, fresh/private mark
+metadata, mark-only composer state after page access ends, and the consent-policy
+changeset. Also covered the independent review's private shadow-root, synchronous
+draft-clear and already-executed-action outcome cases. See
+`plans/v5-feature-stability.md` for the boundary and exact behavior.
+
+Passed: 124 focused tests; 12 production release and 7 native privacy cases per
+engine in Chromium, Firefox and WebKit; 25 unchanged-v4 upgrade cases and 6
+sanitized customer fixtures in Chromium. All four production builds, JSX guards,
+type checks and changed-source lint passed. Embed SHA-256:
+`f3dc57058426f79854734846876c3edc9d207febdf3390bc73d7bc488361396c`.
+
+The browser run intercepts all backend/provider traffic and uses synthetic media.
+It is not new real-backend or physical-microphone evidence. Current-head external
+review/CI, required approval and the final-build real-backend smoke remain release
+gates. No versions, tags or release state changed.

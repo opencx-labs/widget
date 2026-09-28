@@ -1,6 +1,6 @@
 import { beginSnapshotUpload } from '../../../page-marks/mark-thumbnail';
 import { createComposerDraftMock } from './composer-draft';
-import type { SendMessageInput } from '@opencx/widget-core';
+import type { DictationTarget, SendMessageInput } from '@opencx/widget-core';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -17,6 +17,7 @@ const recallOnSentSpy = vi.fn();
 const onStopSpy = vi.fn();
 const dictationToggleSpy = vi.fn();
 const dictationStopSpy = vi.fn();
+let dictationTarget: DictationTarget | undefined;
 let dictationEnabled = false;
 let dictationError: 'microphone' | 'unavailable' | null = null;
 let isStreaming = false;
@@ -24,6 +25,7 @@ let queuedUserMessages: Array<{ id: string; content: string }> = [];
 /** `WidgetCtx.features`: the org's features narrowed by the embed. */
 let canAttach = true;
 let sendsPageContext = true;
+let marksShareable = true;
 let configContext: Record<string, unknown> | undefined;
 const mentionSearch = vi.fn(async () => [
   {
@@ -68,17 +70,20 @@ vi.mock('@opencx/widget-react-headless', () => ({
     context: configContext,
     mentions: { search: mentionSearch },
   }),
-  useDictation: () => ({
-    enabled: dictationEnabled,
-    status: 'idle',
-    error: dictationError,
-    isActive: false,
-    levelRef: { current: 0 },
-    start: vi.fn(),
-    stop: dictationStopSpy,
-    toggle: dictationToggleSpy,
-    prewarm: vi.fn(),
-  }),
+  useDictation: (target: DictationTarget) => {
+    dictationTarget = target;
+    return {
+      enabled: dictationEnabled,
+      status: 'idle',
+      error: dictationError,
+      isActive: false,
+      levelRef: { current: 0 },
+      start: vi.fn(),
+      stop: dictationStopSpy,
+      toggle: dictationToggleSpy,
+      prewarm: vi.fn(),
+    };
+  },
   useIsAwaitingBotReply: () => ({ isAwaitingBotReply: false }),
   useMessages: () => ({
     sendMessage: sendMessageSpy,
@@ -97,11 +102,13 @@ vi.mock('@opencx/widget-react-headless', () => ({
   useWidget: () => ({
     widgetCtx: {
       streaming: true,
-      features: {
-        dictation: dictationEnabled,
-        attachments: canAttach,
-        pageContext: sendsPageContext,
-        clientTools: false,
+      get features() {
+        return {
+          dictation: dictationEnabled,
+          attachments: canAttach,
+          pageContext: sendsPageContext,
+          clientTools: false,
+        };
       },
       messageCtx: { blocksSendWhileAwaitingReply: false, draftState },
     },
@@ -130,6 +137,12 @@ vi.mock('../../../page-marks/mark-thumbnail', () => ({
       });
     });
   },
+}));
+
+// DOM provenance is tested through real marking in use-page-marking.spec.tsx.
+vi.mock('../../../page-marks/mark-source', () => ({
+  isPageMarkShareable: () => marksShareable,
+  pageMarkForSend: (mark: unknown) => (marksShareable ? mark : null),
 }));
 
 vi.mock('react-dropzone', () => ({
@@ -244,6 +257,7 @@ describe('ChatInput send acceptance', () => {
     queuedUserMessages = [];
     canAttach = true;
     sendsPageContext = true;
+    marksShareable = true;
     dictationEnabled = false;
     dictationError = null;
     capturedInput = null;
@@ -407,6 +421,98 @@ describe('ChatInput send acceptance', () => {
       page_marks: marks,
       picked_elements: [{ name: 'div "Mode"', note: 'what is this?' }],
     });
+  });
+
+  it('disables mark-only Send when page access is revoked', async () => {
+    allFiles = [];
+    await renderInput();
+    expect(
+      container.querySelector<HTMLButtonElement>(
+        'button[aria-label="send_message"]',
+      )?.disabled,
+    ).toBe(false);
+    sendsPageContext = false;
+    await renderInput();
+    expect(
+      container.querySelector<HTMLButtonElement>(
+        'button[aria-label="send_message"]',
+      )?.disabled,
+    ).toBe(true);
+    expect(beginSnapshotUpload).not.toHaveBeenCalled();
+  });
+
+  it('does not send mark notes if page access is revoked while a snapshot is pending', async () => {
+    allFiles = [];
+    const mark = {
+      shape: 'box',
+      note: 'SYNTHETIC_MARK_NOTE',
+      elements: [{ name: 'Region' }],
+    };
+    marks = [mark];
+    pendingSnapshots.set(mark, () => undefined);
+    await renderInput();
+    await act(async () =>
+      container
+        .querySelector<HTMLButtonElement>('button[aria-label="send_message"]')
+        ?.click(),
+    );
+    sendsPageContext = false;
+    await renderInput();
+    await act(async () =>
+      pendingSnapshots.get(mark)?.('https://storage.test/late.jpg'),
+    );
+    expect(sendMessageSpy).not.toHaveBeenCalled();
+    expect(detachSpy).toHaveBeenCalledWith(mark);
+    pendingSnapshots.clear();
+  });
+
+  it('keeps typed text but drops a mark that becomes private during upload', async () => {
+    allFiles = [];
+    const mark = {
+      shape: 'box',
+      note: 'SYNTHETIC_MARK_NOTE',
+      elements: [{ name: 'Region' }],
+    };
+    marks = [mark];
+    pendingSnapshots.set(mark, () => undefined);
+    const { textarea } = await renderInput();
+    await act(async () => setTextareaValue(textarea, 'Typed question'));
+    await act(async () =>
+      container
+        .querySelector<HTMLButtonElement>('button[aria-label="send_message"]')
+        ?.click(),
+    );
+    marksShareable = false;
+    await act(async () =>
+      pendingSnapshots.get(mark)?.('https://storage.test/late.jpg'),
+    );
+    expect(capturedInput?.content).toBe('Typed question');
+    expect(capturedInput?.clientContext).toBeUndefined();
+    expect(detachSpy).toHaveBeenCalledWith(mark);
+    pendingSnapshots.clear();
+  });
+
+  it('sends the final flushed dictation text exactly once on explicit Send', async () => {
+    const { textarea } = await renderInput();
+    await act(async () => setTextareaValue(textarea, 'Typed prefix'));
+    dictationStopSpy.mockImplementation(() => {
+      // useDictation synchronously updates the input target before React renders.
+      dictationTarget?.setValue('Typed prefix and the final dictated words');
+    });
+    await act(async () =>
+      container
+        .querySelector<HTMLButtonElement>('button[aria-label="send_message"]')
+        ?.click(),
+    );
+    expect(dictationStopSpy).toHaveBeenCalledWith({
+      executeFinalCommand: false,
+    });
+    expect(capturedInput?.content).toBe(
+      'Typed prefix and the final dictated words',
+    );
+    expect(sendMessageSpy).toHaveBeenCalledOnce();
+    await act(async () => capturedInput?.onAccepted?.());
+    expect(textarea.value).toBe('');
   });
 
   it('carries the mark snapshot URL on the send, so a reload shows the picture', async () => {

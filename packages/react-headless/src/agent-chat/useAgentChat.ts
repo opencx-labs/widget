@@ -121,8 +121,11 @@ export function useAgentChat({
   configRef.current = config;
 
   // Org features narrowed by the current embed options.
-  const { clientTools: performsClientTools, pageActions: performsPageActions } =
-    widgetCtx.features;
+  const {
+    pageContext: readsPage,
+    clientTools: performsClientTools,
+    pageActions: performsPageActions,
+  } = widgetCtx.features;
 
   // The whole wire body rides each send's options (`bodyFor`); the transport
   // only owns the URLs and auth. The contact JWT can be minted AFTER this
@@ -699,14 +702,19 @@ export function useAgentChat({
     };
   }, [sessionId, api, toolActivity, reasoning]);
 
-  // Normalize browser-effect tool calls without touching the host document.
-  // The styled package consumes this narrow surface and owns validation,
-  // theming, dedupe, and DOM effects. Client tools off (org or embed) → a
-  // streamed tool part is ignored, never performed.
-  const pageEffects = useMemo<AgentChatPageEffect[]>(() => {
+  const [answeredPageCalls, setAnsweredPageCalls] = useState<
+    ReadonlySet<string>
+  >(() => new Set());
+  const answeredPageCallsRef = useRef(answeredPageCalls);
+  // An adapter that asked for consent owns the eventual outcome, including
+  // an action already dispatched when permissions change during observation.
+  const ownedPageCallsRef = useRef(new Set<string>());
+
+  // Keep pending calls visible to the rejection path even when permissions
+  // change. Only authorized, unanswered calls reach the DOM adapters.
+  const pendingPageEffects = useMemo<AgentChatPageEffect[]>(() => {
     if (
       pageEffectsStopped ||
-      !performsClientTools ||
       (status !== 'streaming' && status !== 'submitted')
     )
       return [];
@@ -723,7 +731,6 @@ export function useAgentChat({
             ? ('act-on-page' as const)
             : null;
       if (!type) continue;
-      if (type === 'act-on-page' && !performsPageActions) continue;
       // Completed calls can reappear on resume/history. Never execute them again.
       if (part.state !== 'input-available') continue;
       effects.push({
@@ -734,14 +741,25 @@ export function useAgentChat({
       });
     }
     return effects;
-  }, [
-    messages,
-    sessionId,
-    performsClientTools,
-    performsPageActions,
-    status,
-    pageEffectsStopped,
-  ]);
+  }, [messages, sessionId, status, pageEffectsStopped]);
+
+  const pageEffects = useMemo(
+    () =>
+      pendingPageEffects.filter(
+        (effect) =>
+          readsPage &&
+          performsClientTools &&
+          (effect.type !== 'act-on-page' || performsPageActions) &&
+          !answeredPageCalls.has(effect.key),
+      ),
+    [
+      pendingPageEffects,
+      readsPage,
+      performsClientTools,
+      performsPageActions,
+      answeredPageCalls,
+    ],
+  );
 
   /**
    * The adapter's way of telling the turn what happened. It is the only
@@ -775,6 +793,18 @@ export function useAgentChat({
       },
     ) => {
       if (!sessionId) return;
+      const key = `${sessionId}:${callId}`;
+      if (answeredPageCallsRef.current.has(key)) return;
+      ownedPageCallsRef.current.delete(key);
+      const answered = new Set(answeredPageCallsRef.current);
+      answered.add(key);
+      // Match the adapters' bounded replay protection across long sessions.
+      if (answered.size > 200) {
+        const oldest = answered.values().next().value;
+        if (oldest !== undefined) answered.delete(oldest);
+      }
+      answeredPageCallsRef.current = answered;
+      setAnsweredPageCalls(answered);
       void api.sendPageReply(sessionId, {
         callId,
         outcome,
@@ -810,13 +840,19 @@ export function useAgentChat({
   const requestPageActionConsent = useCallback(
     (request: PendingPageAction) =>
       new Promise<boolean>((resolve) => {
+        const key = `${sessionId ?? 'pending'}:${request.callId}`;
+        if (answeredPageCallsRef.current.has(key)) {
+          resolve(false);
+          return;
+        }
+        ownedPageCallsRef.current.add(key);
         // A new prompt replaces the previous one; nothing may wait invisibly.
         consentResolvers.current.forEach((pending) => pending(false));
         consentResolvers.current.clear();
         consentResolvers.current.set(request.callId, resolve);
         setPendingPageAction(request);
       }),
-    [],
+    [sessionId],
   );
 
   const resolvePageAction = useCallback((callId: string, allowed: boolean) => {
@@ -827,6 +863,27 @@ export function useAgentChat({
     );
     resolver?.(allowed);
   }, []);
+
+  useEffect(() => {
+    for (const effect of pendingPageEffects) {
+      if (
+        readsPage &&
+        performsClientTools &&
+        (effect.type !== 'act-on-page' || performsPageActions)
+      )
+        continue;
+      resolvePageAction(effect.callId, false);
+      if (!ownedPageCallsRef.current.has(effect.key))
+        replyToPageCall(effect.callId, 'declined');
+    }
+  }, [
+    pendingPageEffects,
+    readsPage,
+    performsClientTools,
+    performsPageActions,
+    resolvePageAction,
+    replyToPageCall,
+  ]);
 
   const isStreaming = status === 'submitted' || status === 'streaming';
 

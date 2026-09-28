@@ -3,6 +3,7 @@ import {
   type PageMark,
 } from '../page-marks/page-mark';
 import { readPageControls } from './read-controls';
+import { pageMarkForSend } from '../page-marks/mark-source';
 
 /**
  * Everything about the customer's page that rides with one message.
@@ -29,11 +30,15 @@ export function buildPageClientContext({
 
   const context: Record<string, unknown> = {};
 
-  if (marks.length > 0) {
+  const currentMarks = marks.flatMap((mark) => {
+    const current = pageMarkForSend(mark);
+    return current ? [current] : [];
+  });
+  if (currentMarks.length > 0) {
     // `page_marks` is the rich payload for THIS turn; `picked_elements` is
     // the key the backend persists and re-surfaces on later turns.
-    context['page_marks'] = marks;
-    context['picked_elements'] = pickedElementsFromMarks(marks);
+    context['page_marks'] = currentMarks;
+    context['picked_elements'] = pickedElementsFromMarks(currentMarks);
   }
 
   const { controls, truncated } = readPageControls();

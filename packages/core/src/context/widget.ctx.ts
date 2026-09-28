@@ -265,7 +265,7 @@ export class WidgetCtx {
     const cleanup = this.sessionCtx.dispose({ clearActiveSession });
     this.messageCtx.reset();
     this.uploadCtx.reset();
-    this.dictationCtx.stop();
+    this.dictationCtx.stop({ executeFinalCommand: false });
     return cleanup;
   };
 

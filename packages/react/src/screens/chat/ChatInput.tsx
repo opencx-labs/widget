@@ -29,6 +29,7 @@ import { cn } from '../../components/lib/utils/cn';
 import { useIsSmallScreen } from '../../hooks/useIsSmallScreen';
 import { useTranslation } from '../../hooks/useTranslation';
 import { type PageMark } from '../../page-marks/page-mark';
+import { isPageMarkShareable } from '../../page-marks/mark-source';
 import {
   awaitSnapshotUrl,
   beginSnapshotUpload,
@@ -193,6 +194,10 @@ export function ChatInput({
     inputRef,
   });
 
+  useEffect(() => {
+    if (!pageMarksEnabled) marks.forEach(detach);
+  }, [pageMarksEnabled, marks, detach]);
+
   const {
     allFiles,
     handleCancelUpload,
@@ -228,7 +233,9 @@ export function ChatInput({
   const hasPreviews = allFiles.length > 0 || marks.length > 0;
 
   const cannotSend =
-    !inputText.trim() && successFiles.length === 0 && marks.length === 0;
+    !inputText.trim() &&
+    successFiles.length === 0 &&
+    (!pageMarksEnabled || !marks.some(isPageMarkShareable));
 
   // The send button's single decision: an empty box mid-stream offers stop;
   // anything typed mid-stream sends (queues). Otherwise the button sends,
@@ -245,18 +252,29 @@ export function ChatInput({
 
   const handleSubmit = () => {
     // A spoken "send it" must not send half a phrase.
-    dictation.stop();
+    dictation.stop({ executeFinalCommand: false });
     if (shouldBlockSending) return;
-    if (cannotSend) return;
 
     // Sending now would silently drop files still uploading (only
     // `successFiles` ride the payload).
     if (isUploading) return;
     // Everything the send carries is captured NOW: the snapshot wait below
     // yields to the event loop, and the composer may change underneath it.
-    const submittedText = inputText;
-    const submittedMarks = pageMarksEnabled ? [...marks] : [];
+    const submittedText = inputTextRef.current;
+    const submittedDraft = widgetCtx.messageCtx.draftState.get();
+    const submittedMarks = marks.filter((mark) => {
+      if (widgetCtx.features.pageContext && isPageMarkShareable(mark))
+        return true;
+      detach(mark);
+      return false;
+    });
     const submittedFiles = [...successFiles];
+    if (
+      !submittedText.trim() &&
+      submittedFiles.length === 0 &&
+      submittedMarks.length === 0
+    )
+      return;
     const submittedFileIds = allFiles.map((file) => file.id);
     // Upload only after Send. Attaching or discarding a mark stays local.
     submittedMarks.forEach((mark) => beginSnapshotUpload(mark, uploadSnapshot));
@@ -267,6 +285,7 @@ export function ChatInput({
     ).then(() =>
       submit({
         submittedText,
+        submittedDraft,
         submittedMarks,
         submittedFiles,
         submittedFileIds,
@@ -276,22 +295,37 @@ export function ChatInput({
 
   const submit = ({
     submittedText,
+    submittedDraft,
     submittedMarks,
     submittedFiles,
     submittedFileIds,
   }: {
     submittedText: string;
+    submittedDraft: ReturnType<typeof widgetCtx.messageCtx.draftState.get>;
     submittedMarks: PageMark[];
     submittedFiles: typeof successFiles;
     submittedFileIds: string[];
   }) => {
+    // Upload preparation yields: permissions or the marked DOM may have changed.
+    const readsPage = widgetCtx.features.pageContext;
+    const currentMarks = submittedMarks.filter((mark) => {
+      if (readsPage && isPageMarkShareable(mark)) return true;
+      detach(mark);
+      return false;
+    });
+    if (
+      !submittedText.trim() &&
+      submittedFiles.length === 0 &&
+      currentMarks.length === 0
+    )
+      return;
     // Nothing typed but marks attached: their notes ARE the question, and a
     // note-less mark still asks the one thing the tool exists for. Files keep
     // sending with no text at all, as they always have.
     const trimmed =
       submittedText.trim() ||
-      (submittedMarks.length > 0
-        ? (markNotes(submittedMarks) ?? t('page_mark_default_message'))
+      (currentMarks.length > 0
+        ? (markNotes(currentMarks) ?? t('page_mark_default_message'))
         : '');
     let didAccept = false;
     const submittedMentions = mentions.picked;
@@ -319,8 +353,8 @@ export function ChatInput({
       // backend persists, re-surfaces on later turns, and hands back to the
       // surfaces that show the message afterwards.
       clientContext: buildPageClientContext({
-        marks: submittedMarks,
-        readsPage: pageMarksEnabled,
+        marks: currentMarks,
+        readsPage,
       }),
       onAccepted: () => {
         if (didAccept) return;
@@ -332,7 +366,7 @@ export function ChatInput({
         submittedMarks.forEach((mark) => detach(mark));
         submittedFileIds.forEach((fileId) => handleCancelUpload(fileId));
 
-        const cleared = clearSubmitted();
+        const cleared = clearSubmitted(submittedDraft);
         if (!mountedRef.current) return;
         recall.onSent();
         setPageEntityDismissed(false);

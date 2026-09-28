@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PageMark } from '../page-mark';
 import { PageMarksProvider, usePageMarks } from '../PageMarksProvider';
 import { usePageMarking } from '../usePageMarking';
+import { buildPageClientContext } from '../../page-controls/send-context';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
@@ -80,6 +81,7 @@ vi.mock('../mark-thumbnail', () => ({
   beginThumbnail: (key: object, el: Element) =>
     thumbnails.begun.push([key, el]),
   getThumbnail: () => undefined,
+  copyThumbnail: vi.fn(),
 }));
 
 let container: HTMLDivElement;
@@ -121,6 +123,7 @@ beforeEach(() => {
 
 afterEach(() => {
   act(() => root.unmount());
+  document.body.removeAttribute('data-opencx-private');
   container.remove();
   document.body.innerHTML = '';
   document
@@ -179,6 +182,45 @@ const cursorRule = () =>
   document.querySelector('style[data-opencx-mark-cursor]')?.textContent ?? '';
 
 describe('usePageMarking', () => {
+  it.each(['private', 'ancestor', 'removed', 'replacement', 'editable'])(
+    'does not serialize an attached mark after its source becomes %s',
+    (change) => {
+      const button = pageButton();
+      button.textContent = 'SYNTHETIC_MARK_SECRET';
+      act(() => marking.toggle());
+      click(150, 110);
+      act(() => marking.attach('Help with this'));
+      const marks = [...pageMarks.marks];
+      expect(
+        JSON.stringify(buildPageClientContext({ marks, readsPage: true })),
+      ).toContain('SYNTHETIC_MARK_SECRET');
+      if (change === 'private') button.setAttribute('data-opencx-private', '');
+      if (change === 'ancestor')
+        document.body.setAttribute('data-opencx-private', '');
+      if (change === 'removed') button.remove();
+      if (change === 'replacement') button.replaceWith(button.cloneNode(true));
+      if (change === 'editable') button.setAttribute('contenteditable', 'true');
+      const context = buildPageClientContext({ marks, readsPage: true });
+      expect(context?.page_marks).toBeUndefined();
+      expect(context?.picked_elements).toBeUndefined();
+      document.body.removeAttribute('data-opencx-private');
+    },
+  );
+
+  it('refreshes attached descriptions when a child becomes private', () => {
+    const button = pageButton();
+    button.innerHTML = 'Safe <span>SYNTHETIC_MARK_SECRET</span>';
+    act(() => marking.toggle());
+    click(150, 110);
+    act(() => marking.attach('Help'));
+    button.querySelector('span')?.setAttribute('data-opencx-private', '');
+    const context = buildPageClientContext({
+      marks: [...pageMarks.marks],
+      readsPage: true,
+    });
+    expect(JSON.stringify(context)).not.toContain('SYNTHETIC_MARK_SECRET');
+    expect(JSON.stringify(context)).toContain('Safe');
+  });
   it('frames the element under the cursor while nothing is placed', () => {
     pageButton();
     act(() => marking.toggle());

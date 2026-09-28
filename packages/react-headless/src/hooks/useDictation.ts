@@ -31,7 +31,7 @@ export function useDictation(target: DictationTarget) {
   }, [ctx, start]);
 
   // Never leave the microphone open with no visible owner.
-  useEffect(() => () => ctx.stop(), [ctx]);
+  useEffect(() => () => ctx.stop({ executeFinalCommand: false }), [ctx]);
 
   return {
     enabled: widgetCtx.features.dictation,

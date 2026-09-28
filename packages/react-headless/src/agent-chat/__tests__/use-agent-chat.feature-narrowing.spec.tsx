@@ -276,9 +276,130 @@ describe('useAgentChat feature narrowing', () => {
       setChatState({ status: 'streaming', messages: [actionTurn] }),
     );
     expect(hookValue?.pageEffects).toEqual([]);
+    expect(fakeWidgetCtx.api.sendPageReply).toHaveBeenCalledWith('sess-1', {
+      callId: 'action-1',
+      outcome: 'declined',
+    });
     features.pageActions = true;
     await act(async () => root.render(<Probe config={baseConfig} />));
+    expect(hookValue?.pageEffects).toHaveLength(0);
+    expect(fakeWidgetCtx.api.sendPageReply).toHaveBeenCalledOnce();
+  });
+
+  it.each(['pageActions', 'clientTools', 'pageContext'] as const)(
+    'revoking %s declines the call and pending consent exactly once',
+    async (feature) => {
+      const turn = {
+        ...highlightTurn,
+        parts: [
+          {
+            type: 'tool-act_on_page',
+            toolCallId: 'revoked',
+            state: 'input-available',
+            input: { ref: 's1c1', action: 'click' },
+          },
+        ],
+      };
+      await act(async () => root.render(<Probe config={baseConfig} />));
+      await act(async () =>
+        setChatState({ status: 'streaming', messages: [turn] }),
+      );
+      let consent: Promise<boolean> | undefined;
+      await act(async () => {
+        consent = hookValue?.requestPageActionConsent({
+          callId: 'revoked',
+          action: 'click',
+          controlName: 'Save',
+        });
+      });
+      expect(hookValue?.pendingPageAction).not.toBeNull();
+      features[feature] = false;
+      await act(async () => root.render(<Probe config={baseConfig} />));
+      expect(hookValue?.pendingPageAction).toBeNull();
+      await expect(consent).resolves.toBe(false);
+      expect(fakeWidgetCtx.api.sendPageReply).not.toHaveBeenCalled();
+      // The adapter owns an active consent call and reports its cancellation.
+      await act(async () => hookValue?.replyToPageCall('revoked', 'declined'));
+      expect(fakeWidgetCtx.api.sendPageReply).toHaveBeenCalledWith('sess-1', {
+        callId: 'revoked',
+        outcome: 'declined',
+      });
+      // The adapter can finish its cancelled consent promise on the next tick.
+      hookValue?.replyToPageCall('revoked', 'declined');
+      features[feature] = true;
+      await act(async () => root.render(<Probe config={baseConfig} />));
+      expect(hookValue?.pageEffects).toEqual([]);
+      expect(fakeWidgetCtx.api.sendPageReply).toHaveBeenCalledOnce();
+    },
+  );
+
+  it('declines a revoked call that has not reached an adapter', async () => {
+    await act(async () => root.render(<Probe config={baseConfig} />));
+    await act(async () =>
+      setChatState({
+        status: 'streaming',
+        messages: [
+          {
+            ...highlightTurn,
+            parts: [
+              {
+                type: 'tool-act_on_page',
+                toolCallId: 'unclaimed',
+                state: 'input-available',
+                input: { ref: 's1c1', action: 'click' },
+              },
+            ],
+          },
+        ],
+      }),
+    );
     expect(hookValue?.pageEffects).toHaveLength(1);
+    features.pageActions = false;
+    await act(async () => root.render(<Probe config={baseConfig} />));
+    expect(fakeWidgetCtx.api.sendPageReply).toHaveBeenCalledExactlyOnceWith(
+      'sess-1',
+      { callId: 'unclaimed', outcome: 'declined' },
+    );
+  });
+
+  it('preserves the adapter outcome when permission is revoked after an approved action starts', async () => {
+    await act(async () => root.render(<Probe config={baseConfig} />));
+    await act(async () =>
+      setChatState({
+        status: 'streaming',
+        messages: [
+          {
+            ...highlightTurn,
+            parts: [
+              {
+                type: 'tool-act_on_page',
+                toolCallId: 'started',
+                state: 'input-available',
+                input: { ref: 's1c1', action: 'click' },
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    let consent: Promise<boolean> | undefined;
+    await act(async () => {
+      consent = hookValue?.requestPageActionConsent({
+        callId: 'started',
+        action: 'click',
+        controlName: 'Save',
+      });
+    });
+    await act(async () => hookValue?.resolvePageAction('started', true));
+    await expect(consent).resolves.toBe(true);
+    features.pageActions = false;
+    await act(async () => root.render(<Probe config={baseConfig} />));
+    expect(fakeWidgetCtx.api.sendPageReply).not.toHaveBeenCalled();
+    await act(async () => hookValue?.replyToPageCall('started', 'done'));
+    expect(fakeWidgetCtx.api.sendPageReply).toHaveBeenCalledExactlyOnceWith(
+      'sess-1',
+      { callId: 'started', outcome: 'done' },
+    );
   });
 
   it.each(['tool-act_on_page', 'tool-highlight_element'])(

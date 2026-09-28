@@ -18,6 +18,7 @@ import {
 } from './page-mark';
 import { usePageMarks } from './PageMarksProvider';
 import { beginThumbnail } from './mark-thumbnail';
+import { registerPageMarkSources } from './mark-source';
 
 const CURSOR_STYLE_ATTR = 'data-opencx-mark-cursor';
 /** Elements a mark carries to the AI. */
@@ -423,6 +424,7 @@ export function usePageMarking({
         rect: current.rect,
         elements: sampled.map(describeElement),
       };
+      registerPageMarkSources(mark, sampled);
       // Thumbnail for the pill: the region's focus element (center-first
       // sampling puts it first). Rides a WeakMap, never the payload.
       if (sampled[0]) {
