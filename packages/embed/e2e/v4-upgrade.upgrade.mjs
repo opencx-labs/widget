@@ -38,7 +38,6 @@ async function fixture(t, profile, mobile, initialVersion = 'v4') {
       : { width: 1280, height: 900 },
     serviceWorkers: 'block',
   });
-  t.after(() => context.close());
   const page = await context.newPage();
   page.setDefaultTimeout(8000);
   const errors = [];
@@ -82,6 +81,32 @@ async function fixture(t, profile, mobile, initialVersion = 'v4') {
       else await trigger.locator('button').click();
     }
     await frame.locator('body').waitFor();
+    // Real pointer tests start after the opening transition. Two stable
+    // bounding-box samples alone can land before Framer's first frame.
+    await page.waitForFunction(() => {
+      const iframe = document.querySelector('iframe[title="OpenCX Live Chat"]');
+      if (!iframe) return false;
+      for (const element of [
+        iframe,
+        iframe.contentDocument?.querySelector(
+          '[data-component="chat/header"], [data-component="sessions/header"], form',
+        ) ?? iframe.contentDocument?.body,
+      ]) {
+        if (!element) return false;
+        let node = element;
+        while (node) {
+          const style = node.ownerDocument.defaultView.getComputedStyle(node);
+          if (
+            Number(style.opacity) < 0.99 ||
+            style.display === 'none' ||
+            style.visibility === 'hidden'
+          )
+            return false;
+          node = node.parentElement;
+        }
+      }
+      return true;
+    });
   }
   async function enterChat(warm = false) {
     await open();
@@ -331,16 +356,22 @@ async function fixture(t, profile, mobile, initialVersion = 'v4') {
   }
   await page.goto('https://upgrade.test/');
   t.after(async () => {
-    await writeFile(
-      `${output}/${engine}/${profile}-${mobile ? 'mobile' : 'desktop'}-${initialVersion}-requests.json`,
-      JSON.stringify(backend.requests, null, 2),
-    );
-    assert.deepEqual(
-      backend.unexpected,
-      [],
-      'closed fixture: no live/unexpected traffic',
-    );
-    assert.deepEqual(errors, [], 'no JavaScript/React errors');
+    try {
+      await writeFile(
+        `${output}/${engine}/${profile}-${mobile ? 'mobile' : 'desktop'}-${initialVersion}-requests.json`,
+        JSON.stringify(backend.requests, null, 2),
+      );
+      assert.deepEqual(
+        backend.unexpected,
+        [],
+        'closed fixture: no live/unexpected traffic',
+      );
+      assert.deepEqual(errors, [], 'no JavaScript/React errors');
+    } finally {
+      // Assert while the page is alive. Closing a WebKit context aborts
+      // intercepted polling requests and can emit teardown-only errors.
+      await context.close();
+    }
   });
   return {
     context,
