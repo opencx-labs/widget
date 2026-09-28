@@ -47,6 +47,26 @@ it.each(['fill', 'select'])(
   },
 );
 
+it('shows the dropdown label as escaped text instead of an opaque identifier', () => {
+  const label = 'Pro <img src=x onerror=alert(1)> — $49/month';
+  act(() =>
+    root.render(
+      <PageActionCard
+        request={{
+          callId: 'plan',
+          action: 'select',
+          controlName: 'Plan',
+          value: 'plan_42',
+          valueLabel: label,
+        }}
+      />,
+    ),
+  );
+  expect(container.textContent).toContain(`New value: ${label}`);
+  expect(container.textContent).not.toContain('plan_42');
+  expect(container.querySelector('img')).toBeNull();
+});
+
 it('shows clearing a field explicitly and No declines the matching call', () => {
   act(() =>
     root.render(

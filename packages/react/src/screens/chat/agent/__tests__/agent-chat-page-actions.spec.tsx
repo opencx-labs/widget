@@ -21,6 +21,7 @@ let consentAsked: Array<{
   action: string;
   controlName: string;
   value?: string;
+  valueLabel?: string;
 }> = [];
 let consentAnswer = true;
 let onConsent = () => {};
@@ -41,6 +42,7 @@ vi.mock('@opencx/widget-react-headless', () => ({
       action: string;
       controlName: string;
       value?: string;
+      valueLabel?: string;
     }) => {
       consentAsked.push(request);
       onConsent();
@@ -322,6 +324,63 @@ describe('AgentChatPageActions', () => {
       await vi.waitFor(() => expect(repliesFor('allowed')).toHaveLength(1));
       expect(repliesFor('allowed')[0]?.outcome).toBe('done');
       expect(changed).toHaveBeenCalledOnce();
+    },
+  );
+
+  it('shows the visible dropdown choice for an opaque option value', async () => {
+    consentAnswer = false;
+    const ref = control(
+      '<select id="t" aria-label="Plan"><option value="plan_1">Basic</option><option value="plan_42">Pro — $49/month</option></select>',
+    );
+    pageEffects = [
+      {
+        key: 'opaque',
+        callId: 'opaque',
+        type: 'act-on-page',
+        input: { ref, action: 'select', value: 'plan_42' },
+      },
+    ];
+    await render();
+    expect(consentAsked[0]).toMatchObject({
+      value: 'plan_42',
+      valueLabel: 'Pro — $49/month',
+    });
+    expect(document.querySelector<HTMLSelectElement>('#t')?.value).toBe(
+      'plan_1',
+    );
+  });
+
+  it.each(['label', 'value', 'removed', 'replaced', 'disabled'])(
+    'declines when the approved dropdown option is %s before execution',
+    async (change) => {
+      const ref = control(
+        '<select id="t" aria-label="Plan"><option value="plan_1">Basic</option><option value="plan_42">Pro — $49/month</option></select>',
+      );
+      const select = document.querySelector<HTMLSelectElement>('#t');
+      const option = select?.options.item(1);
+      if (!select || !option) throw new Error('missing select fixture');
+      const changed = vi.fn();
+      select.addEventListener('change', changed);
+      onConsent = () => {
+        if (change === 'label') option.label = 'Enterprise — $499/month';
+        if (change === 'value') option.value = 'plan_499';
+        if (change === 'removed') option.remove();
+        if (change === 'replaced') option.replaceWith(option.cloneNode(true));
+        if (change === 'disabled') option.disabled = true;
+      };
+      pageEffects = [
+        {
+          key: change,
+          callId: change,
+          type: 'act-on-page',
+          input: { ref, action: 'select', value: 'plan_42' },
+        },
+      ];
+      await render();
+      await vi.waitFor(() => expect(repliesFor(change)).toHaveLength(1));
+      expect(repliesFor(change)[0]?.outcome).toBe('declined');
+      expect(changed).not.toHaveBeenCalled();
+      expect(select.value).toBe('plan_1');
     },
   );
 

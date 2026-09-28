@@ -2,6 +2,7 @@ import { isWidgetOwned } from '../page-marks/page-element';
 import { guardRef } from './guard';
 import { setNativeValue } from './native-setter';
 import { firePointerSequence } from './pointer-sequence';
+import { resolveSelectOption } from './select-option';
 import {
   NEVER_ACT_INPUT_TYPES,
   SETTLE_MS,
@@ -191,15 +192,12 @@ async function act({
           detail: 'No option was given to choose.',
         };
       }
-      const option = Array.from(el.options).find(
-        (candidate) =>
-          candidate.value === value ||
-          candidate.label.trim().toLowerCase() === value.trim().toLowerCase(),
-      );
+      const option = resolveSelectOption(el, value);
       if (!option) {
         return {
           outcome: 'no_change',
-          detail: 'That option is not in the list.',
+          detail:
+            'That option is not in the list or cannot be selected unambiguously.',
         };
       }
       watcher = watchPage(doc, settleMs);

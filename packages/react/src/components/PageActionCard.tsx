@@ -28,6 +28,10 @@ const VERBS: Record<string, string> = {
 export function PageActionCard({ request }: { request: PendingPageAction }) {
   const { resolvePageAction } = useAgentChatUi();
   const verb = VERBS[request.action] ?? request.action;
+  const proposedValue =
+    request.action === 'select'
+      ? (request.valueLabel ?? request.value)
+      : request.value;
 
   return (
     <section
@@ -44,7 +48,7 @@ export function PageActionCard({ request }: { request: PendingPageAction }) {
           <div className="mb-2 max-h-40 overflow-auto rounded-lg bg-foreground/5 px-2 py-1 text-sm">
             <span className="font-medium">New value: </span>
             <span className="whitespace-pre-wrap break-words">
-              {request.value === '' ? '(empty)' : request.value}
+              {proposedValue === '' ? '(empty)' : proposedValue}
             </span>
           </div>
         )}

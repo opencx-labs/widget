@@ -170,6 +170,42 @@ describe('typing', () => {
 });
 
 describe('dropdowns and switches', () => {
+  it.each(['duplicate value', 'duplicate label', 'disabled group'])(
+    'does not select an ambiguous or disabled option: %s',
+    async (condition) => {
+      mount(
+        '<select id="plan" style="width:160px;height:28px"><option value="m">Monthly</option><optgroup label="Plans"><option value="y">Yearly</option></optgroup></select>',
+      );
+      const select = document.querySelector<HTMLSelectElement>('#plan');
+      const group = select?.querySelector('optgroup');
+      if (!select || !group) throw new Error('fixture missing');
+      const value = condition === 'duplicate label' ? 'Yearly' : 'y';
+      const duplicate = document.createElement('option');
+      duplicate.value = condition === 'duplicate value' ? 'y' : 'other';
+      duplicate.label = 'Yearly';
+      if (condition === 'disabled group') group.disabled = true;
+      else select.append(duplicate);
+      let changes = 0;
+      select.addEventListener('change', () => changes++);
+      const ref = refFor('#plan');
+      expect(
+        (await actOnPage({ ref, action: 'select', value, settleMs: 100 }))
+          .outcome,
+      ).toBe('no_change');
+      expect(select.value).toBe('m');
+      expect(changes).toBe(0);
+      // Same control and request succeed once the ambiguity/disable is removed.
+      duplicate.remove();
+      group.disabled = false;
+      expect(
+        (await actOnPage({ ref, action: 'select', value, settleMs: 100 }))
+          .outcome,
+      ).toBe('done');
+      expect(select.value).toBe('y');
+      expect(changes).toBe(1);
+    },
+  );
+
   it('reports no change when a controlled dropdown rejects the selection', async () => {
     mount(
       '<select id="plan" style="width:160px;height:28px"><option value="m">Monthly</option><option value="y">Yearly</option></select>',

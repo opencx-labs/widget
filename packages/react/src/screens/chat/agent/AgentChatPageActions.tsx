@@ -7,6 +7,7 @@ import { actOnPageInputSchema } from '../../../page-controls/act-input';
 import { accessibleName } from '../../../page-controls/accessible-name';
 import { resolveRef } from '../../../page-controls/control-ref';
 import { readPageControls } from '../../../page-controls/read-controls';
+import { resolveSelectOption } from '../../../page-controls/select-option';
 import { usePageEffectIsCurrent } from './use-page-effect-is-current';
 
 const MAX_HANDLED_ACTIONS = 200;
@@ -76,11 +77,24 @@ export function AgentChatPageActions() {
           // that auto-save. Labels and form markup cannot establish safety.
           // Name the actual page control and show the proposed value.
           const consentName = accessibleName(element) || 'this control';
+          const option =
+            action === 'select' ? resolveSelectOption(element, value) : null;
+          if (action === 'select' && !option) {
+            replyToPageCall(
+              effect.callId,
+              'no_change',
+              'That option is unavailable or ambiguous.',
+            );
+            return;
+          }
+          const optionValue = option?.value;
+          const optionLabel = option?.label.trim();
           const allowed = await requestPageActionConsent({
             callId: effect.callId,
             action,
             controlName: consentName,
             ...(action === 'fill' || action === 'select' ? { value } : {}),
+            ...(option ? { valueLabel: optionLabel || '(empty option)' } : {}),
           });
           if (!allowed) {
             replyToPageCall(effect.callId, 'declined');
@@ -101,6 +115,17 @@ export function AgentChatPageActions() {
           if (
             !enabled() ||
             consentName !== (accessibleName(element) || 'this control')
+          ) {
+            replyToPageCall(effect.callId, 'declined');
+            return;
+          }
+          // Consent is for this concrete option and its visible meaning. Host
+          // updates during confirmation or pointer travel invalidate approval.
+          if (
+            option &&
+            (resolveSelectOption(element, value) !== option ||
+              option.value !== optionValue ||
+              option.label.trim() !== optionLabel)
           ) {
             replyToPageCall(effect.callId, 'declined');
             return;

@@ -465,9 +465,10 @@ const actionCases = [
   },
   {
     name: 'Plan',
-    html: '<select id="action-target" aria-label="Plan"><option value="basic">Basic</option><option value="pro">Pro</option></select>',
+    html: '<select id="action-target" aria-label="Plan"><option value="basic">Basic</option><option value="plan_42">Pro — $49/month</option></select>',
     action: 'select',
-    value: 'pro',
+    value: 'plan_42',
+    valueLabel: 'Pro — $49/month',
     event: 'change',
   },
   {
@@ -509,7 +510,9 @@ for (const mode of ['popover', 'companion']) {
           await consent.getByText(actionCase.name, { exact: true }).waitFor();
           if (actionCase.value !== undefined)
             await consent
-              .getByText(actionCase.value, { exact: true })
+              .getByText(actionCase.valueLabel ?? actionCase.value, {
+                exact: true,
+              })
               .waitFor();
           assert.equal(await target.getAttribute('data-effects'), null);
           assert.deepEqual(
@@ -553,4 +556,40 @@ for (const mode of ['popover', 'companion']) {
       );
     }
   }
+  test(
+    `${mode}: a dropdown option changed during approval is declined`,
+    { timeout: 30000 },
+    async (t) => {
+      const actionCase = actionCases.find(
+        (candidate) => candidate.action === 'select',
+      );
+      assert.ok(actionCase);
+      const f = await fixture(
+        t,
+        mode,
+        { pageContext: true, clientTools: true, pageActions: true },
+        'action',
+        actionCase,
+      );
+      await f.send();
+      const consent = f.frame.locator('[data-component="chat/page_action"]');
+      await consent.getByText(actionCase.valueLabel, { exact: true }).waitFor();
+      const target = f.page.locator('#action-target');
+      assert.equal(await target.inputValue(), 'basic');
+      await target.locator('option[value="plan_42"]').evaluate((option) => {
+        option.label = 'Enterprise — $499/month';
+      });
+      await consent.getByRole('button', { name: 'Allow', exact: true }).click();
+      await f.frame
+        .getByText('Page request finished', { exact: true })
+        .waitFor();
+      const replies = f.requests.filter((request) =>
+        request.path.endsWith('/page-reply'),
+      );
+      assert.equal(replies.length, 1);
+      assert.equal(replies[0].body.outcome, 'declined');
+      assert.equal(await target.inputValue(), 'basic');
+      assert.equal(await target.getAttribute('data-effects'), null);
+    },
+  );
 }

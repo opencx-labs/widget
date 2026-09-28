@@ -315,3 +315,23 @@ has been published or deployed.
 capability gap and intermittent WebKit dictation result, complete remaining
 acceptance, and obtain current-head review/required approval. No publication or
 deployment was performed.
+
+## Dropdown approval review follow-up (2026-09-28)
+
+- Reproduced Greptile's finding: confirmation showed opaque values such as
+  `plan_42`, and a changed label could still be selected after approval. Six
+  actual-adapter regressions failed before the fix.
+- Resolve the concrete option before asking; show its escaped visible label.
+  After pointer travel, reject a changed value/label, replaced/removed option or
+  newly disabled option. Consent and execution share resolution; duplicate
+  labels/values and disabled option groups cannot result in an arbitrary choice.
+- **625 React** and **257 headless** tests passed, plus builds, production guards,
+  type checks and changed-file lint. **18 native page-action cases per browser**
+  passed in Chromium, Firefox and WebKit, with positive controls after removing
+  disabled/ambiguous conditions.
+- **Six production-bundle dropdown cases per browser** passed over local SSE:
+  readable opaque-ID choices, pending/declined/approved effects, and refusing a
+  price-label change while permission is pending, in both widget surfaces.
+- Latest embed SHA-256:
+  `52e91fe87c50fcd1d7f94fa3090059d78917115b0c489c18f092fe0187a5cef9`.
+  The backend capability and WebKit provider-connection gaps above remain open.

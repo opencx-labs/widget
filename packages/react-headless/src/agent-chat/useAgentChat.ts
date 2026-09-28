@@ -47,6 +47,8 @@ export type PendingPageAction = {
   controlName: string;
   /** Proposed text or option to show before the visitor approves the change. */
   value?: string;
+  /** Dropdown option's visible label, read from the host before approval. */
+  valueLabel?: string;
 };
 
 /** A normalized browser effect for a styled renderer to perform on its host. */

@@ -22,7 +22,9 @@ Beta integrations that previously used `clientTools` for actions must also opt
 into `pageActions`. Existing v4 integrations keep page access off by default.
 
 The styled widget asks visitors to confirm every click, text entry, selection
-and checkbox change. Text and selection requests show the proposed value.
+and checkbox change. Text requests show the proposed value; dropdown requests
+show the option's visible label. If that option changes before execution, the
+approval is cancelled. Disabled or ambiguous options are not selected.
 Declining leaves the page unchanged; pointing needs no action confirmation.
 This also covers non-English controls and fields that auto-save. A successful
 page-action result confirms an observed browser change; remote business
