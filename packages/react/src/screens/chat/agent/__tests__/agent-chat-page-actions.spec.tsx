@@ -350,7 +350,7 @@ describe('AgentChatPageActions', () => {
     );
   });
 
-  it.each(['label', 'value', 'removed', 'replaced', 'disabled'])(
+  it.each(['label', 'value', 'removed', 'replaced', 'disabled', 'ambiguous'])(
     'declines when the approved dropdown option is %s before execution',
     async (change) => {
       const ref = control(
@@ -367,6 +367,12 @@ describe('AgentChatPageActions', () => {
         if (change === 'removed') option.remove();
         if (change === 'replaced') option.replaceWith(option.cloneNode(true));
         if (change === 'disabled') option.disabled = true;
+        if (change === 'ambiguous') {
+          const collision = document.createElement('option');
+          collision.value = 'different';
+          collision.label = 'plan_42';
+          select.append(collision);
+        }
       };
       pageEffects = [
         {

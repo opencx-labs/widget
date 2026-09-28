@@ -170,6 +170,52 @@ describe('typing', () => {
 });
 
 describe('dropdowns and switches', () => {
+  it.each([false, true])(
+    'rejects a value matching another option label, regardless of order: %s',
+    async (reversed) => {
+      const options = [
+        '<option value="pro">Pro</option>',
+        '<option id="collision" value="Pro">Basic</option>',
+      ];
+      if (reversed) options.reverse();
+      mount(
+        `<select id="plan" style="width:160px;height:28px"><option value="free">Free</option>${options.join('')}</select>`,
+      );
+      const select = document.querySelector<HTMLSelectElement>('#plan');
+      if (!select) throw new Error('fixture missing');
+      let changes = 0;
+      select.addEventListener('change', () => changes++);
+      const ref = refFor('#plan');
+      expect(
+        (
+          await actOnPage({
+            ref,
+            action: 'select',
+            value: 'Pro',
+            settleMs: 100,
+          })
+        ).outcome,
+      ).toBe('no_change');
+      expect(select.value).toBe('free');
+      expect(changes).toBe(0);
+
+      // The same request works after removing the conflicting option.
+      select.querySelector('#collision')?.remove();
+      expect(
+        (
+          await actOnPage({
+            ref,
+            action: 'select',
+            value: 'Pro',
+            settleMs: 100,
+          })
+        ).outcome,
+      ).toBe('done');
+      expect(select.value).toBe('pro');
+      expect(changes).toBe(1);
+    },
+  );
+
   it.each(['duplicate value', 'duplicate label', 'disabled group'])(
     'does not select an ambiguous or disabled option: %s',
     async (condition) => {

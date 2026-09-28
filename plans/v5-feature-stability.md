@@ -335,3 +335,64 @@ deployment was performed.
 - Latest embed SHA-256:
   `52e91fe87c50fcd1d7f94fa3090059d78917115b0c489c18f092fe0187a5cef9`.
   The backend capability and WebKit provider-connection gaps above remain open.
+
+## Latest review and acceptance follow-up (2026-09-28)
+
+### Dropdown ambiguity and private fixtures
+
+- Reproduced the new review finding in Chromium: a request for `Pro` selected
+  an option whose value was `Pro` but whose visible label was `Basic`, despite
+  another option being labeled `Pro`. Both option orders failed the regression.
+  Resolution now combines value and label matches and rejects conflicting
+  options. An ambiguity introduced during consent also cancels the action.
+- **36 adapter/consent tests** and **20 native action tests per browser** passed.
+  The rebuilt production embed passed **eight dropdown/SSE cases per browser**
+  in Chromium, Firefox and WebKit: allow, decline, changed choice and ambiguous
+  request in both classic and Companion. React/embed type checks, production
+  builds and guards, changed-file lint and syntax checks passed.
+- Reproduced local test credentials appearing in the dictation page's HTTP
+  response. Both dictation and identity fixtures now inject credentials only
+  through the browser automation channel, with assertions that the served HTML
+  contains none. The real local **v4 → v5 renewal and A → B → A history test**
+  passed again in all three browsers after this change.
+
+### WebKit dictation resolved
+
+- The earlier WebKit failure was in the synthetic capture fixture. Replacing
+  `getUserMedia` bypassed WebKit's native capture-permission path. Completing
+  that path with Playwright's built-in mock microphone, then immediately
+  stopping those tracks, allowed ICE negotiation and real transcription.
+  No production transport change or timeout increase was needed.
+- Two fresh WebKit runs passed on the previous bundle. The latest rebuilt
+  bundle then passed **all six real-provider dictation cases**: classic and
+  Companion in Chromium, Firefox and WebKit, with transcript deltas, typed-prefix
+  retention, Stop/restart/close cleanup, no automatic send and no unexpected
+  browser destinations. Native mock-device tracks also ended. These use
+  synthetic speech; physical microphone/Safari hardware behavior is not covered.
+- Latest tested embed SHA-256:
+  `ef4c0f03b11f11c943f4385150acc478aef3d440fcaaf4d80341ded404bb91eb`.
+
+### Memory and team-assistance checks
+
+- **32 backend tests passed** across five focused files on the isolated local
+  database and Redis. One pre-existing skipped vague-memory test remained
+  skipped; no test was disabled for this run.
+- Covered previous-session history scope, verification-state matching and
+  configured limits; team requests through the actual responder; internal and
+  public reply continuation; duplicate/coalesced replies; failure visibility;
+  feature-off, closure and human takeover. Team model output is controlled;
+  the worker handler runs directly, not through a real queue worker in this run.
+- Commands: the five exact specs were
+  `system-actions/memory/memory-tool.chat.spec.ts`,
+  `chat/__tests__/chat.service.ask-team-tool.responder.spec.ts`,
+  `chat/service/resolve-human-help-reply.spec.ts`,
+  `chat/human-agent-chat-service/send-message.keep-ai-with-team.spec.ts` and
+  `chat/human-help-worker/run.spec.ts`, under backend `src/`, with `--retry 0`.
+
+**Release status: still not ready for the full feature promise.** The WebKit
+fixture issue and latest dropdown/local-fixture review findings are resolved.
+Backend workspace/mini-app authoring and its acceptance remain open, as do final
+current-head review/CI and the repository's required approval. Existing mini-app
+tools target internal dashboard apps; clarify the intended visitor/team audience
+before granting those capabilities to widget sessions. Nothing was published or
+deployed.

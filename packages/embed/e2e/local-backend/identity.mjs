@@ -35,6 +35,20 @@ test(
       const errors = [];
       const sends = [];
       const [a, b] = fixture.identities;
+      await context.addInitScript(
+        (config) => {
+          window.localConfig = config;
+        },
+        {
+          token: a.botToken,
+          apiUrl: base.origin,
+          user: { token: a.token, externalId: 'local-a' },
+          collectUserData: false,
+          router: { chatScreenOnly: true },
+          initialMessages: ['LOCAL WELCOME'],
+          disableTooltips: true,
+        },
+      );
       server = createServer((request, response) => {
         if (request.url === '/script.js') {
           response.setHeader('content-type', 'application/javascript');
@@ -42,12 +56,20 @@ test(
         }
         response.setHeader('content-type', 'text/html');
         response.end(
-          `<!doctype html><html><body><script src="/script.js"></script><script>window.localConfig=${JSON.stringify({ token: a.botToken, apiUrl: base.origin, user: { token: a.token, externalId: 'local-a' }, collectUserData: false, router: { chatScreenOnly: true }, initialMessages: ['LOCAL WELCOME'], disableTooltips: true })};initOpenScript(window.localConfig);</script></body></html>`,
+          '<!doctype html><html><body><script src="/script.js"></script><script>initOpenScript(window.localConfig);</script></body></html>',
         );
       });
       server.listen(0, '127.0.0.1');
       await once(server, 'listening');
       const host = `http://127.0.0.1:${server.address().port}`;
+      const publicHtml = await (await fetch(host)).text();
+      assert.equal(
+        [a.botToken, a.token, a.renewed, b.token, b.renewed].some((secret) =>
+          publicHtml.includes(secret),
+        ),
+        false,
+        'the fixture HTTP response must not expose local credentials',
+      );
       await context.route('**/*', async (route) => {
         const url = new URL(route.request().url());
         if (

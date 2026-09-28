@@ -1,5 +1,5 @@
 // Opt-in provider check: actual local authentication/mint, production embed,
-// real WebRTC and transcription, synthetic audio only. Never opens a device.
+// real WebRTC and transcription, synthetic audio only. No physical device.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
@@ -57,7 +57,7 @@ for (const displayMode of ['popover', 'companion']) {
         }
         res.setHeader('content-type', 'text/html; charset=utf-8');
         res.end(
-          `<!doctype html><html><body><h1>Local dictation verification</h1><script src="/script.js"></script><script>initOpenScript(${JSON.stringify({ token: identity.botToken, apiUrl: base.origin, user: { token: identity.renewed, externalId: 'local-a' }, features: { dictation: true }, displayMode, language: 'en', collectUserData: false, router: { chatScreenOnly: true }, disableTooltips: true })});</script></body></html>`,
+          '<!doctype html><html><body><h1>Local dictation verification</h1><script src="/script.js"></script></body></html>',
         );
       });
       server.listen(0, '127.0.0.1');
@@ -78,6 +78,9 @@ for (const displayMode of ['popover', 'companion']) {
             events: window.dictationFixture.events,
             transitions: window.dictationFixture.transitions,
             audio: window.dictationFixture.audio.map((audio) => audio.state),
+            permissionTracks: window.dictationFixture.permissionStreams.flatMap(
+              (stream) => stream.getTracks().map((track) => track.readyState),
+            ),
           }))
           .catch(() => null);
         t.diagnostic(
@@ -92,7 +95,13 @@ for (const displayMode of ['popover', 'companion']) {
         server.closeAllConnections();
         await new Promise((resolve) => server.close(resolve));
       });
-      const context = await browser.newContext({ serviceWorkers: 'block' });
+      // The synthetic capture below bypasses the native permission prompt.
+      // Grant the permission it models: WebKit restricts ICE candidates without
+      // capture permission, even when the supplied track is generated audio.
+      const context = await browser.newContext({
+        serviceWorkers: 'block',
+        permissions: engine === 'webkit' ? ['microphone'] : [],
+      });
       let sends = 0;
       await context.route('**/*', (route) => {
         const url = new URL(route.request().url());
@@ -104,13 +113,14 @@ for (const displayMode of ['popover', 'companion']) {
         unexpected.push(url.origin + url.pathname);
         return route.abort();
       });
-      await context.addInitScript(() => {
+      await context.addInitScript((engine) => {
         window.dictationFixture = {
           streams: [],
           peers: [],
           events: [],
           transitions: [],
           audio: [],
+          permissionStreams: [],
         };
         const NativePeer = window.RTCPeerConnection;
         window.RTCPeerConnection = class extends NativePeer {
@@ -144,10 +154,31 @@ for (const displayMode of ['popover', 'companion']) {
             return channel;
           }
         };
+        const nativeCapture = navigator.mediaDevices?.getUserMedia.bind(
+          navigator.mediaDevices,
+        );
         Object.defineProperty(navigator, 'mediaDevices', {
           configurable: true,
           value: {
             getUserMedia: async () => {
+              if (engine === 'webkit') {
+                // Playwright WebKit enables MockCaptureDevices. Complete its
+                // native permission path before substituting speech audio;
+                // replacing getUserMedia alone leaves ICE restrictions active.
+                const permissionStream = await nativeCapture({ audio: true });
+                window.dictationFixture.permissionStreams.push(
+                  permissionStream,
+                );
+                permissionStream.getTracks().forEach((track) => track.stop());
+                if (
+                  permissionStream
+                    .getTracks()
+                    .some(
+                      (track) => !track.label.startsWith('Mock audio device'),
+                    )
+                )
+                  throw new Error('Expected the Playwright mock microphone');
+              }
               const audio = new AudioContext();
               await audio.resume();
               const destination = audio.createMediaStreamDestination();
@@ -163,7 +194,7 @@ for (const displayMode of ['popover', 'companion']) {
             },
           },
         });
-      });
+      }, engine);
       const page = await context.newPage();
       page.setDefaultTimeout(20000);
       page.on('pageerror', (error) => errors.push(error.name));
@@ -177,7 +208,28 @@ for (const displayMode of ['popover', 'companion']) {
       page.on('request', (request) => {
         if (new URL(request.url()).pathname.endsWith('/chat/send')) sends++;
       });
+      const publicHtml = await (await fetch(origin)).text();
+      assert.equal(
+        [identity.botToken, identity.renewed].some((secret) =>
+          publicHtml.includes(secret),
+        ),
+        false,
+        'the fixture HTTP response must not expose local credentials',
+      );
       await page.goto(origin);
+      // Supply temporary identities only through the private automation channel.
+      // The loopback HTTP server must never serve them to other local processes.
+      await page.evaluate((config) => window.initOpenScript(config), {
+        token: identity.botToken,
+        apiUrl: base.origin,
+        user: { token: identity.renewed, externalId: 'local-a' },
+        features: { dictation: true },
+        displayMode,
+        language: 'en',
+        collectUserData: false,
+        router: { chatScreenOnly: true },
+        disableTooltips: true,
+      });
       const frame = page.frameLocator('iframe[title="OpenCX Live Chat"]');
       const launcher = page
         .frameLocator('iframe[title="OpenCX Live Chat Trigger"]')
@@ -244,6 +296,13 @@ for (const displayMode of ['popover', 'companion']) {
         await page.evaluate(() =>
           window.dictationFixture.peers.every(
             (peer) => peer.connectionState === 'closed',
+          ),
+        ),
+      );
+      assert.ok(
+        await page.evaluate(() =>
+          window.dictationFixture.permissionStreams.every((stream) =>
+            stream.getTracks().every((track) => track.readyState === 'ended'),
           ),
         ),
       );

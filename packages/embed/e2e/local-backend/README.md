@@ -30,6 +30,9 @@ embed package test command.
 The synthetic records are retained in the isolated database for inspection.
 When exporting identities, the verifier restores the synthetic org's feature
 switches to on so the subsequent opt-in feature checks can use them.
+Browser checks inject these identities through Playwright's private control
+channel. The fixture HTTP pages contain no credentials; both checks assert this
+before opening the widget.
 
 After building the widget and preparing the published v4 bundle with
 `scripts/prepare-v4-upgrade.mjs`, run from **packages/embed**:
@@ -69,6 +72,11 @@ configured transcription provider. It replaces device capture with a synthetic
 spoken WAV streamed through real WebRTC; no physical microphone is opened.
 This is an opt-in provider integration check, separate from the mocked customer
 compatibility tests. It requires the local backend's existing provider setup.
+For WebKit, the fixture first completes native capture permission using
+Playwright's built-in mock microphone and immediately stops those tracks. It
+asserts the mock-device label before supplying synthetic speech. Bypassing that
+native permission path can leave WebKit's ICE restrictions active. This browser
+automation check does not exercise a physical Safari microphone.
 
 Supply a nonempty WAV saying "Testing the local widget. Please check my payment
 status." and run from **packages/embed**:

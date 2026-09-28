@@ -557,6 +557,43 @@ for (const mode of ['popover', 'companion']) {
     }
   }
   test(
+    `${mode}: an ambiguous dropdown request makes no change or consent offer`,
+    { timeout: 30000 },
+    async (t) => {
+      const f = await fixture(
+        t,
+        mode,
+        { pageContext: true, clientTools: true, pageActions: true },
+        'action',
+        {
+          name: 'Plan',
+          html: '<select id="action-target" aria-label="Plan"><option value="free">Free</option><option value="pro">Pro</option><option value="Pro">Basic</option></select>',
+          action: 'select',
+          value: 'Pro',
+          event: 'change',
+        },
+      );
+      await f.send();
+      await f.frame
+        .getByText('Page request finished', { exact: true })
+        .waitFor();
+      const replies = f.requests.filter((request) =>
+        request.path.endsWith('/page-reply'),
+      );
+      assert.equal(replies.length, 1);
+      assert.equal(replies[0].body.outcome, 'no_change');
+      assert.equal(await f.page.locator('#action-target').inputValue(), 'free');
+      assert.equal(
+        await f.page.locator('#action-target').getAttribute('data-effects'),
+        null,
+      );
+      assert.equal(
+        await f.frame.locator('[data-component="chat/page_action"]').count(),
+        0,
+      );
+    },
+  );
+  test(
     `${mode}: a dropdown option changed during approval is declined`,
     { timeout: 30000 },
     async (t) => {
