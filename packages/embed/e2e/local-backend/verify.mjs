@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { writePrivateJson } from './write-private-json.mjs';
 
 assert.equal(process.env.NODE_ENV, 'test');
 assert.equal(process.env.TEST_POSTGRES_URL, '');
@@ -349,11 +350,10 @@ try {
     },
   );
   if (process.env.WIDGET_LOCAL_IDENTITIES)
-    await writeFile(
-      process.env.WIDGET_LOCAL_IDENTITIES,
-      JSON.stringify({ base: base.origin, identities }),
-      { mode: 0o600 },
-    );
+    await writePrivateJson(process.env.WIDGET_LOCAL_IDENTITIES, {
+      base: base.origin,
+      identities,
+    });
   await writeFile(
     process.env.WIDGET_LOCAL_REPORT ?? '/tmp/widget-local-backend-results.json',
     JSON.stringify(

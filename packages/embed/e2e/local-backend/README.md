@@ -23,7 +23,10 @@ node --experimental-transform-types --env-file=.env \
 
 The report is `/tmp/widget-local-backend-results.json` (override with
 `WIDGET_LOCAL_REPORT`). The separate identity file contains temporary local
-credentials, is written with mode `0600`, and must never be committed or shared.
+credentials, is atomically replaced with mode `0600` even if a prior file is
+more permissive, and must never be committed or shared. The writer never follows
+an existing destination symlink. Its four local regressions run as part of the
+embed package test command.
 The synthetic records are retained in the isolated database for inspection.
 
 After building the widget and preparing the published v4 bundle with
