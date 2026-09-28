@@ -45,6 +45,8 @@ export type PendingPageAction = {
   action: string;
   /** The control's own name on the page, read off the page, not the model. */
   controlName: string;
+  /** Proposed text or option to show before the visitor approves the change. */
+  value?: string;
 };
 
 /** A normalized browser effect for a styled renderer to perform on its host. */
@@ -798,7 +800,7 @@ export function useAgentChat({
   );
 
   /**
-   * Ask the visitor about one committing action. Resolves true only if they
+   * Ask the visitor about one page action. Resolves true only if they
    * say yes to THIS control; a decline resolves false and is final — the
    * adapter reports it and never offers the agent another route to the same
    * click.

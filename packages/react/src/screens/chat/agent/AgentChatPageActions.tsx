@@ -7,7 +7,6 @@ import { actOnPageInputSchema } from '../../../page-controls/act-input';
 import { accessibleName } from '../../../page-controls/accessible-name';
 import { resolveRef } from '../../../page-controls/control-ref';
 import { readPageControls } from '../../../page-controls/read-controls';
-import { needsConsent } from '../../../page-controls/needs-consent';
 import { usePageEffectIsCurrent } from './use-page-effect-is-current';
 
 const MAX_HANDLED_ACTIONS = 200;
@@ -16,7 +15,7 @@ const MAX_HANDLED_ACTIONS = 200;
  * The agent's hands on the host page.
  *
  * Three things happen here and nowhere else: the visitor is asked before
- * anything that commits, the action is performed against the element the
+ * every action, the action is performed against the element the
  * reference resolves to, and the turn is told what actually happened.
  *
  * Every path answers the waiting call exactly once. A refusal, a decline, a
@@ -73,21 +72,19 @@ export function AgentChatPageActions() {
             return;
           }
 
-          let consentName: string | undefined;
-          if (needsConsent(element, action)) {
-            // Named from the PAGE, never from the tool call: the visitor is
-            // deciding about the control in front of them, not about a
-            // description the agent wrote.
-            consentName = accessibleName(element) || 'this control';
-            const allowed = await requestPageActionConsent({
-              callId: effect.callId,
-              action,
-              controlName: consentName,
-            });
-            if (!allowed) {
-              replyToPageCall(effect.callId, 'declined');
-              return;
-            }
+          // Any control can commit through host JavaScript, including fields
+          // that auto-save. Labels and form markup cannot establish safety.
+          // Name the actual page control and show the proposed value.
+          const consentName = accessibleName(element) || 'this control';
+          const allowed = await requestPageActionConsent({
+            callId: effect.callId,
+            action,
+            controlName: consentName,
+            ...(action === 'fill' || action === 'select' ? { value } : {}),
+          });
+          if (!allowed) {
+            replyToPageCall(effect.callId, 'declined');
+            return;
           }
 
           if (!enabled()) {
@@ -103,8 +100,7 @@ export function AgentChatPageActions() {
 
           if (
             !enabled() ||
-            (needsConsent(element, action) &&
-              consentName !== (accessibleName(element) || 'this control'))
+            consentName !== (accessibleName(element) || 'this control')
           ) {
             replyToPageCall(effect.callId, 'declined');
             return;

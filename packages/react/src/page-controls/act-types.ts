@@ -17,19 +17,6 @@ export const PAGE_ACTIONS = [
 ] as const;
 export type PageAction = (typeof PAGE_ACTIONS)[number];
 
-/**
- * Actions that COMMIT something on the customer's behalf — money moves, a
- * record is destroyed, a form is submitted. These never happen without the
- * visitor saying yes to that exact control, first.
- *
- * Recognised from what the control IS and what it SAYS, because that is all
- * a page reliably tells us. It over-includes on purpose: asking about a
- * harmless "Apply filters" button costs one chip, and not asking about
- * "Delete account" costs an account.
- */
-export const COMMITTING_WORDS =
-  /\b(pay|payment|purchase|buy|checkout|order|subscribe|renew|confirm|submit|send|delete|remove|cancel|terminate|close account|deactivate|transfer|withdraw|apply|accept|agree|sign|authori[sz]e|publish|deploy|archive|reset|revoke)\b/i;
-
 /** The answer, in the same words the server and the agent use. */
 export type ActOutcome =
   | 'done'

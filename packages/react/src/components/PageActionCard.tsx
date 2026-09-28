@@ -22,8 +22,8 @@ const VERBS: Record<string, string> = {
  * nobody reads, and "Allow the agent to click Cancel subscription?" is a
  * question everybody reads.
  *
- * One chip at a time, and No is final: the agent is told it was declined
- * and does not get to ask again or reach the same control another way.
+ * One request at a time. No declines this call; any later request must ask
+ * for its own confirmation before touching the page.
  */
 export function PageActionCard({ request }: { request: PendingPageAction }) {
   const { resolvePageAction } = useAgentChatUi();
@@ -39,6 +39,15 @@ export function PageActionCard({ request }: { request: PendingPageAction }) {
         Let the agent {verb}{' '}
         <span className="font-medium">{request.controlName}</span> on this page?
       </p>
+      {(request.action === 'fill' || request.action === 'select') &&
+        request.value !== undefined && (
+          <div className="mb-2 max-h-40 overflow-auto rounded-lg bg-foreground/5 px-2 py-1 text-sm">
+            <span className="font-medium">New value: </span>
+            <span className="whitespace-pre-wrap break-words">
+              {request.value === '' ? '(empty)' : request.value}
+            </span>
+          </div>
+        )}
       <div className="flex gap-2">
         <Button
           size="sm"

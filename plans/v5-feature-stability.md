@@ -30,8 +30,8 @@ controls. Advanced controls also affect backend behavior outside the widget.
 
 ## Feature inventory
 
-All entries remain **pending full verification**. Existing tests are inputs to
-the audit, not automatic completion of an entry.
+Use the dated evidence below for completed checks and remaining boundaries.
+Settings coverage does not establish full runtime behavior for every feature.
 
 | ID  | Location | Control / key                                 | Specific acceptance checks                                                                                                                                                                                                                    |
 | --- | -------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -49,7 +49,7 @@ the audit, not automatic completion of an entry.
 | W5  | Web      | Rich replies / `inline_ui`                    | Supported cards/tables/charts, incremental rendering, history, malformed content, sanitization and unsupported-client fallback. General-purpose forms are not in this renderer's catalog; MCP elicitation has a separate form implementation. |
 | W6  | Web      | Sees the page / `page_context`                | Explicit embed opt-in, exclusions for sensitive controls, navigation freshness, selected marks, disabled payload with positive control.                                                                                                       |
 | W7  | Web      | Points at the page / `client_tools`           | Correct control reference, stale/removed elements, highlight cleanup, no clicking/typing authority implied by pointing alone.                                                                                                                 |
-| W8  | Web      | Acts on the page / `page_actions`             | Separate action authority, safe default, visitor consent for committing actions, decline, revocation during consent, truthful result and no duplicate execution.                                                                              |
+| W8  | Web      | Acts on the page / `page_actions`             | Separate action authority, safe default, visitor consent for every action, decline, revocation during consent, truthful result and no duplicate execution.                                                                                    |
 | W9  | Web      | Selectable questions / `clarifying_questions` | Renderer capability, answer/skip, exactly one continuation, repeated question handling, history and text fallback.                                                                                                                            |
 
 Authentication renewal, personal connections, attachment handling and Companion
@@ -166,11 +166,8 @@ node --test e2e/public-setups.e2e.mjs e2e/release-readiness.e2e.mjs e2e/v4-upgra
 
 ### Remaining acceptance work
 
-1. **Consent policy:** existing selective consent uses English committing words
-   and form markup; it cannot guarantee detection of non-English committing
-   controls or fields that auto-save. The current behavior is preserved pending
-   the product choice between confirming every action and accepting that limit.
-   Do not claim all consequential actions are confirmed under the existing policy.
+1. **Consent policy:** closed by the follow-up below: every action requires
+   confirmation, including non-English controls and fields that auto-save.
 2. **Business outcomes:** a click result observes a browser-side change. It cannot
    prove a remote payment, deletion or other business transaction succeeded.
 3. **Backend integration:** settings save/reload, entitlements, identity isolation
@@ -215,5 +212,48 @@ Embed SHA-256: `f3d3e9841ec12cf9d6de004c570b7575622f1ec5ca0274b4796af5aeab2169d5
 The new local checks use synthetic orgs and the isolated Payla database. They
 verify settings and identity boundaries; feature-specific provider behavior
 (dictation, sandbox, scheduling, mini apps) still needs its own acceptance.
-The selective page-action consent limitation above remains. No package release
-or production deployment is part of this verification.
+The selective page-action consent limitation was fixed in the follow-up below.
+No package release or production deployment is part of this verification.
+
+## Release follow-up: explicit page consent (2026-09-28)
+
+- Removed label/form classification. The styled widget asks before each click,
+  fill, selection, check and uncheck, including navigation. Pointing is unchanged.
+  Proposed fill/select values are displayed as escaped text before approval.
+  Decline causes no host events; each later call needs its own approval. Permission,
+  cancellation and target-name checks still run after pointer travel.
+- The actual adapter regression reproduced seven missing-confirmation cases before
+  the fix. Old classifier cases were moved to the actual adapter seam, with
+  additional Arabic and auto-save controls. All **42 focused tests** pass.
+- **32 production-bundle scenarios per browser** passed across Chromium, Firefox
+  and WebKit: 28 in the initial run and four Arabic cases rerun after correcting
+  the fixture's missing UTF-8 response charset. Both surfaces test pending,
+  declined and approved host effects for every action type, with one page reply.
+- React **618**, headless **257**, embed **3** unit/component tests passed.
+  All four package builds, production JSX guards, type checks and changed-file
+  lint passed. These source/browser checks use synthetic data and SSE responses.
+- Rebuilt embed SHA-256:
+  `43023ce79494b6d3c35fc7033d220b8ecb69adf7d9ef34421d340cb81ad8f81e`.
+  This exact bundle passed the real local v4 → v5 token-renewal and A → B → A
+  history journey in Chromium, Firefox and WebKit. The 18 real HTTP settings
+  and authentication check groups were rerun successfully with fresh identities.
+- Fixed Greptile's credential-file finding: the local verifier now atomically
+  replaces identity files with private permissions, without following existing
+  symlinks. Four filesystem regressions pass, including failure preservation.
+- Real local backend **27 tests** passed across dictation minting, native task
+  plan updates, feature-gated tools and scheduling create/list/cancel. The real
+  provider returned a short-lived dictation secret; this is not a completed
+  speech-to-text session. Scheduler tests used the dedicated local Redis queue
+  without consuming scheduled jobs; execution/retry checks are separate.
+
+- Another **78 backend tests** passed: mini-app source/version persistence,
+  draft/active isolation, atomic publish transitions in the local database,
+  permission/scoped RPC and cross-org rejection, plus scheduler final-fire
+  failure/retry handling. Storage used local MinIO and synthetic orgs. The
+  scheduling suite controls trigger delivery; it does not prove a worker restart
+  through the full agent. Mini-app service tests do not prove browser rendering
+  or agent authoring from a prompt.
+
+Remaining: finish the provider/workspace and full workflow checks, run final
+current-head review/CI, and obtain the repository's required approval. Nothing
+has been published or deployed.

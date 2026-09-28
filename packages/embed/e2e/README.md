@@ -61,7 +61,9 @@ are controlled fixtures.
 implements the widget wire contract and streams actual SSE events. It covers
 popover and Companion rich cards/tables, history reload, unsafe links/HTML, page
 context opt-out and opt-in, exclusion of private controls and field values,
-pointing without action authority, and both Allow/No paths for a committing click.
+pointing without action authority, and Allow/No paths for every action type.
+Arabic clicks, auto-saving text/dropdowns, and checkbox changes must wait for
+consent; proposed values are visible and a decline leaves the host unchanged.
 An approved action must leave Companion open; a real visitor outside click still
 closes it. Each case checks exact DOM outcomes and returned page replies.
 

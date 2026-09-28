@@ -21,11 +21,12 @@ explicitly enables `page_actions`; older backends cannot grant action access.
 Beta integrations that previously used `clientTools` for actions must also opt
 into `pageActions`. Existing v4 integrations keep page access off by default.
 
-The current confirmation policy recognizes committing English control names and
-form submission buttons. It cannot identify every consequential action on an
-arbitrary website, including non-English labels and fields that auto-save. A
-successful page-action result confirms an observed browser change, not completion
-of a remote business transaction.
+The styled widget asks visitors to confirm every click, text entry, selection
+and checkbox change. Text and selection requests show the proposed value.
+Declining leaves the page unchanged; pointing needs no action confirmation.
+This also covers non-English controls and fields that auto-save. A successful
+page-action result confirms an observed browser change; remote business
+transactions need their own outcome verification.
 
 Mark sensitive regions with `data-opencx-private`. Names and marked text exclude
 private/hidden descendants and form values; screenshots are omitted for regions

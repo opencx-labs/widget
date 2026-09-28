@@ -52,7 +52,7 @@ const patches = [
   },
 ];
 
-async function fixture(t, displayMode, features, scenario) {
+async function fixture(t, displayMode, features, scenario, actionCase) {
   const requests = [],
     unexpected = [],
     errors = [];
@@ -102,14 +102,18 @@ async function fixture(t, displayMode, features, scenario) {
       res.end(JSON.stringify(value));
     };
     if (path === '/') {
-      res.setHeader('content-type', 'text/html');
+      res.setHeader('content-type', 'text/html; charset=utf-8');
       res.end(`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:24px;font:16px sans-serif}button,input{margin:8px;padding:12px}</style></head><body>
         <h1>Local page feature fixture</h1>
         <button id="target" onclick="this.dataset.clicks=String(Number(this.dataset.clicks||0)+1);document.querySelector('#result').textContent='Host action completed'">Delete draft</button><p id="result"></p>
+        ${actionCase?.html ?? ''}
         <label>Public search<input value="FIELD_VALUE_MUST_STAY_PRIVATE"></label>
         <div data-opencx-private><button>PRIVATE_CONTROL_MUST_NOT_LEAK</button></div>
         <input type="password" value="PASSWORD_MUST_NOT_LEAK">
-        <script src="/script.js"></script><script>initOpenScript(${JSON.stringify({ token: 'synthetic-bot', apiUrl: origin, displayMode, language: 'en', collectUserData: false, streaming: true, features, router: { chatScreenOnly: true } })});</script>
+        <script>
+          const actionTarget = document.querySelector('#action-target');
+          if (actionTarget) actionTarget.addEventListener(${JSON.stringify(actionCase?.event ?? 'click')}, () => { actionTarget.dataset.effects = String(Number(actionTarget.dataset.effects || 0) + 1); });
+        </script><script src="/script.js"></script><script>initOpenScript(${JSON.stringify({ token: 'synthetic-bot', apiUrl: origin, displayMode, language: 'en', collectUserData: false, streaming: true, features, router: { chatScreenOnly: true } })});</script>
         </body></html>`);
       return;
     }
@@ -218,7 +222,7 @@ async function fixture(t, displayMode, features, scenario) {
       } else if (scenario === 'privacy') finish();
       else {
         const target = body.clientContext?.page_controls?.find(
-          (control) => control.name === 'Delete draft',
+          (control) => control.name === (actionCase?.name ?? 'Delete draft'),
         );
         if (!target) {
           errors.push('target absent from opted-in page snapshot');
@@ -228,7 +232,13 @@ async function fixture(t, displayMode, features, scenario) {
         const input =
           scenario === 'highlight'
             ? { ref: target.ref, label: 'Your draft' }
-            : { ref: target.ref, action: 'click' };
+            : {
+                ref: target.ref,
+                action: actionCase?.action ?? 'click',
+                ...(actionCase?.value === undefined
+                  ? {}
+                  : { value: actionCase.value }),
+              };
         event({
           type: 'tool-input-available',
           toolCallId: 'page-call',
@@ -434,5 +444,113 @@ for (const mode of ['popover', 'companion']) {
         }
       },
     );
+  }
+}
+
+// These host controls can all save immediately through JavaScript. The actual
+// production adapter must wait for visitor consent regardless of label/form.
+const actionCases = [
+  {
+    name: 'ادفع الآن',
+    html: '<button id="action-target">ادفع الآن</button>',
+    action: 'click',
+    event: 'click',
+  },
+  {
+    name: 'Display name',
+    html: '<input id="action-target" aria-label="Display name" value="Before">',
+    action: 'fill',
+    value: 'After',
+    event: 'input',
+  },
+  {
+    name: 'Plan',
+    html: '<select id="action-target" aria-label="Plan"><option value="basic">Basic</option><option value="pro">Pro</option></select>',
+    action: 'select',
+    value: 'pro',
+    event: 'change',
+  },
+  {
+    name: 'Renewal',
+    html: '<input id="action-target" type="checkbox" aria-label="Renewal">',
+    action: 'check',
+    event: 'change',
+  },
+  {
+    name: 'Renewal',
+    html: '<input id="action-target" type="checkbox" aria-label="Renewal" checked>',
+    action: 'uncheck',
+    event: 'change',
+  },
+];
+for (const mode of ['popover', 'companion']) {
+  for (const actionCase of actionCases) {
+    for (const allow of [false, true]) {
+      test(
+        `${mode}: ${actionCase.action} consent=${allow} prevents premature host effects`,
+        { timeout: 30000 },
+        async (t) => {
+          const f = await fixture(
+            t,
+            mode,
+            { pageContext: true, clientTools: true, pageActions: true },
+            'action',
+            actionCase,
+          );
+          const target = f.page.locator('#action-target');
+          const before = await target.evaluate((el) => ({
+            value: el.value,
+            checked: el.checked,
+          }));
+          await f.send();
+          const consent = f.frame.locator(
+            '[data-component="chat/page_action"]',
+          );
+          await consent.getByText(actionCase.name, { exact: true }).waitFor();
+          if (actionCase.value !== undefined)
+            await consent
+              .getByText(actionCase.value, { exact: true })
+              .waitFor();
+          assert.equal(await target.getAttribute('data-effects'), null);
+          assert.deepEqual(
+            await target.evaluate((el) => ({
+              value: el.value,
+              checked: el.checked,
+            })),
+            before,
+          );
+          await consent
+            .getByRole('button', { name: allow ? 'Allow' : 'No', exact: true })
+            .click();
+          await f.frame
+            .getByText('Page request finished', { exact: true })
+            .waitFor();
+          const replies = f.requests.filter((request) =>
+            request.path.endsWith('/page-reply'),
+          );
+          assert.equal(replies.length, 1);
+          assert.equal(replies[0].body.outcome, allow ? 'done' : 'declined');
+          assert.equal(
+            await target.getAttribute('data-effects'),
+            allow ? '1' : null,
+          );
+          if (!allow)
+            assert.deepEqual(
+              await target.evaluate((el) => ({
+                value: el.value,
+                checked: el.checked,
+              })),
+              before,
+            );
+          else if (actionCase.value !== undefined)
+            assert.equal(await target.inputValue(), actionCase.value);
+          else if (actionCase.action !== 'click')
+            assert.equal(
+              await target.isChecked(),
+              actionCase.action === 'check',
+            );
+        },
+      );
+    }
   }
 }

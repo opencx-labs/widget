@@ -448,7 +448,7 @@ export interface WidgetConfig {
     /**
      * Opt in to clicks, typing and selections on the host page. Requires
      * pageContext and clientTools, plus organization support for page actions.
-     * Visitor confirmation is handled separately by the page-action policy.
+     * The styled widget asks the visitor to confirm each action before execution.
      * @default false
      */
     pageActions?: boolean;
