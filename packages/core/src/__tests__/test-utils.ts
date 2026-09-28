@@ -15,7 +15,6 @@ const agentFeatures = (
   attachments: false,
   page_context: false,
   client_tools: false,
-  page_actions: false,
   ...overrides,
 });
 
@@ -24,16 +23,6 @@ export const TestUtils = {
   sleep: (ms: number) => new Promise((resolve) => setTimeout(resolve, ms)),
   mock: {
     ApiCaller: {
-      workspaceDownloadFromUrl(target) {
-        target.prototype.workspaceDownloadFromUrl = vi
-          .fn()
-          .mockReturnValue(null);
-      },
-      downloadWorkspaceFile(target) {
-        target.prototype.downloadWorkspaceFile = vi
-          .fn()
-          .mockRejectedValue(new Error('No workspace download configured'));
-      },
       createSession(target, returnValue) {
         target.prototype.createSession = vi
           .fn(target.prototype.createSession)

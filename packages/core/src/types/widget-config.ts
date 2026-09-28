@@ -389,8 +389,6 @@ export interface WidgetConfig {
   };
 
   capabilities?: {
-    /** This client downloads private workspace reports using session authentication. */
-    workspaceDownloads?: boolean;
     /** Opt in to connection requests and authorization. Defaults to false. */
     connections?: boolean;
     /** This client renders rich reply parts, live and from history. */

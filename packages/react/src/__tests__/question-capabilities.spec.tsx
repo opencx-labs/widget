@@ -230,39 +230,4 @@ describe('Widget receiving question renderer', () => {
       }
     },
   );
-  // Report links use the stock message renderer for both live and saved replies.
-  it.each(['BOT_MESSAGE', 'AGENT_MESSAGE', 'AGENT_CHAT_SPEC'])(
-    'requires a private-download declaration for a custom %s renderer',
-    async (key) => {
-      const container = document.createElement('div');
-      const root = createRoot(container);
-      try {
-        await act(async () =>
-          root.render(
-            <Widget options={{ token: 't', collectUserData: true }} />,
-          ),
-        );
-        expect(captured.options?.capabilities?.workspaceDownloads).toBe(true);
-        for (const workspaceDownloads of [undefined, true, false]) {
-          await act(async () =>
-            root.render(
-              <Widget
-                options={{
-                  token: 't',
-                  collectUserData: true,
-                  capabilities: { workspaceDownloads },
-                }}
-                components={[{ key, component: () => null }]}
-              />,
-            ),
-          );
-          expect(captured.options?.capabilities?.workspaceDownloads).toBe(
-            workspaceDownloads ?? false,
-          );
-        }
-      } finally {
-        act(() => root.unmount());
-      }
-    },
-  );
 });

@@ -78,17 +78,6 @@ All data is local and fake; unexpected external requests fail the test. These
 cases do not test real backend authorization, settings persistence, model tool
 selection or generic forms, which are absent from the rich-reply catalog.
 
-## Private workspace downloads
-
-`workspace-download.e2e.mjs` exercises the production embed in classic and
-Companion layouts. Markdown links and rich-list links download the authenticated
-file, including after a history reload. Checks cover exact file contents and
-filename, authorization headers, staying on the host page, and blocking unexpected
-external requests. Run the file with `WIDGET_TEST_BROWSER=chromium`, `firefox` or
-`webkit`; each browser runs four cases. The local HTTP fixture uses synthetic
-identities and files. Backend ownership and redaction checks live in the backend
-integration tests, separately from this browser proof.
-
 ## Published v4 to candidate v5 differential tests
 
 `v4-upgrade.upgrade.mjs` runs the **published npm v4.0.63 embed** first, then

@@ -16,8 +16,6 @@ export type JsonRenderHost = {
   t: (key: TranslationKeyU, params?: Record<string, string | number>) => string;
   /** Where List links open — the embed's configured anchor target. */
   anchorTarget: string;
-  /** Optional host link handling, such as authenticated widget report downloads. */
-  Link?: React.ComponentType<React.ComponentProps<'a'>>;
   /** Completes card actions the renderer cannot (e.g. test a phone agent). */
   onUiAction?: (action: WidgetUiAction) => void;
 };

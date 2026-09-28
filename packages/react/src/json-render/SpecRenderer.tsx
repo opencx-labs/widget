@@ -4,7 +4,6 @@ import type { WidgetUiAction } from '@opencx/widget-core';
 import { useConfig } from '@opencx/widget-react-headless';
 import React, { useMemo } from 'react';
 import { useTranslation } from '../hooks/useTranslation';
-import { ReplyLink } from '../components/ReplyLink';
 import {
   JsonRenderHostProvider,
   useHostFromProps,
@@ -37,12 +36,7 @@ export function SpecRenderer({
   const { anchorTarget, onUiAction } = useConfig();
   const { t } = useTranslation();
   const host = useMemo<JsonRenderHost>(
-    () => ({
-      t,
-      anchorTarget: anchorTarget ?? '_blank',
-      onUiAction,
-      Link: ReplyLink,
-    }),
+    () => ({ t, anchorTarget: anchorTarget ?? '_blank', onUiAction }),
     [t, anchorTarget, onUiAction],
   );
   return <HostedSpec spec={spec} host={host} active={active} />;

@@ -5,6 +5,19 @@ Inventory verified on 2026-09-28 against backend/dashboard main
 candidate `0608a49d3ae04d6150b213237b6905192e2f3a85` (PR #84).
 This is a verification checklist, not a stable-release approval.
 
+## Current release scope (2026-09-29)
+
+The user excluded the optional file workspace from this work. Backend PR #3264
+is closed without merging. PR #84 removes its authenticated report downloader,
+download capability, generated endpoint, renderer integration and dedicated
+tests. Existing v4 compatibility, authentication, page permissions and ordinary
+attachments remain in scope. Workspace implementation, database migrations and
+backend PR #3264 are not release requirements for this widget change.
+
+Earlier dated entries below describe the broader audit at that time; their
+workspace findings are not current release gates. No claim is made that the
+excluded feature is complete or safe to enable.
+
 The dashboard inventory comes from `feature-copy.ts` and
 `WidgetDeliverySettings.tsx`. There are seven Advanced controls and nine Web
 controls. Advanced controls also affect backend behavior outside the widget.
@@ -397,98 +410,41 @@ tools target internal dashboard apps; clarify the intended visitor/team audience
 before granting those capabilities to widget sessions. Nothing was published or
 deployed.
 
-## Workspace restoration and privacy acceptance (2026-09-28)
+## Remaining widget review work after scope cleanup (2026-09-29)
 
-- Backend [PR #3264](https://github.com/opencx-labs/opencx/pull/3264), revision
-  `649572b3cf61757b6abd3657679ad2a678915a53`, restores enabled workspace tools
-  to widget sessions. It has not been merged or deployed.
-- **60 tests passed across 13 focused files**, with `--retry 0`, against the
-  isolated local database, Redis and object storage. This includes the actual
-  widget upload route, responder/tool loop, CSV calculation, export, storage
-  redirect and HTTP download. Model tool selection is controlled; this does not
-  claim live-model or customer traffic acceptance.
-- The same suite covers feature/entitlement changes, organization/session
-  isolation, cancellation, revocation, lost locks, concurrent retries, resource
-  bounds and execution without host files, environment or network commands.
-  Uploads are checked against the contact, verification state and account.
-- Reproduced and fixed temporary attachment IDs missing real uploaded files,
-  forged file references, duplicate exports, imports overwriting later edits on
-  retry, and ownership metadata appearing in public object headers. Positive
-  controls and real object-storage assertions exercise these boundaries.
-- Backend typecheck, changed-file lint, production build and a compiled-worker
-  calculation passed. The build contains 296 public API paths and 11,870 emitted
-  JavaScript modules. No route or DTO schema was changed.
-- Updated the Workspace usage guide and checked its rendered local page and
-  frontmatter. Local documentation search requires CLI authentication, so search
-  ranking was not verified.
+The review of `5b09c35` reported these findings, which require reproduction and
+resolution on the cleaned candidate:
 
-**Release status: not yet ready for all Advanced features.** Workspace now has
-local implementation and acceptance evidence; its backend PR needs review/CI.
-Mini-app authoring still needs the visitor-versus-internal-team scope decision
-and acceptance. Finish the remaining v5 documentation reconciliation and obtain
-current-head approval for widget PR #84. No package, dist-tag or deployment was
-changed.
+- A streamed page-action call can go unanswered when page actions are disabled.
+- Closing dictation can flush a pending spoken send command.
+- Attached marks can retain descriptions after their source becomes private.
+- Disabling page access can leave Send enabled for a mark-only draft.
+- The action-consent changeset describes the older selective confirmation policy.
 
+After resolving these findings, rerun the affected checks and obtain current-head
+review/CI and required repository approval. The cleanup does not publish packages
+or change versions/tags.
 
-## Workspace review fixes and authenticated downloads (2026-09-28)
+### Cleanup verification
 
-This follow-up supersedes the public storage-link flow described in the earlier
-workspace acceptance entry. Both PRs still require current-head review and CI.
+- Package sources exactly match the pre-workspace candidate `71f324f`.
+- All four production builds, production JSX guards and package type checks
+  passed. Changed-source lint and `git diff --check` passed.
+- Core authentication, stale-token retry, feature mapping and permission checks:
+  **37 passed** across six files. React capabilities, sanitized text and rich
+  rendering checks: **37 passed** across three files.
+- The cleaned production embed passed **41 Chromium browser cases**: 25 published
+  v4 upgrade cases, six public-site integration fixtures and ten release checks.
+  Includes unchanged desktop/mobile configs, token renewal and identity changes,
+  duplicate script loading, authenticated uploads, open/close and normal motion.
+  All browser network traffic is mocked locally; this run does not claim a new
+  real-backend or physical-microphone check.
+- The rebuilt embed SHA-256 is
+  `ef4c0f03b11f11c943f4385150acc478aef3d440fcaaf4d80341ded404bb91eb`,
+  identical to the recorded pre-workspace build.
 
-- Exported reports now use an authenticated widget route scoped to the original
-  organization, session, contact, verification state and account. Public storage
-  redirects reject these exports, including previously cached redirect URLs.
-- The standard widget handles private downloads from Markdown and rich-list
-  links, including history reload. It sends authentication only to the exact
-  configured API route, follows no redirects, and cancels or rejects downloads
-  when identity/session changes. Custom message renderers must explicitly declare
-  `capabilities.workspaceDownloads` after implementing the download flow.
-- Redaction clears working files, tombstones and deletes exported objects, and
-  increments a database revision. Stale tools, active workers, imports and exports
-  cannot repopulate the old workspace. Object-cleanup failure is visible and retryable.
-- Uploads bind atomically to their first persisted widget session. Copying a URL
-  to another session cannot make it importable. Binding rolls back with message
-  persistence, ignores duplicate messages, checks owner/account/verification, and
-  registers source attachments for existing redaction handling.
-- Workspace tools stay limited to widget surfaces, including polling. Attachment
-  enumeration now includes older uploads beyond 200 messages. Export uploads run
-  outside the database transaction. The text-processing dependency is pinned away
-  from its broken release.
-- Cancellation coverage includes persistence already in flight, final transaction
-  completion and lock release. A cancelled operation restores the prior snapshot
-  only when its own exact result is still present, preserving the remaining expiry.
+Browser command, from `packages/embed`:
 
-### Local evidence
-
-- 28 backend privacy checks across binding, redaction, imports, exports and
-  authenticated downloads passed. The complete execution/redaction pair then
-  passed 20 tests, including both new final-cancellation regressions.
-- 18 feature-surface checks, four attachment-enumeration checks, five existing
-  message-insert checks and three actual widget upload/responder/download checks
-  passed. The responder uses controlled model tool selection with the real local
-  database, cache and object storage; this is not customer traffic.
-- Widget core download/permission checks: 7 passed. React download, capability,
-  sanitizer and rich-renderer checks: 47 passed. Production download browser
-  cases: 12 passed, four each in Chromium, Firefox and WebKit.
-- Widget type checks, changed-file lint, production React/embed builds and
-  production JSX guards passed. Backend typecheck and changed-file lint passed.
-  The local migration was applied and database types regenerated; internal
-  workspace revisions stay absent from public session DTOs.
-- Updated widget guide, configuration reference and migration instructions;
-  frontmatter passed for all three. The Workspace guide and migration page were
-  verified in the local rendered docs. Search remains unverified because the
-  local docs search requires authentication.
-- Tested production embed SHA-256:
-  `70b574d8ada6da3fe448e8e7fdc720afeedb98ccc887e0686e2320d8fc601a4c`.
-
-### Remaining release gates
-
-- Fresh review/CI and required approval on widget PR #84 and backend PR #3264.
-- The prior backend CI run failed its existing raw-history-writer guard on
-  `call-flow/service/record-event.ts` (introduced by #3237, outside this patch)
-  and timed out on one prohibited-topic handoff case. That exact handoff case
-  passed locally in 12.458 seconds; the remote run is still a failure. The IVR
-  path needs a deliberate PII handling fix, not an allowlist exception.
-- Mini-app authoring still needs the visitor-versus-internal-team scope decision
-  and acceptance. Customer component registries remain a separate missing feature.
-- No package, version, dist-tag, merge or deployment is changed by this work.
+```sh
+WIDGET_TEST_BROWSER=chromium node --test e2e/public-setups.e2e.mjs e2e/release-readiness.e2e.mjs e2e/v4-upgrade.upgrade.mjs
+```

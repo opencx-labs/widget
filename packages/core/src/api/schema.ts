@@ -785,7 +785,6 @@ export interface paths {
         content: {
           'application/json': {
             callId: string;
-            /** @enum {string} */
             outcome:
               | 'done'
               | 'covered'
@@ -1380,51 +1379,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/backend/widget/v5/workspace/{sessionId}/files/{fileId}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          sessionId: string;
-          fileId: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Default Response */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorDto'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   '/backend/widget/v5/dictation/sessions': {
     parameters: {
       query?: never;
@@ -1537,9 +1491,8 @@ export interface components {
         structured_questions?: boolean;
         rich_replies?: boolean;
         page_effects?: boolean;
-        workspace_downloads?: boolean;
       } | null;
-      /** @description Per-embed feature narrowing: each flag can only switch OFF a feature the organization enabled for its agent (preamble = progress updates before and during longer tasks; inline_ui = inline rendered components in replies; page_context = the agent sees the page context sent with the message; client_tools = the agent may point at controls on the page; page_actions = it may also click and fill them). Absent = the organization settings apply. */
+      /** @description Per-embed feature narrowing: each flag can only switch OFF a feature the organization enabled for its agent (preamble = progress updates before and during longer tasks; inline_ui = inline rendered components in replies; page_context = the agent sees the page context sent with the message; client_tools = the agent may point at the page; page_actions = the agent may click and type on the page). Absent = the organization settings apply. */
       features?: {
         preamble?: boolean;
         inline_ui?: boolean;
@@ -1724,20 +1677,8 @@ export interface components {
       | 'team_unassigned_by_system'
       | 'team_unassigned_by_user'
       | 'user_confirmed_the_session_resolved'
-      | 'voice_call_ai_joined'
-      | 'voice_call_ai_left'
-      | 'voice_call_contact_answered'
-      | 'voice_call_contact_joined'
-      | 'voice_call_contact_left'
-      | 'voice_call_ended'
-      | 'voice_call_failed_to_start'
-      | 'voice_call_human_answered'
-      | 'voice_call_human_joined'
-      | 'voice_call_human_left'
-      | 'voice_call_started'
       | 'workflow_message'
       | 'workflow_note'
-      | 'ivr_selection'
       | 'workflow_triggered';
     /** @enum {string} */
     SenderTypeEnum: 'user' | 'agent' | 'ai' | 'system' | 'unknown';
@@ -1817,7 +1758,8 @@ export interface components {
       attachments: boolean;
       page_context: boolean;
       client_tools: boolean;
-      page_actions: boolean;
+      /** Absent on older backends, which do not authorize page actions. */
+      page_actions?: boolean;
     };
     WidgetAgentDto: {
       name: string;
