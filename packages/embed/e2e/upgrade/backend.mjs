@@ -3,12 +3,22 @@
 export function createBackend(profile) {
   const requests = [],
     unexpected = [];
-  let session = null,
-    history = [],
-    turn = 0,
-    contacts = 0;
-  const makeSession = () => ({
-    id: 'upgrade-session',
+  let contacts = 0;
+  const owners = new Map();
+  const denied = [];
+  const ownerKey = (token) => {
+    if (token === 'synthetic-contact-token') return 'anonymous';
+    try {
+      const { sub } = JSON.parse(Buffer.from(token.split('.')[1], 'base64url'));
+      if (sub?.type !== 'widget-contact' || !sub.payload?.contact?.id)
+        return null;
+      return `${sub.payload.org_id}:${sub.payload.contact.id}`;
+    } catch {
+      return null;
+    }
+  };
+  const makeSession = (id) => ({
+    id,
     ticketNumber: 42,
     title: null,
     assignee: { kind: 'ai', name: null, avatarUrl: null },
@@ -37,22 +47,18 @@ export function createBackend(profile) {
   return {
     requests,
     unexpected,
+    denied,
     get session() {
-      return session;
+      return owners.values().next().value?.session ?? null;
     },
     get contacts() {
       return contacts;
     },
     get history() {
-      return history;
-    },
-    switchAccount() {
-      session = null;
-      history = [];
-      turn = 0;
+      return owners.values().next().value?.history ?? [];
     },
     addHumanReply() {
-      history.push(
+      this.history.push(
         row('polled-human', 'agent_message', 'POLLED HUMAN REPLY', 'agent'),
       );
     },
@@ -113,18 +119,37 @@ export function createBackend(profile) {
           contentType: 'application/json',
           body: JSON.stringify({ message: 'Missing widget contact token' }),
         });
+      const owner = ownerKey(headers.authorization.slice('Bearer '.length));
+      if (!owner) return route.fulfill({ status: 401, body: '{}' });
+      if (!owners.has(owner))
+        owners.set(owner, { session: null, history: [], turn: 0 });
+      const state = owners.get(owner);
+      const { session, history } = state;
+      // Keep each owner's data alive, and enforce ownership on every session API.
+      const requestedSession =
+        url.pathname.match(/\/(?:poll|session\/history)\/([^/]+)$/)?.[1] ??
+        body?.session_id ??
+        body?.sessionId;
+      if (requestedSession && requestedSession !== session?.id) {
+        denied.push({ owner, path: url.pathname, sessionId: requestedSession });
+        return route.fulfill({ status: 403, body: '{}' });
+      }
       if (url.pathname === '/backend/widget/v2/sessions')
         return json({ items: session ? [session] : [], next: null });
       if (url.pathname === '/backend/widget/v2/create-session') {
-        session = makeSession();
-        return json(session);
+        state.session = makeSession(
+          owners.size === 1
+            ? 'upgrade-session'
+            : `upgrade-session-${owners.size}`,
+        );
+        return json(state.session);
       }
-      if (url.pathname === '/backend/widget/v2/poll/upgrade-session')
+      if (url.pathname.startsWith('/backend/widget/v2/poll/'))
         return json({ session, history });
-      if (url.pathname === '/backend/widget/v2/session/history/upgrade-session')
+      if (url.pathname.startsWith('/backend/widget/v2/session/history/'))
         return json(history);
       if (url.pathname === '/backend/widget/v2/chat/send') {
-        const n = ++turn;
+        const n = ++state.turn;
         session.lastMessage = `UPGRADE REPLY ${n}`;
         for (const initial of body.initial_messages ?? [])
           history.push(row(initial.uuid, 'message', initial.content, 'ai'));

@@ -173,8 +173,47 @@ node --test e2e/public-setups.e2e.mjs e2e/release-readiness.e2e.mjs e2e/v4-upgra
    Do not claim all consequential actions are confirmed under the existing policy.
 2. **Business outcomes:** a click result observes a browser-side change. It cannot
    prove a remote payment, deletion or other business transaction succeeded.
-3. **Backend integration:** exercise actual seeded backend entitlements, settings
-   save/reload and streaming/history persistence with this final build. The local
-   SSE fixture verifies client behavior and wire contracts; it is not that proof.
+3. **Backend integration:** settings save/reload, entitlements, identity isolation
+   and activity/history filtering are verified below against the local backend.
+   Feature-specific provider and business-outcome checks remain separate.
 4. **Forms:** generic rich-reply forms are not implemented. Do not mark them passed
    based on cards/tables or conflate them with separately implemented elicitation.
+
+## Identity and settings verification (2026-09-28)
+
+Widget production source: `7e659981fe91fa166ccadded49cb74328623c0b0`.
+Local backend: `6b1db20f760272a34f64d1299bf5c92e1dcda8c0`.
+Embed SHA-256: `f3d3e9841ec12cf9d6de004c570b7575622f1ec5ca0274b4796af5aeab2169d5`.
+
+- Strengthened the published-v4 upgrade fixture: JWT owner determines persistent
+  session/history storage. Switching users no longer erases the prior user's
+  data. The test checks A → B → A, distinct session IDs, the renewed bearer token,
+  retained A history and an explicit cross-owner rejection. All 25 Chromium
+  upgrade scenarios passed; the strengthened identity case also passed Firefox
+  and WebKit.
+- Added opt-in real HTTP verification in `packages/embed/e2e/local-backend/`.
+  All 13 Advanced/Web boolean switches passed off/on save, fresh GET, effective
+  runtime and independent-org assertions. All nine denied entitlements rejected
+  mixed writes without saving the free field. Read-only and foreign-org writes,
+  invalid values, and concurrent independent patches were checked.
+- All twelve streaming/tool-activity/reasoning combinations persisted and reached
+  the widget's actual `/config` response. Invalid updates preserved saved state.
+- The real-backend browser journey also passed in **Chromium, Firefox and WebKit**:
+  create the session with published v4, load v5 with the same config/storage,
+  renew the token, switch A → B → A and reload. Both histories stay in the database;
+  each identity sees only its own. AI replies are disabled in these fixture orgs;
+  authentication, session writes and history reads use the actual backend.
+- Real signed JWT checks verified same-contact renewal, expired-token rejection,
+  and cross-contact/org rejection for history, polling, v5 messages and stop.
+  Existing owner history remained readable throughout as the positive control.
+- Backend's five focused settings suites passed **36 tests**. Two additional
+  backend suites passed **3 tests**, covering cross-contact access to a live turn,
+  authorized owner stop, live/history tool-detail filtering and selectable
+  questions. These use real routes/database with a controlled model fixture.
+- Widget focused core/headless auth and feature suites passed **86 tests**.
+
+The new local checks use synthetic orgs and the isolated Payla database. They
+verify settings and identity boundaries; feature-specific provider behavior
+(dictation, sandbox, scheduling, mini apps) still needs its own acceptance.
+The selective page-action consent limitation above remains. No package release
+or production deployment is part of this verification.

@@ -681,7 +681,9 @@ test(
       2,
       'renewal keeps runtime',
     );
-    f.backend.switchAccount();
+    const firstHistory = structuredClone(f.backend.history);
+    const firstSessionId = f.backend.session.id;
+    assert.ok(firstHistory.some((row) => row.content.text === 'AFTER RENEWAL'));
     const otherToken = await f.page.evaluate(() => {
       const token = window.upgradeJwt('contact-b', 3);
       window.upgradeConfig = {
@@ -709,11 +711,73 @@ test(
       .filter((r) => r.path.endsWith('/chat/send'))
       .at(-1);
     assert.equal(last.headers.authorization, `Bearer ${otherToken}`);
+    assert.notEqual(last.body.session_id, firstSessionId);
+    assert.deepEqual(
+      f.backend.history,
+      firstHistory,
+      'switching leaves the first owner data intact',
+    );
+    assert.equal(
+      f.backend.denied.length,
+      0,
+      'widget never requests another owner session',
+    );
+    const foreignHistory = await f.page.evaluate(
+      async ({ token, id }) => {
+        const response = await fetch(
+          `/backend/widget/v2/session/history/${id}`,
+          {
+            headers: { authorization: `Bearer ${token}` },
+          },
+        );
+        return { status: response.status, body: await response.text() };
+      },
+      { token: otherToken, id: firstSessionId },
+    );
+    assert.equal(
+      foreignHistory.status,
+      403,
+      'fixture must reject cross-owner history',
+    );
+    assert.ok(!foreignHistory.body.includes('AFTER RENEWAL'));
+
     assert.equal(
       f.backend.requests.filter((r) => r.path.endsWith('/create-session'))
         .length,
       2,
       'different contact gets a new conversation',
+    );
+    const returnToken = await f.page.evaluate(() => {
+      const token = window.upgradeJwt('contact-a', 4);
+      window.upgradeConfig = {
+        ...window.upgradeConfig,
+        user: { token, externalId: 'account-a' },
+      };
+      window.initOpenScript(window.upgradeConfig);
+      return token;
+    });
+    await f.enterChat();
+    await f.frame.getByText('AFTER RENEWAL', { exact: true }).waitFor();
+    assert.equal(
+      await f.frame.getByText('NEW CONTACT MESSAGE', { exact: true }).count(),
+      0,
+    );
+    await f.send('RETURNED FIRST CONTACT');
+    await assertReply(f.frame, 3);
+    const returned = f.backend.requests
+      .filter((r) => r.path.endsWith('/chat/send'))
+      .at(-1);
+    assert.equal(returned.headers.authorization, `Bearer ${returnToken}`);
+    assert.equal(returned.body.session_id, firstSessionId);
+    assert.equal(
+      f.backend.requests.filter((r) => r.path.endsWith('/create-session'))
+        .length,
+      2,
+    );
+    assert.equal(
+      f.backend.denied.length,
+      1,
+      'only the explicit negative probe was denied',
     );
   },
 );
