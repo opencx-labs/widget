@@ -1,7 +1,7 @@
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import IFrame from '@uiw/react-iframe';
 import { motion } from 'framer-motion';
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   useConfig,
   useDocumentDir,
@@ -29,9 +29,15 @@ const keepShellAnimationSynchronized = () => {};
 
 export function WidgetContent() {
   const { isOpen } = useWidgetTrigger();
-  const { contentIframeRef } = useWidget();
+  const { contentIframeRef, widgetCtx } = useWidget();
   const { inline } = useConfig();
   const { theme, computed } = useTheme();
+
+  // The popover stays mounted while closed to preserve its conversation and
+  // exit animation. Microphone capture must end when it closes, not on unmount.
+  useEffect(() => {
+    if (!isOpen) widgetCtx.dictationCtx.stop();
+  }, [isOpen, widgetCtx]);
 
   return (
     <motion.div

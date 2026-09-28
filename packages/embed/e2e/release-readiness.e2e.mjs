@@ -395,6 +395,66 @@ test(
 );
 
 test(
+  'closing the popover stops a granted microphone while mint is pending',
+  { timeout: 30000 },
+  async (t) => {
+    const { page, frame, open } = await fixture(t, {
+      features: { dictation: true },
+    });
+    await page.evaluate(() => {
+      window.fixtureMicGrants = 0;
+      window.fixtureMicStops = 0;
+      Object.defineProperty(navigator, 'mediaDevices', {
+        configurable: true,
+        value: {
+          getUserMedia: async () => {
+            window.fixtureMicGrants++;
+            return {
+              getTracks: () => [{ stop: () => window.fixtureMicStops++ }],
+            };
+          },
+        },
+      });
+    });
+    let resolveMint;
+    const requestedMint = new Promise((resolve) => {
+      resolveMint = resolve;
+    });
+    await page.route('**/backend/widget/v5/dictation/sessions', (route) =>
+      resolveMint(route),
+    );
+    await open();
+    await frame
+      .locator('[data-component="chat/input_box/dictate_btn"]')
+      .click();
+    await page.waitForFunction(() => window.fixtureMicGrants > 0);
+    const mintRoute = await requestedMint;
+    assert.equal(await page.evaluate(() => window.fixtureMicStops), 0);
+    await page
+      .frameLocator('iframe[title="OpenCX Live Chat Trigger"]')
+      .locator('button')
+      .click();
+    await page.waitForFunction(() => window.fixtureMicStops > 0);
+    // A late mint cannot restart the already-stopped microphone or handshake.
+    await mintRoute.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: '{}',
+    });
+    await open();
+    assert.equal(
+      await frame
+        .locator('[data-component="chat/input_box/dictate_btn"]')
+        .getAttribute('aria-pressed'),
+      'false',
+    );
+    await frame.locator('textarea').fill('Typing after close');
+    await frame.locator('textarea').press('Enter');
+    await frame.getByText('FIXTURE_REPLY_1', { exact: true }).waitFor();
+  },
+);
+
+test(
   'minimized Companion footer links receive clicks while the composer still expands chat',
   { timeout: 30000 },
   async (t) => {

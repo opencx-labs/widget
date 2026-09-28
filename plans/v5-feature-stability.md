@@ -257,3 +257,61 @@ No package release or production deployment is part of this verification.
 Remaining: finish the provider/workspace and full workflow checks, run final
 current-head review/CI, and obtain the repository's required approval. Nothing
 has been published or deployed.
+
+## Runtime acceptance follow-up (2026-09-28)
+
+### Microphone shutdown
+
+- Actual provider transcription exposed a classic popover bug: closing it left
+  the capture track live and its peer connection connected. The content stays
+  mounted for history and animation, so unmount cleanup never ran. Companion
+  already stopped correctly. Closing the popover now explicitly stops dictation.
+- A deterministic production-bundle test reproduced the failure while the mint
+  request was pending. After the fix it passes in Chromium, Firefox and WebKit;
+  a late mint cannot resume capture, and typing still works after reopening.
+- Chromium's complete public setup/release-readiness run passed **16 cases**,
+  including the existing close-frame assertions. React type-check/lint and both
+  rebuilt React/embed production guards passed; all **618 React tests** passed.
+  No animation settings changed.
+- The opt-in real-provider check uses synthetic speech instead of any physical
+  microphone. Classic and Companion both passed in Chromium and Firefox:
+  actual streamed transcription, typed-prefix retention, no automatic chat send,
+  Stop cleanup, restart and close cleanup. WebKit's initial provider connections
+  timed out on both surfaces; a diagnostic classic rerun passed without changing
+  transport code, but the following two-surface rerun reproduced both timeouts.
+  Diagnostics show a successful HTTP handshake and accepted remote description
+  without ICE progressing beyond `new`, followed by watchdog cleanup. This is
+  not an unconditional Safari pass; the capture harness versus browser/network
+  cause remains to be isolated. All timed-out capture tracks were stopped.
+- Embed SHA-256:
+  `eeb0560254a883f702312f04c3d8127d1402f88d14a5c7d280abfa41d7d0b105`.
+
+### Scheduled follow-ups
+
+- **Five** real local BullMQ worker/Redis tests passed: one-shot and unlimited
+  schedules, boot rescheduling, persisted remaining-fire counts and already-spent
+  schedules. These tests control downstream workflow execution.
+- **Two** real workflow/agent checks passed: one-shot delivery and repeating
+  delivery, recorded limits and no further reply after completion. They invoke
+  the cron processor directly; worker-clock coverage is the separate suite above.
+  The repeating case initially needed one retry; a subsequent explicit
+  `--retry 0` run passed. These are local synthetic sessions, not customer runs.
+
+### Confirmed advanced-feature gap
+
+- An actual widget SSE route test enabled and entitled `sandbox`, `mini_apps`
+  and `plan_mode`, then inspected the tools passed to the controlled responder.
+  `update_plan` was present as a positive control; `mini_app_create` was absent.
+  Passing mini-app service/storage tests therefore does not prove agent authoring.
+- In backend `6b1db20f760272a34f64d1299bf5c92e1dcda8c0`, the current
+  `companion/agent-tools/build.ts` does not wire workspace or mini-app tools into
+  the widget responder. Comparing main at
+  `885d7aee9b71bceb0a51d21c8e2316eedfe8c1b5` found no subsequent changes to
+  that runtime wiring. The missing tool was reproduced locally, not against a
+  customer session. Restore and verify this feature before claiming all Advanced
+  features are ready.
+
+**Release status: not ready for the full feature promise.** Resolve the backend
+capability gap and intermittent WebKit dictation result, complete remaining
+acceptance, and obtain current-head review/required approval. No publication or
+deployment was performed.

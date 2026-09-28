@@ -349,11 +349,15 @@ try {
       );
     },
   );
-  if (process.env.WIDGET_LOCAL_IDENTITIES)
+  if (process.env.WIDGET_LOCAL_IDENTITIES) {
+    // Leave exported synthetic identities ready for the opt-in live feature
+    // checks after the concurrent-update test deliberately disabled dictation.
+    await api('ai-agent-features', adminA, 'PATCH', on);
     await writePrivateJson(process.env.WIDGET_LOCAL_IDENTITIES, {
       base: base.origin,
       identities,
     });
+  }
   await writeFile(
     process.env.WIDGET_LOCAL_REPORT ?? '/tmp/widget-local-backend-results.json',
     JSON.stringify(

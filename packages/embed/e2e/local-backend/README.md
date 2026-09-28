@@ -28,6 +28,8 @@ more permissive, and must never be committed or shared. The writer never follows
 an existing destination symlink. Its four local regressions run as part of the
 embed package test command.
 The synthetic records are retained in the isolated database for inspection.
+When exporting identities, the verifier restores the synthetic org's feature
+switches to on so the subsequent opt-in feature checks can use them.
 
 After building the widget and preparing the published v4 bundle with
 `scripts/prepare-v4-upgrade.mjs`, run from **packages/embed**:
@@ -59,3 +61,29 @@ Response quality and streaming execution are separate checks.
 
 These verify settings and identity boundaries. They do not certify every action
 of scheduling, sandbox execution, mini apps, dictation providers or page actions.
+
+## Real dictation
+
+`dictation.mjs` uses the production embed, local authentication and the backend's
+configured transcription provider. It replaces device capture with a synthetic
+spoken WAV streamed through real WebRTC; no physical microphone is opened.
+This is an opt-in provider integration check, separate from the mocked customer
+compatibility tests. It requires the local backend's existing provider setup.
+
+Supply a nonempty WAV saying "Testing the local widget. Please check my payment
+status." and run from **packages/embed**:
+
+```sh
+WIDGET_LIVE_DICTATION=true \
+WIDGET_LOCAL_IDENTITIES=/tmp/widget-stability-identities.json \
+WIDGET_LIVE_DICTATION_AUDIO=/tmp/widget-dictation-synthetic.wav \
+WIDGET_TEST_BROWSER=chromium \
+node --test e2e/local-backend/dictation.mjs
+```
+
+Repeat with `firefox` and `webkit`. Both classic popover and Companion must
+receive actual transcript deltas, preserve typed text, avoid automatically
+sending a message, and release tracks and peer connections on Stop and close.
+Only the local host, local backend and provider handshake endpoint are allowed.
+The normal release-readiness fixture separately verifies closing while the
+credential request is still pending and remaining able to type after reopening.
