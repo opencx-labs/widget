@@ -98,6 +98,7 @@ export function AgentChatPageActions() {
           const hasSameMeaning = captureActionMeaning(element);
           const consentIsCurrent = () =>
             enabled() &&
+            resolveRef(ref) === element &&
             hasSameMeaning() &&
             consentName === (accessibleName(element) || 'this control') &&
             (!option ||

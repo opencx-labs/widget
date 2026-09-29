@@ -176,7 +176,11 @@ export function readPageControls(
         truncated = true;
         break;
       }
-      const control: PageControl = { ref: mint(el), role: roleOf(el), name };
+      const control: PageControl = {
+        ref: mint(el, name),
+        role: roleOf(el),
+        name,
+      };
       if (isDisabled(el)) control.disabled = true;
       controls.push(control);
       seen.add(el);
@@ -205,7 +209,7 @@ export function readPageControls(
         if (!name) continue;
         probes += 1;
         if (!looksClickable(el)) continue;
-        controls.push({ ref: mint(el), role: containerRoleOf(el), name });
+        controls.push({ ref: mint(el, name), role: containerRoleOf(el), name });
         seen.add(el);
       }
     }

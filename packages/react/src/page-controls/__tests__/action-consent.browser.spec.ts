@@ -36,7 +36,9 @@ it.each(['consent wait', 'pointerdown', 'focus'])(
       change();
     } else fixture.element.addEventListener(when, change);
     const result = await actOnPage({ ...fixture, action: 'click' });
-    expect(result.outcome).toBe(when === 'consent wait' ? 'declined' : 'done');
+    expect(result.outcome).toBe(
+      when === 'consent wait' ? 'declined' : 'no_change',
+    );
     if (when !== 'consent wait') expect(result.detail).toContain('interrupted');
     expect(fixture.clicked).not.toHaveBeenCalled();
   },
@@ -109,7 +111,7 @@ it('does not fill a field moved to another form by its focus handler', async () 
     action: 'fill',
     value: 'Alice',
   });
-  expect(result.outcome).toBe('done');
+  expect(result.outcome).toBe('no_change');
   expect(result.detail).toContain('interrupted');
   expect((fixture.element as HTMLInputElement).value).toBe('');
 });
@@ -129,6 +131,8 @@ it.each([
   ).toBe('declined');
   expect(submitted).not.toHaveBeenCalled();
   form.action = '/approved';
+  // Restoring markup cannot resurrect an old handle. Read the control again.
+  fixture.ref = beginSnapshot()(fixture.element);
   await actOnPage({ ...fixture, action: 'click', settleMs: 20 });
   expect(submitted).toHaveBeenCalledOnce();
 });
@@ -163,7 +167,8 @@ it.each(['pointerdown', 'mouseup'])(
     });
     expect(commits).toBe(1);
     expect(fixture.clicked).not.toHaveBeenCalled();
-    expect(result.outcome).toBe('done');
+    expect(result.outcome).toBe('no_change');
+    expect(result.detail).toContain('The page changed.');
     expect(result.detail).toContain('interrupted');
     expect(result.detail).toContain('Do not repeat');
   },
@@ -226,7 +231,26 @@ it.each(['check', 'uncheck'] as const)(
     });
     expect(input.checked).toBe(action === 'check');
     expect(fixture.clicked).not.toHaveBeenCalled();
-    expect(result.outcome).toBe('done');
+    expect(result.outcome).toBe('no_change');
     expect(result.detail).toContain('interrupted');
   },
 );
+
+it('never reports a completed click when a hover handler interrupts the sequence', async () => {
+  const fixture = setup('<button id="target">Save</button>');
+  let approved = true;
+  fixture.element.addEventListener('pointerover', () => {
+    fixture.element.textContent = 'Hovered';
+    approved = false;
+  });
+  const result = await actOnPage({
+    ref: fixture.ref,
+    action: 'click',
+    consentIsCurrent: () => approved,
+    settleMs: 100,
+  });
+  expect(fixture.clicked).not.toHaveBeenCalled();
+  expect(result.outcome).toBe('no_change');
+  expect(result.detail).toContain('interrupted');
+  expect(result.detail).toContain('Do not repeat');
+});

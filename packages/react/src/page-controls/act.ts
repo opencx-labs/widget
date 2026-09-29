@@ -42,23 +42,25 @@ function watchPage(
   const doc = el.ownerDocument;
   // A background region that was already loading is not evidence about this
   // action. Keep busy ancestors/descendants and explicitly controlled regions.
-  const controlled = (el.getAttribute('aria-controls') ?? '')
-    .split(/\s+/)
-    .map((id) => doc.getElementById(id))
-    .filter((node) => node !== null);
+  const isRelated = (node: Element) =>
+    node.contains(el) ||
+    el.contains(node) ||
+    (el.getAttribute('aria-controls') ?? '').split(/\s+/).some((id) => {
+      const region = doc.getElementById(id);
+      return (
+        region !== null && (node.contains(region) || region.contains(node))
+      );
+    });
   const unrelatedBusy = Array.from(
     doc.querySelectorAll('[aria-busy="true"]'),
-  ).filter(
-    (node) =>
-      !isPageElementPrivate(node) &&
-      !node.contains(el) &&
-      !el.contains(node) &&
-      !controlled.some(
-        (region) => node.contains(region) || region.contains(node),
-      ),
-  );
-  const isBackground = (node: Element) =>
-    unrelatedBusy.some((region) => region.contains(node));
+  ).filter((node) => !isPageElementPrivate(node) && !isRelated(node));
+  const isBackground = (node: Element) => {
+    // A handler may connect the target to an existing loading region. Once
+    // related, it belongs to this observation even if the relation later clears.
+    for (let index = unrelatedBusy.length - 1; index >= 0; index--)
+      if (isRelated(unrelatedBusy[index]!)) unrelatedBusy.splice(index, 1);
+    return unrelatedBusy.some((region) => region.contains(node));
+  };
   let mutated = false;
   let lastMutation = performance.now();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -169,6 +171,7 @@ async function act({
   consentIsCurrent?: () => boolean;
   observationIsCurrent?: () => boolean;
 }): Promise<ActResult> {
+  if (!consentIsCurrent()) return { outcome: 'declined' };
   const guarded = guardRef(ref);
   if (!guarded.ok) {
     // "Hands off" is a refusal, not a failure to find something.
@@ -180,7 +183,6 @@ async function act({
   const el = guarded.element;
   const refused = refuseReason(el);
   if (refused) return { outcome: 'unsupported', detail: refused };
-  if (!consentIsCurrent()) return { outcome: 'declined' };
 
   const doc = el.ownerDocument;
   const urlBefore = doc.location.href;
@@ -291,10 +293,12 @@ async function act({
     };
     if (interrupted) {
       return {
-        outcome:
-          mutated || doc.location.href !== urlBefore ? 'done' : 'no_change',
+        outcome: 'no_change',
         detail:
-          'The action was interrupted after input events were dispatched. Its final result is unknown. Do not repeat it automatically.',
+          (mutated || doc.location.href !== urlBefore
+            ? 'The page changed. '
+            : '') +
+          'The requested action was interrupted after input events were dispatched. Its final result is unknown. Do not repeat it automatically.',
       };
     }
     const pendingDetail = loading

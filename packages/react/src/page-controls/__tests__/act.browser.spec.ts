@@ -199,12 +199,23 @@ describe('dropdowns and switches', () => {
       expect(select.value).toBe('free');
       expect(changes).toBe(0);
 
-      // The same request works after removing the conflicting option.
+      // Changing the options invalidates the old reference; a fresh reading
+      // allows the same request after removing the conflicting option.
       select.querySelector('#collision')?.remove();
       expect(
         (
           await actOnPage({
             ref,
+            action: 'select',
+            value: 'Pro',
+            settleMs: 100,
+          })
+        ).outcome,
+      ).toBe('gone');
+      expect(
+        (
+          await actOnPage({
+            ref: refFor('#plan'),
             action: 'select',
             value: 'Pro',
             settleMs: 100,
@@ -240,12 +251,22 @@ describe('dropdowns and switches', () => {
       ).toBe('no_change');
       expect(select.value).toBe('m');
       expect(changes).toBe(0);
-      // Same control and request succeed once the ambiguity/disable is removed.
+      // A fresh reading succeeds once the ambiguity/disable is removed.
       duplicate.remove();
       group.disabled = false;
       expect(
         (await actOnPage({ ref, action: 'select', value, settleMs: 100 }))
           .outcome,
+      ).toBe('gone');
+      expect(
+        (
+          await actOnPage({
+            ref: refFor('#plan'),
+            action: 'select',
+            value,
+            settleMs: 100,
+          })
+        ).outcome,
       ).toBe('done');
       expect(select.value).toBe('y');
       expect(changes).toBe(1);

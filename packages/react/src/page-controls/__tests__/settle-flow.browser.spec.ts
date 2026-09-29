@@ -196,3 +196,31 @@ it('still waits for a pre-existing busy region explicitly controlled by the targ
   expect(details.textContent).toBe('Ready');
   expect(result.detail).toBeUndefined();
 });
+
+it.each([false, true])(
+  'observes a busy region linked during the click (finishes=%s)',
+  async (finishes) => {
+    document.body.innerHTML =
+      '<button>Open details</button><section id="details" aria-busy="true">Loading</section>';
+    const button = document.querySelector('button')!;
+    const details = document.getElementById('details')!;
+    button.onclick = () => {
+      button.setAttribute('aria-controls', 'details');
+      if (finishes)
+        later(() => {
+          details.textContent = 'Ready';
+          details.setAttribute('aria-busy', 'false');
+        }, 350);
+    };
+    const ref = readPageControls().controls[0]!.ref;
+    const result = await actOnPage({
+      ref,
+      action: 'click',
+      settleMs: finishes ? 1000 : 300,
+    });
+    if (finishes) {
+      expect(details.textContent).toBe('Ready');
+      expect(result.detail).toBeUndefined();
+    } else expect(result.detail).toContain('still loading');
+  },
+);

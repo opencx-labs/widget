@@ -262,12 +262,43 @@ describe('AgentChatPageActions', () => {
       ];
       await render();
       await vi.waitFor(() => expect(repliesFor('reentrant')).toHaveLength(1));
-      expect(repliesFor('reentrant')[0]?.outcome).toBe('done');
+      expect(repliesFor('reentrant')[0]?.outcome).toBe('no_change');
       expect(repliesFor('reentrant')[0]?.detail).toContain('interrupted');
       expect(
         repliesFor('reentrant')[0]?.page?.controls.map((row) => row.name),
       ).toEqual(['Continue']);
       expect(clicked).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['before consent', 'during consent'])(
+    'does not approve a Delete control repurposed for a different row %s',
+    async (when) => {
+      const ref = control(
+        '<ul><li><span>Account A</span><button id="t">Delete</button></li></ul>',
+      );
+      const clicked = vi.fn();
+      document.querySelector('#t')!.addEventListener('click', clicked);
+      const change = () => {
+        document.querySelector('span')!.textContent = 'Account B';
+      };
+      if (when === 'before consent') change();
+      else onConsent = change;
+      pageEffects = [
+        {
+          key: 'recycled',
+          callId: 'recycled',
+          type: 'act-on-page',
+          input: { ref, action: 'click' },
+        },
+      ];
+      await render();
+      await vi.waitFor(() => expect(repliesFor('recycled')).toHaveLength(1));
+      expect(clicked).not.toHaveBeenCalled();
+      expect(consentAsked).toHaveLength(when === 'before consent' ? 0 : 1);
+      expect(repliesFor('recycled')[0]?.outcome).toBe(
+        when === 'before consent' ? 'gone' : 'declined',
+      );
     },
   );
 
@@ -294,7 +325,7 @@ describe('AgentChatPageActions', () => {
     await vi.waitFor(() => expect(repliesFor('committed')).toHaveLength(1));
     expect(requests).toBe(1);
     expect(clicked).not.toHaveBeenCalled();
-    expect(repliesFor('committed')[0]?.outcome).toBe('done');
+    expect(repliesFor('committed')[0]?.outcome).toBe('no_change');
     expect(repliesFor('committed')[0]?.detail).toContain('interrupted');
     expect(repliesFor('committed')[0]?.page).toBeUndefined();
   });

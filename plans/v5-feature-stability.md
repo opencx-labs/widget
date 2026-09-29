@@ -599,3 +599,43 @@ Embed SHA-256:
 The coordinated backend draft remains PR #3277. Fresh review of this widget
 candidate, required CI/approval and coordinated final-build real-backend
 acceptance remain release gates. No versions, npm tags or deployments changed.
+
+### Greptile 4/5 follow-up: recycled controls and uncertain results (2026-09-29)
+
+The review of `b2df1ee` found three additional cases. Seven browser regressions
+reproduced the reported behaviors before these fixes:
+
+- Reference renewal now binds to the observed control name, native operation,
+  URL and surrounding item context. Changes invalidate old handles before a
+  fresh snapshot or action; returning A to B to A cannot revive a handle.
+  Consent rechecks the reference too. Explicit row/item boundaries isolate
+  unrelated rows; otherwise context checks are conservative, including the body
+  when no boundary exists. Widget overlays and presentation mutations do not
+  invalidate references. Native targets remain weakly held.
+- An already-loading region newly linked by a host handler is included in
+  observation. Unrelated background loading remains excluded.
+- Every interrupted sequence returns `no_change` with explicit uncertainty and
+  no automatic retry. A hover/focus/press effect cannot count as completion of
+  the requested click. Observed page movement is stated in the detail; no effect
+  is assumed absent either. This supersedes the interrupted `done` result in the
+  preceding follow-up without changing the wire outcome enum.
+
+The coordinated backend PR #3277 now preserves that uncertainty in tool results
+and system guidance. It also rejects snapshots from superseded action replies,
+including when a newer action times out, and clarifies that earlier beta embeds
+still need explicit false flags to disable page access before upgrading.
+
+Verified: **363 native browser cases** (121 each Chromium/Firefox/WebKit),
+**67 React cases**, **12 production embed cases** in Chromium, and **12 backend
+protocol/prompt cases**. All four widget builds/JSX guards, React typecheck,
+changed-file lint and diff checks pass. The three affected guide pages render
+locally and pass frontmatter lint. Backend typecheck retains the same 22
+dependency diagnostics as the previously checked main-branch source.
+
+Embed SHA-256:
+`f93863642d3ea407d2fe507a1ab055ea39ded42430999caee0b369fb84707aef`.
+
+The checks use local fixtures. DOM checks cannot detect application state
+changes with no corresponding DOM or URL change; normal host handlers are not
+sandboxed. Fresh independent reviews, required CI/approval and coordinated
+final-build real-backend acceptance remain. Nothing was published or deployed.

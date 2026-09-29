@@ -6,21 +6,33 @@ import { NEVER_ACT_INPUT_TYPES } from './act-types';
  * Host JavaScript is still responsible for its own event-handler behavior.
  */
 export function captureActionMeaning(element: HTMLElement): () => boolean {
-  const read = () => activationTargets(element).map(readTarget);
-  const approved = read();
+  const reference = new WeakRef(element);
+  const approved = activationTargets(element).map((node) => {
+    const target = readTarget(node);
+    return {
+      ...target,
+      element: new WeakRef(target.element),
+      form: target.form ? new WeakRef(target.form) : null,
+      labelControl: target.labelControl
+        ? new WeakRef(target.labelControl)
+        : null,
+    };
+  });
   return () => {
+    const element = reference.deref();
+    if (!element) return false;
     if (!element.isConnected || element.getRootNode() !== document)
       return false;
-    const current = read();
+    const current = activationTargets(element).map(readTarget);
     return (
       current.length === approved.length &&
       current.every((target, index) => {
         const before = approved[index]!;
         return (
           target.allowed &&
-          target.element === before.element &&
-          target.form === before.form &&
-          target.labelControl === before.labelControl &&
+          target.element === before.element.deref() &&
+          target.form === (before.form?.deref() ?? null) &&
+          target.labelControl === (before.labelControl?.deref() ?? null) &&
           target.semantics === before.semantics
         );
       })
