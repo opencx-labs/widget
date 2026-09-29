@@ -661,15 +661,18 @@ five unrelated updates, the old observer performed 3,000 weak-reference lookups.
   now performs **zero retained-control lookups**. The observer remains active to
   detect A-to-B-to-A changes; this is not a claim of zero observation work.
 
-Thirteen new browser cases cover the fixes and their identity boundaries. A
-negative case caught a section-wrapped record label during implementation and
-was fixed before validation. Final verification: **402 native browser cases**
-(134 each Chromium/Firefox/WebKit), **49 focused React/unit cases**, and **12
+Fourteen new browser cases cover the fixes and their identity boundaries. A
+negative case caught a section-wrapped record label during implementation.
+Final diff review also reproduced a sibling-row removal interrupting an
+unchanged row: content dependencies now end at the containing record, while
+ancestor attributes/removal remain checked. Both were fixed before final
+validation. Final verification: **405 native browser cases**
+(135 each Chromium/Firefox/WebKit), **49 focused React/unit cases**, and **12
 production embed cases** in Chromium. React and embed production builds/JSX
 guards, React typecheck, changed-file lint/format and diff checks pass.
 
 Embed SHA-256:
-`14e88c809c229cad86c96bd838a496f61cad80af985353a65a213192fa8b11ca`.
+`4a7093a812d94fded96595452ab5fc423b4d5eefdaddeeee83637fcafe46fd8d`.
 
 All traffic uses local fixtures. Local context still depends on page structure:
 unlabelled content changes within the same group can require a fresh reading,

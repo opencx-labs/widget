@@ -131,3 +131,20 @@ it('binds record labels even when they are wrapped in a sibling section', () => 
   document.querySelector('span')!.textContent = 'Account B';
   expect(resolveRef(ref)).toBeNull();
 });
+
+it('preserves a row control when a different row is removed from the same screen', async () => {
+  document.body.innerHTML =
+    '<section><ul><li id="other">Other account</li><li><span>Account A</span><button>Delete</button></li></ul></section>';
+  const button = document.querySelector('button')!;
+  const clicked = vi.fn();
+  button.addEventListener('click', clicked);
+  const ref = readPageControls().controls[0]!.ref;
+  document.querySelector('#other')!.remove();
+  await actOnPage({
+    ref,
+    action: 'click',
+    settleMs: 20,
+    consentIsCurrent: () => resolveRef(ref) === button,
+  });
+  expect(clicked).toHaveBeenCalledOnce();
+});

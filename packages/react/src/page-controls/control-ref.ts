@@ -53,6 +53,26 @@ const CONTEXT_SELECTOR =
 const RECORD_SELECTOR = 'tr,li,article,[role="row"],[role="listitem"]';
 const PRESENTATION_ATTRIBUTES = new Set(['class', 'style', 'aria-busy']);
 
+function contextRoot(element: HTMLElement): Element {
+  let record = element.closest(RECORD_SELECTOR);
+  if (record) {
+    let outer = record.parentElement?.closest(RECORD_SELECTOR);
+    while (outer) {
+      record = outer;
+      outer = record.parentElement?.closest(RECORD_SELECTOR);
+    }
+    return record;
+  }
+  const region = element.closest(CONTEXT_SELECTOR);
+  if (region) return region;
+  const parent = element.parentElement;
+  return parent &&
+    parent !== element.ownerDocument.body &&
+    parent !== element.ownerDocument.documentElement
+    ? parent
+    : element;
+}
+
 function transient(node: Element): boolean {
   return isWidgetOwned(node) || node.closest('[role="tooltip"]') !== null;
 }
@@ -129,20 +149,21 @@ function captureContext(element: HTMLElement): () => boolean {
     }
     captured.push({ revision, value: revision.value });
   };
-  track(element, contextRevisions);
+  const root = contextRoot(element);
   const parent = element.parentElement;
-  if (
-    parent &&
-    parent !== element.ownerDocument.body &&
-    parent !== element.ownerDocument.documentElement
-  )
-    track(parent, contextRevisions);
+  let withinContext = true;
   // Attributes and removal of an ancestor can repurpose even an unchanged
-  // button. Sibling content changes outside its local context cannot.
+  // button. Content above the containing record/region is not its identity:
+  // adding or removing another row must not revoke an unchanged row's consent.
   for (let node: Node | null = element; node; node = node.parentNode) {
     track(node, lineageRevisions);
-    if (node instanceof Element && node.matches(CONTEXT_SELECTOR))
+    if (
+      withinContext &&
+      node instanceof Element &&
+      (node === element || node === parent || node.matches(CONTEXT_SELECTOR))
+    )
       track(node, contextRevisions);
+    if (node === root) withinContext = false;
   }
   return () =>
     captured.every(({ revision, value }) => revision.value === value);
