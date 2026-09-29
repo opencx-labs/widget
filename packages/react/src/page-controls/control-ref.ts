@@ -43,7 +43,8 @@ let observedDocument: Document | undefined;
 // Mutation callbacks advance shared counters, never scan retained references.
 // Entries hold counters rather than nodes, so detached host trees stay collectible.
 type Revision = { value: number };
-let contextRevisions = new WeakMap<Node, Revision>();
+let subtreeRevisions = new WeakMap<Node, Revision>();
+let recordRevisions = new WeakMap<Node, Revision>();
 let lineageRevisions = new WeakMap<Node, Revision>();
 
 // Keep record identity local. A top-level button has no containing record;
@@ -51,17 +52,24 @@ let lineageRevisions = new WeakMap<Node, Revision>();
 const CONTEXT_SELECTOR =
   'tr,li,article,form,fieldset,section,dialog,aside,nav,main,header,footer,[role="row"],[role="listitem"],[role="group"],[role="region"],[role="dialog"],[role="tooltip"]';
 const RECORD_SELECTOR = 'tr,li,article,[role="row"],[role="listitem"]';
+const GROUP_SELECTOR =
+  'section,form,fieldset,dialog,[role="group"],[role="region"],[role="dialog"]';
 const PRESENTATION_ATTRIBUTES = new Set(['class', 'style', 'aria-busy']);
 
 function contextRoot(element: HTMLElement): Element {
-  let record = element.closest(RECORD_SELECTOR);
-  if (record) {
-    let outer = record.parentElement?.closest(RECORD_SELECTOR);
+  const record = element.closest(RECORD_SELECTOR);
+  if (record) return record;
+  // A layout wrapper around the button does not detach it from its outer
+  // item label. Without an explicit record, conservatively bind the enclosing
+  // group, including nested groups in either direction. Never fall back to body.
+  let group = element.closest(GROUP_SELECTOR);
+  if (group) {
+    let outer = group.parentElement?.closest(GROUP_SELECTOR);
     while (outer) {
-      record = outer;
-      outer = record.parentElement?.closest(RECORD_SELECTOR);
+      group = outer;
+      outer = group.parentElement?.closest(GROUP_SELECTOR);
     }
-    return record;
+    return group;
   }
   const region = element.closest(CONTEXT_SELECTOR);
   if (region) return region;
@@ -116,22 +124,23 @@ function advance(records: MutationRecord[]) {
       const revision = lineageRevisions.get(record.target);
       if (revision) changed.add(revision);
     }
-    const target =
-      record.target instanceof Element
-        ? record.target
-        : record.target.parentElement;
-    const containingRecord = target?.closest(RECORD_SELECTOR);
+    let withinRecord = true;
     for (let node: Node | null = record.target; node; node = node.parentNode) {
-      const revision = contextRevisions.get(node);
-      if (revision) changed.add(revision);
-      // A sibling record/region is not the identity of this control. Controls
-      // inside nested regions track each containing boundary separately. A
-      // section inside a record can hold that record's label, so reach the row.
+      const subtree = subtreeRevisions.get(node);
+      if (subtree) changed.add(subtree);
+      if (withinRecord) {
+        const ownContent = recordRevisions.get(node);
+        if (ownContent) changed.add(ownContent);
+      }
+      if (!(node instanceof Element)) continue;
+      // A control's own scope includes nested groups: their label may identify
+      // its action. Only ancestor-record identity excludes sibling child items.
+      if (node.matches(RECORD_SELECTOR)) withinRecord = false;
+      // Transient tooltip content is not the enclosing record's identity.
+      // Changing an existing node's role is itself a semantic change.
       if (
-        node instanceof Element &&
-        (node.matches('[role="tooltip"]') ||
-          node === containingRecord ||
-          (!containingRecord && node.matches(CONTEXT_SELECTOR)))
+        node.matches('[role="tooltip"]') &&
+        !(record.type === 'attributes' && record.attributeName === 'role')
       )
         break;
     }
@@ -150,20 +159,18 @@ function captureContext(element: HTMLElement): () => boolean {
     captured.push({ revision, value: revision.value });
   };
   const root = contextRoot(element);
-  const parent = element.parentElement;
-  let withinContext = true;
-  // Attributes and removal of an ancestor can repurpose even an unchanged
-  // button. Content above the containing record/region is not its identity:
-  // adding or removing another row must not revoke an unchanged row's consent.
+  track(root, subtreeRevisions);
+  // Bind the complete local scope. Ancestor records contribute their own
+  // identity, excluding sibling records. This preserves nested Order/Item
+  // ownership without treating another item's updates as this item's identity.
   for (let node: Node | null = element; node; node = node.parentNode) {
     track(node, lineageRevisions);
     if (
-      withinContext &&
+      node !== root &&
       node instanceof Element &&
-      (node === element || node === parent || node.matches(CONTEXT_SELECTOR))
+      node.matches(RECORD_SELECTOR)
     )
-      track(node, contextRevisions);
-    if (node === root) withinContext = false;
+      track(node, recordRevisions);
   }
   return () =>
     captured.every(({ revision, value }) => revision.value === value);
@@ -180,7 +187,8 @@ function observe(doc: Document) {
   for (const generation of generations)
     for (const entry of Array.from(generation.values())) entry.valid = false;
   observedDocument = doc;
-  contextRevisions = new WeakMap();
+  subtreeRevisions = new WeakMap();
+  recordRevisions = new WeakMap();
   lineageRevisions = new WeakMap();
   observer = new MutationObserver(advance);
   observer.observe(doc.documentElement, {
@@ -281,6 +289,7 @@ export function resetRefsForTest(): void {
   observer?.disconnect();
   observer = undefined;
   observedDocument = undefined;
-  contextRevisions = new WeakMap();
+  subtreeRevisions = new WeakMap();
+  recordRevisions = new WeakMap();
   lineageRevisions = new WeakMap();
 }

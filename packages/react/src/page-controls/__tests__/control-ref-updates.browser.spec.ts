@@ -12,11 +12,11 @@ afterEach(() => {
 it.each(['body', 'div', 'section'])(
   'clicks an unchanged control in %s after an unrelated region updates',
   async (container) => {
-    const content = '<button>Save</button><aside>12:00</aside>';
+    const content = '<button>Save</button>';
     document.body.innerHTML =
-      container === 'body'
+      (container === 'body'
         ? content
-        : `<${container}>${content}</${container}>`;
+        : `<${container}>${content}</${container}>`) + '<aside>12:00</aside>';
     const button = document.querySelector('button')!;
     const clicked = vi.fn();
     button.addEventListener('click', clicked);
@@ -148,3 +148,86 @@ it('preserves a row control when a different row is removed from the same screen
   });
   expect(clicked).toHaveBeenCalledOnce();
 });
+
+it.each([
+  ['section', '<section><span>Account A</span></section>'],
+  ['form', '<form><span>Account A</span></form>'],
+  ['fieldset', '<fieldset><legend>Account A</legend></fieldset>'],
+  ['group', '<div role="group"><span>Account A</span></div>'],
+  ['region', '<div role="region"><span>Account A</span></div>'],
+  ['aside', '<aside><span>Account A</span></aside>'],
+  ['nav', '<nav><span>Account A</span></nav>'],
+  ['header', '<header><span>Account A</span></header>'],
+  ['footer', '<footer><span>Account A</span></footer>'],
+  ['main', '<main><span>Account A</span></main>'],
+  ['article', '<article><span>Account A</span></article>'],
+  ['list item', '<ul><li><span>Account A</span></li></ul>'],
+  ['row', '<div role="row"><span>Account A</span></div>'],
+])(
+  'revokes approval when an item label in a nested %s changes',
+  async (_, label) => {
+    document.body.innerHTML = `<section>${label}<button>Delete</button></section>`;
+    const button = document.querySelector('button')!;
+    const clicked = vi.fn();
+    button.addEventListener('click', clicked);
+    const ref = readPageControls().controls.find(
+      (item) => item.name === 'Delete',
+    )!.ref;
+    document.querySelector('span,legend')!.textContent = 'Account B';
+    await actOnPage({
+      ref,
+      action: 'click',
+      settleMs: 20,
+      consentIsCurrent: () => resolveRef(ref) === button,
+    });
+    expect(clicked).not.toHaveBeenCalled();
+    expect(resolveRef(ref)).toBeNull();
+    const fresh = readPageControls().controls.find(
+      (item) => item.name === 'Delete',
+    )!.ref;
+    expect(fresh).not.toBe(ref);
+  },
+);
+
+it.each(['div', 'section'])(
+  'requires fresh approval when content inside the same %s changes',
+  (container) => {
+    document.body.innerHTML = `<${container}><button>Delete</button><aside>Account A</aside></${container}>`;
+    const ref = readPageControls().controls[0]!.ref;
+    document.querySelector('aside')!.textContent = 'Account B';
+    expect(resolveRef(ref)).toBeNull();
+  },
+);
+
+it('stops an approved click if hover repurposes the nested item label', async () => {
+  document.body.innerHTML =
+    '<section><section><span>Account A</span></section><button>Delete</button></section>';
+  const button = document.querySelector('button')!;
+  const clicked = vi.fn();
+  button.addEventListener('click', clicked);
+  const ref = readPageControls().controls[0]!.ref;
+  button.addEventListener('pointerover', () => {
+    document.querySelector('span')!.textContent = 'Account B';
+  });
+  const result = await actOnPage({
+    ref,
+    action: 'click',
+    settleMs: 20,
+    consentIsCurrent: () => resolveRef(ref) === button,
+  });
+  expect(clicked).not.toHaveBeenCalled();
+  expect(result.outcome).toBe('no_change');
+  expect(result.detail).toContain('interrupted');
+  expect(resolveRef(ref)).toBeNull();
+});
+
+it.each(['section', 'div role="group"'])(
+  'binds the outer item label when the control itself is nested in %s',
+  (wrapper) => {
+    const closingTag = wrapper.split(' ')[0];
+    document.body.innerHTML = `<section><span>Account A</span><${wrapper}><button>Delete</button></${closingTag}></section>`;
+    const ref = readPageControls().controls[0]!.ref;
+    document.querySelector('span')!.textContent = 'Account B';
+    expect(resolveRef(ref)).toBeNull();
+  },
+);

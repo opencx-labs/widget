@@ -271,12 +271,23 @@ describe('AgentChatPageActions', () => {
     },
   );
 
-  it.each(['before consent', 'during consent'])(
-    'does not approve a Delete control repurposed for a different row %s',
-    async (when) => {
-      const ref = control(
-        '<ul><li><span>Account A</span><button id="t">Delete</button></li></ul>',
-      );
+  it.each(
+    ['before consent', 'during consent'].flatMap((when) => [
+      {
+        when,
+        shape: 'row',
+        html: '<ul><li><span>Account A</span><button id="t">Delete</button></li></ul>',
+      },
+      {
+        when,
+        shape: 'nested section',
+        html: '<section><section><span>Account A</span></section><button id="t">Delete</button></section>',
+      },
+    ]),
+  )(
+    'does not approve a Delete control repurposed in a $shape $when',
+    async ({ when, html }) => {
+      const ref = control(html);
       const clicked = vi.fn();
       document.querySelector('#t')!.addEventListener('click', clicked);
       const change = () => {

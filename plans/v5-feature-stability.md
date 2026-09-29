@@ -680,3 +680,44 @@ and hidden application state is not observable. No backend changes or backend
 reruns are included in this follow-up. Fresh independent review/CI, repository
 approval and coordinated final-build real-backend acceptance remain release
 gates. No versions, packages, tags or deployments changed.
+
+### Greptile 3/5 follow-up: nested item ownership (2026-09-29)
+
+The current-head review of `0d8a134` found that a label inside a nested section
+could change from Account A to Account B while the outer Delete reference stayed
+valid. Five browser variants (section, form, fieldset, group and region) each
+reproduced an actual unwanted click before the fix. Symmetric cases with the
+button nested and the label outside also failed during verification.
+
+The identity model now separates two dependencies:
+
+- The control's complete local scope, including nested groups and records.
+  Nested layout tags never make item content irrelevant to its action. Without
+  an explicit record, enclosing groups are bound conservatively in either
+  direction; there is still no automatic whole-body fallback.
+- Ancestor record identity, excluding sibling child records. The selected
+  item remains bound to its containing order while another item's update does
+  not invalidate it. Ancestor attributes/removal, names, URLs, native operation
+  checks and monotonically stale handles remain in place.
+
+This corrects an overbroad assumption in two earlier positive fixtures: an
+`aside` inside the selected group cannot be assumed unrelated. Those fixtures
+now place the independent region outside the selected group, and explicit
+negative cases require fresh approval for changes inside it. This is deliberate
+conservative refusal, not a guarantee that arbitrary DOM updates are harmless.
+Tooltips and widget UI remain transient. Idle callbacks still use weak revision
+counters without scanning retained controls or reading their content.
+
+Eighteen browser regressions and two React consent cases were added. Validation:
+**459 native browser cases** (153 each Chromium/Firefox/WebKit), **51 focused
+React/unit cases**, **12 production embed cases** in Chromium, React/embed
+production builds and JSX guards, React typecheck, changed-file lint/format and
+diff checks pass. All browser/API traffic uses local fixtures.
+
+Embed SHA-256:
+`891c734bcfedcdc6f4b4456db6f8099bec441722dcd251ab913cba74d3b292d5`.
+
+No backend changes or backend reruns in this follow-up. Hidden application state
+and post-dispatch host handlers remain outside DOM identity guarantees. Fresh
+independent review/CI, repository approval and final-build real-backend acceptance
+remain required. Nothing was published or deployed.
