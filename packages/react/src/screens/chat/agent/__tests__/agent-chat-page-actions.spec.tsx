@@ -15,7 +15,16 @@ type Effect = {
 };
 
 let pageEffects: Effect[] = [];
-let replies: Array<{ callId: string; outcome: string; detail?: string }> = [];
+type Page = {
+  controls: { ref: string; role: string; name: string }[];
+  truncated: boolean;
+};
+let replies: Array<{
+  callId: string;
+  outcome: string;
+  detail?: string;
+  page?: Page;
+}> = [];
 let consentAsked: Array<{
   callId: string;
   action: string;
@@ -35,8 +44,12 @@ vi.mock('@opencx/widget-react-headless', () => ({
   useAgentChatUi: () => ({
     pageEffects,
     isStreaming: true,
-    replyToPageCall: (callId: string, outcome: string, detail?: string) =>
-      replies.push({ callId, outcome, detail }),
+    replyToPageCall: (
+      callId: string,
+      outcome: string,
+      detail?: string,
+      page?: Page,
+    ) => replies.push({ callId, outcome, detail, ...(page ? { page } : {}) }),
     requestPageActionConsent: async (request: {
       callId: string;
       action: string;
@@ -517,8 +530,56 @@ describe('AgentChatPageActions', () => {
 
     expect(consentAsked).toEqual([]);
     expect(repliesFor('c-gone')).toEqual([
-      { callId: 'c-gone', outcome: 'gone', detail: undefined },
+      {
+        callId: 'c-gone',
+        outcome: 'gone',
+        detail: undefined,
+        page: { controls: [], truncated: false },
+      },
     ]);
+  });
+
+  it('returns fresh controls for a stale ref without executing a replacement', async () => {
+    const oldRef = control('<button id="t">Old screen</button>');
+    document.querySelector('#t')?.remove();
+    control('<button id="t">Next screen</button>');
+    const clicked = vi.fn();
+    document.querySelector('#t')?.addEventListener('click', clicked);
+    document.body.insertAdjacentHTML(
+      'beforeend',
+      '<div data-opencx-private><button>PRIVATE_CONTROL</button></div>',
+    );
+    pageEffects = [
+      {
+        key: 'stale',
+        callId: 'stale',
+        type: 'act-on-page',
+        input: { ref: oldRef, action: 'click' },
+      },
+    ];
+    await render();
+    const reply = repliesFor('stale')[0];
+    expect(reply?.outcome).toBe('gone');
+    expect(reply?.page?.controls.map((row) => row.name)).toEqual([
+      'Next screen',
+    ]);
+    expect(clicked).not.toHaveBeenCalled();
+    expect(consentAsked).toHaveLength(0);
+
+    widgetCtx.features.pageContext = false;
+    pageEffects = [
+      {
+        key: 'revoked-stale',
+        callId: 'revoked-stale',
+        type: 'act-on-page',
+        input: { ref: oldRef, action: 'click' },
+      },
+    ];
+    await render();
+    expect(repliesFor('revoked-stale')[0]).toMatchObject({
+      outcome: 'declined',
+    });
+    expect(repliesFor('revoked-stale')[0]?.page).toBeUndefined();
   });
 
   it('answers an action it does not recognise instead of guessing', async () => {

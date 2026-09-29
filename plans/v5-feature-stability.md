@@ -525,3 +525,43 @@ and package type checks passed; changed-source lint and diff checks passed.
 Ownership, changed native operations and repeated style reads reproduced before
 their fixes. All traffic remained local/mocked. These checks do not replace
 current-head Greptile/CI, repository approval or a final-build real-backend smoke.
+
+### Multi-step page freshness and loading follow-up (2026-09-29)
+
+A delayed three-screen fixture reproduced early completion: a screen explicitly
+marked `aria-busy="true"` was returned after about 100 ms, before the next control
+arrived. Observation now waits for public busy regions to finish, bounded at
+three seconds. Hidden, private and widget-owned busy regions do not delay it.
+Turn/permission revocation ends observation, and recovery does not replay the
+already-dispatched action. A loading timeout reports uncertainty explicitly.
+
+Stale references now return a fresh, privacy-filtered control snapshot without
+clicking a replacement. Other recoverable outcomes also return current controls;
+declines, unsupported actions and revoked permissions do not add page data.
+
+The coordinated backend patch replaces the previous snapshot, including an empty
+screen, rejects a selection resolved against a replaced snapshot, and gives
+visitor approval up to two minutes instead of eight seconds. Its prompts distinguish
+browser changes from remote operation success and forbid automatic retry after
+an uncertain outcome. Published migration, feature-reference and Companion guide
+sources now explain the explicit page-action opt-in for the stable candidate.
+
+Verified locally: **123 native cases** (41 each Chromium/Firefox/WebKit), **58
+React cases**, **7 backend protocol/timing regressions**, and **12 production
+embed cases** in Chromium. All four widget production builds and JSX guards pass;
+React typecheck and changed-file lint/diff checks pass. Docs frontmatter and all
+three rendered local guide pages pass. The three-screen fixture has 700 ms loading
+per step and asserts exactly one click per step. These are deterministic local
+fixtures; no live customer or final-build real-backend acceptance is implied.
+Backend full typecheck has the same 22 dependency diagnostics with the main-branch
+source and the candidate; changed backend files have no type diagnostics.
+
+Embed SHA-256:
+`faa7867fd0222c2d5540482b16de3979ac912f8a2cc1f0fe4313589e7aca8c98`.
+
+The snapshot remains a bounded control list. A host that loads silently without
+an `aria-busy` signal can settle too early, loads beyond three seconds can remain
+incomplete, and full reloads can interrupt the turn. Such cases require a fresh
+message or visitor verification, not a blind action retry. No measured production
+failure percentage is available. Current-head independent review, required CI /
+approval, and coordinated real-backend acceptance remain release gates.

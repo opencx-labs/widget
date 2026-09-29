@@ -33,12 +33,8 @@ export type ActResult = {
   detail?: string;
 };
 
-/**
- * How long the page gets to react before we look at what changed. Long
- * enough for a re-render, a menu to open or a fetch to come back on a local
- * network; short enough that the turn's round trip stays under its budget.
- */
-export const SETTLE_MS = 500;
+/** Maximum observation window; visible aria-busy regions defer quiet completion. */
+export const SETTLE_MS = 3_000;
 
 /**
  * Controls the widget will never act on, whatever the agent asks and

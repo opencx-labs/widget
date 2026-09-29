@@ -1,4 +1,5 @@
 import { isWidgetOwned } from '../page-marks/page-element';
+import { isPageElementPrivate } from '../page-privacy';
 import { guardRef } from './guard';
 import { setNativeValue } from './native-setter';
 import { firePointerSequence } from './pointer-sequence';
@@ -33,14 +34,11 @@ import {
  * after the action missed every synchronous click handler, which is most of
  * them. Watch first, then act, then wait for quiet.
  */
-function watchPage(doc: Document, budgetMs: number) {
+function watchPage(doc: Document, budgetMs: number, isCurrent: () => boolean) {
   let mutated = false;
-  let quiet: ReturnType<typeof setTimeout> | undefined;
-  let finish: (() => void) | undefined;
-
+  let lastMutation = performance.now();
+  let timer: ReturnType<typeof setTimeout> | undefined;
   const observer = new MutationObserver((records) => {
-    // Our own overlays must not count as the page reacting. A text node's
-    // parent is what tells us whose subtree it belongs to.
     const pageMoved = records.some((record) => {
       const node =
         record.target instanceof Element
@@ -48,9 +46,10 @@ function watchPage(doc: Document, budgetMs: number) {
           : record.target.parentElement;
       return node !== null && !isWidgetOwned(node);
     });
-    if (pageMoved) mutated = true;
-    clearTimeout(quiet);
-    quiet = setTimeout(() => finish?.(), 100);
+    if (pageMoved) {
+      mutated = true;
+      lastMutation = performance.now();
+    }
   });
   observer.observe(doc.documentElement, {
     subtree: true,
@@ -58,28 +57,33 @@ function watchPage(doc: Document, budgetMs: number) {
     attributes: true,
     characterData: true,
   });
-
+  const cancel = () => {
+    clearTimeout(timer);
+    observer.disconnect();
+  };
   return {
-    /** Settle, then report. Bounded by the budget however busy the page is. */
     settle: () =>
-      new Promise<{ mutated: boolean }>((resolve) => {
-        const done = () => {
-          clearTimeout(quiet);
-          clearTimeout(ceiling);
-          observer.disconnect();
-          resolve({ mutated });
+      new Promise<{ mutated: boolean; loading: boolean }>((resolve) => {
+        const deadline = performance.now() + budgetMs;
+        const check = () => {
+          // Permission or turn changes end observation without reading more DOM.
+          if (!isCurrent()) {
+            cancel();
+            resolve({ mutated, loading: false });
+            return;
+          }
+          const loading = Array.from(
+            doc.querySelectorAll('[aria-busy="true"]'),
+          ).some((node) => !isPageElementPrivate(node));
+          const now = performance.now();
+          if (now >= deadline || (!loading && now - lastMutation >= 100)) {
+            cancel();
+            resolve({ mutated, loading });
+          } else timer = setTimeout(check, Math.min(100, deadline - now));
         };
-        finish = done;
-        // A page that never mutates settles at the first quiet window; one
-        // that never stops settles at the ceiling.
-        quiet = setTimeout(done, 100);
-        const ceiling = setTimeout(done, budgetMs);
+        timer = setTimeout(check, Math.min(100, budgetMs));
       }),
-    /** Stop watching without waiting — for the paths that never act. */
-    cancel: () => {
-      clearTimeout(quiet);
-      observer.disconnect();
-    },
+    cancel,
   };
 }
 
@@ -109,6 +113,7 @@ export async function actOnPage(input: {
   value?: string;
   settleMs?: number;
   consentIsCurrent?: () => boolean;
+  observationIsCurrent?: () => boolean;
 }): Promise<ActResult> {
   try {
     return await act(input);
@@ -131,12 +136,14 @@ async function act({
   value,
   settleMs = SETTLE_MS,
   consentIsCurrent = () => true,
+  observationIsCurrent = () => true,
 }: {
   ref: string;
   action: PageAction;
   value?: string;
   settleMs?: number;
   consentIsCurrent?: () => boolean;
+  observationIsCurrent?: () => boolean;
 }): Promise<ActResult> {
   const guarded = guardRef(ref);
   if (!guarded.ok) {
@@ -161,7 +168,7 @@ async function act({
 
   switch (action) {
     case 'click': {
-      watcher = watchPage(doc, settleMs);
+      watcher = watchPage(doc, settleMs, observationIsCurrent);
       if (!firePointerSequence(el, consentIsCurrent)) {
         watcher.cancel();
         return { outcome: 'declined' };
@@ -177,7 +184,7 @@ async function act({
       }
       el.focus?.();
       if (!consentIsCurrent()) return { outcome: 'declined' };
-      watcher = watchPage(doc, settleMs);
+      watcher = watchPage(doc, settleMs, observationIsCurrent);
       if (!setNativeValue(el, value)) {
         watcher.cancel();
         return {
@@ -208,7 +215,7 @@ async function act({
             'That option is not in the list or cannot be selected unambiguously.',
         };
       }
-      watcher = watchPage(doc, settleMs);
+      watcher = watchPage(doc, settleMs, observationIsCurrent);
       selectedValue = option.value;
       setNativeValue(el, option.value);
       break;
@@ -235,7 +242,7 @@ async function act({
           detail: `It is already ${wanted ? 'on' : 'off'}.`,
         };
       }
-      watcher = watchPage(doc, settleMs);
+      watcher = watchPage(doc, settleMs, observationIsCurrent);
       if (!firePointerSequence(el, consentIsCurrent)) {
         watcher.cancel();
         return { outcome: 'declined' };
@@ -244,7 +251,13 @@ async function act({
     }
   }
 
-  const { mutated } = (await watcher?.settle()) ?? { mutated: false };
+  const { mutated, loading } = (await watcher?.settle()) ?? {
+    mutated: false,
+    loading: false,
+  };
+  const pendingDetail = loading
+    ? 'The page is still loading. The action was dispatched; its final result is unknown. Do not repeat it automatically.'
+    : undefined;
 
   // Did it take? Ask the page, not the code that just ran.
   if (action === 'fill' || action === 'select') {
@@ -266,7 +279,10 @@ async function act({
         detail: 'The dropdown did not keep the selected option.',
       };
     }
-    return { outcome: 'done' };
+    return {
+      outcome: 'done',
+      ...(pendingDetail ? { detail: pendingDetail } : {}),
+    };
   }
 
   if (action === 'check' || action === 'uncheck') {
@@ -278,16 +294,18 @@ async function act({
         : null;
     const now = box ? box.checked : el.getAttribute('aria-checked') === 'true';
     return now === wanted
-      ? { outcome: 'done' }
+      ? { outcome: 'done', ...(pendingDetail ? { detail: pendingDetail } : {}) }
       : { outcome: 'no_change', detail: 'It did not change.' };
   }
 
   // A click's only honest evidence is that the page moved: a mutation
   // anywhere outside our own overlays, or a navigation.
   return mutated || doc.location.href !== urlBefore
-    ? { outcome: 'done' }
+    ? { outcome: 'done', ...(pendingDetail ? { detail: pendingDetail } : {}) }
     : {
         outcome: 'no_change',
-        detail: 'The control was clicked and nothing on the page changed.',
+        detail:
+          pendingDetail ??
+          'The control was clicked and nothing on the page changed during observation. Its final result is unknown. Do not repeat it automatically.',
       };
 }

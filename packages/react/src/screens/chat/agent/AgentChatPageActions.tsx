@@ -70,7 +70,12 @@ export function AgentChatPageActions() {
           }
           const element = resolveRef(ref);
           if (!element) {
-            replyToPageCall(effect.callId, 'gone');
+            replyToPageCall(
+              effect.callId,
+              'gone',
+              undefined,
+              enabled() ? readPageControls() : undefined,
+            );
             return;
           }
 
@@ -131,6 +136,7 @@ export function AgentChatPageActions() {
             action,
             value,
             consentIsCurrent,
+            observationIsCurrent: enabled,
           });
 
           // Read the page again and send it back with the outcome. An action
@@ -138,7 +144,11 @@ export function AgentChatPageActions() {
           // references to the screen it just left can only ask them to send
           // another message — which is not a flow.
           const after =
-            enabled() && result.outcome === 'done' ? readPageControls() : null;
+            enabled() &&
+            result.outcome !== 'declined' &&
+            result.outcome !== 'unsupported'
+              ? readPageControls()
+              : null;
           replyToPageCall(
             effect.callId,
             result.outcome,
