@@ -20,7 +20,10 @@ export function isAgentPointerEvent(event: Event): boolean {
 export function firePointerSequence(
   el: HTMLElement,
   mayDispatch: () => boolean = () => true,
-): boolean {
+): 'not-started' | 'interrupted' | 'completed' {
+  let dispatched = false;
+  const result = (completed: boolean) =>
+    completed ? 'completed' : dispatched ? 'interrupted' : 'not-started';
   const rect = el.getBoundingClientRect();
   const clientX = rect.left + rect.width / 2;
   const clientY = rect.top + rect.height / 2;
@@ -37,6 +40,7 @@ export function firePointerSequence(
 
   const dispatch = (event: Event) => {
     if (!mayDispatch()) return false;
+    dispatched = true;
     agentPointerEvents.add(event);
     el.dispatchEvent(event);
     return true;
@@ -61,10 +65,12 @@ export function firePointerSequence(
     !pointer('pointerdown') ||
     !mouse('mousedown', 1)
   )
-    return false;
+    return result(false);
   // Focus before the release, like a real press: a control that commits on
   // blur of the previous field needs that to have happened already.
-  if (!mayDispatch()) return false;
+  if (!mayDispatch()) return result(false);
   el.focus?.();
-  return pointer('pointerup') && mouse('mouseup', 1) && mouse('click', 1);
+  return result(
+    pointer('pointerup') && mouse('mouseup', 1) && mouse('click', 1),
+  );
 }

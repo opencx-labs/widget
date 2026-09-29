@@ -16,15 +16,15 @@
  *   subtree of the customer's page alive.
  */
 
-/** How many readings stay resolvable. The current one, and the one before
- * it — long enough for a tool call issued against the snapshot that was sent
- * with the message to still land after the page re-rendered once. */
+/** Keep two readings. Controls present in each new reading renew their handles;
+ * absent controls expire without ever assigning their handles to another node. */
 const GENERATIONS_KEPT = 2;
 
 type Generation = Map<string, WeakRef<HTMLElement>>;
 
 const generations: Generation[] = [];
 let sequence = 0;
+let elementRefs = new WeakMap<HTMLElement, string>();
 
 /** Open a new reading. Returns the mint function for its references. */
 export function beginSnapshot(): (el: HTMLElement) => string {
@@ -35,8 +35,15 @@ export function beginSnapshot(): (el: HTMLElement) => string {
   // References must never alias a newer control during a long-lived SPA visit.
   const prefix = `s${++sequence}`;
   return (el: HTMLElement) => {
-    const ref = `${prefix}c${(n += 1)}`;
+    const previous = elementRefs.get(el);
+    // Renew a live handle for a control included in consecutive readings.
+    // Expired handles are never resurrected, and replacement nodes get new IDs.
+    const ref =
+      previous && generations.some((reading) => reading.has(previous))
+        ? previous
+        : `${prefix}c${(n += 1)}`;
     generation.set(ref, new WeakRef(el));
+    elementRefs.set(el, ref);
     return ref;
   };
 }
@@ -58,4 +65,5 @@ export function resolveRef(ref: string): HTMLElement | null {
 export function resetRefsForTest(): void {
   generations.length = 0;
   sequence = 0;
+  elementRefs = new WeakMap();
 }

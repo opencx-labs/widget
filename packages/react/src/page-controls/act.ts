@@ -34,7 +34,31 @@ import {
  * after the action missed every synchronous click handler, which is most of
  * them. Watch first, then act, then wait for quiet.
  */
-function watchPage(doc: Document, budgetMs: number, isCurrent: () => boolean) {
+function watchPage(
+  el: HTMLElement,
+  budgetMs: number,
+  isCurrent: () => boolean,
+) {
+  const doc = el.ownerDocument;
+  // A background region that was already loading is not evidence about this
+  // action. Keep busy ancestors/descendants and explicitly controlled regions.
+  const controlled = (el.getAttribute('aria-controls') ?? '')
+    .split(/\s+/)
+    .map((id) => doc.getElementById(id))
+    .filter((node) => node !== null);
+  const unrelatedBusy = Array.from(
+    doc.querySelectorAll('[aria-busy="true"]'),
+  ).filter(
+    (node) =>
+      !isPageElementPrivate(node) &&
+      !node.contains(el) &&
+      !el.contains(node) &&
+      !controlled.some(
+        (region) => node.contains(region) || region.contains(node),
+      ),
+  );
+  const isBackground = (node: Element) =>
+    unrelatedBusy.some((region) => region.contains(node));
   let mutated = false;
   let lastMutation = performance.now();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -44,7 +68,7 @@ function watchPage(doc: Document, budgetMs: number, isCurrent: () => boolean) {
         record.target instanceof Element
           ? record.target
           : record.target.parentElement;
-      return node !== null && !isWidgetOwned(node);
+      return node !== null && !isWidgetOwned(node) && !isBackground(node);
     });
     if (pageMoved) {
       mutated = true;
@@ -74,7 +98,7 @@ function watchPage(doc: Document, budgetMs: number, isCurrent: () => boolean) {
           }
           const loading = Array.from(
             doc.querySelectorAll('[aria-busy="true"]'),
-          ).some((node) => !isPageElementPrivate(node));
+          ).some((node) => !isBackground(node) && !isPageElementPrivate(node));
           const now = performance.now();
           if (now >= deadline || (!loading && now - lastMutation >= 100)) {
             cancel();
@@ -165,147 +189,173 @@ async function act({
   // and nothing acts that is not being watched.
   let watcher: ReturnType<typeof watchPage> | undefined;
   let selectedValue: string | undefined;
+  let interrupted = false;
 
-  switch (action) {
-    case 'click': {
-      watcher = watchPage(doc, settleMs, observationIsCurrent);
-      if (!firePointerSequence(el, consentIsCurrent)) {
-        watcher.cancel();
-        return { outcome: 'declined' };
+  try {
+    switch (action) {
+      case 'click': {
+        watcher = watchPage(el, settleMs, observationIsCurrent);
+        const sequence = firePointerSequence(el, consentIsCurrent);
+        if (sequence === 'not-started') {
+          watcher.cancel();
+          return { outcome: 'declined' };
+        }
+        interrupted = sequence === 'interrupted';
+        break;
       }
-      break;
+      case 'fill': {
+        if (value === undefined) {
+          return {
+            outcome: 'unsupported',
+            detail: 'No value was given to type.',
+          };
+        }
+        watcher = watchPage(el, settleMs, observationIsCurrent);
+        el.focus?.();
+        if (!consentIsCurrent()) {
+          // Focus/blur handlers may already have saved a value on the host.
+          interrupted = true;
+          break;
+        }
+        if (!setNativeValue(el, value)) {
+          watcher.cancel();
+          return {
+            outcome: 'unsupported',
+            detail: 'That control is not something text can be typed into.',
+          };
+        }
+        break;
+      }
+      case 'select': {
+        if (!(el instanceof HTMLSelectElement)) {
+          return {
+            outcome: 'unsupported',
+            detail: 'That control is not a dropdown.',
+          };
+        }
+        if (value === undefined) {
+          return {
+            outcome: 'unsupported',
+            detail: 'No option was given to choose.',
+          };
+        }
+        const option = resolveSelectOption(el, value);
+        if (!option) {
+          return {
+            outcome: 'no_change',
+            detail:
+              'That option is not in the list or cannot be selected unambiguously.',
+          };
+        }
+        watcher = watchPage(el, settleMs, observationIsCurrent);
+        selectedValue = option.value;
+        setNativeValue(el, option.value);
+        break;
+      }
+      case 'check':
+      case 'uncheck': {
+        const wanted = action === 'check';
+        const box =
+          el instanceof HTMLInputElement &&
+          (el.type === 'checkbox' || el.type === 'radio')
+            ? el
+            : null;
+        const ariaState = el.getAttribute('aria-checked');
+        if (!box && ariaState === null) {
+          return {
+            outcome: 'unsupported',
+            detail: 'That control is not a checkbox or switch.',
+          };
+        }
+        const already = box ? box.checked : ariaState === 'true';
+        if (already === wanted) {
+          return {
+            outcome: 'no_change',
+            detail: `It is already ${wanted ? 'on' : 'off'}.`,
+          };
+        }
+        watcher = watchPage(el, settleMs, observationIsCurrent);
+        const sequence = firePointerSequence(el, consentIsCurrent);
+        if (sequence === 'not-started') {
+          watcher.cancel();
+          return { outcome: 'declined' };
+        }
+        interrupted = sequence === 'interrupted';
+        break;
+      }
     }
-    case 'fill': {
-      if (value === undefined) {
-        return {
-          outcome: 'unsupported',
-          detail: 'No value was given to type.',
-        };
-      }
-      el.focus?.();
-      if (!consentIsCurrent()) return { outcome: 'declined' };
-      watcher = watchPage(doc, settleMs, observationIsCurrent);
-      if (!setNativeValue(el, value)) {
-        watcher.cancel();
-        return {
-          outcome: 'unsupported',
-          detail: 'That control is not something text can be typed into.',
-        };
-      }
-      break;
+
+    const { mutated, loading } = (await watcher?.settle()) ?? {
+      mutated: false,
+      loading: false,
+    };
+    if (interrupted) {
+      return {
+        outcome:
+          mutated || doc.location.href !== urlBefore ? 'done' : 'no_change',
+        detail:
+          'The action was interrupted after input events were dispatched. Its final result is unknown. Do not repeat it automatically.',
+      };
     }
-    case 'select': {
-      if (!(el instanceof HTMLSelectElement)) {
-        return {
-          outcome: 'unsupported',
-          detail: 'That control is not a dropdown.',
-        };
-      }
-      if (value === undefined) {
-        return {
-          outcome: 'unsupported',
-          detail: 'No option was given to choose.',
-        };
-      }
-      const option = resolveSelectOption(el, value);
-      if (!option) {
+    const pendingDetail = loading
+      ? 'The page is still loading. The action was dispatched; its final result is unknown. Do not repeat it automatically.'
+      : undefined;
+
+    // Did it take? Ask the page, not the code that just ran.
+    if (action === 'fill' || action === 'select') {
+      const current =
+        el instanceof HTMLInputElement ||
+        el instanceof HTMLTextAreaElement ||
+        el instanceof HTMLSelectElement
+          ? el.value
+          : null;
+      if (action === 'fill' && current !== value) {
         return {
           outcome: 'no_change',
-          detail:
-            'That option is not in the list or cannot be selected unambiguously.',
+          detail: 'The field did not keep what was typed.',
         };
       }
-      watcher = watchPage(doc, settleMs, observationIsCurrent);
-      selectedValue = option.value;
-      setNativeValue(el, option.value);
-      break;
+      if (action === 'select' && current !== selectedValue) {
+        return {
+          outcome: 'no_change',
+          detail: 'The dropdown did not keep the selected option.',
+        };
+      }
+      return {
+        outcome: 'done',
+        ...(pendingDetail ? { detail: pendingDetail } : {}),
+      };
     }
-    case 'check':
-    case 'uncheck': {
+
+    if (action === 'check' || action === 'uncheck') {
       const wanted = action === 'check';
       const box =
         el instanceof HTMLInputElement &&
         (el.type === 'checkbox' || el.type === 'radio')
           ? el
           : null;
-      const ariaState = el.getAttribute('aria-checked');
-      if (!box && ariaState === null) {
-        return {
-          outcome: 'unsupported',
-          detail: 'That control is not a checkbox or switch.',
-        };
-      }
-      const already = box ? box.checked : ariaState === 'true';
-      if (already === wanted) {
-        return {
-          outcome: 'no_change',
-          detail: `It is already ${wanted ? 'on' : 'off'}.`,
-        };
-      }
-      watcher = watchPage(doc, settleMs, observationIsCurrent);
-      if (!firePointerSequence(el, consentIsCurrent)) {
-        watcher.cancel();
-        return { outcome: 'declined' };
-      }
-      break;
+      const now = box
+        ? box.checked
+        : el.getAttribute('aria-checked') === 'true';
+      return now === wanted
+        ? {
+            outcome: 'done',
+            ...(pendingDetail ? { detail: pendingDetail } : {}),
+          }
+        : { outcome: 'no_change', detail: 'It did not change.' };
     }
-  }
 
-  const { mutated, loading } = (await watcher?.settle()) ?? {
-    mutated: false,
-    loading: false,
-  };
-  const pendingDetail = loading
-    ? 'The page is still loading. The action was dispatched; its final result is unknown. Do not repeat it automatically.'
-    : undefined;
-
-  // Did it take? Ask the page, not the code that just ran.
-  if (action === 'fill' || action === 'select') {
-    const current =
-      el instanceof HTMLInputElement ||
-      el instanceof HTMLTextAreaElement ||
-      el instanceof HTMLSelectElement
-        ? el.value
-        : null;
-    if (action === 'fill' && current !== value) {
-      return {
-        outcome: 'no_change',
-        detail: 'The field did not keep what was typed.',
-      };
-    }
-    if (action === 'select' && current !== selectedValue) {
-      return {
-        outcome: 'no_change',
-        detail: 'The dropdown did not keep the selected option.',
-      };
-    }
-    return {
-      outcome: 'done',
-      ...(pendingDetail ? { detail: pendingDetail } : {}),
-    };
-  }
-
-  if (action === 'check' || action === 'uncheck') {
-    const wanted = action === 'check';
-    const box =
-      el instanceof HTMLInputElement &&
-      (el.type === 'checkbox' || el.type === 'radio')
-        ? el
-        : null;
-    const now = box ? box.checked : el.getAttribute('aria-checked') === 'true';
-    return now === wanted
+    // A click's only honest evidence is that the page moved: a mutation
+    // anywhere outside our own overlays, or a navigation.
+    return mutated || doc.location.href !== urlBefore
       ? { outcome: 'done', ...(pendingDetail ? { detail: pendingDetail } : {}) }
-      : { outcome: 'no_change', detail: 'It did not change.' };
+      : {
+          outcome: 'no_change',
+          detail:
+            pendingDetail ??
+            'The control was clicked and nothing on the page changed during observation. Its final result is unknown. Do not repeat it automatically.',
+        };
+  } finally {
+    watcher?.cancel();
   }
-
-  // A click's only honest evidence is that the page moved: a mutation
-  // anywhere outside our own overlays, or a navigation.
-  return mutated || doc.location.href !== urlBefore
-    ? { outcome: 'done', ...(pendingDetail ? { detail: pendingDetail } : {}) }
-    : {
-        outcome: 'no_change',
-        detail:
-          pendingDetail ??
-          'The control was clicked and nothing on the page changed during observation. Its final result is unknown. Do not repeat it automatically.',
-      };
 }

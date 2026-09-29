@@ -565,3 +565,37 @@ incomplete, and full reloads can interrupt the turn. Such cases require a fresh
 message or visitor verification, not a blind action retry. No measured production
 failure percentage is available. Current-head independent review, required CI /
 approval, and coordinated real-backend acceptance remain release gates.
+
+### Greptile 4/5 follow-up: dispatched outcomes and stable controls (2026-09-29)
+
+Greptile reviewed `648c797` at 4/5 with three actionable findings. Local
+regressions reproduced all three before these fixes:
+
+- Pointer sequences distinguish an action that never started from one stopped
+  after host events ran. Interrupted actions still stop immediately, but retain
+  observation and report the observed change or an unknown result, never a false
+  decline. The reply forbids automatic retry. Focus-triggered host effects receive
+  the same treatment; permission revocation still suppresses page snapshots.
+  Observation is cleaned up in a `finally` block.
+- Already-busy unrelated regions, including their ongoing mutations, do not hold
+  up an action. Busy ancestors, descendants and `aria-controls` regions still
+  count, as do newly busy regions. This is bounded browser observation, not a
+  general guarantee that the host application or remote transaction completed.
+- Continuously observed DOM controls keep their references across snapshots.
+  Absent controls still expire after two readings; expired references never
+  revive, and replacement nodes receive different references.
+
+Verification on this candidate: **225 native browser cases** (75 each in
+Chromium, Firefox and WebKit), **61 React tests**, and **12 production embed
+cases** in Chromium passed. All four production builds and JSX guards, React
+typecheck, changed-source lint and diff checks passed. Tests cover interrupted
+pointerdown/mouseup/focus, check/uncheck, permission revocation, related versus
+background loading, and three consecutive actions against the original refs.
+All browser traffic remains local/mocked; this is not real-backend acceptance.
+
+Embed SHA-256:
+`058e1a6b58629a70a73b44d73acf8c1bd9d16c688b676135c54eb7d1da170fe2`.
+
+The coordinated backend draft remains PR #3277. Fresh review of this widget
+candidate, required CI/approval and coordinated final-build real-backend
+acceptance remain release gates. No versions, npm tags or deployments changed.

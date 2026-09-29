@@ -17,3 +17,24 @@ it('never reassigns an expired reference to a different control on a long-lived 
   expect(resolveRef(current)).toBe(second);
   expect(resolveRef(stale)).toBeNull();
 });
+
+it('keeps a continuously offered control stable but never resurrects expired handles', () => {
+  const element = document.createElement('button');
+  document.body.append(element);
+  const original = beginSnapshot()(element);
+  for (let n = 0; n < 8; n++) expect(beginSnapshot()(element)).toBe(original);
+  expect(resolveRef(original)).toBe(element);
+  beginSnapshot();
+  beginSnapshot();
+  expect(resolveRef(original)).toBeNull();
+  const renewed = beginSnapshot()(element);
+  expect(renewed).not.toBe(original);
+  expect(resolveRef(renewed)).toBe(element);
+  expect(resolveRef(original)).toBeNull();
+  const replacement = document.createElement('button');
+  element.replaceWith(replacement);
+  const replacementRef = beginSnapshot()(replacement);
+  expect(replacementRef).not.toBe(renewed);
+  expect(resolveRef(renewed)).toBeNull();
+  expect(resolveRef(replacementRef)).toBe(replacement);
+});

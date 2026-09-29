@@ -129,3 +129,70 @@ it('ends observation after revocation without repeating the dispatched action', 
   expect(current).toBe(false);
   expect(clicks).toBe(1);
 });
+
+it('ignores a pre-existing unrelated busy region, including its ongoing mutations', async () => {
+  document.body.innerHTML =
+    '<main><button>Open details</button><output></output></main><aside aria-busy="true">Loading news</aside>';
+  const button = document.querySelector('button');
+  const output = document.querySelector('output');
+  const aside = document.querySelector('aside');
+  if (!button || !output || !aside) throw new Error('Missing fixture');
+  button.onclick = () => {
+    output.textContent = 'Details opened';
+  };
+  const ref = readPageControls().controls.find(
+    (row) => row.name === 'Open details',
+  )?.ref;
+  if (!ref) throw new Error('Missing reference');
+  const interval = setInterval(() => {
+    aside.textContent += '.';
+  }, 40);
+  try {
+    const started = performance.now();
+    const result = await actOnPage({ ref, action: 'click', settleMs: 1000 });
+    expect(result.outcome).toBe('done');
+    expect(result.detail).toBeUndefined();
+    expect(performance.now() - started).toBeLessThan(650);
+  } finally {
+    clearInterval(interval);
+  }
+});
+
+it('retains original refs through three unchanged actions and fresh readings', async () => {
+  document.body.innerHTML =
+    '<button>First</button><button>Second</button><button>Third</button>';
+  const original = readPageControls().controls;
+  let clicks = 0;
+  document
+    .querySelectorAll('button')
+    .forEach((button) => button.addEventListener('click', () => clicks++));
+  for (const control of original) {
+    expect(
+      (await actOnPage({ ref: control.ref, action: 'click', settleMs: 30 }))
+        .outcome,
+    ).toBe('no_change');
+    readPageControls();
+  }
+  expect(clicks).toBe(3);
+});
+
+it('still waits for a pre-existing busy region explicitly controlled by the target', async () => {
+  document.body.innerHTML =
+    '<button aria-controls="details">Open details</button><section id="details" aria-busy="true">Loading</section>';
+  const button = document.querySelector('button');
+  const details = document.getElementById('details');
+  if (!button || !details) throw new Error('Missing fixture');
+  button.onclick = () =>
+    later(() => {
+      details.textContent = 'Ready';
+      details.setAttribute('aria-busy', 'false');
+    }, 350);
+  const ref = readPageControls().controls.find(
+    (row) => row.name === 'Open details',
+  )?.ref;
+  if (!ref) throw new Error('Missing ref');
+  const result = await actOnPage({ ref, action: 'click', settleMs: 1000 });
+  expect(result.outcome).toBe('done');
+  expect(details.textContent).toBe('Ready');
+  expect(result.detail).toBeUndefined();
+});

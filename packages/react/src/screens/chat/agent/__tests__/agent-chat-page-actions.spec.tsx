@@ -243,7 +243,7 @@ describe('AgentChatPageActions', () => {
   );
 
   it.each(['pointerdown', 'focus'])(
-    'declines a link changed by a %s handler before click',
+    'stops a link changed by a %s handler before click and reports the observed change',
     async (eventName) => {
       const ref = control('<a id="t" href="/safe">Continue</a>');
       const link = document.querySelector<HTMLAnchorElement>('#t')!;
@@ -262,10 +262,42 @@ describe('AgentChatPageActions', () => {
       ];
       await render();
       await vi.waitFor(() => expect(repliesFor('reentrant')).toHaveLength(1));
-      expect(repliesFor('reentrant')[0]?.outcome).toBe('declined');
+      expect(repliesFor('reentrant')[0]?.outcome).toBe('done');
+      expect(repliesFor('reentrant')[0]?.detail).toContain('interrupted');
+      expect(
+        repliesFor('reentrant')[0]?.page?.controls.map((row) => row.name),
+      ).toEqual(['Continue']);
       expect(clicked).not.toHaveBeenCalled();
     },
   );
+
+  it('preserves an already-dispatched outcome after permission revocation without page data', async () => {
+    const ref = control('<button id="t">Save</button>');
+    const button = document.querySelector('#t');
+    let requests = 0;
+    button?.addEventListener('pointerdown', () => {
+      requests++;
+      button.textContent = 'Saved';
+      widgetCtx.features.pageContext = false;
+    });
+    const clicked = vi.fn();
+    button?.addEventListener('click', clicked);
+    pageEffects = [
+      {
+        key: 'committed',
+        callId: 'committed',
+        type: 'act-on-page',
+        input: { ref, action: 'click' },
+      },
+    ];
+    await render();
+    await vi.waitFor(() => expect(repliesFor('committed')).toHaveLength(1));
+    expect(requests).toBe(1);
+    expect(clicked).not.toHaveBeenCalled();
+    expect(repliesFor('committed')[0]?.outcome).toBe('done');
+    expect(repliesFor('committed')[0]?.detail).toContain('interrupted');
+    expect(repliesFor('committed')[0]?.page).toBeUndefined();
+  });
 
   it('asks before a committing click, naming the control from the page', async () => {
     const ref = control('<button id="t">Cancel subscription</button>');

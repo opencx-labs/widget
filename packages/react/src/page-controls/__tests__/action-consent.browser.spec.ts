@@ -36,7 +36,8 @@ it.each(['consent wait', 'pointerdown', 'focus'])(
       change();
     } else fixture.element.addEventListener(when, change);
     const result = await actOnPage({ ...fixture, action: 'click' });
-    expect(result.outcome).toBe('declined');
+    expect(result.outcome).toBe(when === 'consent wait' ? 'declined' : 'done');
+    if (when !== 'consent wait') expect(result.detail).toContain('interrupted');
     expect(fixture.clicked).not.toHaveBeenCalled();
   },
 );
@@ -103,9 +104,13 @@ it('does not fill a field moved to another form by its focus handler', async () 
   fixture.element.addEventListener('focus', () =>
     fixture.element.setAttribute('form', 'two'),
   );
-  expect(
-    (await actOnPage({ ...fixture, action: 'fill', value: 'Alice' })).outcome,
-  ).toBe('declined');
+  const result = await actOnPage({
+    ...fixture,
+    action: 'fill',
+    value: 'Alice',
+  });
+  expect(result.outcome).toBe('done');
+  expect(result.detail).toContain('interrupted');
   expect((fixture.element as HTMLInputElement).value).toBe('');
 });
 
@@ -138,3 +143,90 @@ it('binds the submitter value even when the visible name stays the same', async 
   );
   expect(fixture.clicked).not.toHaveBeenCalled();
 });
+
+it.each(['pointerdown', 'mouseup'])(
+  'reports an action that took effect on %s before approval became stale',
+  async (eventName) => {
+    const fixture = setup('<button id="target">Save</button>');
+    let commits = 0;
+    let approved = true;
+    fixture.element.addEventListener(eventName, () => {
+      commits++;
+      fixture.element.textContent = 'Saved';
+      approved = false;
+    });
+    const result = await actOnPage({
+      ref: fixture.ref,
+      action: 'click',
+      consentIsCurrent: () => approved,
+      settleMs: 200,
+    });
+    expect(commits).toBe(1);
+    expect(fixture.clicked).not.toHaveBeenCalled();
+    expect(result.outcome).toBe('done');
+    expect(result.detail).toContain('interrupted');
+    expect(result.detail).toContain('Do not repeat');
+  },
+);
+
+it('reports uncertainty when an interrupted event had no observable DOM result', async () => {
+  const fixture = setup('<button id="target">Save</button>');
+  let requests = 0;
+  let approved = true;
+  fixture.element.addEventListener('pointerdown', () => {
+    requests++;
+    approved = false;
+  });
+  const result = await actOnPage({
+    ref: fixture.ref,
+    action: 'click',
+    consentIsCurrent: () => approved,
+    settleMs: 100,
+  });
+  expect(requests).toBe(1);
+  expect(fixture.clicked).not.toHaveBeenCalled();
+  expect(result.outcome).toBe('no_change');
+  expect(result.detail).toContain('final result is unknown');
+});
+
+it('still reports declined when no host input event was dispatched', async () => {
+  const fixture = setup('<button id="target">Save</button>');
+  let validations = 0;
+  const pointer = vi.fn();
+  fixture.element.addEventListener('pointerover', pointer);
+  const result = await actOnPage({
+    ref: fixture.ref,
+    action: 'click',
+    consentIsCurrent: () => ++validations === 1,
+  });
+  expect(result.outcome).toBe('declined');
+  expect(pointer).not.toHaveBeenCalled();
+  expect(fixture.clicked).not.toHaveBeenCalled();
+});
+
+it.each(['check', 'uncheck'] as const)(
+  'observes an interrupted %s without dispatching a click afterwards',
+  async (action) => {
+    const fixture = setup(
+      `<input id="target" type="checkbox" ${action === 'uncheck' ? 'checked' : ''}>`,
+    );
+    const input = document.querySelector<HTMLInputElement>('#target');
+    if (!input) throw new Error('Missing checkbox');
+    let approved = true;
+    input.addEventListener('pointerdown', () => {
+      input.checked = action === 'check';
+      input.setAttribute('aria-label', 'Updated');
+      approved = false;
+    });
+    const result = await actOnPage({
+      ref: fixture.ref,
+      action,
+      consentIsCurrent: () => approved,
+      settleMs: 100,
+    });
+    expect(input.checked).toBe(action === 'check');
+    expect(fixture.clicked).not.toHaveBeenCalled();
+    expect(result.outcome).toBe('done');
+    expect(result.detail).toContain('interrupted');
+  },
+);
