@@ -273,3 +273,45 @@ The browser run intercepts all backend/provider traffic and uses synthetic media
 It is not new real-backend or physical-microphone evidence. Current-head external
 review/CI, required approval and the final-build real-backend smoke remain release
 gates. No versions, tags or release state changed.
+
+## Clarification page-context fix (2026-09-29)
+
+The real local Payla acceptance run on widget `4a951a7` and backend `8afe5f3`
+found that answering `ask_questions` sent the Q/A text without a fresh
+`page_controls` snapshot. The following `act_on_page` therefore found no target.
+No unauthorized click occurred. Direct approved actions, two-step navigation,
+decline, streaming/polling, renewal and user/account isolation passed that run.
+
+Clarification submissions now use the normal composer's `buildPageClientContext`
+with the current effective page-sharing permission. Controls are read at Send,
+so a changed page is reflected and revoked permission shares no DOM context.
+Earlier marks are not replayed, and the existing privacy filter excludes private
+regions, password fields, input values and the widget UI. An answer does not
+replace the separate native page-action approval.
+
+Verification:
+
+- Two unit regressions and both production-embed modes reproduced missing
+  context on the original code/bundle before the fix.
+- 18 focused React cases pass, including permission revocation and enabling
+  sharing while the question is open.
+- All 38 page-feature E2E cases pass in Chromium. The two new clarification
+  cases also pass in Firefox and WebKit: 42 production-embed cases total.
+  These E2Es use synthetic local backend replies.
+- React typecheck, changed-source lint/format, React/embed production builds,
+  production JSX guards and diff checks pass.
+- The rebuilt bundle was tested against compiled backend `8afe5f3` and the
+  isolated local Payla seed with real model/Jev calls. An explicitly requested
+  structured question produced a real chooser. Its answer included 19 current
+  controls, including one added after the question appeared, while excluding
+  private-field sentinels. Payments remained unopened until Allow, then the
+  browser returned `done` plus fresh controls and the agent rendered
+  "The Payments section is open." No chat/tool replies were mocked in this run.
+
+Embed SHA-256:
+`6b778e045931cd64cde4cb58bf173ea36c2d5b4f1a0eea3de355b72d30bf2271`.
+
+The earlier full identity/upgrade run is evidence for `4a951a7`; this follow-up
+retested the repaired clarification flow on the new bundle. Backend code and
+the user's separate Payla component edits were unchanged. Fresh review/CI and
+required repository approval remain gates. Nothing was merged or published.

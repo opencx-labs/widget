@@ -69,6 +69,7 @@ async function fixture(t, displayMode, features, scenario, actionCase) {
   const event = (value) => stream?.write(`data: ${JSON.stringify(value)}\n\n`);
   function finish() {
     if (!stream || stream.writableEnded) return;
+    const replyId = `reply-${history.length + 1}`;
     const text =
       scenario === 'rich'
         ? 'Answer before card\n```spec\n' +
@@ -77,7 +78,7 @@ async function fixture(t, displayMode, features, scenario, actionCase) {
         : 'Page request finished';
     history.push(
       row(turnBody.uuid, turnBody.content, 'user'),
-      row('reply-1', text, 'ai'),
+      row(replyId, text, 'ai'),
     );
     event({ type: 'text-start', id: 'tail' });
     event({
@@ -86,6 +87,12 @@ async function fixture(t, displayMode, features, scenario, actionCase) {
       delta: scenario === 'rich' ? 'Answer after card' : text,
     });
     event({ type: 'text-end', id: 'tail' });
+    if (scenario === 'clarification') {
+      event({
+        type: 'data-turn-settled',
+        data: { turn_id: `turn-${replyId}`, message_uuids: [replyId] },
+      });
+    }
     event({ type: 'finish-step' });
     event({ type: 'finish' });
     stream.end('data: [DONE]\n\n');
@@ -210,9 +217,41 @@ async function fixture(t, displayMode, features, scenario, actionCase) {
         'x-vercel-ai-ui-message-stream': 'v1',
         'Cache-Control': 'no-cache',
       });
-      event({ type: 'start', messageId: 'assistant-1' });
+      const turnNumber = requests.filter((r) =>
+        r.path.endsWith('/chat/stream'),
+      ).length;
+      event({ type: 'start', messageId: `assistant-${turnNumber}` });
       event({ type: 'start-step' });
-      if (scenario === 'rich') {
+      if (scenario === 'clarification' && turnNumber === 1) {
+        const questions = {
+          request_id: 'navigation-choice',
+          questions: [
+            {
+              id: 'destination',
+              prompt: 'Which page should I open?',
+              selection: 'single',
+              options: [{ id: 'payments', label: 'Payments' }],
+            },
+          ],
+        };
+        event({
+          type: 'tool-input-start',
+          toolCallId: 'question-call',
+          toolName: 'ask_questions',
+        });
+        event({
+          type: 'tool-input-available',
+          toolCallId: 'question-call',
+          toolName: 'ask_questions',
+          input: questions,
+        });
+        event({
+          type: 'tool-output-available',
+          toolCallId: 'question-call',
+          output: questions,
+        });
+        finish();
+      } else if (scenario === 'rich') {
         event({ type: 'text-start', id: 'intro' });
         event({ type: 'text-delta', id: 'intro', delta: 'Answer before card' });
         event({ type: 'text-end', id: 'intro' });
@@ -312,6 +351,74 @@ async function fixture(t, displayMode, features, scenario, actionCase) {
 }
 
 for (const mode of ['popover', 'companion']) {
+  test(
+    `${mode}: clarification answers read the current host page before an approved action`,
+    { timeout: 30000 },
+    async (t) => {
+      const f = await fixture(
+        t,
+        mode,
+        { pageContext: true, clientTools: true, pageActions: true },
+        'clarification',
+        { name: 'Open payments' },
+      );
+      await f.send();
+      const questions = f.frame.locator(
+        '[data-component="chat/clarification_questions/root"]',
+      );
+      await questions
+        .getByRole('button', { name: 'Payments', exact: true })
+        .click();
+      // A new screen/control appeared while the visitor was answering.
+      await f.page.locator('#target').evaluate((el) => {
+        el.textContent = 'Open payments';
+      });
+      const answerSent = f.page.waitForRequest((request) =>
+        request.url().endsWith('/chat/stream'),
+      );
+      await questions
+        .locator('[data-component="chat/clarification_questions/send"]')
+        .click();
+      const body = (await answerSent).postDataJSON();
+      assert.equal(body.content, 'Q: Which page should I open?\nA: Payments');
+      assert.ok(
+        body.clientContext?.page_controls?.some(
+          (c) => c.name === 'Open payments',
+        ),
+      );
+      assert.ok(
+        !body.clientContext.page_controls.some(
+          (c) => c.name === 'Delete draft',
+        ),
+      );
+      for (const privateValue of [
+        'PRIVATE_CONTROL_MUST_NOT_LEAK',
+        'PASSWORD_MUST_NOT_LEAK',
+        'FIELD_VALUE_MUST_STAY_PRIVATE',
+      ])
+        assert.ok(!JSON.stringify(body.clientContext).includes(privateValue));
+      const consent = f.frame.locator('[data-component="chat/page_action"]');
+      await consent.getByText('Open payments', { exact: true }).waitFor();
+      assert.equal(
+        await f.page.locator('#target').getAttribute('data-clicks'),
+        null,
+      );
+      const replied = f.page.waitForResponse((response) =>
+        response.url().endsWith('/page-reply'),
+      );
+      await consent.getByRole('button', { name: 'Allow', exact: true }).click();
+      await replied;
+      assert.equal(
+        await f.page.locator('#target').getAttribute('data-clicks'),
+        '1',
+      );
+      assert.equal(
+        f.requests.find((r) => r.path.endsWith('/page-reply')).body.outcome,
+        'done',
+      );
+    },
+  );
+
   test(
     `${mode}: rich cards survive stream completion and history reload safely`,
     { timeout: 30000 },
