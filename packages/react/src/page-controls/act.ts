@@ -108,6 +108,7 @@ export async function actOnPage(input: {
   action: PageAction;
   value?: string;
   settleMs?: number;
+  consentIsCurrent?: () => boolean;
 }): Promise<ActResult> {
   try {
     return await act(input);
@@ -129,11 +130,13 @@ async function act({
   action,
   value,
   settleMs = SETTLE_MS,
+  consentIsCurrent = () => true,
 }: {
   ref: string;
   action: PageAction;
   value?: string;
   settleMs?: number;
+  consentIsCurrent?: () => boolean;
 }): Promise<ActResult> {
   const guarded = guardRef(ref);
   if (!guarded.ok) {
@@ -146,6 +149,7 @@ async function act({
   const el = guarded.element;
   const refused = refuseReason(el);
   if (refused) return { outcome: 'unsupported', detail: refused };
+  if (!consentIsCurrent()) return { outcome: 'declined' };
 
   const doc = el.ownerDocument;
   const urlBefore = doc.location.href;
@@ -158,7 +162,10 @@ async function act({
   switch (action) {
     case 'click': {
       watcher = watchPage(doc, settleMs);
-      firePointerSequence(el);
+      if (!firePointerSequence(el, consentIsCurrent)) {
+        watcher.cancel();
+        return { outcome: 'declined' };
+      }
       break;
     }
     case 'fill': {
@@ -169,6 +176,7 @@ async function act({
         };
       }
       el.focus?.();
+      if (!consentIsCurrent()) return { outcome: 'declined' };
       watcher = watchPage(doc, settleMs);
       if (!setNativeValue(el, value)) {
         watcher.cancel();
@@ -228,7 +236,10 @@ async function act({
         };
       }
       watcher = watchPage(doc, settleMs);
-      firePointerSequence(el);
+      if (!firePointerSequence(el, consentIsCurrent)) {
+        watcher.cancel();
+        return { outcome: 'declined' };
+      }
       break;
     }
   }

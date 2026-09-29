@@ -5,6 +5,7 @@ import { actOnPage } from '../../../page-controls/act';
 import { travelTo } from '../../../page-controls/cursor';
 import { actOnPageInputSchema } from '../../../page-controls/act-input';
 import { accessibleName } from '../../../page-controls/accessible-name';
+import { captureActionMeaning } from '../../../page-controls/action-meaning';
 import { resolveRef } from '../../../page-controls/control-ref';
 import { readPageControls } from '../../../page-controls/read-controls';
 import { resolveSelectOption } from '../../../page-controls/select-option';
@@ -89,6 +90,15 @@ export function AgentChatPageActions() {
           }
           const optionValue = option?.value;
           const optionLabel = option?.label.trim();
+          const hasSameMeaning = captureActionMeaning(element);
+          const consentIsCurrent = () =>
+            enabled() &&
+            hasSameMeaning() &&
+            consentName === (accessibleName(element) || 'this control') &&
+            (!option ||
+              (resolveSelectOption(element, value) === option &&
+                option.value === optionValue &&
+                option.label.trim() === optionLabel));
           const allowed = await requestPageActionConsent({
             callId: effect.callId,
             action,
@@ -101,7 +111,7 @@ export function AgentChatPageActions() {
             return;
           }
 
-          if (!enabled()) {
+          if (!consentIsCurrent()) {
             replyToPageCall(effect.callId, 'declined');
             return;
           }
@@ -112,25 +122,16 @@ export function AgentChatPageActions() {
           // before the hand got there.
           cursor = await travelTo(element, { press: true });
 
-          if (
-            !enabled() ||
-            consentName !== (accessibleName(element) || 'this control')
-          ) {
+          if (!consentIsCurrent()) {
             replyToPageCall(effect.callId, 'declined');
             return;
           }
-          // Consent is for this concrete option and its visible meaning. Host
-          // updates during confirmation or pointer travel invalidate approval.
-          if (
-            option &&
-            (resolveSelectOption(element, value) !== option ||
-              option.value !== optionValue ||
-              option.label.trim() !== optionLabel)
-          ) {
-            replyToPageCall(effect.callId, 'declined');
-            return;
-          }
-          const result = await actOnPage({ ref, action, value });
+          const result = await actOnPage({
+            ref,
+            action,
+            value,
+            consentIsCurrent,
+          });
 
           // Read the page again and send it back with the outcome. An action
           // often lands the visitor somewhere else, and an agent holding

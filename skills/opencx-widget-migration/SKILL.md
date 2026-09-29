@@ -61,8 +61,10 @@ organization's backend configuration. These are independent choices.
   service connections. Existing beta users must opt in with `streaming: true`
   and `capabilities.connections: true` to retain those features. Page collection
   requires `features.pageContext: true`; agent actions additionally require
-  `features.clientTools: true`. Both require organization support. Companion
-  does not enable either flag. Host-supplied context remains shared.
+  `features.clientTools: true` and `features.pageActions: true`. Page context
+  and actions default off and require organization support plus embed opt-in.
+  Each action also asks the visitor for confirmation. Companion does not enable
+  these flags. Host-supplied context remains shared.
 - **Initialization failure:** `Widget` and `WidgetProvider` render nothing by
   default after a failed initialization and log an error. In React, provide
   `errorComponent={(error) => ...}` if the host needs a visible failure state.

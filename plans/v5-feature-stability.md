@@ -486,3 +486,42 @@ Browser traffic, media devices and transcription are synthetic. The browser
 cases establish widget behavior, not a new real-backend or microphone-hardware
 acceptance run. Current-head external review/CI and required approval remain.
 Workspace stays excluded; nothing was merged, deployed or published.
+
+### PR #85 follow-up: prepared sends and action targets (2026-09-29)
+
+Greptile's 1/5 review of `81176dd` identified a real deferred-send ownership
+bug and stale action approval. This follow-up:
+
+- Captures the conversation generation before snapshot preparation. Reset,
+  disposal and reusing an empty Companion tab for history invalidate that work.
+  Stale callbacks neither send nor clear another chat's draft, marks or files.
+  Session creation is fenced too. Same-owner renewal and normal composer
+  unmounts preserve valid sends.
+- Rechecks native action meaning after consent, after pointer travel and before
+  each dispatched pointer event. This includes resolved link destinations,
+  targets/download metadata, associated forms, submitter overrides and values,
+  native ancestors and label-forwarded controls. Changed operations are declined.
+- Documents the required `pageActions` embed opt-in and false page-feature
+  defaults. Page-text traversal now checks each ancestor style once per read,
+  while still reading privacy changes fresh on the next call.
+
+**Action contract:** approval authorizes the named control/action/value, followed
+by normal website event handling. It is not a sandbox or a transaction lock over
+the customer's JavaScript. A click handler can intentionally redirect, save data
+or submit a form after execution begins, just as with a visitor click. Local
+reproduction confirmed this behavior, including a handler changing its own link
+destination. The pre-execution checks do not promise to freeze the destination
+through host handlers. No handler interception, native-action replay, customer
+callback registry or browser-specific navigation interception was introduced.
+`done` remains evidence of browser-side change, not proof that a remote business
+transaction succeeded. A stricter operation contract would require a separately
+designed integration rather than silently changing normal click behavior.
+
+Verification: 163 focused tests (28 core, 31 headless, 104 React), 111 native
+browser cases (37 each in Chromium, Firefox and WebKit), 12 production embed
+cases and 25 unchanged-v4 upgrade cases in Chromium passed. The latter includes
+same-owner renewal and identity change. All four production builds, JSX guards
+and package type checks passed; changed-source lint and diff checks passed.
+Ownership, changed native operations and repeated style reads reproduced before
+their fixes. All traffic remained local/mocked. These checks do not replace
+current-head Greptile/CI, repository approval or a final-build real-backend smoke.

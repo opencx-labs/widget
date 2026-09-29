@@ -169,6 +169,8 @@ suite('WidgetCtx.features (server-enabled, embed-narrowed)', () => {
       getClientCapabilities: () => config.capabilities,
     });
     const child = ctx.createConversation();
+    const isParentCurrent = ctx.messageCtx.captureConversation();
+    const isChildCurrent = child.messageCtx.captureConversation();
     expect(child.streaming).toBe(true);
     expect(child.features.pageContext).toBe(true);
     config = {
@@ -182,7 +184,10 @@ suite('WidgetCtx.features (server-enabled, embed-narrowed)', () => {
     expect(child.messageCtx.sendsPageContext).toBe(false);
     expect(child.api).toBe(ctx.api);
     child.releaseConversation();
+    expect(isChildCurrent()).toBe(false);
+    expect(isParentCurrent()).toBe(true);
     ctx.resetChat();
+    expect(isParentCurrent()).toBe(false);
   });
 
   test('keeps sends buffered before provider mount when streaming is opted out', async () => {

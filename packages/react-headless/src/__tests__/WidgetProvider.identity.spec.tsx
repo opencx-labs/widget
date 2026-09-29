@@ -7,6 +7,7 @@ import {
   type ExternalStorage,
 } from '@opencx/widget-core';
 import { useWidget, WidgetProvider } from '../WidgetProvider';
+import { ConversationWorkspace } from '../ConversationWorkspace';
 
 const features = {
   preamble: false,
@@ -181,10 +182,12 @@ describe('WidgetProvider verified identity lifecycle', () => {
     await render(firstToken);
     const firstContext = currentWidgetCtx;
     if (!firstContext) throw new Error('Widget context was not initialized');
+    const isCurrentConversation = firstContext.messageCtx.captureConversation();
     await firstContext.api.listConnections();
 
     await render(renewedToken);
     expect(currentWidgetCtx).toBe(firstContext);
+    expect(isCurrentConversation()).toBe(true);
     await firstContext.api.listConnections();
     expect(authorizationHeaders.at(-1)).toBe(`Bearer ${renewedToken}`);
     expect(configRequests).toBe(1);
@@ -193,7 +196,37 @@ describe('WidgetProvider verified identity lifecycle', () => {
     await render(otherAccountToken);
     await vi.waitFor(() => expect(currentWidgetCtx).not.toBe(firstContext));
     expect(disposed).toHaveBeenCalledOnce();
+    expect(isCurrentConversation()).toBe(false);
     expect(configRequests).toBe(2);
+  });
+
+  it('cancels a prepared mark-only send when Companion reuses its empty tab for history', async () => {
+    await render(token({ accountId: 'account-a', expiresAt: 1 }));
+    const ctx = currentWidgetCtx;
+    if (!ctx) throw new Error('Widget context was not initialized');
+    const workspace = new ConversationWorkspace(ctx);
+    const historySession = { id: 'history-b', isOpened: true } as never;
+    ctx.sessionCtx.sessionsState.setPartial({ data: [historySession] });
+    const isCurrent = ctx.messageCtx.captureConversation();
+    let completeUpload!: () => void;
+    const upload = new Promise<void>((resolve) => {
+      completeUpload = resolve;
+    });
+    const sent = vi.spyOn(ctx.messageCtx, 'sendMessage').mockResolvedValue();
+    const pendingSend = upload.then(() => {
+      if (isCurrent())
+        return ctx.messageCtx.sendMessage({ content: 'marked page A' });
+    });
+    expect(workspace.open('history-b')).toBe(ctx);
+    expect(ctx.sessionCtx.sessionState.get().session?.id).toBe('history-b');
+    completeUpload();
+    await pendingSend;
+    expect(sent).not.toHaveBeenCalled();
+    expect(isCurrent()).toBe(false);
+    const sameHistory = ctx.messageCtx.captureConversation();
+    workspace.open('history-b');
+    expect(sameHistory()).toBe(true);
+    workspace.dispose();
   });
 
   it('waits for old storage cleanup before initializing another account', async () => {

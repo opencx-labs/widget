@@ -27,6 +27,7 @@ let canAttach = true;
 let sendsPageContext = true;
 let marksShareable = true;
 let configContext: Record<string, unknown> | undefined;
+let conversationGeneration = 0;
 const mentionSearch = vi.fn(async () => [
   {
     type: 'workflow',
@@ -110,7 +111,14 @@ vi.mock('@opencx/widget-react-headless', () => ({
           clientTools: false,
         };
       },
-      messageCtx: { blocksSendWhileAwaitingReply: false, draftState },
+      messageCtx: {
+        blocksSendWhileAwaitingReply: false,
+        draftState,
+        captureConversation: () => {
+          const generation = conversationGeneration;
+          return () => generation === conversationGeneration;
+        },
+      },
     },
     componentStore: {
       getComponent: (key: string) =>
@@ -359,6 +367,70 @@ describe('ChatInput send acceptance', () => {
     expect(handleCancelUploadSpy).toHaveBeenCalledWith('file-1');
     expect(detachSpy).toHaveBeenCalledWith(marks[0]);
     expect(order).toEqual(['detach', 'file']);
+  });
+
+  it.each([
+    'switch to B',
+    'switch A to B to A',
+    'new chat',
+    'identity disposal',
+  ])(
+    'cancels snapshot-delayed payload and cleanup after %s',
+    async (transition) => {
+      const mark = marks[0]!;
+      pendingSnapshots.set(mark, () => {});
+      const { textarea } = await renderInput();
+      await act(async () => setTextareaValue(textarea, 'private draft A'));
+      await act(async () =>
+        container
+          .querySelector<HTMLButtonElement>(
+            'button[aria-label="send_message"]',
+          )!
+          .click(),
+      );
+      expect(sendMessageSpy).not.toHaveBeenCalled();
+      conversationGeneration += transition === 'switch A to B to A' ? 2 : 1;
+      await act(async () => setTextareaValue(textarea, 'current draft'));
+      await act(async () =>
+        pendingSnapshots.get(mark)!('https://files.test/a.jpg'),
+      );
+      expect(sendMessageSpy).not.toHaveBeenCalled();
+      expect(textarea.value).toBe('current draft');
+      expect(detachSpy).not.toHaveBeenCalled();
+      expect(handleCancelUploadSpy).not.toHaveBeenCalled();
+      expect(rememberSentTextSpy).not.toHaveBeenCalled();
+      pendingSnapshots.delete(mark);
+    },
+  );
+
+  it('keeps a snapshot-delayed send when only the composer closes', async () => {
+    const mark = marks[0]!;
+    pendingSnapshots.set(mark, () => {});
+    const { textarea } = await renderInput();
+    await act(async () => setTextareaValue(textarea, 'same conversation'));
+    await act(async () =>
+      container
+        .querySelector<HTMLButtonElement>('button[aria-label="send_message"]')!
+        .click(),
+    );
+    act(() => root.unmount());
+    rootMounted = false;
+    await act(async () =>
+      pendingSnapshots.get(mark)!('https://files.test/a.jpg'),
+    );
+    expect(capturedInput?.content).toBe('same conversation');
+    expect(sendMessageSpy).toHaveBeenCalledOnce();
+    pendingSnapshots.delete(mark);
+  });
+
+  it('does not clean a different conversation after delayed acceptance', async () => {
+    const { textarea } = await renderInput();
+    const input = await submit(textarea);
+    conversationGeneration++;
+    await act(async () => input.onAccepted?.());
+    expect(detachSpy).not.toHaveBeenCalled();
+    expect(handleCancelUploadSpy).not.toHaveBeenCalled();
+    expect(rememberSentTextSpy).not.toHaveBeenCalled();
   });
 
   it('does not update or reopen an unmounted composer after delayed acceptance', async () => {

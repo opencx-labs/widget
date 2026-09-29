@@ -261,6 +261,7 @@ export function ChatInput({
     // Everything the send carries is captured NOW: the snapshot wait below
     // yields to the event loop, and the composer may change underneath it.
     const submittedText = inputTextRef.current;
+    const isCurrentConversation = widgetCtx.messageCtx.captureConversation();
     const submittedDraft = widgetCtx.messageCtx.draftState.get();
     const submittedMarks = marks.filter((mark) => {
       if (widgetCtx.features.pageContext && isPageMarkShareable(mark))
@@ -284,6 +285,7 @@ export function ChatInput({
       ),
     ).then(() =>
       submit({
+        isCurrentConversation,
         submittedText,
         submittedDraft,
         submittedMarks,
@@ -294,18 +296,23 @@ export function ChatInput({
   };
 
   const submit = ({
+    isCurrentConversation,
     submittedText,
     submittedDraft,
     submittedMarks,
     submittedFiles,
     submittedFileIds,
   }: {
+    isCurrentConversation: () => boolean;
     submittedText: string;
     submittedDraft: ReturnType<typeof widgetCtx.messageCtx.draftState.get>;
     submittedMarks: PageMark[];
     submittedFiles: typeof successFiles;
     submittedFileIds: string[];
   }) => {
+    // A reset can reuse this MessageCtx for another session or visitor. Do not
+    // send or clear their state when an earlier snapshot upload finishes.
+    if (!isCurrentConversation()) return;
     // Upload preparation yields: permissions or the marked DOM may have changed.
     const readsPage = widgetCtx.features.pageContext;
     const currentMarks = submittedMarks.filter((mark) => {
@@ -357,7 +364,7 @@ export function ChatInput({
         readsPage,
       }),
       onAccepted: () => {
-        if (didAccept) return;
+        if (didAccept || !isCurrentConversation()) return;
         didAccept = true;
 
         rememberSentText(trimmed);

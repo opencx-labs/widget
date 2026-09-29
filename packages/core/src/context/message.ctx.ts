@@ -291,6 +291,13 @@ export class MessageCtx {
   private bufferedAgentSends: SendMessageInput[] = [];
 
   private sendMessageAbortController = new AbortController();
+  private conversationGeneration = 0;
+
+  /** Bind asynchronous preparation to this chat, including resets to a new empty chat. */
+  captureConversation = (): (() => boolean) => {
+    const generation = this.conversationGeneration;
+    return () => generation === this.conversationGeneration;
+  };
 
   private messageIdsDispatchedToOnMessageReceivedHook = new Set<string>();
 
@@ -343,6 +350,7 @@ export class MessageCtx {
   }
 
   reset = () => {
+    this.conversationGeneration++;
     this.sendMessageAbortController.abort('Resetting chat');
     this.bufferedAgentSends = [];
     this.state.reset();
@@ -515,6 +523,7 @@ export class MessageCtx {
     input: SendMessageInput,
     { pending }: { pending: boolean },
   ): Promise<StagedUserTurn | null> => {
+    const isCurrentConversation = this.captureConversation();
     const built = this.buildUserMessage(input);
     if (!built) return null;
     const userMessage = pending ? { ...built, pending: true } : built;
@@ -536,9 +545,11 @@ export class MessageCtx {
     try {
       sessionId = await this.ensureSessionId();
     } catch (error) {
+      if (!isCurrentConversation()) return null;
       this.rollbackOptimisticMessages(optimisticMessageIds);
       throw error;
     }
+    if (!isCurrentConversation()) return null;
     if (!sessionId) {
       this.rollbackOptimisticMessages(optimisticMessageIds);
       return null;

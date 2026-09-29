@@ -7,7 +7,7 @@ import {
   beginSnapshotUpload,
   awaitSnapshotUrl,
 } from '../page-marks/mark-thumbnail';
-import { safePageUrl } from '../page-privacy';
+import { safePageText, safePageUrl } from '../page-privacy';
 import { toJpeg } from 'html-to-image';
 vi.mock('html-to-image', () => ({
   toJpeg: vi.fn(async () => 'data:image/jpeg;base64,WA=='),
@@ -29,6 +29,25 @@ afterEach(() => {
   document.body.innerHTML = '';
   vi.restoreAllMocks();
   Reflect.deleteProperty(document, 'elementFromPoint');
+});
+it('reads each ancestor style once per text traversal and refreshes privacy next time', () => {
+  document.body.innerHTML = '<button>Open</button>';
+  const button = document.querySelector('button')!;
+  let leaf: Element = button;
+  for (let i = 0; i < 40; i++) {
+    const child = document.createElement('span');
+    leaf.append(child);
+    leaf = child;
+  }
+  leaf.textContent = ' account';
+  const styles = vi.spyOn(window, 'getComputedStyle');
+  expect(safePageText(button)).toBe('Open account');
+  expect(styles.mock.calls.length).toBeLessThanOrEqual(43);
+  leaf.parentElement!.style.opacity = '0';
+  expect(safePageText(button)).toBe('Open');
+  button.parentElement!.setAttribute('data-opencx-private', '');
+  expect(safePageText(button)).toBe('');
+  button.parentElement!.removeAttribute('data-opencx-private');
 });
 for (const [name, html] of [
   [

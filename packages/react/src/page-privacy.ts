@@ -8,34 +8,34 @@ export const WIDGET_OWNED_SELECTOR = [
 export const PAGE_VALUE_SELECTOR =
   'input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"],[role="searchbox"],[role="combobox"]';
 
+const PRIVATE_SELECTOR = [
+  ...WIDGET_OWNED_SELECTOR,
+  '[data-opencx-private]',
+  '[aria-hidden="true"]',
+  '[hidden]',
+  'script',
+  'style',
+  'noscript',
+].join(',');
+
+function isSelfPrivate(el: Element): boolean {
+  if (el.matches(PRIVATE_SELECTOR)) return true;
+  const style = el.ownerDocument.defaultView?.getComputedStyle(el);
+  return (
+    style?.display === 'none' ||
+    style?.visibility === 'hidden' ||
+    style?.visibility === 'collapse' ||
+    style?.opacity === '0'
+  );
+}
+
 export function isPageElementPrivate(el: Element): boolean {
-  if (
-    el.closest(
-      [
-        ...WIDGET_OWNED_SELECTOR,
-        '[data-opencx-private]',
-        '[aria-hidden="true"]',
-        '[hidden]',
-        'script',
-        'style',
-        'noscript',
-      ].join(','),
-    )
-  )
-    return true;
   for (
     let current: Element | null = el;
     current;
     current = current.parentElement
   ) {
-    const style = current.ownerDocument.defaultView?.getComputedStyle(current);
-    if (
-      style?.display === 'none' ||
-      style?.visibility === 'hidden' ||
-      style?.visibility === 'collapse' ||
-      style?.opacity === '0'
-    )
-      return true;
+    if (isSelfPrivate(current)) return true;
   }
   return false;
 }
@@ -46,7 +46,12 @@ export function safePageText(el: Element): string {
   const chunks: string[] = [];
   const visit = (node: Node) => {
     if (node instanceof Element) {
-      if (isPageElementPrivate(node) || node.matches(PAGE_VALUE_SELECTOR))
+      // Ancestors were checked on entry; private subtrees are never visited.
+      // Each style is read once, with no cache surviving this live traversal.
+      if (
+        (node !== el && isSelfPrivate(node)) ||
+        node.matches(PAGE_VALUE_SELECTOR)
+      )
         return;
       const block =
         /^(ADDRESS|ARTICLE|ASIDE|BLOCKQUOTE|BR|DD|DETAILS|DIV|DL|DT|FIELDSET|FIGCAPTION|FIGURE|FOOTER|FORM|H[1-6]|HEADER|HR|LI|MAIN|NAV|OL|P|PRE|SECTION|SUMMARY|TABLE|TD|TH|TR|UL)$/.test(

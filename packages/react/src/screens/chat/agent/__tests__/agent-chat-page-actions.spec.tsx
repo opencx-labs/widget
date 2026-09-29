@@ -140,6 +140,120 @@ describe('AgentChatPageActions', () => {
     return beginSnapshot()(el);
   };
 
+  it.each([
+    [
+      'link href',
+      '<a id="t" href="/read">Continue</a>',
+      '#t',
+      'href',
+      '/delete',
+    ],
+    [
+      'link target',
+      '<a id="t" href="/read">Continue</a>',
+      '#t',
+      'target',
+      '_blank',
+    ],
+    [
+      'link download',
+      '<a id="t" href="/read">Continue</a>',
+      '#t',
+      'download',
+      'file',
+    ],
+    [
+      'base URL',
+      '<base href="https://example.test/safe/"><a id="t" href="next">Continue</a>',
+      'base',
+      'href',
+      'https://other.test/',
+    ],
+    [
+      'form action',
+      '<form id="f" action="/save"><button id="t">Continue</button></form>',
+      '#f',
+      'action',
+      '/delete',
+    ],
+    [
+      'form method',
+      '<form id="f" action="/save"><button id="t">Continue</button></form>',
+      '#f',
+      'method',
+      'post',
+    ],
+    [
+      'submit override',
+      '<form action="/save"><button id="t" formaction="/preview">Continue</button></form>',
+      '#t',
+      'formaction',
+      '/delete',
+    ],
+    [
+      'external form',
+      '<form id="f" action="/save"></form><form id="g" action="/delete"></form><button id="t" form="f">Continue</button>',
+      '#t',
+      'form',
+      'g',
+    ],
+    [
+      'reset type',
+      '<form><button id="t" type="button">Continue</button></form>',
+      '#t',
+      'type',
+      'reset',
+    ],
+  ])(
+    'declines changed %s during consent with the same label',
+    async (_name, html, selector, attribute, value) => {
+      const ref = control(html);
+      const clicked = vi.fn((event: Event) => event.preventDefault());
+      document.querySelector('#t')!.addEventListener('click', clicked);
+      onConsent = () =>
+        document.querySelector(selector)!.setAttribute(attribute, value);
+      pageEffects = [
+        {
+          key: 'changed-operation',
+          callId: 'changed-operation',
+          type: 'act-on-page',
+          input: { ref, action: 'click' },
+        },
+      ];
+      await render();
+      await vi.waitFor(() =>
+        expect(repliesFor('changed-operation')).toHaveLength(1),
+      );
+      expect(repliesFor('changed-operation')[0]?.outcome).toBe('declined');
+      expect(clicked).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['pointerdown', 'focus'])(
+    'declines a link changed by a %s handler before click',
+    async (eventName) => {
+      const ref = control('<a id="t" href="/safe">Continue</a>');
+      const link = document.querySelector<HTMLAnchorElement>('#t')!;
+      const clicked = vi.fn((event: Event) => event.preventDefault());
+      link.addEventListener('click', clicked);
+      link.addEventListener(eventName, () => {
+        link.href = '/different';
+      });
+      pageEffects = [
+        {
+          key: 'reentrant',
+          callId: 'reentrant',
+          type: 'act-on-page',
+          input: { ref, action: 'click' },
+        },
+      ];
+      await render();
+      await vi.waitFor(() => expect(repliesFor('reentrant')).toHaveLength(1));
+      expect(repliesFor('reentrant')[0]?.outcome).toBe('declined');
+      expect(clicked).not.toHaveBeenCalled();
+    },
+  );
+
   it('asks before a committing click, naming the control from the page', async () => {
     const ref = control('<button id="t">Cancel subscription</button>');
     pageEffects = [

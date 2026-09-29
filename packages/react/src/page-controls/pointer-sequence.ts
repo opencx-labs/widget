@@ -17,7 +17,10 @@ export function isAgentPointerEvent(event: Event): boolean {
  * So: the full sequence a mouse produces, at the control's own centre,
  * with focus moved first like a real press does.
  */
-export function firePointerSequence(el: HTMLElement): void {
+export function firePointerSequence(
+  el: HTMLElement,
+  mayDispatch: () => boolean = () => true,
+): boolean {
   const rect = el.getBoundingClientRect();
   const clientX = rect.left + rect.width / 2;
   const clientY = rect.top + rect.height / 2;
@@ -33,8 +36,10 @@ export function firePointerSequence(el: HTMLElement): void {
   };
 
   const dispatch = (event: Event) => {
+    if (!mayDispatch()) return false;
     agentPointerEvents.add(event);
-    return el.dispatchEvent(event);
+    el.dispatchEvent(event);
+    return true;
   };
   const pointer = (type: string) =>
     dispatch(
@@ -48,16 +53,18 @@ export function firePointerSequence(el: HTMLElement): void {
   const mouse = (type: string, detail = 0) =>
     dispatch(new MouseEvent(type, { ...base, detail, button: 0, buttons: 1 }));
 
-  pointer('pointerover');
-  pointer('pointerenter');
-  mouse('mouseover');
-  mouse('mousemove');
-  pointer('pointerdown');
-  mouse('mousedown', 1);
+  if (
+    !pointer('pointerover') ||
+    !pointer('pointerenter') ||
+    !mouse('mouseover') ||
+    !mouse('mousemove') ||
+    !pointer('pointerdown') ||
+    !mouse('mousedown', 1)
+  )
+    return false;
   // Focus before the release, like a real press: a control that commits on
   // blur of the previous field needs that to have happened already.
+  if (!mayDispatch()) return false;
   el.focus?.();
-  pointer('pointerup');
-  mouse('mouseup', 1);
-  mouse('click', 1);
+  return pointer('pointerup') && mouse('mouseup', 1) && mouse('click', 1);
 }

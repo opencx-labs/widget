@@ -406,8 +406,8 @@ export interface WidgetConfig {
 
   /**
    * Per-embed feature toggles. Each one can only NARROW what your
-   * organization enabled server-side. Page context and client tools require
-   * explicit `true`; other omitted toggles inherit the organization setting.
+   * organization enabled server-side. Page context, client tools and page
+   * actions require explicit `true`; other omitted toggles inherit the org setting.
    */
   features?: {
     /**
