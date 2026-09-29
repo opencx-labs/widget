@@ -639,3 +639,41 @@ The checks use local fixtures. DOM checks cannot detect application state
 changes with no corresponding DOM or URL change; normal host handlers are not
 sandboxed. Fresh independent reviews, required CI/approval and coordinated
 final-build real-backend acceptance remain. Nothing was published or deployed.
+
+### Greptile 4/5 follow-up: local identity and idle observation (2026-09-29)
+
+The review of `2f0ee36` found approved clicks interrupted by unrelated content or
+hover tooltips, plus repeated reference scans after every idle page update.
+Five browser regressions failed before the fix. With 300 retained controls and
+five unrelated updates, the old observer performed 3,000 weak-reference lookups.
+
+- References now bind to the control, its local parent and containing semantic
+  records/regions. There is no whole-body fallback for top-level controls.
+  Mutations in separate regions or sibling records do not invalidate them.
+  Section-wrapped record labels and outer record identity remain dependencies.
+- Tooltip insertion and changes stay outside the containing record's identity.
+  Removal/reparenting still invalidates a tracked control, including moving into
+  an ignored tooltip and back. Names, native operations, URLs and consent checks
+  remain enforced. Live regions do not bypass identity checks.
+- The observer advances weakly indexed revision counters along the changed
+  node's path. It never enumerates retained controls, dereferences their nodes,
+  reads their content, or retains a mutation queue while idle. The same fixture
+  now performs **zero retained-control lookups**. The observer remains active to
+  detect A-to-B-to-A changes; this is not a claim of zero observation work.
+
+Thirteen new browser cases cover the fixes and their identity boundaries. A
+negative case caught a section-wrapped record label during implementation and
+was fixed before validation. Final verification: **402 native browser cases**
+(134 each Chromium/Firefox/WebKit), **49 focused React/unit cases**, and **12
+production embed cases** in Chromium. React and embed production builds/JSX
+guards, React typecheck, changed-file lint/format and diff checks pass.
+
+Embed SHA-256:
+`14e88c809c229cad86c96bd838a496f61cad80af985353a65a213192fa8b11ca`.
+
+All traffic uses local fixtures. Local context still depends on page structure:
+unlabelled content changes within the same group can require a fresh reading,
+and hidden application state is not observable. No backend changes or backend
+reruns are included in this follow-up. Fresh independent review/CI, repository
+approval and coordinated final-build real-backend acceptance remain release
+gates. No versions, packages, tags or deployments changed.
