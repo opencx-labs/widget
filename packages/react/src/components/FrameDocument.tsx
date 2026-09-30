@@ -66,7 +66,7 @@ export function FrameDocument({
   children: React.ReactNode;
 }) {
   const { cssOverrides } = useConfig();
-  const { cssVars, theme } = useTheme();
+  const { cssVars, theme, colorScheme } = useTheme();
   const { dir } = useTranslation();
   const radiusVars = {
     ['--opencx-shell-radius' as string]:
@@ -85,7 +85,8 @@ export function FrameDocument({
       {cssOverrides ? <style>{cssOverrides}</style> : null}
       <div
         ref={rootRef}
-        style={{ ...cssVars, ...radiusVars, ...style }}
+        // Native form controls and scrollbars follow the scheme too.
+        style={{ colorScheme, ...cssVars, ...radiusVars, ...style }}
         data-version={version}
         dir={dir}
         className={cn(

@@ -36,12 +36,21 @@ export type UserConfig = UserBaseConfig & {
   externalId?: string;
 };
 
+export type WidgetColorSchemeU = 'light' | 'dark' | 'system';
+
 type ThemeOptions = {
   /**
    * @default 'stone'
    */
   palette?: 'neutral' | 'stone' | 'zinc' | 'slate';
   primaryColor?: string;
+  /**
+   * Light or dark rendering of the palette. `system` follows the visitor's
+   * OS preference (`prefers-color-scheme`) and updates live. Hosts with their
+   * own theme toggle pass `light` / `dark` and re-initialize on change.
+   * @default 'light'
+   */
+  colorScheme?: WidgetColorSchemeU;
   widgetTrigger?: {
     zIndex?: number;
     offset?: {

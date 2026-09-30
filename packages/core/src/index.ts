@@ -29,6 +29,7 @@ export type {
 export type {
   WidgetConfig,
   WidgetDisplayModeU,
+  WidgetColorSchemeU,
   WidgetCompanionLayoutU,
   WidgetCompanionDefaultLayoutU,
   WidgetSidebarSideU,
