@@ -15,7 +15,7 @@ Run this command from your application's directory. You need Node.js and npm,
 including `npx`.
 
 ```bash
-npx skills add openchatai/widget --skill opencx-widget-integration
+npx skills add opencx-labs/widget --skill opencx-widget-integration
 ```
 
 The installer supports assistants including Claude Code, Codex, and Cursor. It can
@@ -23,13 +23,13 @@ detect your assistant or let you choose one. To select explicitly:
 
 ```bash
 # Claude Code
-npx skills add openchatai/widget --skill opencx-widget-integration --agent claude-code
+npx skills add opencx-labs/widget --skill opencx-widget-integration --agent claude-code
 
 # Codex
-npx skills add openchatai/widget --skill opencx-widget-integration --agent codex
+npx skills add opencx-labs/widget --skill opencx-widget-integration --agent codex
 
 # Cursor
-npx skills add openchatai/widget --skill opencx-widget-integration --agent cursor
+npx skills add opencx-labs/widget --skill opencx-widget-integration --agent cursor
 ```
 
 Installation is scoped to the current project by default. Add `--global` to make
@@ -46,13 +46,13 @@ new skill immediately, start a new session.
 To install the migration skill:
 
 ```bash
-npx skills add openchatai/widget --skill opencx-widget-migration
+npx skills add opencx-labs/widget --skill opencx-widget-migration
 ```
 
 Or install both:
 
 ```bash
-npx skills add openchatai/widget --skill opencx-widget-integration opencx-widget-migration
+npx skills add opencx-labs/widget --skill opencx-widget-integration opencx-widget-migration
 ```
 
 ## Ask your assistant
@@ -62,8 +62,8 @@ After installing, give your assistant a task and name the skill:
 > Use opencx-widget-integration to add the OpenCX widget to this React app using
 > the stable release. Mount it in the app layout.
 
-> Use opencx-widget-integration to configure the v5 beta companion and send the
-> current page context when a visitor asks a question.
+> Use opencx-widget-integration to configure Companion in v5. Share only approved
+> public page context; exclude private routes, query strings, fragments and titles.
 
 > Use opencx-widget-migration to upgrade our v4 widget to v5. Review our custom
 > components and self-hosted script before changing anything.
@@ -77,17 +77,24 @@ The skills check the installed widget version and available releases before
 recommending changes. v5 features require a v5 package; installing a skill does
 not enable organization features such as streaming or page context.
 
-As of September 6, 2026, v5 is available under the npm `beta` tag and `latest`
-remains v4. Ask explicitly for v5 beta when you want to try it.
+Widget 5.0.0 was released as stable on September 30, 2026. The skills use exact
+versions and check the registry before selecting newer releases. Sites staying
+on v4 should pin `4.0.63`; `latest` can move to a new major.
+
+Omitted delivery and layout options keep polling and the classic popover. Streaming,
+personal connections and page access require explicit opt-ins. Companion changes
+the layout without granting those permissions. See [Migration to v5](/widget/migrate-to-v5)
+for the delivery, authentication and page-action contract.
 
 ## Keep skills current
 
 ```bash
-npx skills update opencx-widget-integration opencx-widget-migration
+npx skills add opencx-labs/widget --skill opencx-widget-integration opencx-widget-migration
 ```
 
-Update the skills you installed. Running `npx skills update` without names updates
-all installed skills. It does not update your npm widget dependency.
+Rerun the installation command for the skills you use, then review the changed
+instructions. Keep the skill files and lockfile with your app. This does not
+update your npm widget dependency.
 
 See [Install Widget](/widget/install-widget) for manual setup and
 [Configuration](/widget/configuration) for widget options. The
