@@ -194,10 +194,15 @@ Tokens issued with explicit `mcp_access` expire after one hour. Renew these thro
 the customer's backend before expiry and when returning to a suspended tab, then
 update `user.token`. Chat-only tokens issued without `mcp_access` keep their
 existing non-expiring behavior; upgrading the widget does not require adding a
-renewal loop for them. Renewal for the same signed owner and access scope preserves
-the session; changing user, account, organization or access scope resets active
-state. Keep the provider mounted when replacing a token; do not key it by the
-token string. Personal grants persist across sessions for the same owner.
+renewal loop for them. Renewal preserves the session when the signed owner,
+account and normalized server-ID list stay the same. Changing user, account,
+organization or that list resets active state. Claim representation alone does
+not guarantee a reset: omitting `mcp_access` and using
+`mcp_access: { server_ids: [] }` are equivalent when `account_id` is absent and
+the other identity inputs are unchanged. Server-ID order is ignored. This is
+client lifecycle handling; the backend still enforces access. Keep the provider
+mounted when replacing a token; do not key it by the token string. Personal
+grants persist across sessions for the same owner.
 
 When a tool needs access, **Connect** opens authorization and the widget resumes
 after success. Check popup blocking, cancellation, failure, and return-to-widget
