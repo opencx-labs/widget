@@ -44,7 +44,11 @@ export function Payments() {
             className="pl-9"
           />
         </div>
-        <Select value={status} onChange={(e) => setStatus(e.target.value)}>
+        <Select
+          aria-label="Payment status"
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+        >
           <option value="">All statuses</option>
           {PAYMENT_STATUSES.map((s) => (
             <option key={s} value={s}>
@@ -52,7 +56,11 @@ export function Payments() {
             </option>
           ))}
         </Select>
-        <Select value={method} onChange={(e) => setMethod(e.target.value)}>
+        <Select
+          aria-label="Payment method"
+          value={method}
+          onChange={(e) => setMethod(e.target.value)}
+        >
           <option value="">All methods</option>
           {PAYMENT_METHODS.map((m) => (
             <option key={m} value={m}>
