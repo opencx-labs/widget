@@ -50,7 +50,7 @@ describe('useCompanionHostEffects', () => {
       region: { width: 1000, height: 800 },
       sidebarSide,
       sidebarMode,
-      cssVars: {},
+      cssVars: { '--opencx-background': '0 0% 96.1%' },
       storage,
       resizeLabel: 'Resize sidebar',
     });
@@ -125,6 +125,23 @@ describe('useCompanionHostEffects', () => {
     act(() => root.render(<Harness sidebarSide="left" />));
     act(() => latest.resizeHandleProps.onKeyDown(keyEvent('ArrowRight')));
     expect(latest.sidebarWidth).toBe(432);
+  });
+
+  it('paints the framed page with the host background, not the widget token', () => {
+    const frameStyle = () =>
+      document.querySelector('style[data-opencx-app-frame-style]')
+        ?.textContent ?? '';
+    document.body.style.backgroundColor = 'rgb(10, 10, 10)';
+    act(() => root.render(<Harness sidebarMode="docked" />));
+    expect(frameStyle()).toContain('background: rgb(10, 10, 10) !important');
+    expect(frameStyle()).not.toContain('hsl(0 0% 96.1%)');
+    act(() => root.render(<Harness sidebarMode="floating" />));
+    document.body.style.backgroundColor = '';
+
+    // A host that paints nothing falls back to the widget background token.
+    act(() => root.render(<Harness sidebarMode="docked" />));
+    expect(frameStyle()).toContain('background: hsl(0 0% 96.1%) !important');
+    act(() => root.render(<Harness sidebarMode="floating" />));
   });
 
   it('mounts the host app frame only in docked mode', () => {
