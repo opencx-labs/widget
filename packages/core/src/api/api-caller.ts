@@ -51,10 +51,25 @@ const streamUrl = (baseUrl: string, path: string, sessionId?: string) =>
       : path
   }`;
 
+/** Minting a contact never carries a contact token, so its 401 is not stale auth. */
+const MINT_PATH =
+  '/backend/widget/v2/contact/create-unverified' satisfies Endpoint;
+/**
+ * Personal-connection routes answer 401 to any visitor who is not signed in
+ * with connection access — a valid anonymous token included. Not stale auth.
+ */
+const CONNECTIONS_PATH = '/backend/widget/v5/connections';
+
 export class ApiCaller {
   private client: ReturnType<typeof basicClient>;
   private config: WidgetConfig;
   private userToken: string | null = null;
+  /**
+   * Fires when the backend rejects the contact token (401) on any call that
+   * carried one. The widget context recovers a dead anonymous token here; a
+   * long-lived tab otherwise keeps failing until the visitor reloads.
+   */
+  onUnauthorized: (() => void) | undefined;
 
   constructor({ config }: { config: WidgetConfig }) {
     this.config = config;
@@ -94,7 +109,29 @@ export class ApiCaller {
           }
         });
       },
+      onResponse: ({ response }) => this.noteUnauthorized(response),
     });
+  };
+
+  /** Report a rejected contact token; the mint call is the one 401 that is not one. */
+  private noteUnauthorized = (response: Response) => {
+    if (response.status !== 401) return;
+    const path = new URL(response.url, 'http://localhost').pathname;
+    if (path === MINT_PATH || path.startsWith(CONNECTIONS_PATH)) return;
+    this.onUnauthorized?.();
+  };
+
+  /**
+   * `fetch` for the live stream transport: identical to the global one, but a
+   * rejected token is reported the same way the typed client reports it.
+   */
+  streamFetch = async (
+    input: string | URL | Request,
+    init?: RequestInit,
+  ): Promise<Response> => {
+    const response = await fetch(input, init);
+    this.noteUnauthorized(response);
+    return response;
   };
 
   listApprovalPreferences = async () => {

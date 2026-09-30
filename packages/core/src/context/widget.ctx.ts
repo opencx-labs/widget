@@ -173,6 +173,9 @@ export class WidgetCtx {
       config: this.config,
     });
 
+    // Only the root runtime owns the shared api: a companion chat borrows it.
+    if (!parent) this.api.onUnauthorized = this.recoverAuthorization;
+
     this.activeSessionPollingCtx = new ActiveSessionPollingCtx({
       api: this.api,
       config: this.config,
@@ -273,6 +276,33 @@ export class WidgetCtx {
     this.sessionCtx.reset();
     this.messageCtx.reset();
     this.uploadCtx.reset();
+  };
+
+  private recoveringAuthorization = false;
+
+  /**
+   * The backend rejected the contact token mid-session (401) — the contact
+   * was removed, or the token predates a change the server no longer accepts.
+   * Mint a fresh anonymous contact and start over, so a long-lived tab heals
+   * instead of failing every send until the visitor reloads. A host-provided
+   * verified token is the host's to renew; nothing to do for it here.
+   */
+  private recoverAuthorization = () => {
+    if (this.recoveringAuthorization || this.config.user?.token) return;
+    this.recoveringAuthorization = true;
+    void this.contactCtx
+      .recoverFromStaleToken()
+      .then((recovered) => {
+        if (!recovered) return;
+        this.resetChat();
+        return this.sessionCtx.refreshSessions();
+      })
+      .catch((error: unknown) => {
+        log.error('failed to recover from a rejected contact token', error);
+      })
+      .finally(() => {
+        this.recoveringAuthorization = false;
+      });
   };
 
   /**

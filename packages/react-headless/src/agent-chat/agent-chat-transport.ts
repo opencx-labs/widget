@@ -13,6 +13,8 @@ export type AgentChatTransportOptions = {
    * without Authorization (401) for the rest of the session.
    */
   headers: () => Record<string, string>;
+  /** Fetch used for the stream requests; lets the api layer see a rejected token. */
+  fetch?: typeof fetch;
 };
 
 /** Build the reconnect request used by `useChat` to resume a session stream. */
@@ -33,6 +35,7 @@ export function buildAgentChatTransport(
 ): DefaultChatTransport<UIMessage> {
   return new DefaultChatTransport<UIMessage>({
     api: options.api,
+    fetch: options.fetch,
     headers: () => options.headers(),
     // Every send carries its full body; a send without one is a programming
     // error, and an empty body would be rejected server-side just as loudly.

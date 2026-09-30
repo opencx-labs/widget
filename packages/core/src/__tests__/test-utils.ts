@@ -250,6 +250,11 @@ export const TestUtils = {
             ...(returnValue ?? {}),
           });
       },
+      streamFetch(target) {
+        target.prototype.streamFetch = vi
+          .fn()
+          .mockResolvedValue(new Response(null, { status: 204 }));
+      },
       listElicitations(target) {
         target.prototype.listElicitations = vi.fn().mockResolvedValue([]);
       },
@@ -292,9 +297,18 @@ export const TestUtils = {
           });
       },
     } satisfies {
-      [K in keyof ApiCaller]: (
+      // Every method gets a mock; plain properties (`onUnauthorized`) do not.
+      [K in keyof ApiCaller as ApiCaller[K] extends (
+        ...args: never[]
+      ) => unknown
+        ? K
+        : never]: (
         target: typeof ApiCaller,
-        returnValue?: Partial<Awaited<ReturnType<ApiCaller[K]>>>,
+        returnValue?: Partial<
+          Awaited<
+            ReturnType<Extract<ApiCaller[K], (...args: never[]) => unknown>>
+          >
+        >,
       ) => void;
     },
   },
