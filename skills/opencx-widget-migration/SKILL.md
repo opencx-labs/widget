@@ -16,17 +16,18 @@ where the migration requires a change. This skill does not require another skill
 npm view @opencx/widget-react dist-tags --json --prefer-online
 ```
 
-Verified on 2026-09-15: v5 is `5.0.0-beta.7` under `beta`; `latest` remains
-`4.0.62`. Re-check before selecting a target. Explain when the selected target is
-a prerelease. For a repeatable beta.7 migration:
+Widget 5.0.0 is the stable release published on 2026-09-30. Re-check registry tags
+before selecting a newer target; use a prerelease only when requested. Keep the
+old version and configuration for rollback. Customers staying on v4 should pin
+`4.0.63`, since `latest` can move to a new major. For a repeatable stable migration:
 
 ```bash
-npm install @opencx/widget-react@5.0.0-beta.7
+npm install --save-exact @opencx/widget-react@5.0.0
 ```
 
 Use the customer's package manager. For headless integrations, install
-`@opencx/widget-react-headless@5.0.0-beta.7` and
-`@opencx/widget-core@5.0.0-beta.7`. Match any other directly installed OpenCX widget
+`@opencx/widget-react-headless@5.0.0` and
+`@opencx/widget-core@5.0.0`. Match any other directly installed OpenCX widget
 packages to that exact version. React 18 and 19 are supported.
 
 For script embeds, use:
@@ -34,7 +35,7 @@ For script embeds, use:
 ```html
 <script
   defer
-  src="https://unpkg.com/@opencx/widget@5.0.0-beta.7/dist-embed/script.js"
+  src="https://unpkg.com/@opencx/widget@5.0.0/dist-embed/script.js"
 ></script>
 <script>
   window.addEventListener('DOMContentLoaded', () => {
@@ -44,14 +45,18 @@ For script embeds, use:
 ```
 
 Keep the default popover unless the customer also requests the companion. The
-companion is selected by `displayMode: 'companion'`; streaming requires `streaming: true` and support in the
-organization's backend configuration. These are independent choices.
+companion is selected by `displayMode: 'companion'`. Omitted or false `streaming`
+keeps polling, including with v2 agents and verified users. `streaming: true`
+requires organization support and uses SSE for live replies; polling still
+reconciles persisted history and human replies. Layout and delivery are independent.
 
 ## Review migration-sensitive behavior
 
-- **Self-hosted assets:** the compatibility build restores a self-contained
-  `script.js`. Earlier betas used `widget.js` and lazy chunks; check the exact
-  installed release when helping an existing beta user.
+- **Self-hosted assets:** 5.0.0's `dist-embed/script.js` is a self-contained classic
+  script; copying it is sufficient for the widget code. Repeated loads reuse one
+  runtime. Earlier betas used `widget.js` and lazy chunks; preserve those complete
+  versioned directories for already-open tabs when upgrading. API, attachment and
+  asset requests still need the host's normal permissions.
 - **Sanitized HTML:** bot/agent replies remain sanitized. Configured footers
   preserve safe color, typography and spacing. Scripts, handlers, embedded frames,
   resource-loading CSS and positioning are still removed. Re-test custom markup.
@@ -63,8 +68,10 @@ organization's backend configuration. These are independent choices.
   requires `features.pageContext: true`; agent actions additionally require
   `features.clientTools: true` and `features.pageActions: true`. Page context
   and actions default off and require organization support plus embed opt-in.
-  Each action also asks the visitor for confirmation. Companion does not enable
-  these flags. Host-supplied context remains shared.
+  Pointing and actions also require streaming and a compatible renderer. The
+  stock UI asks the visitor for confirmation before every page action. Companion
+  does not enable these flags; the popover can use them too. Host-supplied context
+  remains shared independently of automatic page collection.
 - **Initialization failure:** `Widget` and `WidgetProvider` render nothing by
   default after a failed initialization and log an error. In React, provide
   `errorComponent={(error) => ...}` if the host needs a visible failure state.
@@ -76,36 +83,57 @@ organization's backend configuration. These are independent choices.
   the classic engine. No frontend `streaming: true` option enables the backend.
 - **Dependency overrides:** React/headless now depend on zod v4. Check overrides
   that force zod v3 and update the lockfile through the package manager.
+- **Headless setup:** `WidgetProvider` needs a nonempty `components` registry
+  containing `fallback` and a `storage` adapter for reload persistence. Declare
+  rich replies, structured questions or page effects only after implementing
+  their renderer and interactions, including page-action consent.
+- **Starters:** `initialQuestions` works with polling. With usable starters,
+  `requireInitialQuestion: true` requires a selection before typing. Companion
+  places starters above the disabled composer; the popover hides the composer
+  until a question is selected.
 
 ## Adopt v5 options when requested
 
 ```ts
 import type { WidgetConfig } from '@opencx/widget-core';
 
+const publicPageTitles: Record<string, string> = {
+  '/help': 'Help center',
+  '/pricing': 'Pricing',
+};
+
 const options: WidgetConfig = {
   token: 'WIDGET_TOKEN',
   displayMode: 'companion',
   streaming: true,
-  capabilities: { connections: true },
   companion: {
     layouts: ['compact', 'sidebar', 'fullscreen'],
     defaultLayout: 'compact',
     sidebar: { side: 'auto', mode: 'floating', width: 400 },
   },
   features: { dictation: false },
-  context: () => ({
-    page: { url: window.location.href, title: document.title },
-  }),
+  context: () => {
+    const { origin, pathname } = window.location;
+    const title = publicPageTitles[pathname];
+    return title ? { page: { url: origin + pathname, title } } : {};
+  },
 };
 ```
 
 Install matching `@opencx/widget-core` explicitly when importing `WidgetConfig`
 in the host application, and type-check the options against that declaration.
 
-`features.dictation`, `features.pageContext`, and `features.clientTools` narrow the
-organization's enabled features. They cannot turn on disabled organization
-features. Attachments have no per-embed toggle. Page marks use the organization's
-page-context feature; remove any experimental `enablePageMarks` option.
+`features.dictation`, `features.pageContext`, `features.clientTools` and
+`features.pageActions` narrow the organization's enabled features. They cannot
+turn on disabled organization features. Page marks require the explicit
+page-context opt-in. Attachments have no per-embed toggle; remove any experimental
+`enablePageMarks` option.
+
+Share only approved context: it can enter session history and the agent's input.
+The example allows known public routes and labels, omitting private routes,
+query strings, fragments and dynamic titles. Adapt the allowlist to the customer
+site or omit page context. `data-opencx-private` excludes sensitive page regions
+from automatic collection; it cannot sanitize explicitly supplied `context`.
 
 The host's `context` still rides with every send, including when
 `features.pageContext` is false. Use a function reading current state for SPAs.
@@ -132,25 +160,32 @@ shared integrations can keep their setup. For customers adopting per-user tools,
 follow the [authentication guide](https://docs.open.cx/widget/authentication) and
 verify the backend supports the flow before enabling it.
 
+- Set `streaming: true` and `capabilities: { connections: true }` explicitly.
+  Omission keeps personal connections off. A signed access grant does not turn
+  on the embed UI by itself.
 - Pass the authenticated backend's widget user token as `user.token`. Unsigned
   user data does not grant access. Keep organization keys and provider credentials
   on the server.
-- Renew new user tokens before their one-hour expiry and after tab suspension.
-  Updating a token for the same signed owner preserves the session; changing the
-  signed user or account replaces the context. Include `mcp_access.account_id`
-  for account-switching products. Check custom storage does not restore another
-  owner's session.
-- Omitting `mcp_access.server_ids` allows all enabled per-user servers in the
-  organization, including future additions. Set a backend-derived list when
-  restriction is needed; `[]` allows none. Renew older user tokens to receive the
-  current access claims. `capabilities.connections: false` only hides controls.
-- Personal connections persist across sessions. New-session actions must clear
-  pending prompts while preserving the same owner's saved grants. Test Connect,
+- Tokens issued with explicit `mcp_access` expire after one hour; renew them before
+  expiry and after tab suspension. Chat-only tokens issued without `mcp_access`
+  keep their existing non-expiring behavior. Upgrading does not require chat-only
+  customers to add renewal. Updating a token for the same signed owner and access
+  scope preserves the session; user, account, organization or scope changes reset
+  active state. Do not remount the provider by keying it to the token string.
+  Include `mcp_access.account_id` for account-switching products and verify custom
+  storage does not restore another owner's session.
+- Explicit `mcp_access: {}` without `server_ids` allows all enabled per-user
+  servers, including future additions. Set a backend-derived list when restriction
+  is needed; `[]` allows none. Omitting `mcp_access` entirely keeps chat-only access.
+  Obtain a new scoped token before enabling personal connections.
+  `capabilities.connections: false` only hides controls; enforce scope on the server.
+- Personal connections persist across sessions. Pending prompts must stay bound
+  to their original session and must not carry into a new one. Test Connect,
   blocked popups, cancellation, return/resume, and account switching.
 - The stock UI handles form elicitation. Custom headless UIs must add the form
   list/response flow using published core declarations, including field validation,
   selection limits, decline/cancel, and expiry; rendering live text alone is not
-  sufficient. There is no public `useElicitation` hook in beta.7.
+  sufficient. There is no public `useElicitation` hook in 5.0.0.
 - Simple approvals may be remembered for the exact account/server/tool/inputs/form.
   Test **Always allow**, a changed request that still asks, and **Connections →
   Saved approvals → Remove approval**. Disconnect removes the personal grant and

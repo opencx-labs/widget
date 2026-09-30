@@ -17,11 +17,11 @@ the user's version choice. Check registry tags when selecting a new version:
 npm view @opencx/widget-react dist-tags --json --prefer-online
 ```
 
-At verification on 2026-09-15, `latest` is `4.0.62` and `beta` is
-`5.0.0-beta.7` for all four widget packages. Use the stable release for a normal
-installation; use v5 beta when the user requests beta or v5 features. Do not add
-v5-only options to a v4 installation. Re-check tags rather than assuming this
-snapshot is still current. Installing this skill does not install the widget.
+Widget 5.0.0 is the stable release published on 2026-09-30. These examples pin
+`5.0.0`; re-check registry tags before choosing a newer version. Use a prerelease
+only when requested. To remain on v4, pin `4.0.63` instead of `latest`, which can
+move to a new major. Do not add v5-only options to a v4 installation. Installing
+this skill does not install the widget.
 
 | Integration | Package                                                   | Use when                                     |
 | ----------- | --------------------------------------------------------- | -------------------------------------------- |
@@ -42,7 +42,7 @@ this order; `defer` completes before `DOMContentLoaded`.
 ```html
 <script
   defer
-  src="https://unpkg.com/@opencx/widget@latest/dist-embed/script.js"
+  src="https://unpkg.com/@opencx/widget@5.0.0/dist-embed/script.js"
 ></script>
 <script>
   window.addEventListener('DOMContentLoaded', () => {
@@ -51,25 +51,24 @@ this order; `defer` completes before `DOMContentLoaded`.
 </script>
 ```
 
-For a v5 beta integration, replace `@latest` with the selected exact beta version
-or `@beta`. For inline HTML, provide `<div id="opencx-root"></div>` in the body and
-set `inline: true`. Mount only one integration on a page; do not also mount React
+For inline HTML, provide `<div id="opencx-root"></div>` in the body and set
+`inline: true`. Mount only one integration on a page; do not also mount React
 `Widget` beside the script embed.
 
-In v5, the classic loader installs `initOpenScript` synchronously, then loads
-`widget.js` and a lazy chart chunk. Self-host the entire `dist-embed` directory at
-a versioned URL. Keep old versions available for open tabs that load chunks later.
-Cross-origin module hosting needs CORS. The loader copies its script tag's CSP
-nonce to the injected module; the host's policy must also permit its initialization
-code and any lazy module loads. Copying only `script.js` is insufficient.
+Widget 5.0.0's `dist-embed/script.js` is a self-contained classic script. Copying
+that file is sufficient for self-hosting the widget code; it does not fetch a
+separate `widget.js` or lazy code chunks. API, attachment and configured asset
+requests still need the host's normal permissions. Verify CSP with the script
+and initializer. Repeated script loads reuse one runtime. Earlier betas used a
+split loader; keep their complete versioned directories available for open tabs
+when replacing them with 5.0.0.
 
 ## React installation
 
 ```bash
-npm install @opencx/widget-react
+npm install --save-exact @opencx/widget-react@5.0.0
 ```
 
-Use `@opencx/widget-react@beta` instead for an explicitly selected v5 beta.
 Mount the widget once in the app shell:
 
 ```tsx
@@ -85,9 +84,11 @@ Use the framework's client boundary for browser integration. Read `window`,
 UI; do not invent a CSS package export or import monorepo source paths.
 
 For headless work, consult the [headless guide](https://docs.open.cx/widget/custom-components-headless)
-and the installed declarations. `WidgetProvider` wraps the custom UI; hooks such
-as `useMessages` must run beneath it. The host owns the rendered UI and should
-verify history, loading, errors, and persistence. In v5, a custom streaming UI
+and the installed declarations. Install matching `@opencx/widget-react-headless`
+and `@opencx/widget-core` versions. `WidgetProvider` requires a nonempty
+`components` registry containing `fallback`; it supplies neither stock renderers
+nor browser persistence. Pass a `storage` adapter when reload persistence is
+needed. Hooks such as `useMessages` must run beneath it. In v5, a custom streaming UI
 also uses `useAgentChatUi` for live items, stop, queued messages, and clarification.
 `useMessages().messagesState` alone does not describe the whole live turn.
 
@@ -113,26 +114,52 @@ Use the installed `WidgetConfig` declaration for exact keys and defaults.
 
 ## v5 context and features
 
-The organization decides whether streaming, dictation, attachments, page context,
-and client tools are enabled. `features.dictation`, `features.pageContext`, and
-`features.clientTools` can disable an enabled feature; `true` does not enable an
-organization-disabled feature. There is no `enablePageMarks` option and no
-`features.attachments` toggle. Companion layout does not itself enable streaming.
+An omitted or false `streaming` keeps polling, including with v2 agents and
+verified users. Set `streaming: true` only for requested live features supported
+by the organization. Live replies use SSE; polling still reconciles persisted
+history and human replies. Layout, agent version and delivery are independent:
+Companion does not turn on streaming or page access, and the popover can use the
+same supported live features.
 
-Use a context function that reads current application state at send time:
+Page reading requires `features.pageContext: true`; pointing additionally needs
+`features.clientTools: true`; clicks, typing and selections additionally need
+`features.pageActions: true`. All three page flags default off and require
+organization permission. Pointing and actions also require streaming and a
+compatible renderer. The stock UI asks the visitor to approve every page action.
+Headless clients must implement page effects and consent before advertising that
+capability. No client flag can enable an organization-disabled feature.
+
+`features.dictation` can narrow the organization's dictation setting. There is no
+`enablePageMarks` option or `features.attachments` toggle. `initialQuestions`
+works with polling; `requireInitialQuestion: true` requires a selection before
+typing when usable starters exist. Companion places starters above the composer.
+
+Host-supplied context can enter session history and the agent's input. If the
+customer wants to share page information, use a callback and an allowlist of
+public routes and labels. This example omits private routes, URL query strings,
+fragments and dynamic document titles:
 
 ```ts
+const publicPageTitles: Record<string, string> = {
+  '/help': 'Help center',
+  '/pricing': 'Pricing',
+};
+
 const options = {
   token: 'WIDGET_TOKEN',
   displayMode: 'companion' as const,
-  context: () => ({
-    page: { url: window.location.href, title: document.title },
-  }),
+  context: () => {
+    const { origin, pathname } = window.location;
+    const title = publicPageTitles[pathname];
+    return title ? { page: { url: origin + pathname, title } } : {};
+  },
 };
 ```
 
 Host `context` is sent on both engines even if `features.pageContext` is false;
-that flag gates widget-collected page context and related affordances. In v5,
+that flag gates widget-collected page context and related affordances. Mark
+sensitive page regions with `data-opencx-private` to exclude them from automatic
+collection; it cannot sanitize data explicitly supplied through `context`. In v5,
 the entity pill follows URL changes. When context changes without navigation,
 dispatch `window.dispatchEvent(new Event('opencx:context-changed'))` so the pill
 refreshes too. In React, keep changing values behind a ref or store that the
@@ -144,7 +171,9 @@ initialized core context. Do not reinitialize on every route change.
 These are optional capabilities, not prerequisites for installing v5. They need
 compatible backend support and a server enabled for per-user access in the
 customer's OpenCX dashboard. The stock widget renders the connection and approval
-UI; selecting the companion shell does not enable server access.
+UI. Set `streaming: true` and `capabilities: { connections: true }` explicitly;
+omitting either keeps personal connections off. The organization must support
+streaming, and the visitor needs the signed access scope described below.
 
 Use the [authentication guide](https://docs.open.cx/widget/authentication) to have
 the customer's authenticated backend obtain a short-lived widget user token.
@@ -154,17 +183,21 @@ not authorize personal connections.
 
 The backend authentication request can include `mcp_access`:
 
-- Omitted `mcp_access.server_ids` allows all enabled per-user servers in that
-  organization, including servers enabled later.
+- Omit `mcp_access` to keep chat-only authentication without personal connections.
+- Explicit `mcp_access: {}` with no `server_ids` allows all enabled per-user servers
+  in that organization, including servers enabled later.
 - An explicit list restricts access to those enabled servers; `[]` allows none.
 - Include `mcp_access.account_id` when a user can switch accounts or workspaces.
   Resolve both the account and allowed servers from trusted backend state.
 
-New authenticated user tokens expire after one hour. Renew them through the
-customer's backend before expiry and when returning to a suspended tab, then
-update `user.token`. Renewal for the same signed owner preserves the session;
-a different signed user/account gets a separate widget context. Personal grants
-persist across sessions for that owner; starting a new session is not disconnect.
+Tokens issued with explicit `mcp_access` expire after one hour. Renew these through
+the customer's backend before expiry and when returning to a suspended tab, then
+update `user.token`. Chat-only tokens issued without `mcp_access` keep their
+existing non-expiring behavior; upgrading the widget does not require adding a
+renewal loop for them. Renewal for the same signed owner and access scope preserves
+the session; changing user, account, organization or access scope resets active
+state. Keep the provider mounted when replacing a token; do not key it by the
+token string. Personal grants persist across sessions for the same owner.
 
 When a tool needs access, **Connect** opens authorization and the widget resumes
 after success. Check popup blocking, cancellation, failure, and return-to-widget
@@ -214,5 +247,5 @@ which were actually completed.
 
 Use [installation](https://docs.open.cx/widget/install-widget),
 [configuration](https://docs.open.cx/widget/configuration), and the installed
-package declarations for details. Public docs may describe stable v4 while the
-customer runs v5 beta; resolve differences against the selected version.
+package declarations for details. The public docs target stable v5; resolve any
+differences against the customer's selected version.
