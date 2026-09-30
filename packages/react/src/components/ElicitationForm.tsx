@@ -17,9 +17,13 @@ export function ElicitationForm({
 }) {
   const { widgetCtx, config } = useWidget();
   const [pending, setPending] = useState<ElicitationRequest | null>(null);
+  // Approval requests exist only for signed-in users with connections: an
+  // anonymous visitor would be refused on every poll.
+  const signedIn = Boolean(config.user?.token);
   useEffect(() => {
     setPending(null);
-    if (!active || config.capabilities?.connections === false) return;
+    if (!active || !signedIn || config.capabilities?.connections === false)
+      return;
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     const poll = async () => {
@@ -41,7 +45,13 @@ export function ElicitationForm({
       controller.abort();
       clearTimeout(timer);
     };
-  }, [widgetCtx, sessionId, active, config.capabilities?.connections]);
+  }, [
+    widgetCtx,
+    sessionId,
+    active,
+    signedIn,
+    config.capabilities?.connections,
+  ]);
   return (
     <>
       {' '}
