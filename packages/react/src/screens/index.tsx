@@ -1,6 +1,5 @@
 import { isExhaustive } from '@opencx/widget-core';
 import { useWidgetRouter } from '@opencx/widget-react-headless';
-import { AnimatePresence } from 'framer-motion';
 import React from 'react';
 import { MotionDiv } from '../components/lib/MotionDiv';
 import { ChatScreen } from './chat';
@@ -13,52 +12,52 @@ export function RootScreen() {
   } = useWidgetRouter();
 
   return (
+    // Route exits are instantaneous. Keep the keyed entry animation, but do not
+    // queue old screens while welcome → sessions → chat changes in one frame.
     <div className="relative bg-background size-full">
-      <AnimatePresence mode="wait">
-        {(() => {
-          switch (screen) {
-            case 'welcome':
-              return (
-                <MotionDiv
-                  key={screen}
-                  fadeIn="right"
-                  className="size-full"
-                  snapExit
-                >
-                  <WelcomeScreen />
-                </MotionDiv>
-              );
+      {(() => {
+        switch (screen) {
+          case 'welcome':
+            return (
+              <MotionDiv
+                key={screen}
+                fadeIn="right"
+                className="size-full"
+                snapExit
+              >
+                <WelcomeScreen />
+              </MotionDiv>
+            );
 
-            case 'sessions':
-              return (
-                <MotionDiv
-                  key={screen}
-                  fadeIn="right"
-                  className="size-full"
-                  snapExit
-                >
-                  <SessionsScreen />
-                </MotionDiv>
-              );
+          case 'sessions':
+            return (
+              <MotionDiv
+                key={screen}
+                fadeIn="right"
+                className="size-full"
+                snapExit
+              >
+                <SessionsScreen />
+              </MotionDiv>
+            );
 
-            case 'chat':
-              return (
-                <MotionDiv
-                  key={screen}
-                  fadeIn="right"
-                  className="size-full"
-                  snapExit
-                >
-                  <ChatScreen />
-                </MotionDiv>
-              );
-            default: {
-              isExhaustive(screen, RootScreen.name);
-              return null;
-            }
+          case 'chat':
+            return (
+              <MotionDiv
+                key={screen}
+                fadeIn="right"
+                className="size-full"
+                snapExit
+              >
+                <ChatScreen />
+              </MotionDiv>
+            );
+          default: {
+            isExhaustive(screen, RootScreen.name);
+            return null;
           }
-        })()}
-      </AnimatePresence>
+        }
+      })()}
     </div>
   );
 }
