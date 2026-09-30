@@ -450,14 +450,18 @@ export function Header() {
 
   return (
     <header {...dataComponentProp} className="py-2 px-4 shrink-0">
-      <div className="flex items-center gap-2">
+      <div
+        className="flex items-center gap-2"
+        // Companion's overlaid controls need space after the whole row,
+        // including configured actions, rather than just after the title.
+        style={{ paddingInlineEnd: isCompanion ? 64 : undefined }}
+      >
         <Header__BackToSessionsScreenButton />
         <div
           className={cn(
             'min-w-0 flex-1 h-8 flex items-center',
             screen === 'sessions' && 'ps-2',
           )}
-          style={{ paddingInlineEnd: isCompanion ? 64 : undefined }}
         >
           <HeaderTitleComponent
             fallback={

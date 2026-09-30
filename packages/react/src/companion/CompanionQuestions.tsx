@@ -52,7 +52,7 @@ export function CompanionQuestions({
   );
 }
 
-/** Shared by floating suggestions and the required-choice panel. */
+/** Required and optional starters share the same floating presentation. */
 export function CompanionQuestionButtons() {
   const { initialQuestions } = useConfig();
   const reduceMotion = useReducedMotion();

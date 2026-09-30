@@ -5,7 +5,6 @@ import { FrameDocument } from '../components/FrameDocument';
 import { SuppressTooltips } from '../components/lib/tooltip';
 import { RootScreen } from '../screens';
 import { ChatFooterItems } from '../screens/chat/ChatFooterItems';
-import { CompanionQuestionButtons } from './CompanionQuestions';
 import { XIcon } from 'lucide-react';
 import { FrameIconButton } from './FrameIconButton';
 import { ChatInput } from '../screens/chat/ChatInput';
@@ -202,9 +201,9 @@ export function CompanionContent({
   // realm, so an instanceof check against the host's HTMLTextAreaElement
   // would be wrong.)
   useLayoutEffect(() => {
-    if (state !== 'input' || canExpand) return;
+    if (state !== 'input' || canExpand || initialQuestionRequired) return;
     focusComposer(inputPaneRef.current);
-  }, [state, canExpand]);
+  }, [state, canExpand, initialQuestionRequired]);
 
   // The same rule one rung up: expanding into the conversation must leave the
   // caret in the composer. Without it the panel opens looking ready to type
@@ -261,25 +260,22 @@ export function CompanionContent({
             {/* The shell clips this composer to a thin strip, so a `side="top"`
               tooltip would bleed above the bar as a dark sliver. */}
             <SuppressTooltips>
-              {initialQuestionRequired ? (
-                <div className="flex items-start gap-2 p-3">
-                  <div className="flex max-h-60 min-w-0 flex-1 flex-col items-start gap-2 overflow-y-auto">
-                    <CompanionQuestionButtons />
-                  </div>
-                  <FrameIconButton
-                    label={t('companion_close')}
-                    onClick={onDismiss}
-                    className="size-8"
-                  >
-                    <XIcon className="size-4" />
-                  </FrameIconButton>
-                </div>
-              ) : (
-                <ChatInput
-                  hideAttachTools={hideAttachTools}
-                  placeholder={placeholder}
-                />
-              )}
+              <ChatInput
+                disabled={initialQuestionRequired}
+                hideAttachTools={hideAttachTools}
+                placeholder={placeholder}
+                trailingActions={
+                  initialQuestionRequired ? (
+                    <FrameIconButton
+                      label={t('companion_close')}
+                      onClick={onDismiss}
+                      className="size-8"
+                    >
+                      <XIcon className="size-4" />
+                    </FrameIconButton>
+                  ) : undefined
+                }
+              />
             </SuppressTooltips>
             {canExpand ? (
               // Only the composer expands the minimized conversation. Keep the

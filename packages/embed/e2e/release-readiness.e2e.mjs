@@ -162,6 +162,175 @@ async function fixture(t, options = {}, reducedMotion = 'no-preference') {
   return { page, frame, requests, open };
 }
 
+for (const variant of [
+  { mode: 'companion', layout: 'compact', language: 'en', width: 1280 },
+  { mode: 'companion', layout: 'compact', language: 'en', width: 390 },
+  { mode: 'companion', layout: 'compact', language: 'ar', width: 1280 },
+  { mode: 'companion', layout: 'sidebar', language: 'en', width: 1280 },
+  { mode: 'companion', layout: 'fullscreen', language: 'en', width: 1280 },
+  { mode: 'popover', layout: 'compact', language: 'en', width: 1280 },
+]) {
+  test(`configured header actions: ${variant.mode}/${variant.layout}/${variant.language}/${variant.width}`, async (t) => {
+    const { page, frame, open } = await fixture(
+      t,
+      {
+        displayMode: variant.mode,
+        language: variant.language,
+        companion: {
+          defaultLayout:
+            variant.layout === 'fullscreen' ? 'compact' : variant.layout,
+        },
+        headerButtons: {
+          chatScreen: [
+            {
+              functionality: 'expand-shrink',
+              expandIcon: 'Maximize',
+              shrinkIcon: 'Minimize',
+            },
+            {
+              functionality: 'resolve-session',
+              icon: 'Check',
+              onResolved: 'stay-in-chat',
+              confirmation: {
+                type: 'modal',
+                title: 'Finish fixture session?',
+                description: 'Keep the action reachable.',
+                confirmButtonText: 'Finish',
+                cancelButtonText: 'Keep open',
+              },
+            },
+            { functionality: 'close-widget', icon: 'X' },
+          ],
+          sessionsScreen: [{ functionality: 'close-widget', icon: 'X' }],
+        },
+      },
+      'reduce',
+    );
+    await page.setViewportSize({ width: variant.width, height: 900 });
+    await page.evaluate(() => {
+      window.fixtureOptions.customComponents = {
+        headerBottom: ({ react }) =>
+          react.createElement(
+            'div',
+            { 'data-header-fixture': true },
+            'CUSTOM HEADER BOTTOM',
+          ),
+      };
+      window.fixtureOptions.headerButtons.chatScreen[2].onClicked = () => {
+        window.fixtureHeaderCloseClicked = true;
+      };
+      window.initOpenScript(window.fixtureOptions);
+    });
+    await open();
+    await frame.locator('textarea').fill('Open the configured header');
+    await frame.locator('textarea').press('Enter');
+    await frame.getByText('FIXTURE_REPLY_1', { exact: true }).waitFor();
+    if (variant.layout === 'fullscreen') {
+      await frame.getByRole('button', { name: 'Layout', exact: true }).click();
+      await frame
+        .getByRole('button', { name: 'Fullscreen', exact: true })
+        .click();
+      await frame.locator('[data-layout="fullscreen"]').waitFor();
+      await frame
+        .locator('[data-component="companion/layout_picker/menu"]')
+        .waitFor({ state: 'hidden' });
+    }
+    async function assertSeparateTargets(headerSelector, expectedButtons) {
+      const result = await frame.locator('body').evaluate((root, selector) => {
+        const buttons = [
+          ...root.querySelectorAll(
+            `${selector} button, [data-component="companion/controls/root"] button`,
+          ),
+        ].filter((button) => {
+          const rect = button.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        });
+        const collisions = [];
+        for (let i = 0; i < buttons.length; i++)
+          for (let j = i + 1; j < buttons.length; j++) {
+            const a = buttons[i].getBoundingClientRect(),
+              b = buttons[j].getBoundingClientRect();
+            if (
+              Math.min(a.right, b.right) > Math.max(a.left, b.left) &&
+              Math.min(a.bottom, b.bottom) > Math.max(a.top, b.top)
+            ) {
+              collisions.push([i, j]);
+            }
+          }
+        return {
+          collisions,
+          count: buttons.length,
+          targetsReachable: buttons.every((button) => {
+            const r = button.getBoundingClientRect();
+            const hit = button.ownerDocument.elementFromPoint(
+              r.x + r.width / 2,
+              r.y + r.height / 2,
+            );
+            return hit === button || button.contains(hit);
+          }),
+        };
+      }, headerSelector);
+      assert.equal(
+        result.count,
+        expectedButtons,
+        'configured actions and panel controls remain present',
+      );
+      assert.deepEqual(
+        result.collisions,
+        [],
+        'header controls must have separate hit targets',
+      );
+      assert.equal(
+        result.targetsReachable,
+        true,
+        'every header action must be pointer reachable',
+      );
+    }
+    await assertSeparateTargets(
+      '[data-component="chat/header"]',
+      variant.mode === 'companion' ? 7 : 4,
+    );
+    assert.equal(
+      await frame.getByText('CUSTOM HEADER BOTTOM').isVisible(),
+      true,
+    );
+    if (
+      variant.mode === 'companion' &&
+      variant.layout === 'compact' &&
+      variant.language === 'en' &&
+      variant.width === 1280 &&
+      process.env.WIDGET_HEADER_SCREENSHOT
+    ) {
+      await page
+        .locator('iframe[title="OpenCX Live Chat"]')
+        .screenshot({ path: process.env.WIDGET_HEADER_SCREENSHOT });
+    }
+    // The configured resolve action opens its own confirmation unchanged.
+    await frame
+      .locator('[data-component="chat/header"] > div:first-child > button')
+      .nth(2)
+      .click();
+    await frame.getByText('Finish fixture session?', { exact: true }).waitFor();
+    await frame.getByRole('button', { name: 'Keep open', exact: true }).click();
+    await frame
+      .locator('[data-component="chat/header"] > div:first-child > button')
+      .last()
+      .click();
+    assert.equal(
+      await page.evaluate(() => window.fixtureHeaderCloseClicked),
+      true,
+      'configured close callback is preserved',
+    );
+    await open();
+    // Restoring the session makes the configured actions visible again.
+    await frame.locator('[data-component="chat/header"]').waitFor();
+    await assertSeparateTargets(
+      '[data-component="chat/header"]',
+      variant.mode === 'companion' ? 7 : 4,
+    );
+  });
+}
+
 for (const reducedMotion of ['no-preference', 'reduce']) {
   for (const required of [false, true]) {
     test(
@@ -199,10 +368,51 @@ for (const reducedMotion of ['no-preference', 'reduce']) {
           const shell = iframe?.parentElement?.parentElement;
           return shell && shell.getBoundingClientRect().height > 40;
         });
+        await frame.locator('textarea').waitFor();
+        assert.equal(await frame.locator('textarea').isDisabled(), required);
+        const suggestions = page.frameLocator(
+          'iframe[title="Suggested questions"]',
+        );
+        await suggestions
+          .getByRole('button', { name: 'First question', exact: true })
+          .waitFor();
+        await page.waitForFunction(() => {
+          const questions = document.querySelector('[data-companion-starters]');
+          const iframe = document.querySelector(
+            'iframe[title="OpenCX Live Chat"]',
+          );
+          const shell = iframe?.parentElement?.parentElement;
+          return (
+            questions &&
+            shell &&
+            questions.getBoundingClientRect().bottom <
+              shell.getBoundingClientRect().top
+          );
+        });
+        if (
+          required &&
+          reducedMotion === 'reduce' &&
+          process.env.WIDGET_STARTERS_SCREENSHOT
+        ) {
+          await page.screenshot({
+            path: process.env.WIDGET_STARTERS_SCREENSHOT,
+          });
+        }
         if (required) {
-          assert.equal(await frame.locator('textarea').count(), 0);
           assert.equal(
-            await page.locator('iframe[title="Suggested questions"]').count(),
+            await frame
+              .getByRole('button', { name: 'Send message', exact: true })
+              .isDisabled(),
+            true,
+          );
+          assert.equal(
+            await frame
+              .getByRole('button', { name: 'Dictate', exact: true })
+              .count(),
+            0,
+          );
+          assert.equal(
+            requests.filter((r) => r.path.endsWith('/chat/send')).length,
             0,
           );
           // Visible pointer dismissal remains possible before selecting a question.
@@ -211,17 +421,15 @@ for (const reducedMotion of ['no-preference', 'reduce']) {
             .click();
           await page.locator('[data-companion-launcher]').waitFor();
           await open();
-          await frame
-            .getByRole('button', { name: 'First question', exact: true })
-            .click();
-        } else {
-          await frame.locator('textarea').waitFor();
-          await page
-            .frameLocator('iframe[title="Suggested questions"]')
-            .getByRole('button', { name: 'First question', exact: true })
-            .click();
         }
+        await suggestions
+          .getByRole('button', { name: 'First question', exact: true })
+          .click();
         await frame.getByText('FIXTURE_REPLY_1', { exact: true }).waitFor();
+        assert.equal(await frame.locator('textarea').isDisabled(), false);
+        await page
+          .locator('iframe[title="Suggested questions"]')
+          .waitFor({ state: 'detached' });
         await frame.locator('textarea').pressSequentially('Follow up');
         await frame.locator('textarea').press('Enter');
         await frame.getByText('FIXTURE_REPLY_2', { exact: true }).waitFor();

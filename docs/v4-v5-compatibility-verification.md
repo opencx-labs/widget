@@ -98,6 +98,29 @@ approval to promote v5 to latest. No packages were published.
 
 ## v4 feature parity follow-up (2026-09-26)
 
+**2026-09-30 header and compatibility verification:** moved Companion's reserved
+corner-control space to the whole header row so configured buttons cannot overlap
+the layout/close controls. Six production-embed cases passed in Chromium, Firefox
+and WebKit, covering compact/sidebar/fullscreen, mobile, RTL, popover and configured
+callbacks. On the final combined header/starter bundle, all 25 unchanged-config
+v4-to-v5 Chromium upgrade cases and nine focused JWT/authentication tests passed.
+The upgrade cases exercise polling, same-user renewal and separate user histories
+with a mocked backend. Earlier real-backend acceptance remains separately dated.
+Final embed SHA-256:
+`6184d03e2435fa6e53baa74574552db060915afd0c43250369d0d6fb02c7253c`.
+
+**2026-09-30 Companion layout correction:** the required-mode presentation
+described in the historical checks below is superseded. Both optional and
+required starter questions now float above the original composer. Required mode
+keeps the composer visible but disables typing, sending, attachments and
+dictation until a starter is selected; its close control remains available.
+The footer, shell spring and ordered question entrance are preserved. Popover
+and inline behavior is unchanged. The production embed passed all 18 Chromium
+readiness tests and the four required/optional, normal/reduced-motion starter
+checks in each of Firefox and WebKit. Nine focused React tests, type checking,
+changed-file lint and React/embed production builds passed. These checks used
+local mocked traffic; they do not certify a stable release.
+
 Ported the source changes from release/v4 at `0b280d7` (PRs #82 and #83):
 `requireInitialQuestion`, the shared requirement hook, conditional composer,
 and `pb-4` question-container padding. No v4 version numbers or release tags

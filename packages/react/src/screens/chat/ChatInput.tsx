@@ -78,7 +78,10 @@ export function ChatInput({
   trailingActions,
   placeholder,
   hideAttachTools,
+  disabled = false,
 }: {
+  /** Keep the composer visible while a required starter must be chosen. */
+  disabled?: boolean;
   /**
    * Extra controls rendered in the composer's action row, just before the
    * send button. Companion uses it to slot a conversation-history button into
@@ -166,6 +169,10 @@ export function ChatInput({
     },
     onSend: () => handleSubmitRef.current(),
   });
+  const { stop: stopDictation } = dictation;
+  useEffect(() => {
+    if (disabled) stopDictation({ executeFinalCommand: false });
+  }, [disabled, stopDictation]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -188,7 +195,8 @@ export function ChatInput({
   // as context. Attached marks live OUTSIDE this component — collapsing the
   // panel unmounts the composer.
   const showPageMarks = pageMarksEnabled && !isSmallScreen;
-  const pageMarkingEnabled = showPageMarks && hideAttachTools !== true;
+  const pageMarkingEnabled =
+    !disabled && showPageMarks && hideAttachTools !== true;
   const { marks, detach, marking, uploadSnapshot } = usePageMarkComposer({
     enabled: pageMarkingEnabled,
     inputRef,
@@ -219,7 +227,7 @@ export function ChatInput({
   const handleFileDrop = (acceptedFiles: File[]) => {
     // Drop and paste both land here: nothing is accepted when the org has no
     // attachments (the dropzone is disabled too, this guards the paste path).
-    if (!canAttach) return;
+    if (disabled || !canAttach) return;
     setFileSelectionError(null);
     appendFiles(acceptedFiles);
   };
@@ -248,12 +256,13 @@ export function ChatInput({
   // button keeps offering stop unconditionally, a click being deliberate in a
   // way a keystroke is not.
   const flushQueueOnEnter = showStop && queuedUserMessages.length > 0;
-  const sendDisabled = isUploading || shouldBlockSending || cannotSend;
+  const sendDisabled =
+    disabled || isUploading || shouldBlockSending || cannotSend;
 
   const handleSubmit = () => {
     // A spoken "send it" must not send half a phrase.
     dictation.stop({ executeFinalCommand: false });
-    if (shouldBlockSending) return;
+    if (disabled || shouldBlockSending) return;
 
     // Sending now would silently drop files still uploading (only
     // `successFiles` ride the payload).
@@ -391,7 +400,7 @@ export function ChatInput({
   } = useDropzone({
     onDrop: handleFileDrop,
     noClick: true,
-    disabled: !canAttach,
+    disabled: disabled || !canAttach,
     onDropRejected() {
       setFileSelectionError(t('file_rejected'));
     },
@@ -636,6 +645,7 @@ export function ChatInput({
               )}
               <textarea
                 {...dc('chat/input_box/textarea')}
+                disabled={disabled}
                 onPaste={handlePaste}
                 ref={inputRef}
                 id="chat-input"
@@ -700,7 +710,7 @@ export function ChatInput({
             {/* Left group: composer inputs (attach + page marks). Hidden
               entirely on the docked quick-ask bar (history-only there). */}
             <div className="flex items-center gap-1">
-              {!hideAttachTools && (
+              {!disabled && !hideAttachTools && (
                 <>
                   {canAttach && (
                     <Tooltippy
@@ -793,7 +803,7 @@ export function ChatInput({
                   onClick={showStop ? stop : handleSubmit}
                   aria-label={showStop ? t('stop_response') : t('send_message')}
                   // Stop is always available; sending obeys `sendDisabled`.
-                  disabled={!showStop && sendDisabled}
+                  disabled={disabled || (!showStop && sendDisabled)}
                   className={COMPOSER_TOOL_BUTTON}
                 >
                   <AnimatePresence mode="wait">

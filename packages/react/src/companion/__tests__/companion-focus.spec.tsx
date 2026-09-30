@@ -29,9 +29,15 @@ vi.mock('../../screens', () => ({
 }));
 
 vi.mock('../../screens/chat/ChatInput', () => ({
-  ChatInput: ({ trailingActions }: { trailingActions?: React.ReactNode }) => (
+  ChatInput: ({
+    trailingActions,
+    disabled,
+  }: {
+    trailingActions?: React.ReactNode;
+    disabled?: boolean;
+  }) => (
     <div>
-      <textarea data-testid="quick-ask-composer" />
+      <textarea data-testid="quick-ask-composer" disabled={disabled} />
       {trailingActions}
     </div>
   ),
@@ -131,22 +137,23 @@ describe('companion composer focus', () => {
     expect(container.querySelector('[data-companion-questions]')).toBeNull();
   });
 
-  it('requires a question in quick-ask and unlocks after sending', () => {
+  it('keeps required questions outside the composer and unlocks typing after sending', () => {
     requireInitialQuestion = true;
     render('input');
-    expect(container.querySelector('textarea')).toBeNull();
-    const question = container.querySelector<HTMLButtonElement>(
-      '[data-companion-input] [data-component="chat/suggested_reply_btn"]',
-    );
-    expect(question?.textContent).toBe('Track my order');
-    act(() => question?.click());
-    expect(sendQuestion).toHaveBeenCalledWith({ content: 'Track my order' });
+    expect(container.querySelector('textarea')?.disabled).toBe(true);
+    expect(focused()).not.toBe('quick-ask-composer');
+    expect(
+      container.querySelector(
+        '[data-companion-input] [data-component="chat/suggested_reply_btn"]',
+      ),
+    ).toBeNull();
     hasMessages = true;
     render('input');
-    expect(container.querySelector('textarea')).not.toBeNull();
+    expect(container.querySelector('textarea')?.disabled).toBe(false);
+    expect(focused()).toBe('quick-ask-composer');
     hasMessages = false;
     render('input');
-    expect(container.querySelector('textarea')).toBeNull();
+    expect(container.querySelector('textarea')?.disabled).toBe(true);
   });
 
   it('shows configured footer text before the first message', () => {
