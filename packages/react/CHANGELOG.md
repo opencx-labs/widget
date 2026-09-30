@@ -1,5 +1,14 @@
 # @opencx/widget-react
 
+## 5.0.0-beta.10
+
+### Patch Changes
+
+- Show who replied and which message they answered with clickable quotes inside replies. Preserve the correct author and configured branding, show a quote once across multi-part replies, and allow avatars independently of message bubbles.
+- Updated dependencies
+  - @opencx/widget-core@5.0.0-beta.10
+  - @opencx/widget-react-headless@5.0.0-beta.10
+
 ## 5.0.0-beta.9
 
 ### Patch Changes
