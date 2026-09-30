@@ -169,9 +169,13 @@ verify the backend supports the flow before enabling it.
 - Tokens issued with explicit `mcp_access` expire after one hour; renew them before
   expiry and after tab suspension. Chat-only tokens issued without `mcp_access`
   keep their existing non-expiring behavior. Upgrading does not require chat-only
-  customers to add renewal. Updating a token for the same signed owner and access
-  scope preserves the session; user, account, organization or scope changes reset
-  active state. Do not remount the provider by keying it to the token string.
+  customers to add renewal. Updating a token preserves the session when the signed
+  owner, account and normalized server-ID list stay the same. Changes to user,
+  account, organization or that list reset active state. Omitting `mcp_access` and
+  using `mcp_access: { server_ids: [] }` are equivalent when `account_id` is absent
+  and the other identity inputs are unchanged; server-ID order is ignored. Do not
+  rely on claim representation changes to reset state. The backend still enforces
+  access. Do not remount the provider by keying it to the token string.
   Include `mcp_access.account_id` for account-switching products and verify custom
   storage does not restore another owner's session.
 - Explicit `mcp_access: {}` without `server_ids` allows all enabled per-user
