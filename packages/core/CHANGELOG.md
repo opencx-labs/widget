@@ -1,5 +1,109 @@
 # @opencx/widget-core
 
+## 5.0.0
+
+### Major Changes
+
+- d622554: Widget v5 — the streaming agent release.
+
+  **Added**
+  - `displayMode: 'companion'`: a bottom-centered pill that morphs into a floating chat panel, a docked sidebar, or a fullscreen column, with every knob under `companion.*` (layouts, resting layout, sidebar side/mode/width, compact geometry, pill label, quick-ask tools, bubbles, scroll lock).
+  - The streaming engine, enabled with `streaming: true` when supported by the organization (polling remains the default): replies stream live with a steps trace and inline rendered UI, can be stopped mid-reply, queue messages sent mid-turn, steer a follow-up into the live turn, retry a failed turn, reconnect after a disconnect, and re-render settled turns faithfully after a reload.
+  - `features`: per-embed toggles (`preamble`, `inlineUi`, `dictation`, `pageContext`, `clientTools`, `pageActions`) that can only narrow what the organization enabled.
+  - `context` accepts a function, resolved at every send, and two well-known keys — `page` and `entity` — the agent reads as "here" and "this"; the entity shows as a removable pill in the composer.
+  - `context` as a function now also drives the composer's entity pill live: the widget re-reads it on host navigation (`popstate`, `hashchange`, silent `pushState`) and on a host-fired `opencx:context-changed` event.
+  - `mentions.search`: the visitor types `@` and picks from the host's own items; the menu opens beside the `@`, grouped by type with a preview card (`mentions.preview`); each rides the send as `clientContext.mentions` and lives in the text as one highlighted `@Title` unit (caret skips it, Backspace removes it whole), in the composer and the sent bubble.
+  - Page marks (+ `pageMarkHighlightDurationMs`): explicitly enable `features.pageContext` to share eligible visible page content and `features.clientTools` to allow pointing. Acting also requires `features.pageActions`, organization permission and visitor confirmation.
+  - Voice dictation in the composer, clarification questionnaires that replace the composer while the agent waits on an answer, ↑/↓ recall of sent text.
+  - `messageActions.copy`: a Copy button under each AI reply (on by default in the companion, off in the popover so a v4 embed looks the same after upgrading; `messageActions.display: 'always'` keeps it visible instead of on hover), `router.restoreLastSession`, `onUiAction`, `showStepToolIO`, and an `errorComponent` prop on `Widget` / `WidgetProvider`.
+  - `components` keys `agent_chat_steps`, `agent_chat_spec`, `agent_chat_questions`; headless `useAgentChatUi`, `useBot`, `useDisplayMode`, `useDictation`, `useWidgetLayout`; React `HostedSpecRenderer` and `segmentContent` for host pages that show widget transcripts.
+  - Around 70 new translation keys in all 38 locales.
+
+  **Compatibility and migration**
+  - The classic embed stays self-contained at `dist-embed/script.js`. Self-hosters can continue copying that one file; repeated script loads reuse the existing widget runtime.
+  - Agent and bot messages use stricter HTML sanitization. Configured `chatFooterItems` retain safe typography, color and spacing styles; executable markup remains blocked.
+  - `WidgetUserMessage.deliveredAt` remains as a deprecated alias for `timestamp`; `pending` and `markedElements` were added.
+  - A failed initialization renders nothing (previously the loading state stayed mounted); pass `errorComponent` to render your own failure surface.
+  - `zod` moved from v3 to v4 in `@opencx/widget-react` and `@opencx/widget-react-headless`.
+  - Streaming needs an OpenCX backend that returns the `agent` block from `/widget/v2/config`; against an older backend the widget runs the classic engine exactly as v4 did.
+
+  Unchanged: the classic popover, `inline`, `customComponents`, the `components` prop keys of v4, `cssOverrides`/`theme`, `headerButtons`, `hooks`, `ExternalStorage`, storage keys, and the `context` a host passes — it rides along with every send as before.
+
+### Minor Changes
+
+- d7e7a94: Keep multiple conversations open in the v5 companion. Switch or close them in the compact title menu, or use the numbered session circles in the collapsed launcher. Each chat shows its own working state; circle names appear on hover and close controls appear on hover, keyboard focus, or touch.
+
+  Each conversation owns its send engine, text, mentions, and attachment uploads. Switching or collapsing the panel preserves that state and lets background responses finish. Closing a tab keeps its saved conversation in history, releases its runtime after an in-flight response finishes, and selects a remaining chat. A blank composer remains after the last tab closes.
+
+  The title menu and launcher share session visibility and commands. The existing `oneOpenSessionAllowed` setting also guards new-chat commands while another session is being created. With `router.restoreLastSession` enabled, reloading restores the selected saved conversation; background responses cannot overwrite that selection. The set of open tabs and unsent drafts stays in memory for the current widget mount.
+
+### Patch Changes
+
+- Keep the current chat screen visible after welcome-form submission and a fast session-list response, including in Safari. Preserve entry animations without retaining an obsolete screen.
+
+- 17a89a3: Show one tracked checklist per session above the message box, updating it in place across replies. Preserve plans when reply streaming is off, and show typing dots between complete assistant messages. Keep text streaming, tool activity, and reasoning visibility independently configurable.
+
+  Switching or starting a session immediately hides the previous session's plan and streamed reply while the selected session loads.
+
+  Plans use a compact progress ring and expandable checklist, with smooth updates and reduced-motion support.
+
+- a8a7e89: Connect personal accounts in the widget, answer approval forms, and manage saved connections and approvals from the sessions screen. Keep account access isolated and improve session switching and interrupted-response recovery.
+- 305e0ab: Declare support for selectable questions on each request. The built-in widget declares support automatically; headless clients and custom question components declare support with `capabilities.structuredQuestions` after implementing question rendering and answer submission.
+- f922ef6: Show who replied and which message they answered with clickable quotes inside replies. Preserve the correct author and configured branding, show a quote once across multi-part replies, and allow avatars independently of message bubbles.
+- 6c97027: Translate the last labels that still rendered in English regardless of the
+  configured language: the close-conversation confirmation, the dialog's dismiss
+  label, the image zoom controls, and the chat panel's accessibility label.
+- ed2a205: Preserve existing v4 embed behavior when upgrading to v5: ship a self-contained script.js, keep polling unless streaming is explicitly enabled, and require capabilities.connections: true before making connection requests. Restore the deprecated deliveredAt user-message field and allow safe typography, color and spacing styles in configured footers while continuing to sanitize agent replies.
+
+  Existing beta integrations that use streaming or personal connections must explicitly set streaming: true and capabilities.connections: true.
+
+  Recognize the backend's widget-contact JWT envelope so renewing a token for the same contact preserves the active conversation; changing the contact or account still resets it.
+
+- c2336ca: The agent can read the page the customer is on, point at a control, and act on it.
+- ed2a205: Separate page actions from pointing with an explicit `features.pageActions` opt-in
+  and the backend's `page_actions` permission. Existing beta action integrations
+  must set all three page options (`pageContext`, `clientTools`, `pageActions`).
+  Page access remains disabled by default for existing v4 integrations.
+
+  Cancel stale page effects, avoid replaying completed calls, retire old control
+  references without aliasing new controls, report reverted selections accurately,
+  and keep host exception text out of agent replies. Approved page clicks no longer
+  dismiss Companion. Contain malformed rich-reply normalization inside its error
+  boundary and recover when a valid revision arrives.
+
+- ed2a205: Require explicit pageContext opt-in for page collection and pageContext/clientTools opt-in for pointing and all three page flags for agent actions, including request feature flags. Preserve host-supplied context behavior. Filter private/hidden regions and field contents from collected names and marks; omit captures containing sensitive regions or fields. Strip credentials/query/fragment from collected page URLs. Upload mark screenshots only after Send and recheck privacy before upload. Recheck page access around asynchronous agent actions and responses.
+- ed2a205: Carry the v4.0.63 requireInitialQuestion option and question-container padding into v5. Keep the popup composer hidden and the Companion composer disabled until a first question is sent, preserve follow-ups for existing conversations, and require a new choice for new conversations. Apply the same requirement to Companion quick-ask. The option remains off by default and does not block the composer when no usable questions are configured.
+
+  In Companion quick-ask, show initial questions as floating pills above the composer on a transparent surface. Keep free typing available by default; disable typing until a starter question is selected when requireInitialQuestion is true. Render suggestions in a separate layer above the original animated composer, and hide them once a conversation has messages.
+
+- 0a4f49f: Let the agent click, type and choose on the page for the visitor, when the organization turns it on.
+
+  Every page action asks for visitor confirmation, naming the control and showing the proposed value when filling a field or choosing an option. Declining or revoking page access prevents the action. This applies regardless of the page's language, including fields that auto-save. Password fields, file pickers, controls inside another site embedded in the page and regions marked `data-opencx-private` are never touched. Replies report observed browser changes; they do not prove a remote business transaction completed.
+
+- c669348: Choose polling delivery and reduce activity visibility per widget. Declare support for rich replies and page effects only when the receiving client implements them.
+
+  Changing delivery keeps accepted messages until they finish. Visibility changes immediately hide opted-out activity and refresh existing session history.
+
+- 529e5cc: Keep follow-up messages queued until the current reply appears in the saved session, including when saving is delayed. Prevent the previous reply from briefly appearing twice when the next reply starts.
+- 0a4f49f: Report a page action as done only when the page really moved, and keep private regions out at the moment of acting.
+
+  A menu that opens by flipping one attribute now counts as something happening, a control inside a region marked private is refused even if it was read before the mark appeared, and the same is true for anything hidden from assistive technology.
+
+- 0a4f49f: Tell the agent what actually happened on the page, while it is still answering.
+
+  The widget performs a page effect, looks at the result, and reports it back: drawn, covered by something else, or no longer there. The agent says what happened instead of hedging, and a page that never answers is reported as silence rather than as success.
+
+- 81dfbec: Fix widget startup in production applications.
+- 0a4f49f: Read the controls a visitor can see and send their names with each message, so the agent can answer where something is without the visitor marking it first.
+
+  Names only: what a field contains never leaves the browser, and password fields, file pickers, anything hidden from screen readers and the widget's own interface are skipped. A region marked `data-opencx-private` is excluded whole. Only pages that share page context read anything at all.
+
+- 72a19fd: Honor dashboard activity settings across tool rows, live replies and saved history, while preserving per-embed opt-outs.
+
+  Show progress messages received through polling while the final reply is still being prepared. Briefly pause typing as each update arrives, then resume it while waiting for the next reply.
+
+  Show the copy action only after the reply finishes, leaving no empty action row between progress updates and the typing indicator.
+
 ## 5.0.0-beta.10
 
 ### Patch Changes
