@@ -33,6 +33,7 @@ export function usePageMarkComposer({
   }, [inputRef]);
   const uploadSnapshot = useCallback(
     async (file: File): Promise<string | null> => {
+      if (!widgetCtx.features.pageContext) return null;
       try {
         const { fileUrl } = await widgetCtx.api.uploadFile({
           file,
@@ -44,14 +45,13 @@ export function usePageMarkComposer({
         return null;
       }
     },
-    [widgetCtx.api],
+    [widgetCtx],
   );
   const marking = usePageMarking({
     enabled,
     onAttach: onMarkAttached,
-    uploadSnapshot,
     accentColor: pageMarkTheme.accent,
     zIndex: pageMarkTheme.inkZIndex,
   });
-  return { marks, detach, marking };
+  return { marks, detach, marking, uploadSnapshot };
 }

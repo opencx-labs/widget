@@ -29,7 +29,11 @@ import { cn } from '../../components/lib/utils/cn';
 import { useIsSmallScreen } from '../../hooks/useIsSmallScreen';
 import { useTranslation } from '../../hooks/useTranslation';
 import { type PageMark } from '../../page-marks/page-mark';
-import { awaitSnapshotUrl } from '../../page-marks/mark-thumbnail';
+import { isPageMarkShareable } from '../../page-marks/mark-source';
+import {
+  awaitSnapshotUrl,
+  beginSnapshotUpload,
+} from '../../page-marks/mark-thumbnail';
 import { buildPageClientContext } from '../../page-controls/send-context';
 import { PageActionCard } from '../../components/PageActionCard';
 import { PageContextPill } from '../../page-context/PageContextPill';
@@ -74,7 +78,10 @@ export function ChatInput({
   trailingActions,
   placeholder,
   hideAttachTools,
+  disabled = false,
 }: {
+  /** Keep the composer visible while a required starter must be chosen. */
+  disabled?: boolean;
   /**
    * Extra controls rendered in the composer's action row, just before the
    * send button. Companion uses it to slot a conversation-history button into
@@ -162,6 +169,10 @@ export function ChatInput({
     },
     onSend: () => handleSubmitRef.current(),
   });
+  const { stop: stopDictation } = dictation;
+  useEffect(() => {
+    if (disabled) stopDictation({ executeFinalCommand: false });
+  }, [disabled, stopDictation]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -184,11 +195,16 @@ export function ChatInput({
   // as context. Attached marks live OUTSIDE this component — collapsing the
   // panel unmounts the composer.
   const showPageMarks = pageMarksEnabled && !isSmallScreen;
-  const pageMarkingEnabled = showPageMarks && hideAttachTools !== true;
-  const { marks, detach, marking } = usePageMarkComposer({
+  const pageMarkingEnabled =
+    !disabled && showPageMarks && hideAttachTools !== true;
+  const { marks, detach, marking, uploadSnapshot } = usePageMarkComposer({
     enabled: pageMarkingEnabled,
     inputRef,
   });
+
+  useEffect(() => {
+    if (!pageMarksEnabled) marks.forEach(detach);
+  }, [pageMarksEnabled, marks, detach]);
 
   const {
     allFiles,
@@ -211,7 +227,7 @@ export function ChatInput({
   const handleFileDrop = (acceptedFiles: File[]) => {
     // Drop and paste both land here: nothing is accepted when the org has no
     // attachments (the dropzone is disabled too, this guards the paste path).
-    if (!canAttach) return;
+    if (disabled || !canAttach) return;
     setFileSelectionError(null);
     appendFiles(acceptedFiles);
   };
@@ -225,7 +241,9 @@ export function ChatInput({
   const hasPreviews = allFiles.length > 0 || marks.length > 0;
 
   const cannotSend =
-    !inputText.trim() && successFiles.length === 0 && marks.length === 0;
+    !inputText.trim() &&
+    successFiles.length === 0 &&
+    (!pageMarksEnabled || !marks.some(isPageMarkShareable));
 
   // The send button's single decision: an empty box mid-stream offers stop;
   // anything typed mid-stream sends (queues). Otherwise the button sends,
@@ -238,33 +256,47 @@ export function ChatInput({
   // button keeps offering stop unconditionally, a click being deliberate in a
   // way a keystroke is not.
   const flushQueueOnEnter = showStop && queuedUserMessages.length > 0;
-  const sendDisabled = isUploading || shouldBlockSending || cannotSend;
+  const sendDisabled =
+    disabled || isUploading || shouldBlockSending || cannotSend;
 
   const handleSubmit = () => {
     // A spoken "send it" must not send half a phrase.
-    dictation.stop();
-    if (shouldBlockSending) return;
-    if (cannotSend) return;
+    dictation.stop({ executeFinalCommand: false });
+    if (disabled || shouldBlockSending) return;
 
     // Sending now would silently drop files still uploading (only
     // `successFiles` ride the payload).
     if (isUploading) return;
     // Everything the send carries is captured NOW: the snapshot wait below
     // yields to the event loop, and the composer may change underneath it.
-    const submittedText = inputText;
-    const submittedMarks = [...marks];
+    const submittedText = inputTextRef.current;
+    const isCurrentConversation = widgetCtx.messageCtx.captureConversation();
+    const submittedDraft = widgetCtx.messageCtx.draftState.get();
+    const submittedMarks = marks.filter((mark) => {
+      if (widgetCtx.features.pageContext && isPageMarkShareable(mark))
+        return true;
+      detach(mark);
+      return false;
+    });
     const submittedFiles = [...successFiles];
+    if (
+      !submittedText.trim() &&
+      submittedFiles.length === 0 &&
+      submittedMarks.length === 0
+    )
+      return;
     const submittedFileIds = allFiles.map((file) => file.id);
-    // A mark's snapshot upload usually landed while the visitor typed; give a
-    // straggler a moment (the URL is written onto the mark itself), then send
-    // — a slow upload costs the picture, never the message.
+    // Upload only after Send. Attaching or discarding a mark stays local.
+    submittedMarks.forEach((mark) => beginSnapshotUpload(mark, uploadSnapshot));
     void Promise.all(
       submittedMarks.map((mark) =>
         awaitSnapshotUrl(mark, SNAPSHOT_UPLOAD_GRACE_MS),
       ),
     ).then(() =>
       submit({
+        isCurrentConversation,
         submittedText,
+        submittedDraft,
         submittedMarks,
         submittedFiles,
         submittedFileIds,
@@ -273,23 +305,43 @@ export function ChatInput({
   };
 
   const submit = ({
+    isCurrentConversation,
     submittedText,
+    submittedDraft,
     submittedMarks,
     submittedFiles,
     submittedFileIds,
   }: {
+    isCurrentConversation: () => boolean;
     submittedText: string;
+    submittedDraft: ReturnType<typeof widgetCtx.messageCtx.draftState.get>;
     submittedMarks: PageMark[];
     submittedFiles: typeof successFiles;
     submittedFileIds: string[];
   }) => {
+    // A reset can reuse this MessageCtx for another session or visitor. Do not
+    // send or clear their state when an earlier snapshot upload finishes.
+    if (!isCurrentConversation()) return;
+    // Upload preparation yields: permissions or the marked DOM may have changed.
+    const readsPage = widgetCtx.features.pageContext;
+    const currentMarks = submittedMarks.filter((mark) => {
+      if (readsPage && isPageMarkShareable(mark)) return true;
+      detach(mark);
+      return false;
+    });
+    if (
+      !submittedText.trim() &&
+      submittedFiles.length === 0 &&
+      currentMarks.length === 0
+    )
+      return;
     // Nothing typed but marks attached: their notes ARE the question, and a
     // note-less mark still asks the one thing the tool exists for. Files keep
     // sending with no text at all, as they always have.
     const trimmed =
       submittedText.trim() ||
-      (submittedMarks.length > 0
-        ? (markNotes(submittedMarks) ?? t('page_mark_default_message'))
+      (currentMarks.length > 0
+        ? (markNotes(currentMarks) ?? t('page_mark_default_message'))
         : '');
     let didAccept = false;
     const submittedMentions = mentions.picked;
@@ -317,11 +369,11 @@ export function ChatInput({
       // backend persists, re-surfaces on later turns, and hands back to the
       // surfaces that show the message afterwards.
       clientContext: buildPageClientContext({
-        marks: submittedMarks,
-        readsPage: pageMarksEnabled,
+        marks: currentMarks,
+        readsPage,
       }),
       onAccepted: () => {
-        if (didAccept) return;
+        if (didAccept || !isCurrentConversation()) return;
         didAccept = true;
 
         rememberSentText(trimmed);
@@ -330,7 +382,7 @@ export function ChatInput({
         submittedMarks.forEach((mark) => detach(mark));
         submittedFileIds.forEach((fileId) => handleCancelUpload(fileId));
 
-        const cleared = clearSubmitted();
+        const cleared = clearSubmitted(submittedDraft);
         if (!mountedRef.current) return;
         recall.onSent();
         setPageEntityDismissed(false);
@@ -348,7 +400,7 @@ export function ChatInput({
   } = useDropzone({
     onDrop: handleFileDrop,
     noClick: true,
-    disabled: !canAttach,
+    disabled: disabled || !canAttach,
     onDropRejected() {
       setFileSelectionError(t('file_rejected'));
     },
@@ -593,6 +645,7 @@ export function ChatInput({
               )}
               <textarea
                 {...dc('chat/input_box/textarea')}
+                disabled={disabled}
                 onPaste={handlePaste}
                 ref={inputRef}
                 id="chat-input"
@@ -657,7 +710,7 @@ export function ChatInput({
             {/* Left group: composer inputs (attach + page marks). Hidden
               entirely on the docked quick-ask bar (history-only there). */}
             <div className="flex items-center gap-1">
-              {!hideAttachTools && (
+              {!disabled && !hideAttachTools && (
                 <>
                   {canAttach && (
                     <Tooltippy
@@ -750,7 +803,7 @@ export function ChatInput({
                   onClick={showStop ? stop : handleSubmit}
                   aria-label={showStop ? t('stop_response') : t('send_message')}
                   // Stop is always available; sending obeys `sendDisabled`.
-                  disabled={!showStop && sendDisabled}
+                  disabled={disabled || (!showStop && sendDisabled)}
                   className={COMPOSER_TOOL_BUTTON}
                 >
                   <AnimatePresence mode="wait">

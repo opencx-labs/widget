@@ -48,3 +48,28 @@ it('keeps edits made after submission and clears accepted drafts across unmounts
   expect(second.messageCtx.draftState.get().text).toBe('second draft');
   act(() => root.unmount());
 });
+
+it('clears a synchronously flushed draft without erasing later edits', () => {
+  active = conversation();
+  let draft: ReturnType<typeof useComposerDraft>;
+  function Probe() {
+    draft = useComposerDraft();
+    return <span>{draft.text}</span>;
+  }
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  act(() => root.render(<Probe />));
+  const accept = draft!.clearSubmitted;
+  act(() => {
+    draft!.setText('Final dictated phrase');
+    const submitted = active.messageCtx.draftState.get();
+    expect(accept(submitted)).toBe(true);
+  });
+  expect(host.textContent).toBe('');
+  act(() => draft!.setText('Another submitted draft'));
+  const submitted = active.messageCtx.draftState.get();
+  act(() => draft!.setText('New unsent edit'));
+  expect(accept(submitted)).toBe(false);
+  expect(host.textContent).toBe('New unsent edit');
+  act(() => root.unmount());
+});

@@ -137,6 +137,29 @@ suite('DictationCtx', () => {
     expect(ctx.state.get()).toEqual({ status: 'idle', error: null });
   });
 
+  test('a lifecycle stop preserves dictated text without submitting a pending command', async () => {
+    const ctx = makeCtx();
+    const c = composer('Typed: ');
+    ctx.start(c.target);
+    captured.handlers?.onDelta('Hello. Send it');
+    ctx.stop({ executeFinalCommand: false });
+    await flushDrip();
+    expect(c.read()).toBe('Typed: Hello. ');
+    expect(c.onSend).not.toHaveBeenCalled();
+    expect(captured.stops).toBe(1);
+    expect(ctx.state.get().status).toBe('idle');
+  });
+
+  test('an explicit dictation stop still resolves a completed spoken command', () => {
+    const ctx = makeCtx();
+    const c = composer();
+    ctx.start(c.target);
+    captured.handlers?.onDelta('Hello. Send it');
+    ctx.stop();
+    expect(c.read()).toBe('Hello. ');
+    expect(c.onSend).toHaveBeenCalledOnce();
+  });
+
   test('a manual edit inside the dictated region ends the session', async () => {
     const ctx = makeCtx();
     const c = composer();

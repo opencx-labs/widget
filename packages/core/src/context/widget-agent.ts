@@ -23,6 +23,7 @@ export type WidgetAgent = {
     attachments: boolean;
     pageContext: boolean;
     clientTools: boolean;
+    pageActions: boolean;
   };
 };
 
@@ -51,6 +52,7 @@ export function resolveWidgetAgent({
         attachments: true,
         pageContext: false,
         clientTools: false,
+        pageActions: false,
       },
     };
   }
@@ -64,13 +66,14 @@ export function resolveWidgetAgent({
       attachments: agent.features.attachments,
       pageContext: agent.features.page_context,
       clientTools: agent.features.client_tools,
+      pageActions: agent.features.page_actions === true,
     },
   };
 }
 
 /**
- * The one narrowing rule for every per-embed feature toggle: the org's
- * effective feature can only be switched OFF by `config.features`, never on.
+ * Non-page features can inherit organization settings. Page reading and
+ * actions below require explicit embed opt-in as well as server support.
  */
 function narrowFeature(
   orgEnabled: boolean,
@@ -99,19 +102,26 @@ export function resolveClientFeatures(
    * the host page).
    */
   clientTools: boolean;
+  /** The widget may click and type, independently of highlighting. */
+  pageActions: boolean;
 } {
   const toggles = config.features;
   return {
     dictation: narrowFeature(agent.features.dictation, toggles?.dictation),
     attachments: agent.features.attachments,
-    pageContext: narrowFeature(
-      agent.features.pageContext,
-      toggles?.pageContext,
-    ),
-    clientTools: narrowFeature(
-      agent.features.clientTools,
-      toggles?.clientTools,
-    ),
+    pageContext: agent.features.pageContext && toggles?.pageContext === true,
+    clientTools:
+      agent.features.clientTools &&
+      agent.features.pageContext &&
+      toggles?.pageContext === true &&
+      toggles?.clientTools === true,
+    pageActions:
+      agent.features.pageActions &&
+      agent.features.clientTools &&
+      agent.features.pageContext &&
+      toggles?.pageContext === true &&
+      toggles?.clientTools === true &&
+      toggles?.pageActions === true,
   };
 }
 

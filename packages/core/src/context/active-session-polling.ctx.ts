@@ -221,6 +221,7 @@ export class ActiveSessionPollingCtx {
       return {
         ...commonFields,
         type: 'USER',
+        deliveredAt: commonFields.timestamp,
         content: history.content.text || '',
         // Backend field name (schema.ts) → widget vocabulary.
         markedElements: history.pickedElements,

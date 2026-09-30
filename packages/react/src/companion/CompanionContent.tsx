@@ -1,8 +1,12 @@
+import { useInitialQuestionRequired } from '../hooks/useInitialQuestionRequired';
 import { useConfig } from '@opencx/widget-react-headless';
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { FrameDocument } from '../components/FrameDocument';
 import { SuppressTooltips } from '../components/lib/tooltip';
 import { RootScreen } from '../screens';
+import { ChatFooterItems } from '../screens/chat/ChatFooterItems';
+import { XIcon } from 'lucide-react';
+import { FrameIconButton } from './FrameIconButton';
 import { ChatInput } from '../screens/chat/ChatInput';
 import { RADII } from './companion-geometry';
 import {
@@ -133,6 +137,7 @@ export function CompanionContent({
   onInputHeightChange: (height: number) => void;
 }) {
   const { companion } = useConfig();
+  const initialQuestionRequired = useInitialQuestionRequired();
   const { t } = useTranslation();
   const rootRef = useRef<HTMLDivElement>(null);
   const inputPaneRef = useRef<HTMLDivElement>(null);
@@ -196,9 +201,9 @@ export function CompanionContent({
   // realm, so an instanceof check against the host's HTMLTextAreaElement
   // would be wrong.)
   useLayoutEffect(() => {
-    if (state !== 'input' || canExpand) return;
+    if (state !== 'input' || canExpand || initialQuestionRequired) return;
     focusComposer(inputPaneRef.current);
-  }, [state, canExpand]);
+  }, [state, canExpand, initialQuestionRequired]);
 
   // The same rule one rung up: expanding into the conversation must leave the
   // caret in the composer. Without it the panel opens looking ready to type
@@ -251,26 +256,39 @@ export function CompanionContent({
             ['--opencx-companion-input-radius' as string]: `${RADII.input}px`,
           }}
         >
-          {/* The shell clips this composer to a thin strip, so a `side="top"`
+          <div className="relative">
+            {/* The shell clips this composer to a thin strip, so a `side="top"`
               tooltip would bleed above the bar as a dark sliver. */}
-          <SuppressTooltips>
-            <ChatInput
-              hideAttachTools={hideAttachTools}
-              placeholder={placeholder}
-            />
-          </SuppressTooltips>
-          {canExpand ? (
-            // Minimized mid-conversation: the whole follow-up bar is one click
-            // target that pops back up into the open chat — no separate control.
-            // The overlay sits above the (non-interactive here) composer so a
-            // click anywhere expands.
-            <button
-              type="button"
-              aria-label={t('companion_expand_chat')}
-              onClick={onExpand}
-              className="absolute inset-0 z-10 cursor-pointer"
-            />
-          ) : null}
+            <SuppressTooltips>
+              <ChatInput
+                disabled={initialQuestionRequired}
+                hideAttachTools={hideAttachTools}
+                placeholder={placeholder}
+                trailingActions={
+                  initialQuestionRequired ? (
+                    <FrameIconButton
+                      label={t('companion_close')}
+                      onClick={onDismiss}
+                      className="size-8"
+                    >
+                      <XIcon className="size-4" />
+                    </FrameIconButton>
+                  ) : undefined
+                }
+              />
+            </SuppressTooltips>
+            {canExpand ? (
+              // Only the composer expands the minimized conversation. Keep the
+              // configured footer outside this overlay so its links stay usable.
+              <button
+                type="button"
+                aria-label={t('companion_expand_chat')}
+                onClick={onExpand}
+                className="absolute inset-0 z-10 cursor-pointer"
+              />
+            ) : null}
+          </div>
+          <ChatFooterItems />
         </div>
       ) : (
         <div

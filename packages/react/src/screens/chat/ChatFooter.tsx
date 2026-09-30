@@ -1,3 +1,5 @@
+import { cn } from '../../components/lib/utils/cn';
+import { useInitialQuestionRequired } from '../../hooks/useInitialQuestionRequired';
 import {
   useConfig,
   useCsat,
@@ -83,6 +85,7 @@ export function ChatFooter() {
   const { messagesState } = useMessages();
 
   const noMessages = messagesState.messages.length === 0;
+  const initialQuestionRequired = useInitialQuestionRequired();
 
   return (
     <footer>
@@ -102,7 +105,12 @@ export function ChatFooter() {
             {noMessages &&
               initialQuestions &&
               initialQuestionsPosition !== 'below-initial-messages' && (
-                <div className="flex items-center flex-row justify-end gap-2 flex-wrap px-2">
+                <div
+                  className={cn(
+                    'flex items-center flex-row justify-end gap-2 flex-wrap px-2',
+                    initialQuestionRequired && 'pb-4',
+                  )}
+                >
                   {initialQuestions?.map((iq, index) => (
                     <SuggestedReplyButton
                       key={`${iq}-${index}`}
@@ -112,7 +120,7 @@ export function ChatFooter() {
                 </div>
               )}
 
-            <ChatInput />
+            {!initialQuestionRequired && <ChatInput />}
             <ChatFooterItems />
           </MotionDiv__VerticalReveal>
         )}

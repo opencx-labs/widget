@@ -158,24 +158,26 @@ type SendFeaturesBody = NonNullable<SendMessageDto['features']>;
 
 /**
  * `config.features` (camelCase) → the snake_cased `features` field both send
- * engines carry. Undefined when the embedder set nothing, so the body stays
- * byte-identical to before for embeds that never touch the option.
+ * engines carry. Page reading and actions require explicit embed opt-in,
+ * including on the server; omission must not inherit organization defaults.
  */
 export const resolveSendFeatures = (
   config: WidgetConfig,
 ): SendFeaturesBody | undefined => {
   const features = config.features;
-  if (!features) return undefined;
-  const body: SendFeaturesBody = {};
+  const body: SendFeaturesBody = {
+    page_context: features?.pageContext === true,
+    client_tools:
+      features?.pageContext === true && features?.clientTools === true,
+    page_actions:
+      features?.pageContext === true &&
+      features?.clientTools === true &&
+      features?.pageActions === true,
+  };
+  if (!features) return body;
   if (features.preamble !== undefined) body.preamble = features.preamble;
   if (features.inlineUi !== undefined) body.inline_ui = features.inlineUi;
-  if (features.pageContext !== undefined) {
-    body.page_context = features.pageContext;
-  }
-  if (features.clientTools !== undefined) {
-    body.client_tools = features.clientTools;
-  }
-  return Object.keys(body).length > 0 ? body : undefined;
+  return body;
 };
 
 /**
@@ -216,19 +218,12 @@ export const buildSendMessageBody = ({
   language: config.language,
   features: resolveSendFeatures(config),
   presentation: config.presentation,
-  capabilities: [
-    config.capabilities?.connections,
-    config.capabilities?.structuredQuestions,
-    config.capabilities?.richReplies,
-    config.capabilities?.pageEffects,
-  ].some((value) => value !== undefined)
-    ? {
-        connections: config.capabilities?.connections,
-        structured_questions: config.capabilities?.structuredQuestions,
-        rich_replies: config.capabilities?.richReplies,
-        page_effects: config.capabilities?.pageEffects,
-      }
-    : undefined,
+  capabilities: {
+    connections: config.capabilities?.connections === true,
+    structured_questions: config.capabilities?.structuredQuestions,
+    rich_replies: config.capabilities?.richReplies,
+    page_effects: config.capabilities?.pageEffects,
+  },
   exit_mode_prompt: input.exitModePrompt,
   initial_messages:
     initialMessages.length > 0
@@ -296,6 +291,13 @@ export class MessageCtx {
   private bufferedAgentSends: SendMessageInput[] = [];
 
   private sendMessageAbortController = new AbortController();
+  private conversationGeneration = 0;
+
+  /** Bind asynchronous preparation to this chat, including resets to a new empty chat. */
+  captureConversation = (): (() => boolean) => {
+    const generation = this.conversationGeneration;
+    return () => generation === this.conversationGeneration;
+  };
 
   private messageIdsDispatchedToOnMessageReceivedHook = new Set<string>();
 
@@ -348,6 +350,7 @@ export class MessageCtx {
   }
 
   reset = () => {
+    this.conversationGeneration++;
     this.sendMessageAbortController.abort('Resetting chat');
     this.bufferedAgentSends = [];
     this.state.reset();
@@ -520,6 +523,7 @@ export class MessageCtx {
     input: SendMessageInput,
     { pending }: { pending: boolean },
   ): Promise<StagedUserTurn | null> => {
+    const isCurrentConversation = this.captureConversation();
     const built = this.buildUserMessage(input);
     if (!built) return null;
     const userMessage = pending ? { ...built, pending: true } : built;
@@ -541,9 +545,11 @@ export class MessageCtx {
     try {
       sessionId = await this.ensureSessionId();
     } catch (error) {
+      if (!isCurrentConversation()) return null;
       this.rollbackOptimisticMessages(optimisticMessageIds);
       throw error;
     }
+    if (!isCurrentConversation()) return null;
     if (!sessionId) {
       this.rollbackOptimisticMessages(optimisticMessageIds);
       return null;
@@ -826,14 +832,16 @@ export class MessageCtx {
       return content;
     })();
 
+    const timestamp = new Date().toISOString();
     return {
       id: genUuid(),
       type: 'USER',
+      deliveredAt: timestamp,
       content: messageContent,
       attachments,
       markedElements,
       mentions,
-      timestamp: new Date().toISOString(),
+      timestamp,
     };
   };
 

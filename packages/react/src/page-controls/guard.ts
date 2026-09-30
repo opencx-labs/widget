@@ -1,4 +1,4 @@
-import { resolveRef } from './control-ref';
+import { inspectRef } from './control-ref';
 import { OFF_LIMITS_DETAIL, offLimitsReason } from './off-limits';
 
 /**
@@ -59,8 +59,9 @@ function isTopmost(el: HTMLElement): boolean {
 
 /** Look a reference up and ask the element whether it can be touched. */
 export function guardRef(ref: string): GuardOutcome {
-  const element = resolveRef(ref);
-  if (!element) return { ok: false, reason: 'gone' };
+  const reference = inspectRef(ref);
+  if (!reference) return { ok: false, reason: 'gone' };
+  const { element } = reference;
 
   // Before anything else: is this still something we are allowed to touch?
   const forbidden = offLimitsReason(element);
@@ -85,6 +86,8 @@ export function guardRef(ref: string): GuardOutcome {
   }
 
   if (!isTopmost(element)) return { ok: false, reason: 'covered' };
+
+  if (!reference.isCurrent) return { ok: false, reason: 'gone' };
 
   return { ok: true, element };
 }

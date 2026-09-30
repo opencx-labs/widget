@@ -205,7 +205,12 @@ export class ConversationWorkspace {
     const chat =
       chats.find((item) => this.isEmpty(item)) ??
       this.makeChat(this.root.createConversation());
-    if (session) chat.ctx.sessionCtx.sessionState.setPartial({ session });
+    if (session) {
+      // An apparently empty tab can still own deferred page-mark preparation.
+      // Invalidate that work before rebinding the runtime to history.
+      if (chats.includes(chat)) chat.ctx.resetChat();
+      chat.ctx.sessionCtx.sessionState.setPartial({ session });
+    }
     if (!chats.includes(chat))
       this.state.setPartial({ chats: [...chats, chat] });
     this.select(chat.id);

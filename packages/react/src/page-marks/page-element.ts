@@ -1,3 +1,11 @@
+import {
+  isPageElementPrivate,
+  safePageText,
+  safePageUrl,
+  PAGE_VALUE_SELECTOR,
+  WIDGET_OWNED_SELECTOR,
+} from '../page-privacy';
+export { WIDGET_OWNED_SELECTOR } from '../page-privacy';
 /**
  * The page vocabulary shared by every mark on the host page — the visitor's
  * (`page-mark.ts`) and the agent's (`agent-mark.ts`).
@@ -38,7 +46,7 @@ function truncate(text: string, max: number): string {
 }
 
 function cleanText(el: HTMLElement): string {
-  return (el.textContent ?? '').replace(/\s+/g, ' ').trim();
+  return safePageText(el);
 }
 
 /**
@@ -84,6 +92,7 @@ function meaningfulClass(el: HTMLElement): string | null {
  * images by alt.
  */
 export function identifyElementName(el: HTMLElement): string {
+  if (isPageElementPrivate(el)) return 'private region';
   const tag = el.tagName.toLowerCase();
   const aria = el.getAttribute('aria-label');
   const text = cleanText(el);
@@ -94,7 +103,12 @@ export function identifyElementName(el: HTMLElement): string {
   }
   if (tag === 'a') {
     if (text) return `link "${truncate(text, 30)}"`;
-    const href = el.getAttribute('href');
+    const rawHref = el.getAttribute('href');
+    const safeHref = rawHref ? safePageUrl(rawHref) : '';
+    const href =
+      rawHref?.startsWith('/') && !rawHref.startsWith('//') && safeHref
+        ? new URL(safeHref).pathname
+        : safeHref;
     return href ? `link to ${truncate(href, 40)}` : 'link';
   }
   if (tag === 'input' || tag === 'textarea' || tag === 'select') {
@@ -219,6 +233,8 @@ export function clampRectToViewport(
 
 /** Describe an element for the AI. */
 export function describeElement(el: HTMLElement): MarkedElement {
+  if (isPageElementPrivate(el) || el.closest(PAGE_VALUE_SELECTOR))
+    return { name: 'private region', selector: '', tag: 'div' };
   const text = cleanText(el);
   return {
     name: identifyElementName(el),
@@ -234,12 +250,6 @@ export function describeElement(el: HTMLElement): MarkedElement {
  * ownership check below and the mark-mode cursor's injected `:not()` chain
  * derive from this list — add new widget-owned markers HERE.
  */
-export const WIDGET_OWNED_SELECTOR = [
-  '#opencx-root',
-  '[data-opencx-root]',
-  '[data-opencx-overlay]',
-] as const;
-
 const WIDGET_OWNED_CLOSEST = WIDGET_OWNED_SELECTOR.join(', ');
 
 /**
@@ -272,7 +282,12 @@ export function elementAt(x: number, y: number): HTMLElement | null {
     element = element.parentElement;
   }
   if (!(element instanceof HTMLElement)) return null;
-  if (isWidgetOwned(element)) return null;
+  if (
+    isPageElementPrivate(hit) ||
+    isPageElementPrivate(element) ||
+    element.closest(PAGE_VALUE_SELECTOR)
+  )
+    return null;
   const tag = element.tagName.toLowerCase();
   if (tag === 'html' || tag === 'body') return null;
   return element;

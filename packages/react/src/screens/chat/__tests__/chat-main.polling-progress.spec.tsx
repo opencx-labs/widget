@@ -73,7 +73,13 @@ beforeEach(() => {
   root = createRoot(container);
   awaitingReply = true;
   messages = [
-    { id: 'user', type: 'USER', content: 'Check my balance.', timestamp: null },
+    {
+      id: 'user',
+      type: 'USER',
+      deliveredAt: null,
+      content: 'Check my balance.',
+      timestamp: null,
+    },
   ];
 });
 afterEach(() => {

@@ -48,7 +48,15 @@ function started(ctx: WidgetCtx, id: string) {
     session: { id, isOpened: true } as never,
   });
   ctx.messageCtx.state.setPartial({
-    messages: [{ id: `${id}-user`, type: 'USER', content: id, timestamp: '' }],
+    messages: [
+      {
+        id: `${id}-user`,
+        type: 'USER',
+        deliveredAt: null,
+        content: id,
+        timestamp: '',
+      },
+    ],
     isSendingMessage: true,
   });
 }

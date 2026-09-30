@@ -72,6 +72,22 @@ function HostedSpec({
   host: JsonRenderHost;
   active?: boolean;
 }) {
+  return (
+    <JsonRenderHostProvider host={host}>
+      <JsonRenderErrorBoundary resetKey={spec}>
+        <NormalizedSpec spec={spec} active={active} />
+      </JsonRenderErrorBoundary>
+    </JsonRenderHostProvider>
+  );
+}
+
+function NormalizedSpec({
+  spec,
+  active,
+}: {
+  spec: Spec | null;
+  active: boolean;
+}) {
   const normalized = useMemo(
     () => (spec ? inlineRepeatLeaves(spec) : null),
     [spec],
@@ -82,17 +98,13 @@ function HostedSpec({
   if (!normalized || !isNonEmptySpec(normalized)) return null;
 
   return (
-    <JsonRenderHostProvider host={host}>
-      <JsonRenderErrorBoundary resetKey={normalized}>
-        <JSONUIProvider registry={registry} initialState={normalized.state}>
-          <Renderer
-            spec={normalized}
-            registry={registry}
-            loading={active}
-            fallback={JsonRenderFallback}
-          />
-        </JSONUIProvider>
-      </JsonRenderErrorBoundary>
-    </JsonRenderHostProvider>
+    <JSONUIProvider registry={registry} initialState={normalized.state}>
+      <Renderer
+        spec={normalized}
+        registry={registry}
+        loading={active}
+        fallback={JsonRenderFallback}
+      />
+    </JSONUIProvider>
   );
 }

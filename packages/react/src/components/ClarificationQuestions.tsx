@@ -1,11 +1,13 @@
 import {
   formatAskQuestionsAnswers,
   useMessages,
+  useWidget,
   type AskQuestionsRequest,
 } from '@opencx/widget-react-headless';
 import { ChevronLeftIcon, ChevronRightIcon, SparklesIcon } from 'lucide-react';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from '../hooks/useTranslation';
+import { buildPageClientContext } from '../page-controls/send-context';
 import { dc } from '../utils/data-component';
 import { cn } from './lib/utils/cn';
 
@@ -54,6 +56,7 @@ export function ClarificationQuestions({
 }: ClarificationQuestionsProps) {
   const { t } = useTranslation();
   const { sendMessage } = useMessages();
+  const { widgetCtx } = useWidget();
   const questions = request.questions;
 
   const [index, setIndex] = useState(0);
@@ -131,7 +134,15 @@ export function ClarificationQuestions({
     // questionnaire twice; the customer's reply then retires it from the
     // composer (`pendingClarification`).
     setSubmitted(true);
-    sendMessage({ content });
+    sendMessage({
+      content,
+      // The page and its sharing permission may have changed while answering.
+      // Use the normal send-time privacy filter; do not replay earlier marks.
+      clientContext: buildPageClientContext({
+        marks: [],
+        readsPage: widgetCtx.features.pageContext,
+      }),
+    });
   }, [
     allAnswered,
     submitted,
@@ -142,6 +153,7 @@ export function ClarificationQuestions({
     request,
     sendMessage,
     singleSel,
+    widgetCtx,
   ]);
 
   if (!question) return null;

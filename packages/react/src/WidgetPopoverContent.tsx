@@ -1,7 +1,7 @@
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import IFrame from '@uiw/react-iframe';
 import { motion } from 'framer-motion';
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   useConfig,
   useDocumentDir,
@@ -20,14 +20,28 @@ import { RootScreen } from './screens';
 
 const initialContent = buildFrameHtml();
 
+// Framer Motion 11's accelerated opacity animation cancels its WAAPI effect
+// before the final inline opacity/display is painted. Closing can expose the
+// previous opacity:1 for one frame. An update subscriber keeps this wrapper's
+// opacity on the same JS frame loop as its scale/y and transitionEnd, avoiding
+// that handoff without changing the spring or hiding the panel prematurely.
+const keepShellAnimationSynchronized = () => {};
+
 export function WidgetContent() {
   const { isOpen } = useWidgetTrigger();
-  const { contentIframeRef } = useWidget();
+  const { contentIframeRef, widgetCtx } = useWidget();
   const { inline } = useConfig();
   const { theme, computed } = useTheme();
 
+  // The popover stays mounted while closed to preserve its conversation and
+  // exit animation. Microphone capture must end when it closes, not on unmount.
+  useEffect(() => {
+    if (!isOpen) widgetCtx.dictationCtx.stop({ executeFinalCommand: false });
+  }, [isOpen, widgetCtx]);
+
   return (
     <motion.div
+      onUpdate={keepShellAnimationSynchronized}
       animate={isOpen ? 'visible' : 'hidden'}
       initial="hidden"
       // Grow out of the FAB corner (bottom-right, where the trigger sits) so

@@ -29,9 +29,15 @@ vi.mock('../../screens', () => ({
 }));
 
 vi.mock('../../screens/chat/ChatInput', () => ({
-  ChatInput: ({ trailingActions }: { trailingActions?: React.ReactNode }) => (
+  ChatInput: ({
+    trailingActions,
+    disabled,
+  }: {
+    trailingActions?: React.ReactNode;
+    disabled?: boolean;
+  }) => (
     <div>
-      <textarea data-testid="quick-ask-composer" />
+      <textarea data-testid="quick-ask-composer" disabled={disabled} />
       {trailingActions}
     </div>
   ),
@@ -39,8 +45,22 @@ vi.mock('../../screens/chat/ChatInput', () => ({
 
 vi.mock('../PanelControls', () => ({ PanelControls: () => null }));
 
+let requireInitialQuestion = false;
+let initialQuestions = ['Track my order'];
+let hasMessages = false;
+const sendQuestion = vi.fn();
 vi.mock('@opencx/widget-react-headless', () => ({
-  useConfig: () => ({ companion: undefined }),
+  useConfig: () => ({
+    companion: undefined,
+    requireInitialQuestion,
+    initialQuestions,
+    chatFooterItems: [{ message: 'Fixture privacy notice' }],
+  }),
+  useSessions: () => ({ sessionState: { session: null } }),
+  useMessages: () => ({
+    messagesState: { messages: hasMessages ? [{}] : [] },
+    sendMessage: sendQuestion,
+  }),
 }));
 
 vi.mock('../../hooks/useTranslation', () => ({
@@ -48,8 +68,8 @@ vi.mock('../../hooks/useTranslation', () => ({
 }));
 
 vi.mock('../../components/lib/button', () => ({
-  Button: ({ children }: { children: React.ReactNode }) => (
-    <button type="button">{children}</button>
+  Button: (props: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button {...props} type="button" />
   ),
 }));
 
@@ -60,6 +80,10 @@ describe('companion composer focus', () => {
   let root: Root;
 
   beforeEach(() => {
+    requireInitialQuestion = false;
+    initialQuestions = ['Track my order'];
+    hasMessages = false;
+    sendQuestion.mockClear();
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -98,6 +122,47 @@ describe('companion composer focus', () => {
     document.activeElement instanceof HTMLElement
       ? document.activeElement.dataset['testid']
       : undefined;
+
+  it('keeps optional questions out of the measured composer pane', () => {
+    render('input');
+    expect(container.querySelector('textarea')).not.toBeNull();
+    expect(container.querySelector('[data-companion-questions]')).toBeNull();
+  });
+
+  it('keeps typing available when required questions contain only blanks', () => {
+    requireInitialQuestion = true;
+    initialQuestions = ['', '  '];
+    render('input');
+    expect(container.querySelector('textarea')).not.toBeNull();
+    expect(container.querySelector('[data-companion-questions]')).toBeNull();
+  });
+
+  it('keeps required questions outside the composer and unlocks typing after sending', () => {
+    requireInitialQuestion = true;
+    render('input');
+    expect(container.querySelector('textarea')?.disabled).toBe(true);
+    expect(focused()).not.toBe('quick-ask-composer');
+    expect(
+      container.querySelector(
+        '[data-companion-input] [data-component="chat/suggested_reply_btn"]',
+      ),
+    ).toBeNull();
+    hasMessages = true;
+    render('input');
+    expect(container.querySelector('textarea')?.disabled).toBe(false);
+    expect(focused()).toBe('quick-ask-composer');
+    hasMessages = false;
+    render('input');
+    expect(container.querySelector('textarea')?.disabled).toBe(true);
+  });
+
+  it('shows configured footer text before the first message', () => {
+    render('input');
+    expect(container.textContent).toContain('Fixture privacy notice');
+    requireInitialQuestion = true;
+    render('input');
+    expect(container.textContent).toContain('Fixture privacy notice');
+  });
 
   it('focuses the quick-ask composer when the resting bar opens', () => {
     render('input');

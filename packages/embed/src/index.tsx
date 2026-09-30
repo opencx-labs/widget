@@ -11,11 +11,14 @@ declare global {
   interface Window {
     initOpenScript: typeof initOpenScript;
     openCXWidgetVersion: string;
+    __opencxEmbedRuntime?: {
+      init: typeof initOpenScript;
+      version: string;
+    };
   }
 }
 
-// One React root per page. The classic loader replays every queued
-// `initOpenScript` call, and a host may call it again with new options; a
+// One React root per page. A host may call initOpenScript again with new options; a
 // second `createRoot` on the same container would leave two roots fighting
 // over it.
 let root: Root | undefined;
@@ -33,7 +36,14 @@ function initOpenScript(options: WidgetConfig) {
   root.render(<Widget options={options} />);
 }
 
-// Installed during module evaluation: the loader replays its queue on the
-// injected module tag's load event, which fires after.
-window.initOpenScript = initOpenScript;
-window.openCXWidgetVersion = version;
+// Retain the initializer as well as its root: a repeated IIFE carries another
+// React/Widget copy. Rendering that copy through the old root can reset state
+// or mix React runtimes. The first loaded runtime owns this page until reload.
+const runtime = (window.__opencxEmbedRuntime ??= {
+  init: initOpenScript,
+  version,
+});
+
+// Available synchronously once the classic script tag has finished loading.
+window.initOpenScript = runtime.init;
+window.openCXWidgetVersion = runtime.version;

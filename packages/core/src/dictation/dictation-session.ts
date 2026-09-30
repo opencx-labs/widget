@@ -120,6 +120,10 @@ export class DictationSession {
         .then((stream) => {
           if (this.isTornDown() || (this.stream && this.stream !== stream)) {
             stream.getTracks().forEach((t) => t.stop());
+          } else {
+            // Own the stream as soon as permission resolves. Mint can fail
+            // before Promise.all completes; teardown must still close the mic.
+            this.stream = stream;
           }
         })
         .catch(() => undefined); // surfaced via the await below
@@ -167,7 +171,9 @@ export class DictationSession {
       });
 
       const offer = await pc.createOffer();
+      if (this.isTornDown()) return;
       await pc.setLocalDescription(offer);
+      if (this.isTornDown()) return;
 
       const sdpResponse = await fetch(REALTIME_CALLS_URL, {
         method: 'POST',

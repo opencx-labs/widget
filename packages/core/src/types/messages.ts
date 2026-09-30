@@ -43,6 +43,8 @@ export type WidgetUserMessage = {
   /** Internal agent context; excluded from the visible transcript. */
   background?: boolean;
   content: string;
+  /** @deprecated Use timestamp. Kept for v4 custom message components. */
+  deliveredAt: string | null;
   /**
    * Streaming engine only: the message was rendered optimistically and its
    * turn's answer has not started streaming yet — the UI dims the bubble.

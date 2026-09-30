@@ -19,7 +19,7 @@ export function ElicitationForm({
   const [pending, setPending] = useState<ElicitationRequest | null>(null);
   useEffect(() => {
     setPending(null);
-    if (!active || config.capabilities?.connections === false) return;
+    if (!active || config.capabilities?.connections !== true) return;
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     const poll = async () => {

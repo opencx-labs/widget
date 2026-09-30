@@ -185,3 +185,15 @@ suite('reply quote mapping', () => {
     ).not.toHaveProperty('replyTo');
   });
 });
+
+test('restored user messages preserve the v4 deliveredAt field', () => {
+  const sentAt = '2026-09-23T10:00:00.000Z';
+  const mapped = buildPolling().mapHistoryToMessage(
+    row({ sender: { kind: 'user' }, sentAt }),
+  );
+  expect(mapped).toMatchObject({
+    type: 'USER',
+    timestamp: sentAt,
+    deliveredAt: sentAt,
+  });
+});

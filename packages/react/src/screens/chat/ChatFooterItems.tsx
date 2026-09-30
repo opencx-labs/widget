@@ -2,7 +2,7 @@ import React from 'react';
 import { useConfig, useSessions } from '@opencx/widget-react-headless';
 import { AnimatePresence } from 'framer-motion';
 import { MotionDiv__VerticalReveal } from '../../components/lib/MotionDiv__VerticalReveal';
-import { RichText } from '../../components/RichText';
+import { ConfiguredRichText } from '../../components/RichText';
 
 export function ChatFooterItems() {
   const { sessionState } = useSessions();
@@ -25,7 +25,7 @@ export function ChatFooterItems() {
         return (
           <MotionDiv__VerticalReveal key={`${item.message}-${i}`}>
             <div className="pb-2 text-center text-xs">
-              <RichText>{item.message}</RichText>
+              <ConfiguredRichText>{item.message}</ConfiguredRichText>
             </div>
           </MotionDiv__VerticalReveal>
         );

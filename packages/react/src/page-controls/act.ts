@@ -1,7 +1,9 @@
 import { isWidgetOwned } from '../page-marks/page-element';
+import { isPageElementPrivate } from '../page-privacy';
 import { guardRef } from './guard';
 import { setNativeValue } from './native-setter';
 import { firePointerSequence } from './pointer-sequence';
+import { resolveSelectOption } from './select-option';
 import {
   NEVER_ACT_INPUT_TYPES,
   SETTLE_MS,
@@ -32,24 +34,48 @@ import {
  * after the action missed every synchronous click handler, which is most of
  * them. Watch first, then act, then wait for quiet.
  */
-function watchPage(doc: Document, budgetMs: number) {
+function watchPage(
+  el: HTMLElement,
+  budgetMs: number,
+  isCurrent: () => boolean,
+) {
+  const doc = el.ownerDocument;
+  // A background region that was already loading is not evidence about this
+  // action. Keep busy ancestors/descendants and explicitly controlled regions.
+  const isRelated = (node: Element) =>
+    node.contains(el) ||
+    el.contains(node) ||
+    (el.getAttribute('aria-controls') ?? '').split(/\s+/).some((id) => {
+      const region = doc.getElementById(id);
+      return (
+        region !== null && (node.contains(region) || region.contains(node))
+      );
+    });
+  const unrelatedBusy = Array.from(
+    doc.querySelectorAll('[aria-busy="true"]'),
+  ).filter((node) => !isPageElementPrivate(node) && !isRelated(node));
+  const isBackground = (node: Element) => {
+    // A handler may connect the target to an existing loading region. Once
+    // related, it belongs to this observation even if the relation later clears.
+    for (let index = unrelatedBusy.length - 1; index >= 0; index--)
+      if (isRelated(unrelatedBusy[index]!)) unrelatedBusy.splice(index, 1);
+    return unrelatedBusy.some((region) => region.contains(node));
+  };
   let mutated = false;
-  let quiet: ReturnType<typeof setTimeout> | undefined;
-  let finish: (() => void) | undefined;
-
+  let lastMutation = performance.now();
+  let timer: ReturnType<typeof setTimeout> | undefined;
   const observer = new MutationObserver((records) => {
-    // Our own overlays must not count as the page reacting. A text node's
-    // parent is what tells us whose subtree it belongs to.
     const pageMoved = records.some((record) => {
       const node =
         record.target instanceof Element
           ? record.target
           : record.target.parentElement;
-      return node !== null && !isWidgetOwned(node);
+      return node !== null && !isWidgetOwned(node) && !isBackground(node);
     });
-    if (pageMoved) mutated = true;
-    clearTimeout(quiet);
-    quiet = setTimeout(() => finish?.(), 100);
+    if (pageMoved) {
+      mutated = true;
+      lastMutation = performance.now();
+    }
   });
   observer.observe(doc.documentElement, {
     subtree: true,
@@ -57,28 +83,33 @@ function watchPage(doc: Document, budgetMs: number) {
     attributes: true,
     characterData: true,
   });
-
+  const cancel = () => {
+    clearTimeout(timer);
+    observer.disconnect();
+  };
   return {
-    /** Settle, then report. Bounded by the budget however busy the page is. */
     settle: () =>
-      new Promise<{ mutated: boolean }>((resolve) => {
-        const done = () => {
-          clearTimeout(quiet);
-          clearTimeout(ceiling);
-          observer.disconnect();
-          resolve({ mutated });
+      new Promise<{ mutated: boolean; loading: boolean }>((resolve) => {
+        const deadline = performance.now() + budgetMs;
+        const check = () => {
+          // Permission or turn changes end observation without reading more DOM.
+          if (!isCurrent()) {
+            cancel();
+            resolve({ mutated, loading: false });
+            return;
+          }
+          const loading = Array.from(
+            doc.querySelectorAll('[aria-busy="true"]'),
+          ).some((node) => !isBackground(node) && !isPageElementPrivate(node));
+          const now = performance.now();
+          if (now >= deadline || (!loading && now - lastMutation >= 100)) {
+            cancel();
+            resolve({ mutated, loading });
+          } else timer = setTimeout(check, Math.min(100, deadline - now));
         };
-        finish = done;
-        // A page that never mutates settles at the first quiet window; one
-        // that never stops settles at the ceiling.
-        quiet = setTimeout(done, 100);
-        const ceiling = setTimeout(done, budgetMs);
+        timer = setTimeout(check, Math.min(100, budgetMs));
       }),
-    /** Stop watching without waiting — for the paths that never act. */
-    cancel: () => {
-      clearTimeout(quiet);
-      observer.disconnect();
-    },
+    cancel,
   };
 }
 
@@ -107,19 +138,20 @@ export async function actOnPage(input: {
   action: PageAction;
   value?: string;
   settleMs?: number;
+  consentIsCurrent?: () => boolean;
+  observationIsCurrent?: () => boolean;
 }): Promise<ActResult> {
   try {
     return await act(input);
-  } catch (error) {
+  } catch {
     // A turn is waiting on this. An exception must come back as an answer —
     // an unanswered call is silence, and silence is the one thing an agent
     // must never be left to fill in for itself.
     return {
       outcome: 'unsupported',
-      detail:
-        error instanceof Error && error.message
-          ? `That could not be done on this page: ${error.message}`
-          : 'That could not be done on this page.',
+      // Host code can throw private URLs, field values or account details.
+      // Page replies are sent to the agent; never forward exception contents.
+      detail: 'That could not be done on this page.',
     };
   }
 }
@@ -129,12 +161,17 @@ async function act({
   action,
   value,
   settleMs = SETTLE_MS,
+  consentIsCurrent = () => true,
+  observationIsCurrent = () => true,
 }: {
   ref: string;
   action: PageAction;
   value?: string;
   settleMs?: number;
+  consentIsCurrent?: () => boolean;
+  observationIsCurrent?: () => boolean;
 }): Promise<ActResult> {
+  if (!consentIsCurrent()) return { outcome: 'declined' };
   const guarded = guardRef(ref);
   if (!guarded.ok) {
     // "Hands off" is a refusal, not a failure to find something.
@@ -153,128 +190,176 @@ async function act({
   // validation that might bail out — so nothing is watched that never acts,
   // and nothing acts that is not being watched.
   let watcher: ReturnType<typeof watchPage> | undefined;
+  let selectedValue: string | undefined;
+  let interrupted = false;
 
-  switch (action) {
-    case 'click': {
-      watcher = watchPage(doc, settleMs);
-      firePointerSequence(el);
-      break;
+  try {
+    switch (action) {
+      case 'click': {
+        watcher = watchPage(el, settleMs, observationIsCurrent);
+        const sequence = firePointerSequence(el, consentIsCurrent);
+        if (sequence === 'not-started') {
+          watcher.cancel();
+          return { outcome: 'declined' };
+        }
+        interrupted = sequence === 'interrupted';
+        break;
+      }
+      case 'fill': {
+        if (value === undefined) {
+          return {
+            outcome: 'unsupported',
+            detail: 'No value was given to type.',
+          };
+        }
+        watcher = watchPage(el, settleMs, observationIsCurrent);
+        el.focus?.();
+        if (!consentIsCurrent()) {
+          // Focus/blur handlers may already have saved a value on the host.
+          interrupted = true;
+          break;
+        }
+        if (!setNativeValue(el, value)) {
+          watcher.cancel();
+          return {
+            outcome: 'unsupported',
+            detail: 'That control is not something text can be typed into.',
+          };
+        }
+        break;
+      }
+      case 'select': {
+        if (!(el instanceof HTMLSelectElement)) {
+          return {
+            outcome: 'unsupported',
+            detail: 'That control is not a dropdown.',
+          };
+        }
+        if (value === undefined) {
+          return {
+            outcome: 'unsupported',
+            detail: 'No option was given to choose.',
+          };
+        }
+        const option = resolveSelectOption(el, value);
+        if (!option) {
+          return {
+            outcome: 'no_change',
+            detail:
+              'That option is not in the list or cannot be selected unambiguously.',
+          };
+        }
+        watcher = watchPage(el, settleMs, observationIsCurrent);
+        selectedValue = option.value;
+        setNativeValue(el, option.value);
+        break;
+      }
+      case 'check':
+      case 'uncheck': {
+        const wanted = action === 'check';
+        const box =
+          el instanceof HTMLInputElement &&
+          (el.type === 'checkbox' || el.type === 'radio')
+            ? el
+            : null;
+        const ariaState = el.getAttribute('aria-checked');
+        if (!box && ariaState === null) {
+          return {
+            outcome: 'unsupported',
+            detail: 'That control is not a checkbox or switch.',
+          };
+        }
+        const already = box ? box.checked : ariaState === 'true';
+        if (already === wanted) {
+          return {
+            outcome: 'no_change',
+            detail: `It is already ${wanted ? 'on' : 'off'}.`,
+          };
+        }
+        watcher = watchPage(el, settleMs, observationIsCurrent);
+        const sequence = firePointerSequence(el, consentIsCurrent);
+        if (sequence === 'not-started') {
+          watcher.cancel();
+          return { outcome: 'declined' };
+        }
+        interrupted = sequence === 'interrupted';
+        break;
+      }
     }
-    case 'fill': {
-      if (value === undefined) {
-        return {
-          outcome: 'unsupported',
-          detail: 'No value was given to type.',
-        };
-      }
-      el.focus?.();
-      watcher = watchPage(doc, settleMs);
-      if (!setNativeValue(el, value)) {
-        watcher.cancel();
-        return {
-          outcome: 'unsupported',
-          detail: 'That control is not something text can be typed into.',
-        };
-      }
-      break;
+
+    const { mutated, loading } = (await watcher?.settle()) ?? {
+      mutated: false,
+      loading: false,
+    };
+    if (interrupted) {
+      return {
+        outcome: 'no_change',
+        detail:
+          (mutated || doc.location.href !== urlBefore
+            ? 'The page changed. '
+            : '') +
+          'The requested action was interrupted after input events were dispatched. Its final result is unknown. Do not repeat it automatically.',
+      };
     }
-    case 'select': {
-      if (!(el instanceof HTMLSelectElement)) {
-        return {
-          outcome: 'unsupported',
-          detail: 'That control is not a dropdown.',
-        };
-      }
-      if (value === undefined) {
-        return {
-          outcome: 'unsupported',
-          detail: 'No option was given to choose.',
-        };
-      }
-      const option = Array.from(el.options).find(
-        (candidate) =>
-          candidate.value === value ||
-          candidate.label.trim().toLowerCase() === value.trim().toLowerCase(),
-      );
-      if (!option) {
+    const pendingDetail = loading
+      ? 'The page is still loading. The action was dispatched; its final result is unknown. Do not repeat it automatically.'
+      : undefined;
+
+    // Did it take? Ask the page, not the code that just ran.
+    if (action === 'fill' || action === 'select') {
+      const current =
+        el instanceof HTMLInputElement ||
+        el instanceof HTMLTextAreaElement ||
+        el instanceof HTMLSelectElement
+          ? el.value
+          : null;
+      if (action === 'fill' && current !== value) {
         return {
           outcome: 'no_change',
-          detail: 'That option is not in the list.',
+          detail: 'The field did not keep what was typed.',
         };
       }
-      watcher = watchPage(doc, settleMs);
-      setNativeValue(el, option.value);
-      break;
+      if (action === 'select' && current !== selectedValue) {
+        return {
+          outcome: 'no_change',
+          detail: 'The dropdown did not keep the selected option.',
+        };
+      }
+      return {
+        outcome: 'done',
+        ...(pendingDetail ? { detail: pendingDetail } : {}),
+      };
     }
-    case 'check':
-    case 'uncheck': {
+
+    if (action === 'check' || action === 'uncheck') {
       const wanted = action === 'check';
       const box =
         el instanceof HTMLInputElement &&
         (el.type === 'checkbox' || el.type === 'radio')
           ? el
           : null;
-      const ariaState = el.getAttribute('aria-checked');
-      if (!box && ariaState === null) {
-        return {
-          outcome: 'unsupported',
-          detail: 'That control is not a checkbox or switch.',
-        };
-      }
-      const already = box ? box.checked : ariaState === 'true';
-      if (already === wanted) {
-        return {
+      const now = box
+        ? box.checked
+        : el.getAttribute('aria-checked') === 'true';
+      return now === wanted
+        ? {
+            outcome: 'done',
+            ...(pendingDetail ? { detail: pendingDetail } : {}),
+          }
+        : { outcome: 'no_change', detail: 'It did not change.' };
+    }
+
+    // A click's only honest evidence is that the page moved: a mutation
+    // anywhere outside our own overlays, or a navigation.
+    return mutated || doc.location.href !== urlBefore
+      ? { outcome: 'done', ...(pendingDetail ? { detail: pendingDetail } : {}) }
+      : {
           outcome: 'no_change',
-          detail: `It is already ${wanted ? 'on' : 'off'}.`,
+          detail:
+            pendingDetail ??
+            'The control was clicked and nothing on the page changed during observation. Its final result is unknown. Do not repeat it automatically.',
         };
-      }
-      watcher = watchPage(doc, settleMs);
-      firePointerSequence(el);
-      break;
-    }
+  } finally {
+    watcher?.cancel();
   }
-
-  const { mutated } = (await watcher?.settle()) ?? { mutated: false };
-
-  // Did it take? Ask the page, not the code that just ran.
-  if (action === 'fill' || action === 'select') {
-    const current =
-      el instanceof HTMLInputElement ||
-      el instanceof HTMLTextAreaElement ||
-      el instanceof HTMLSelectElement
-        ? el.value
-        : null;
-    if (action === 'fill' && current !== value) {
-      return {
-        outcome: 'no_change',
-        detail: 'The field did not keep what was typed.',
-      };
-    }
-    if (action === 'select' && current === null) {
-      return { outcome: 'no_change', detail: 'The dropdown did not move.' };
-    }
-    return { outcome: 'done' };
-  }
-
-  if (action === 'check' || action === 'uncheck') {
-    const wanted = action === 'check';
-    const box =
-      el instanceof HTMLInputElement &&
-      (el.type === 'checkbox' || el.type === 'radio')
-        ? el
-        : null;
-    const now = box ? box.checked : el.getAttribute('aria-checked') === 'true';
-    return now === wanted
-      ? { outcome: 'done' }
-      : { outcome: 'no_change', detail: 'It did not change.' };
-  }
-
-  // A click's only honest evidence is that the page moved: a mutation
-  // anywhere outside our own overlays, or a navigation.
-  return mutated || doc.location.href !== urlBefore
-    ? { outcome: 'done' }
-    : {
-        outcome: 'no_change',
-        detail: 'The control was clicked and nothing on the page changed.',
-      };
 }

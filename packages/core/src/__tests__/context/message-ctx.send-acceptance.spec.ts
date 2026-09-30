@@ -66,6 +66,69 @@ afterEach(() => {
 });
 
 describe('MessageCtx send acceptance', () => {
+  it('invalidates prepared ownership on every reset, even with the same session id', () => {
+    const { messageCtx, sessionCtx } = buildCtx({
+      streaming: false,
+      withSession: true,
+    });
+    const isCurrent = messageCtx.captureConversation();
+    sessionCtx.sessionState.setPartial({
+      session: { ...session, title: 'Updated' },
+    });
+    expect(isCurrent()).toBe(true);
+    messageCtx.reset();
+    sessionCtx.sessionState.setPartial({ session });
+    expect(isCurrent()).toBe(false);
+    const isNewCurrent = messageCtx.captureConversation();
+    expect(isNewCurrent()).toBe(true);
+    messageCtx.reset();
+    expect(isNewCurrent()).toBe(false);
+  });
+
+  it('does not stage a payload into another chat after deferred session creation', async () => {
+    const { api, messageCtx, sessionCtx } = buildCtx({ streaming: false });
+    let complete!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      complete = resolve;
+    });
+    vi.spyOn(sessionCtx, 'createSession').mockImplementation(async () => {
+      await pending;
+      return session;
+    });
+    const sent = vi
+      .spyOn(api, 'sendMessage')
+      .mockResolvedValue({ data: { success: true }, response: new Response() });
+    const accepted = vi.fn();
+    const send = messageCtx.sendMessage({
+      content: 'draft A',
+      onAccepted: accepted,
+    });
+    messageCtx.reset();
+    sessionCtx.sessionState.setPartial({
+      session: { ...session, id: 'other-session' },
+    });
+    complete();
+    await send;
+    expect(sent).not.toHaveBeenCalled();
+    expect(accepted).not.toHaveBeenCalled();
+    expect(messageCtx.state.get().messages).toEqual([]);
+  });
+  it('preserves deliveredAt for legacy components on queued and sent messages', async () => {
+    const { api, messageCtx } = buildCtx({
+      streaming: false,
+      withSession: true,
+    });
+    vi.spyOn(api, 'sendMessage').mockResolvedValue({
+      data: { success: true },
+      response: new Response(),
+    });
+    const queued = messageCtx.buildQueuedUserMessage({ content: 'Queued' });
+    expect(queued?.userMessage.deliveredAt).toBe(queued?.userMessage.timestamp);
+    await messageCtx.sendMessage({ content: 'Sent' });
+    const sent = messageCtx.state.get().messages.find((m) => m.type === 'USER');
+    expect(sent?.timestamp).toBeTruthy();
+    expect(sent?.type === 'USER' && sent.deliveredAt).toBe(sent?.timestamp);
+  });
   it('sends background context without staging or re-appending a user bubble', async () => {
     const { api, messageCtx } = buildCtx({
       streaming: false,
@@ -117,6 +180,7 @@ describe('MessageCtx send acceptance', () => {
         {
           id: 'silent-user',
           type: 'USER',
+          deliveredAt: null,
           content: 'first',
           timestamp: new Date().toISOString(),
         },

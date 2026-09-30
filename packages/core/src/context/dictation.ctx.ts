@@ -178,8 +178,8 @@ export class DictationCtx {
     void session.start();
   };
 
-  stop = () => {
-    if (this.session) this.teardown();
+  stop = (options?: { executeFinalCommand?: boolean }) => {
+    if (this.session) this.teardown(options);
   };
 
   private mintToken = async (): Promise<DictationMint> =>

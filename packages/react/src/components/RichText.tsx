@@ -6,6 +6,10 @@ import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import { useConfig } from '@opencx/widget-react-headless';
 import { Dialoger, DialogerContent } from './Dialoger';
 import { ZoomableImage } from './ZoomableImage';
+import {
+  configuredTextSchema,
+  filterConfiguredStyles,
+} from './configured-text-styles';
 import { stripCitationRefs } from '../utils/strip-citation-refs';
 
 /**
@@ -32,15 +36,27 @@ const richTextSanitizeSchema = {
   },
 };
 
-export function RichText({
-  children,
-  messageType,
-  messageId,
-}: {
+type RichTextProps = {
   children: string;
   messageType?: string;
   messageId?: string;
-}) {
+};
+
+export function RichText(props: RichTextProps) {
+  return <RichTextContent {...props} />;
+}
+
+/** Host-authored footer HTML can keep safe typography and spacing. */
+export function ConfiguredRichText(props: RichTextProps) {
+  return <RichTextContent {...props} configuredStyles />;
+}
+
+function RichTextContent({
+  children,
+  messageType,
+  messageId,
+  configuredStyles = false,
+}: RichTextProps & { configuredStyles?: boolean }) {
   const { anchorTarget } = useConfig();
 
   return (
@@ -48,7 +64,15 @@ export function RichText({
       data-type={messageType}
       data-id={messageId}
       remarkPlugins={[remarkGfm]}
-      rehypePlugins={[rehypeRaw, [rehypeSanitize, richTextSanitizeSchema]]}
+      rehypePlugins={
+        configuredStyles
+          ? [
+              rehypeRaw,
+              filterConfiguredStyles,
+              [rehypeSanitize, configuredTextSchema],
+            ]
+          : [rehypeRaw, [rehypeSanitize, richTextSanitizeSchema]]
+      }
       components={{
         a: ({ children, ...props }) => {
           return (

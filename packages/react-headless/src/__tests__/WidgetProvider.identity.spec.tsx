@@ -7,6 +7,7 @@ import {
   type ExternalStorage,
 } from '@opencx/widget-core';
 import { useWidget, WidgetProvider } from '../WidgetProvider';
+import { ConversationWorkspace } from '../ConversationWorkspace';
 
 const features = {
   preamble: false,
@@ -30,9 +31,17 @@ const token = ({
       .replace(/\+/g, '-')
       .replace(/\//g, '_');
   return `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({
-    org_id: 'org-1',
-    contact: { id: 'contact-1', verified: true },
-    mcp_access: { server_ids: ['server-2', 'server-1'], account_id: accountId },
+    sub: {
+      type: 'widget-contact',
+      payload: {
+        org_id: 'org-1',
+        contact: { id: 'contact-1', verified: true },
+        mcp_access: {
+          server_ids: ['server-2', 'server-1'],
+          account_id: accountId,
+        },
+      },
+    },
     exp: expiresAt,
   })}.signature-${expiresAt}`;
 };
@@ -115,6 +124,56 @@ describe('WidgetProvider verified identity lifecycle', () => {
     await vi.waitFor(() => expect(currentWidgetCtx).not.toBeNull());
   };
 
+  it('retains a restored anonymous contact token when initialization finishes and options rerender', async () => {
+    const values = new Map([
+      [
+        'opencx-widget:org-token-widget-token:contact-token',
+        'stored-contact-token',
+      ],
+      [
+        'opencx-widget:org-token-widget-token:external-contact-id',
+        'stored-device-id',
+      ],
+    ]);
+    const storage: ExternalStorage = {
+      get: async (key) => values.get(key) ?? null,
+      set: async (key, value) => {
+        values.set(key, value);
+      },
+      remove: async (key) => {
+        values.delete(key);
+      },
+    };
+    for (const title of ['First render', 'Updated title']) {
+      await act(async () => {
+        root.render(
+          <WidgetProvider
+            storage={storage}
+            components={[{ key: 'fallback', component: () => null }]}
+            options={{
+              token: 'widget-token',
+              collectUserData: false,
+              textContent: { chatScreen: { headerTitle: title } },
+            }}
+          >
+            <Probe />
+          </WidgetProvider>,
+        );
+      });
+      await vi.waitFor(() => expect(currentWidgetCtx).not.toBeNull());
+      const widget = currentWidgetCtx;
+      if (!widget) throw new Error('Widget was not initialized');
+      await widget.api.getSessions({ cursor: undefined, filters: {} });
+      const request = vi.mocked(fetch).mock.calls.at(-1)?.[0];
+      if (!(request instanceof Request))
+        throw new Error('Missing transport request');
+      expect(request.headers.get('authorization')).toBe(
+        'Bearer stored-contact-token',
+      );
+    }
+    expect(configRequests).toBe(1);
+  });
+
   it('renews the real transport for the same owner and resets for an account change', async () => {
     const firstToken = token({ accountId: 'account-a', expiresAt: 1 });
     const renewedToken = token({ accountId: 'account-a', expiresAt: 2 });
@@ -123,10 +182,12 @@ describe('WidgetProvider verified identity lifecycle', () => {
     await render(firstToken);
     const firstContext = currentWidgetCtx;
     if (!firstContext) throw new Error('Widget context was not initialized');
+    const isCurrentConversation = firstContext.messageCtx.captureConversation();
     await firstContext.api.listConnections();
 
     await render(renewedToken);
     expect(currentWidgetCtx).toBe(firstContext);
+    expect(isCurrentConversation()).toBe(true);
     await firstContext.api.listConnections();
     expect(authorizationHeaders.at(-1)).toBe(`Bearer ${renewedToken}`);
     expect(configRequests).toBe(1);
@@ -135,7 +196,37 @@ describe('WidgetProvider verified identity lifecycle', () => {
     await render(otherAccountToken);
     await vi.waitFor(() => expect(currentWidgetCtx).not.toBe(firstContext));
     expect(disposed).toHaveBeenCalledOnce();
+    expect(isCurrentConversation()).toBe(false);
     expect(configRequests).toBe(2);
+  });
+
+  it('cancels a prepared mark-only send when Companion reuses its empty tab for history', async () => {
+    await render(token({ accountId: 'account-a', expiresAt: 1 }));
+    const ctx = currentWidgetCtx;
+    if (!ctx) throw new Error('Widget context was not initialized');
+    const workspace = new ConversationWorkspace(ctx);
+    const historySession = { id: 'history-b', isOpened: true } as never;
+    ctx.sessionCtx.sessionsState.setPartial({ data: [historySession] });
+    const isCurrent = ctx.messageCtx.captureConversation();
+    let completeUpload!: () => void;
+    const upload = new Promise<void>((resolve) => {
+      completeUpload = resolve;
+    });
+    const sent = vi.spyOn(ctx.messageCtx, 'sendMessage').mockResolvedValue();
+    const pendingSend = upload.then(() => {
+      if (isCurrent())
+        return ctx.messageCtx.sendMessage({ content: 'marked page A' });
+    });
+    expect(workspace.open('history-b')).toBe(ctx);
+    expect(ctx.sessionCtx.sessionState.get().session?.id).toBe('history-b');
+    completeUpload();
+    await pendingSend;
+    expect(sent).not.toHaveBeenCalled();
+    expect(isCurrent()).toBe(false);
+    const sameHistory = ctx.messageCtx.captureConversation();
+    workspace.open('history-b');
+    expect(sameHistory()).toBe(true);
+    workspace.dispose();
   });
 
   it('waits for old storage cleanup before initializing another account', async () => {

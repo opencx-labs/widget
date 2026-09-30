@@ -70,7 +70,7 @@ export class WidgetCtx {
     // and reconciliation. Never let a prop update detach their owner.
     if (this.messageCtx?.hasPendingAgentWork) return true;
     if (this.messageCtx?.state.get().isSendingMessage) return false;
-    return this.agent.streaming && this.getRequestConfig().streaming !== false;
+    return this.agent.streaming && this.getRequestConfig().streaming === true;
   }
 
   /**
@@ -265,7 +265,7 @@ export class WidgetCtx {
     const cleanup = this.sessionCtx.dispose({ clearActiveSession });
     this.messageCtx.reset();
     this.uploadCtx.reset();
-    this.dictationCtx.stop();
+    this.dictationCtx.stop({ executeFinalCommand: false });
     return cleanup;
   };
 

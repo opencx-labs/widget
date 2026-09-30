@@ -187,7 +187,9 @@ describe('WidgetProvider blocking capability updates', () => {
             structuredQuestions === true,
           );
           if (structuredQuestions === undefined)
-            expect(bodies.at(-1)).not.toHaveProperty('capabilities');
+            expect(bodies.at(-1)).toMatchObject({
+              capabilities: { connections: false },
+            });
           else
             expect(bodies.at(-1)).toMatchObject({
               capabilities: { structured_questions: structuredQuestions },

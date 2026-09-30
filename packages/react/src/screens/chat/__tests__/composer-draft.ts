@@ -27,8 +27,8 @@ export function createComposerDraftMock() {
       ...draft,
       setText,
       setMentions,
-      clearSubmitted: () => {
-        if (state.get() !== draft) return false;
+      clearSubmitted: (submitted = draft) => {
+        if (state.get() !== submitted) return false;
         state.reset();
         return true;
       },

@@ -25,10 +25,13 @@ export function useComposerDraft() {
     },
     [state],
   );
-  const clearSubmitted = useCallback(() => {
-    if (state.get() !== draft) return false;
-    state.reset();
-    return true;
-  }, [state, draft]);
+  const clearSubmitted = useCallback(
+    (submitted = draft) => {
+      if (state.get() !== submitted) return false;
+      state.reset();
+      return true;
+    },
+    [state, draft],
+  );
   return { ...draft, setText, setMentions, clearSubmitted };
 }

@@ -58,6 +58,8 @@ export function CompanionWidget({
         // The shell is a client choice: the dashboard assistant is the
         // companion pill, the public support surface the classic popover.
         displayMode: isCompanion ? 'companion' : 'popover',
+        streaming: true,
+        capabilities: { connections: true },
         bot: isCompanion
           ? { name: BOT_NAME, avatarUrl: '/payla-mark.svg' }
           : { name: 'Payla Support' },

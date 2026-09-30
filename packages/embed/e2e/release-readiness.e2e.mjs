@@ -1,0 +1,835 @@
+import { after, before, test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { chromium, firefox, webkit } from 'playwright';
+
+let browser, bundle;
+before(async () => {
+  bundle = await readFile(
+    new URL('../dist-embed/script.js', import.meta.url),
+    'utf8',
+  );
+  const engine = process.env.WIDGET_TEST_BROWSER ?? 'chromium';
+  assert.ok(['chromium', 'firefox', 'webkit'].includes(engine));
+  browser = await { chromium, firefox, webkit }[engine].launch();
+});
+after(async () => browser?.close());
+
+async function fixture(t, options = {}, reducedMotion = 'no-preference') {
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 900 },
+    reducedMotion,
+    serviceWorkers: 'block',
+  });
+  t.after(() => context.close());
+  const page = await context.newPage();
+  page.setDefaultTimeout(10000);
+  const requests = [],
+    unexpected = [],
+    errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  page.on('console', (msg) => {
+    if (
+      msg.type() === 'error' &&
+      /createRoot|Invalid hook|React error|Content Security Policy/i.test(
+        msg.text(),
+      )
+    )
+      errors.push(msg.text());
+  });
+  const session = {
+    id: 'fixture-session',
+    ticketNumber: 1,
+    title: null,
+    assignee: { kind: 'ai', name: null, avatarUrl: null },
+    channel: 'web',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    isHandedOff: false,
+    isOpened: true,
+    isVerified: false,
+    lastMessage: '',
+    latestStateCheckpointPayload: null,
+    modeId: null,
+    sessionAttributes: {},
+    customStatus: null,
+  };
+  let sends = 0;
+  await context.route('**/*', async (route) => {
+    const req = route.request(),
+      url = new URL(req.url());
+    const json = (body) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify(body),
+      });
+    if (url.origin !== 'https://fixture.test') {
+      unexpected.push(url.origin + url.pathname);
+      return route.abort();
+    }
+    if (url.pathname === '/')
+      return route.fulfill({
+        contentType: 'text/html',
+        // A concrete CSP allowing the classic script and authored styles. No
+        // dynamic script chunks, eval, cross-origin connections, or live images.
+        headers: {
+          'Content-Security-Policy':
+            "default-src 'none'; script-src 'self' 'nonce-fixture'; style-src 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; frame-src 'self' about:; font-src data:;",
+        },
+        body: `<!doctype html><html><body><script src="/script.js"></script><script nonce="fixture">window.fixtureOptions=${JSON.stringify({ token: 'fixture-bot', apiUrl: 'https://fixture.test', language: 'en', collectUserData: false, ...options }).replace(/</g, '\\u003c')};initOpenScript(window.fixtureOptions);</script></body></html>`,
+      });
+    if (url.pathname === '/script.js')
+      return route.fulfill({
+        contentType: 'application/javascript',
+        body: bundle,
+      });
+    requests.push({
+      path: url.pathname,
+      headers: req.headers(),
+      body: req.headers()['content-type']?.includes('application/json')
+        ? req.postDataJSON()
+        : req.postData(),
+    });
+    if (url.pathname === '/backend/widget/v2/config')
+      return json({
+        org: { id: 'fixture-org', name: 'Fixture' },
+        modes: [],
+        sessionsPollingIntervalSeconds: 3600,
+        sessionPollingIntervalSeconds: 3600,
+        agent: {
+          name: 'Fixture agent',
+          avatar_url: null,
+          streaming: true,
+          features: {
+            preamble: false,
+            inline_ui: false,
+            dictation: true,
+            attachments: true,
+            page_context: true,
+            client_tools: true,
+          },
+        },
+      });
+    if (url.pathname === '/backend/widget/v2/contact/create-unverified')
+      return json({ token: 'fixture-contact' });
+    if (url.pathname === '/backend/widget/v2/sessions')
+      return json({ items: [], next: null });
+    if (url.pathname === '/backend/widget/v2/create-session')
+      return json(session);
+    if (url.pathname === '/backend/widget/v2/poll/fixture-session')
+      return json({ session, history: [] });
+    if (url.pathname === '/backend/widget/v2/upload')
+      return json({
+        fileName: 'fixture.pdf',
+        fileUrl: 'https://fixture.test/files/fixture.pdf',
+      });
+    if (url.pathname === '/backend/widget/v5/dictation/sessions')
+      return json({
+        token: 'synthetic-ephemeral',
+        expiresAt: new Date(Date.now() + 60000).toISOString(),
+        model: 'fixture',
+      });
+    if (url.pathname === '/backend/widget/v2/chat/send')
+      return json({
+        success: true,
+        autopilotResponse: {
+          type: 'text',
+          value: { error: false, content: `FIXTURE_REPLY_${++sends}` },
+          id: `fixture-reply-${sends}`,
+          mightSolveUserIssue: false,
+          completelyAndFullyCoveredUserIssue: false,
+          assistMode: false,
+        },
+      });
+    unexpected.push(url.pathname);
+    return route.fulfill({ status: 404, body: '{}' });
+  });
+  t.after(() => {
+    assert.deepEqual(unexpected, [], 'no unexpected/live requests');
+    assert.deepEqual(errors, [], 'no browser/React/CSP errors');
+  });
+  await page.goto('https://fixture.test/');
+  const frame = page.frameLocator('iframe[title="OpenCX Live Chat"]');
+  async function open() {
+    if (options.displayMode === 'companion')
+      await page.locator('[data-companion-launcher]').click();
+    else
+      await page
+        .frameLocator('iframe[title="OpenCX Live Chat Trigger"]')
+        .locator('button')
+        .click();
+  }
+  return { page, frame, requests, open };
+}
+
+for (const variant of [
+  { mode: 'companion', layout: 'compact', language: 'en', width: 1280 },
+  { mode: 'companion', layout: 'compact', language: 'en', width: 390 },
+  { mode: 'companion', layout: 'compact', language: 'ar', width: 1280 },
+  { mode: 'companion', layout: 'sidebar', language: 'en', width: 1280 },
+  { mode: 'companion', layout: 'fullscreen', language: 'en', width: 1280 },
+  { mode: 'popover', layout: 'compact', language: 'en', width: 1280 },
+]) {
+  test(`configured header actions: ${variant.mode}/${variant.layout}/${variant.language}/${variant.width}`, async (t) => {
+    const { page, frame, open } = await fixture(
+      t,
+      {
+        displayMode: variant.mode,
+        language: variant.language,
+        companion: {
+          defaultLayout:
+            variant.layout === 'fullscreen' ? 'compact' : variant.layout,
+        },
+        headerButtons: {
+          chatScreen: [
+            {
+              functionality: 'expand-shrink',
+              expandIcon: 'Maximize',
+              shrinkIcon: 'Minimize',
+            },
+            {
+              functionality: 'resolve-session',
+              icon: 'Check',
+              onResolved: 'stay-in-chat',
+              confirmation: {
+                type: 'modal',
+                title: 'Finish fixture session?',
+                description: 'Keep the action reachable.',
+                confirmButtonText: 'Finish',
+                cancelButtonText: 'Keep open',
+              },
+            },
+            { functionality: 'close-widget', icon: 'X' },
+          ],
+          sessionsScreen: [{ functionality: 'close-widget', icon: 'X' }],
+        },
+      },
+      'reduce',
+    );
+    await page.setViewportSize({ width: variant.width, height: 900 });
+    await page.evaluate(() => {
+      window.fixtureOptions.customComponents = {
+        headerBottom: ({ react }) =>
+          react.createElement(
+            'div',
+            { 'data-header-fixture': true },
+            'CUSTOM HEADER BOTTOM',
+          ),
+      };
+      window.fixtureOptions.headerButtons.chatScreen[2].onClicked = () => {
+        window.fixtureHeaderCloseClicked = true;
+      };
+      window.initOpenScript(window.fixtureOptions);
+    });
+    await open();
+    await frame.locator('textarea').fill('Open the configured header');
+    await frame.locator('textarea').press('Enter');
+    await frame.getByText('FIXTURE_REPLY_1', { exact: true }).waitFor();
+    if (variant.layout === 'fullscreen') {
+      await frame.getByRole('button', { name: 'Layout', exact: true }).click();
+      await frame
+        .getByRole('button', { name: 'Fullscreen', exact: true })
+        .click();
+      await frame.locator('[data-layout="fullscreen"]').waitFor();
+      await frame
+        .locator('[data-component="companion/layout_picker/menu"]')
+        .waitFor({ state: 'hidden' });
+    }
+    async function assertSeparateTargets(headerSelector, expectedButtons) {
+      const result = await frame.locator('body').evaluate((root, selector) => {
+        const buttons = [
+          ...root.querySelectorAll(
+            `${selector} button, [data-component="companion/controls/root"] button`,
+          ),
+        ].filter((button) => {
+          const rect = button.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        });
+        const collisions = [];
+        for (let i = 0; i < buttons.length; i++)
+          for (let j = i + 1; j < buttons.length; j++) {
+            const a = buttons[i].getBoundingClientRect(),
+              b = buttons[j].getBoundingClientRect();
+            if (
+              Math.min(a.right, b.right) > Math.max(a.left, b.left) &&
+              Math.min(a.bottom, b.bottom) > Math.max(a.top, b.top)
+            ) {
+              collisions.push([i, j]);
+            }
+          }
+        return {
+          collisions,
+          count: buttons.length,
+          targetsReachable: buttons.every((button) => {
+            const r = button.getBoundingClientRect();
+            const hit = button.ownerDocument.elementFromPoint(
+              r.x + r.width / 2,
+              r.y + r.height / 2,
+            );
+            return hit === button || button.contains(hit);
+          }),
+        };
+      }, headerSelector);
+      assert.equal(
+        result.count,
+        expectedButtons,
+        'configured actions and panel controls remain present',
+      );
+      assert.deepEqual(
+        result.collisions,
+        [],
+        'header controls must have separate hit targets',
+      );
+      assert.equal(
+        result.targetsReachable,
+        true,
+        'every header action must be pointer reachable',
+      );
+    }
+    await assertSeparateTargets(
+      '[data-component="chat/header"]',
+      variant.mode === 'companion' ? 7 : 4,
+    );
+    assert.equal(
+      await frame.getByText('CUSTOM HEADER BOTTOM').isVisible(),
+      true,
+    );
+    if (
+      variant.mode === 'companion' &&
+      variant.layout === 'compact' &&
+      variant.language === 'en' &&
+      variant.width === 1280 &&
+      process.env.WIDGET_HEADER_SCREENSHOT
+    ) {
+      await page
+        .locator('iframe[title="OpenCX Live Chat"]')
+        .screenshot({ path: process.env.WIDGET_HEADER_SCREENSHOT });
+    }
+    // The configured resolve action opens its own confirmation unchanged.
+    await frame
+      .locator('[data-component="chat/header"] > div:first-child > button')
+      .nth(2)
+      .click();
+    await frame.getByText('Finish fixture session?', { exact: true }).waitFor();
+    await frame.getByRole('button', { name: 'Keep open', exact: true }).click();
+    await frame
+      .locator('[data-component="chat/header"] > div:first-child > button')
+      .last()
+      .click();
+    assert.equal(
+      await page.evaluate(() => window.fixtureHeaderCloseClicked),
+      true,
+      'configured close callback is preserved',
+    );
+    await open();
+    // Restoring the session makes the configured actions visible again.
+    await frame.locator('[data-component="chat/header"]').waitFor();
+    await assertSeparateTargets(
+      '[data-component="chat/header"]',
+      variant.mode === 'companion' ? 7 : 4,
+    );
+  });
+}
+
+for (const reducedMotion of ['no-preference', 'reduce']) {
+  for (const required of [false, true]) {
+    test(
+      `Companion: required=${required}, motion=${reducedMotion}, footer and first send`,
+      { timeout: 30000 },
+      async (t) => {
+        // Exercise the original zero-height failure without a footer to prop
+        // the shell open; the other cases verify the configured notice.
+        const showFooter = !required || reducedMotion !== 'reduce';
+        const { page, frame, requests, open } = await fixture(
+          t,
+          {
+            displayMode: 'companion',
+            requireInitialQuestion: required,
+            initialQuestions: ['First question', 'Second question'],
+            chatFooterItems: showFooter
+              ? [
+                  {
+                    message:
+                      'Read our [privacy notice](https://fixture.test/privacy)',
+                  },
+                ]
+              : [],
+          },
+          reducedMotion,
+        );
+        await open();
+        if (showFooter)
+          await frame.getByRole('link', { name: 'privacy notice' }).waitFor();
+        // Measure the CLIPPING shell, not the deliberately chat-tall iframe.
+        await page.waitForFunction(() => {
+          const iframe = document.querySelector(
+            'iframe[title="OpenCX Live Chat"]',
+          );
+          const shell = iframe?.parentElement?.parentElement;
+          return shell && shell.getBoundingClientRect().height > 40;
+        });
+        await frame.locator('textarea').waitFor();
+        assert.equal(await frame.locator('textarea').isDisabled(), required);
+        const suggestions = page.frameLocator(
+          'iframe[title="Suggested questions"]',
+        );
+        await suggestions
+          .getByRole('button', { name: 'First question', exact: true })
+          .waitFor();
+        await page.waitForFunction(() => {
+          const questions = document.querySelector('[data-companion-starters]');
+          const iframe = document.querySelector(
+            'iframe[title="OpenCX Live Chat"]',
+          );
+          const shell = iframe?.parentElement?.parentElement;
+          return (
+            questions &&
+            shell &&
+            questions.getBoundingClientRect().bottom <
+              shell.getBoundingClientRect().top
+          );
+        });
+        if (
+          required &&
+          reducedMotion === 'reduce' &&
+          process.env.WIDGET_STARTERS_SCREENSHOT
+        ) {
+          await page.screenshot({
+            path: process.env.WIDGET_STARTERS_SCREENSHOT,
+          });
+        }
+        if (required) {
+          assert.equal(
+            await frame
+              .getByRole('button', { name: 'Send message', exact: true })
+              .isDisabled(),
+            true,
+          );
+          assert.equal(
+            await frame
+              .getByRole('button', { name: 'Dictate', exact: true })
+              .count(),
+            0,
+          );
+          assert.equal(
+            requests.filter((r) => r.path.endsWith('/chat/send')).length,
+            0,
+          );
+          // Visible pointer dismissal remains possible before selecting a question.
+          await frame
+            .getByRole('button', { name: 'Close', exact: true })
+            .click();
+          await page.locator('[data-companion-launcher]').waitFor();
+          await open();
+        }
+        await suggestions
+          .getByRole('button', { name: 'First question', exact: true })
+          .click();
+        await frame.getByText('FIXTURE_REPLY_1', { exact: true }).waitFor();
+        assert.equal(await frame.locator('textarea').isDisabled(), false);
+        await page
+          .locator('iframe[title="Suggested questions"]')
+          .waitFor({ state: 'detached' });
+        await frame.locator('textarea').pressSequentially('Follow up');
+        await frame.locator('textarea').press('Enter');
+        await frame.getByText('FIXTURE_REPLY_2', { exact: true }).waitFor();
+        const sends = requests.filter((r) => r.path.endsWith('/chat/send'));
+        assert.equal(sends[0].body.content, 'First question');
+        assert.equal(sends[1].body.content, 'Follow up');
+        assert.equal(sends[0].body.features.page_context, false);
+        assert.equal(sends[0].body.features.client_tools, false);
+      },
+    );
+  }
+}
+
+test(
+  'duplicate classic script preserves a live conversation and draft under CSP',
+  { timeout: 30000 },
+  async (t) => {
+    const { page, frame, requests, open } = await fixture(t);
+    await open();
+    await frame.locator('textarea').pressSequentially('First message');
+    await frame.locator('textarea').press('Enter');
+    await frame.getByText('FIXTURE_REPLY_1', { exact: true }).waitFor();
+    await frame
+      .locator('textarea')
+      .pressSequentially('Draft after reinjection');
+    await page.evaluate(() => {
+      window.fixtureFirstInit = window.initOpenScript;
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = '/script.js';
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    });
+    assert.ok(
+      await page.evaluate(
+        () => window.fixtureFirstInit === window.initOpenScript,
+      ),
+    );
+    await page.evaluate(() => window.initOpenScript(window.fixtureOptions));
+    assert.equal(await page.locator('#opencx-root').count(), 1);
+    assert.equal(
+      await frame.locator('textarea').inputValue(),
+      'Draft after reinjection',
+    );
+    await frame.locator('textarea').press('Enter');
+    await frame.getByText('FIXTURE_REPLY_2', { exact: true }).waitFor();
+    assert.equal(
+      requests.filter((r) => r.path.endsWith('/create-session')).length,
+      1,
+    );
+  },
+);
+
+test(
+  'upload uses authenticated multipart v2 and sends attachment metadata',
+  { timeout: 30000 },
+  async (t) => {
+    const { frame, requests, open } = await fixture(t);
+    await open();
+    await frame.locator('input[type="file"]').setInputFiles({
+      name: 'fixture.pdf',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from('%PDF-1.4\nSynthetic fixture\n%%EOF'),
+    });
+    const send = frame.getByRole('button', {
+      name: 'Send message',
+      exact: true,
+    });
+    // The button is disabled while upload is in flight; click waits for readiness.
+    await send.click();
+    await frame.getByText('FIXTURE_REPLY_1', { exact: true }).waitFor();
+    const upload = requests.find((r) => r.path.endsWith('/upload'));
+    assert.equal(upload.headers.authorization, 'Bearer fixture-contact');
+    assert.equal(upload.headers['x-bot-token'], 'fixture-bot');
+    assert.match(
+      upload.headers['content-type'],
+      /^multipart\/form-data; boundary=/,
+    );
+    assert.match(upload.body, /filename="fixture.pdf"/);
+    const attachment = requests.find((r) => r.path.endsWith('/chat/send')).body
+      .attachments[0];
+    assert.equal(attachment.url, 'https://fixture.test/files/fixture.pdf');
+    assert.equal(attachment.name, 'fixture.pdf');
+    assert.equal(attachment.type, 'application/pdf');
+  },
+);
+
+test(
+  'microphone denial shows an error and leaves typing usable without calling the provider',
+  { timeout: 30000 },
+  async (t) => {
+    const { page, frame, open } = await fixture(t, {
+      features: { dictation: true },
+    });
+    // The widget executes in the host realm; no actual device or API key is used.
+    await page.evaluate(() =>
+      Object.defineProperty(navigator, 'mediaDevices', {
+        configurable: true,
+        value: {
+          getUserMedia: () =>
+            Promise.reject(
+              new DOMException('Synthetic denial', 'NotAllowedError'),
+            ),
+        },
+      }),
+    );
+    await open();
+    await frame
+      .locator('[data-component="chat/input_box/dictate_btn"]')
+      .click();
+    await frame
+      .getByText('Allow microphone access to dictate', { exact: true })
+      .waitFor();
+    await frame.locator('textarea').pressSequentially('Typed after denial');
+    await frame.locator('textarea').press('Enter');
+    await frame.getByText('FIXTURE_REPLY_1', { exact: true }).waitFor();
+  },
+);
+
+test(
+  'mint failure stops an already-granted microphone',
+  { timeout: 30000 },
+  async (t) => {
+    const { page, frame, open } = await fixture(t, {
+      features: { dictation: true },
+    });
+    await page.evaluate(() => {
+      window.fixtureMicGrants = 0;
+      window.fixtureMicStops = 0;
+      Object.defineProperty(navigator, 'mediaDevices', {
+        configurable: true,
+        value: {
+          getUserMedia: async () => {
+            window.fixtureMicGrants++;
+            return {
+              getTracks: () => [{ stop: () => window.fixtureMicStops++ }],
+            };
+          },
+        },
+      });
+    });
+    let resolveMint;
+    const requestedMint = new Promise((resolve) => {
+      resolveMint = resolve;
+    });
+    await page.route('**/backend/widget/v5/dictation/sessions', (route) =>
+      resolveMint(route),
+    );
+    await open();
+    await frame
+      .locator('[data-component="chat/input_box/dictate_btn"]')
+      .click();
+    await page.waitForFunction(() => window.fixtureMicGrants > 0);
+    const mintRoute = await requestedMint;
+    await mintRoute.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: '{}',
+    });
+    await frame
+      .getByText('Dictation is unavailable right now', { exact: true })
+      .waitFor();
+    assert.equal(
+      await page.evaluate(() => window.fixtureMicStops),
+      1,
+      'granted track must stop after mint failure',
+    );
+  },
+);
+
+test(
+  'closing the popover stops a granted microphone while mint is pending',
+  { timeout: 30000 },
+  async (t) => {
+    const { page, frame, open } = await fixture(t, {
+      features: { dictation: true },
+    });
+    await page.evaluate(() => {
+      window.fixtureMicGrants = 0;
+      window.fixtureMicStops = 0;
+      Object.defineProperty(navigator, 'mediaDevices', {
+        configurable: true,
+        value: {
+          getUserMedia: async () => {
+            window.fixtureMicGrants++;
+            return {
+              getTracks: () => [{ stop: () => window.fixtureMicStops++ }],
+            };
+          },
+        },
+      });
+    });
+    let resolveMint;
+    const requestedMint = new Promise((resolve) => {
+      resolveMint = resolve;
+    });
+    await page.route('**/backend/widget/v5/dictation/sessions', (route) =>
+      resolveMint(route),
+    );
+    await open();
+    await frame
+      .locator('[data-component="chat/input_box/dictate_btn"]')
+      .click();
+    await page.waitForFunction(() => window.fixtureMicGrants > 0);
+    const mintRoute = await requestedMint;
+    assert.equal(await page.evaluate(() => window.fixtureMicStops), 0);
+    await page
+      .frameLocator('iframe[title="OpenCX Live Chat Trigger"]')
+      .locator('button')
+      .click();
+    await page.waitForFunction(() => window.fixtureMicStops > 0);
+    // A late mint cannot restart the already-stopped microphone or handshake.
+    await mintRoute.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: '{}',
+    });
+    await open();
+    assert.equal(
+      await frame
+        .locator('[data-component="chat/input_box/dictate_btn"]')
+        .getAttribute('aria-pressed'),
+      'false',
+    );
+    await frame.locator('textarea').fill('Typing after close');
+    await frame.locator('textarea').press('Enter');
+    await frame.getByText('FIXTURE_REPLY_1', { exact: true }).waitFor();
+  },
+);
+
+for (const displayMode of ['popover', 'companion']) {
+  test(
+    `${displayMode}: closing with a pending spoken send keeps the draft private`,
+    { timeout: 30000 },
+    async (t) => {
+      const { page, frame, requests, open } = await fixture(t, {
+        ...(displayMode === 'companion' ? { displayMode } : {}),
+        features: { dictation: true },
+        router: { chatScreenOnly: true },
+      });
+      await page.evaluate(() => {
+        window.fixtureMicStops = 0;
+        window.fixturePeerCloses = 0;
+        const track = { stop: () => window.fixtureMicStops++ };
+        Object.defineProperty(navigator, 'mediaDevices', {
+          configurable: true,
+          value: {
+            getUserMedia: async () => ({
+              getTracks: () => [track],
+              getAudioTracks: () => [track],
+            }),
+          },
+        });
+        window.AudioContext = class {
+          createMediaStreamSource() {
+            return { connect() {} };
+          }
+          createAnalyser() {
+            return {
+              frequencyBinCount: 1,
+              getByteTimeDomainData(values) {
+                values.fill(128);
+              },
+            };
+          }
+          async close() {}
+        };
+        window.RTCPeerConnection = class extends EventTarget {
+          addTrack() {}
+          createDataChannel() {
+            const channel = new EventTarget();
+            channel.close = () => {};
+            window.fixtureDictationChannel = channel;
+            return channel;
+          }
+          // Controlled provider boundary: no external SDP or audio traffic.
+          createOffer() {
+            return new Promise(() => {});
+          }
+          close() {
+            window.fixturePeerCloses++;
+          }
+        };
+      });
+      await open();
+      if (displayMode === 'companion') {
+        // Start a session so Companion shows the full composer and its tools.
+        await frame.locator('textarea').fill('Open fixture session');
+        await frame.locator('textarea').press('Enter');
+        await frame.getByText('FIXTURE_REPLY_1', { exact: true }).waitFor();
+      }
+      const initialSends = requests.filter(
+        (r) => r.path === '/backend/widget/v2/chat/send',
+      ).length;
+      await frame.locator('textarea').fill('Typed: ');
+      await frame
+        .locator('[data-component="chat/input_box/dictate_btn"]')
+        .click();
+      await page.waitForFunction(() => !!window.fixtureDictationChannel);
+      // Emit and close in one browser task, before the spoken-command timer.
+      await page.evaluate((mode) => {
+        window.fixtureDictationChannel.dispatchEvent(
+          new MessageEvent('message', {
+            data: JSON.stringify({
+              type: 'conversation.item.input_audio_transcription.delta',
+              delta: 'Hello. Send it',
+            }),
+          }),
+        );
+        const title =
+          mode === 'companion'
+            ? 'OpenCX Live Chat'
+            : 'OpenCX Live Chat Trigger';
+        const doc = document.querySelector(
+          `iframe[title="${title}"]`,
+        ).contentDocument;
+        doc
+          .querySelector(
+            mode === 'companion'
+              ? '[data-component="companion/close_btn"]'
+              : 'button',
+          )
+          .click();
+      }, displayMode);
+      await page.waitForFunction(() => window.fixtureMicStops === 1);
+      await page.waitForTimeout(1450);
+      assert.equal(
+        requests.filter((r) => r.path === '/backend/widget/v2/chat/send')
+          .length,
+        initialSends,
+        'closing must not send the pending command or draft',
+      );
+      assert.equal(await page.evaluate(() => window.fixturePeerCloses), 1);
+      if (displayMode === 'companion') {
+        // Closing an established conversation minimizes to the quick-ask bar.
+        await frame
+          .getByRole('button', { name: 'Expand chat', exact: true })
+          .click();
+      } else await open();
+      assert.equal(
+        await frame.locator('textarea').inputValue(),
+        'Typed: Hello. ',
+      );
+      await frame.locator('textarea').click();
+      await frame.locator('textarea').press('Enter');
+      try {
+        await frame
+          .getByText(`FIXTURE_REPLY_${initialSends + 1}`, { exact: true })
+          .waitFor();
+      } catch (error) {
+        t.diagnostic(
+          JSON.stringify(requests.filter((r) => r.path.endsWith('/chat/send'))),
+        );
+        t.diagnostic(await frame.locator('body').innerText());
+        throw error;
+      }
+      assert.equal(
+        requests.filter((r) => r.path === '/backend/widget/v2/chat/send')
+          .length,
+        initialSends + 1,
+      );
+    },
+  );
+}
+
+test(
+  'minimized Companion footer links receive clicks while the composer still expands chat',
+  { timeout: 30000 },
+  async (t) => {
+    const { page, frame, open } = await fixture(t, {
+      displayMode: 'companion',
+      chatFooterItems: [
+        { message: 'Read our [privacy notice](https://fixture.test/privacy)' },
+      ],
+    });
+    await open();
+    await frame.locator('textarea').pressSequentially('Start conversation');
+    await frame.locator('textarea').press('Enter');
+    await frame.getByText('FIXTURE_REPLY_1', { exact: true }).waitFor();
+    await frame.locator('[data-component="companion/close_btn"]').click();
+    const expand = frame.getByRole('button', {
+      name: 'Expand chat',
+      exact: true,
+    });
+    await expand.waitFor();
+    const link = frame.getByRole('link', { name: 'privacy notice' });
+    await link.evaluate((el) => {
+      el.addEventListener('click', (event) => {
+        // Intercept navigation only after an actual pointer click reaches the
+        // anchor. An overlaid expand button must not intercept this click.
+        event.preventDefault();
+        window.parent.fixtureFooterClicks =
+          (window.parent.fixtureFooterClicks ?? 0) + 1;
+      });
+    });
+    await link.click({ timeout: 2000 });
+    assert.equal(await page.evaluate(() => window.fixtureFooterClicks), 1);
+    await expand.click();
+    await frame.getByText('FIXTURE_REPLY_1', { exact: true }).waitFor();
+  },
+);

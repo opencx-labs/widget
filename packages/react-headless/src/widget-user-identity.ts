@@ -12,6 +12,21 @@ const widgetTokenOwnerSchema = z.object({
     .optional(),
 });
 
+// JwtCodec on the backend wraps the contact claims in sub.payload. Keep
+// accepting flat claims used by existing integrations, but recognize the
+// actual authenticate-user token so expiry renewal preserves the conversation.
+const widgetTokenClaimsSchema = z.union([
+  z
+    .object({
+      sub: z.object({
+        type: z.literal('widget-contact'),
+        payload: widgetTokenOwnerSchema,
+      }),
+    })
+    .transform(({ sub }) => sub.payload),
+  widgetTokenOwnerSchema,
+]);
+
 const decodePayload = (token: string): unknown => {
   const payload = token.split('.')[1];
   if (!payload) return null;
@@ -44,7 +59,7 @@ export const widgetUserIdentity = (config: WidgetConfig): string => {
     });
   }
 
-  const parsed = widgetTokenOwnerSchema.safeParse(decodePayload(token));
+  const parsed = widgetTokenClaimsSchema.safeParse(decodePayload(token));
   if (!parsed.success) {
     // Opaque or malformed verified tokens cannot prove continuity. Including
     // the token makes renewal take the safe full-reset path.

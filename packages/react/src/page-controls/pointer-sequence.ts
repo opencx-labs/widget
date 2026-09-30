@@ -1,3 +1,10 @@
+const agentPointerEvents = new WeakSet<Event>();
+
+/** Widget dismissal must distinguish our page actions from visitor clicks. */
+export function isAgentPointerEvent(event: Event): boolean {
+  return agentPointerEvents.has(event);
+}
+
 /**
  * Click the way a pointer does, not the way `el.click()` does.
  *
@@ -10,7 +17,13 @@
  * So: the full sequence a mouse produces, at the control's own centre,
  * with focus moved first like a real press does.
  */
-export function firePointerSequence(el: HTMLElement): void {
+export function firePointerSequence(
+  el: HTMLElement,
+  mayDispatch: () => boolean = () => true,
+): 'not-started' | 'interrupted' | 'completed' {
+  let dispatched = false;
+  const result = (completed: boolean) =>
+    completed ? 'completed' : dispatched ? 'interrupted' : 'not-started';
   const rect = el.getBoundingClientRect();
   const clientX = rect.left + rect.width / 2;
   const clientY = rect.top + rect.height / 2;
@@ -25,8 +38,15 @@ export function firePointerSequence(el: HTMLElement): void {
     clientY,
   };
 
+  const dispatch = (event: Event) => {
+    if (!mayDispatch()) return false;
+    dispatched = true;
+    agentPointerEvents.add(event);
+    el.dispatchEvent(event);
+    return true;
+  };
   const pointer = (type: string) =>
-    el.dispatchEvent(
+    dispatch(
       new PointerEvent(type, {
         ...base,
         pointerId: 1,
@@ -35,20 +55,22 @@ export function firePointerSequence(el: HTMLElement): void {
       }),
     );
   const mouse = (type: string, detail = 0) =>
-    el.dispatchEvent(
-      new MouseEvent(type, { ...base, detail, button: 0, buttons: 1 }),
-    );
+    dispatch(new MouseEvent(type, { ...base, detail, button: 0, buttons: 1 }));
 
-  pointer('pointerover');
-  pointer('pointerenter');
-  mouse('mouseover');
-  mouse('mousemove');
-  pointer('pointerdown');
-  mouse('mousedown', 1);
+  if (
+    !pointer('pointerover') ||
+    !pointer('pointerenter') ||
+    !mouse('mouseover') ||
+    !mouse('mousemove') ||
+    !pointer('pointerdown') ||
+    !mouse('mousedown', 1)
+  )
+    return result(false);
   // Focus before the release, like a real press: a control that commits on
   // blur of the previous field needs that to have happened already.
+  if (!mayDispatch()) return result(false);
   el.focus?.();
-  pointer('pointerup');
-  mouse('mouseup', 1);
-  mouse('click', 1);
+  return result(
+    pointer('pointerup') && mouse('mouseup', 1) && mouse('click', 1),
+  );
 }

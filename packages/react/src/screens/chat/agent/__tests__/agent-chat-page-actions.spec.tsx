@@ -15,25 +15,50 @@ type Effect = {
 };
 
 let pageEffects: Effect[] = [];
-let replies: Array<{ callId: string; outcome: string; detail?: string }> = [];
+type Page = {
+  controls: { ref: string; role: string; name: string }[];
+  truncated: boolean;
+};
+let replies: Array<{
+  callId: string;
+  outcome: string;
+  detail?: string;
+  page?: Page;
+}> = [];
 let consentAsked: Array<{
   callId: string;
   action: string;
   controlName: string;
+  value?: string;
+  valueLabel?: string;
 }> = [];
 let consentAnswer = true;
+let onConsent = () => {};
+
+const widgetCtx = {
+  features: { pageContext: true, clientTools: true, pageActions: true },
+};
 
 vi.mock('@opencx/widget-react-headless', () => ({
+  useWidget: () => ({ widgetCtx }),
   useAgentChatUi: () => ({
     pageEffects,
-    replyToPageCall: (callId: string, outcome: string, detail?: string) =>
-      replies.push({ callId, outcome, detail }),
+    isStreaming: true,
+    replyToPageCall: (
+      callId: string,
+      outcome: string,
+      detail?: string,
+      page?: Page,
+    ) => replies.push({ callId, outcome, detail, ...(page ? { page } : {}) }),
     requestPageActionConsent: async (request: {
       callId: string;
       action: string;
       controlName: string;
+      value?: string;
+      valueLabel?: string;
     }) => {
       consentAsked.push(request);
+      onConsent();
       return consentAnswer;
     },
   }),
@@ -73,6 +98,10 @@ describe('AgentChatPageActions', () => {
     replies = [];
     consentAsked = [];
     consentAnswer = true;
+    onConsent = () => {};
+    widgetCtx.features.pageActions = true;
+    widgetCtx.features.pageContext = true;
+    widgetCtx.features.clientTools = true;
     // NOT reset between tests on purpose. Resetting restarts the reference
     // counter, so an action still in flight from the previous test would
     // resolve THIS test's identically-numbered ref and click its button.
@@ -124,6 +153,194 @@ describe('AgentChatPageActions', () => {
     return beginSnapshot()(el);
   };
 
+  it.each([
+    [
+      'link href',
+      '<a id="t" href="/read">Continue</a>',
+      '#t',
+      'href',
+      '/delete',
+    ],
+    [
+      'link target',
+      '<a id="t" href="/read">Continue</a>',
+      '#t',
+      'target',
+      '_blank',
+    ],
+    [
+      'link download',
+      '<a id="t" href="/read">Continue</a>',
+      '#t',
+      'download',
+      'file',
+    ],
+    [
+      'base URL',
+      '<base href="https://example.test/safe/"><a id="t" href="next">Continue</a>',
+      'base',
+      'href',
+      'https://other.test/',
+    ],
+    [
+      'form action',
+      '<form id="f" action="/save"><button id="t">Continue</button></form>',
+      '#f',
+      'action',
+      '/delete',
+    ],
+    [
+      'form method',
+      '<form id="f" action="/save"><button id="t">Continue</button></form>',
+      '#f',
+      'method',
+      'post',
+    ],
+    [
+      'submit override',
+      '<form action="/save"><button id="t" formaction="/preview">Continue</button></form>',
+      '#t',
+      'formaction',
+      '/delete',
+    ],
+    [
+      'external form',
+      '<form id="f" action="/save"></form><form id="g" action="/delete"></form><button id="t" form="f">Continue</button>',
+      '#t',
+      'form',
+      'g',
+    ],
+    [
+      'reset type',
+      '<form><button id="t" type="button">Continue</button></form>',
+      '#t',
+      'type',
+      'reset',
+    ],
+  ])(
+    'declines changed %s during consent with the same label',
+    async (_name, html, selector, attribute, value) => {
+      const ref = control(html);
+      const clicked = vi.fn((event: Event) => event.preventDefault());
+      document.querySelector('#t')!.addEventListener('click', clicked);
+      onConsent = () =>
+        document.querySelector(selector)!.setAttribute(attribute, value);
+      pageEffects = [
+        {
+          key: 'changed-operation',
+          callId: 'changed-operation',
+          type: 'act-on-page',
+          input: { ref, action: 'click' },
+        },
+      ];
+      await render();
+      await vi.waitFor(() =>
+        expect(repliesFor('changed-operation')).toHaveLength(1),
+      );
+      expect(repliesFor('changed-operation')[0]?.outcome).toBe('declined');
+      expect(clicked).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['pointerdown', 'focus'])(
+    'stops a link changed by a %s handler before click and reports the observed change',
+    async (eventName) => {
+      const ref = control('<a id="t" href="/safe">Continue</a>');
+      const link = document.querySelector<HTMLAnchorElement>('#t')!;
+      const clicked = vi.fn((event: Event) => event.preventDefault());
+      link.addEventListener('click', clicked);
+      link.addEventListener(eventName, () => {
+        link.href = '/different';
+      });
+      pageEffects = [
+        {
+          key: 'reentrant',
+          callId: 'reentrant',
+          type: 'act-on-page',
+          input: { ref, action: 'click' },
+        },
+      ];
+      await render();
+      await vi.waitFor(() => expect(repliesFor('reentrant')).toHaveLength(1));
+      expect(repliesFor('reentrant')[0]?.outcome).toBe('no_change');
+      expect(repliesFor('reentrant')[0]?.detail).toContain('interrupted');
+      expect(
+        repliesFor('reentrant')[0]?.page?.controls.map((row) => row.name),
+      ).toEqual(['Continue']);
+      expect(clicked).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(
+    ['before consent', 'during consent'].flatMap((when) => [
+      {
+        when,
+        shape: 'row',
+        html: '<ul><li><span>Account A</span><button id="t">Delete</button></li></ul>',
+      },
+      {
+        when,
+        shape: 'nested section',
+        html: '<section><section><span>Account A</span></section><button id="t">Delete</button></section>',
+      },
+    ]),
+  )(
+    'does not approve a Delete control repurposed in a $shape $when',
+    async ({ when, html }) => {
+      const ref = control(html);
+      const clicked = vi.fn();
+      document.querySelector('#t')!.addEventListener('click', clicked);
+      const change = () => {
+        document.querySelector('span')!.textContent = 'Account B';
+      };
+      if (when === 'before consent') change();
+      else onConsent = change;
+      pageEffects = [
+        {
+          key: 'recycled',
+          callId: 'recycled',
+          type: 'act-on-page',
+          input: { ref, action: 'click' },
+        },
+      ];
+      await render();
+      await vi.waitFor(() => expect(repliesFor('recycled')).toHaveLength(1));
+      expect(clicked).not.toHaveBeenCalled();
+      expect(consentAsked).toHaveLength(when === 'before consent' ? 0 : 1);
+      expect(repliesFor('recycled')[0]?.outcome).toBe(
+        when === 'before consent' ? 'gone' : 'declined',
+      );
+    },
+  );
+
+  it('preserves an already-dispatched outcome after permission revocation without page data', async () => {
+    const ref = control('<button id="t">Save</button>');
+    const button = document.querySelector('#t');
+    let requests = 0;
+    button?.addEventListener('pointerdown', () => {
+      requests++;
+      button.textContent = 'Saved';
+      widgetCtx.features.pageContext = false;
+    });
+    const clicked = vi.fn();
+    button?.addEventListener('click', clicked);
+    pageEffects = [
+      {
+        key: 'committed',
+        callId: 'committed',
+        type: 'act-on-page',
+        input: { ref, action: 'click' },
+      },
+    ];
+    await render();
+    await vi.waitFor(() => expect(repliesFor('committed')).toHaveLength(1));
+    expect(requests).toBe(1);
+    expect(clicked).not.toHaveBeenCalled();
+    expect(repliesFor('committed')[0]?.outcome).toBe('no_change');
+    expect(repliesFor('committed')[0]?.detail).toContain('interrupted');
+    expect(repliesFor('committed')[0]?.page).toBeUndefined();
+  });
+
   it('asks before a committing click, naming the control from the page', async () => {
     const ref = control('<button id="t">Cancel subscription</button>');
     pageEffects = [
@@ -144,6 +361,55 @@ describe('AgentChatPageActions', () => {
         controlName: 'Cancel subscription',
       },
     ]);
+  });
+
+  it.each([
+    '<button id="t">Pay now</button>',
+    '<button id="t">Delete account</button>',
+    '<button id="t">Confirm order</button>',
+    '<button id="t">Submit</button>',
+    '<div id="t" role="button">Transfer funds</div>',
+    '<button id="t" aria-label="Authorize payment"></button>',
+    '<form><button id="t">Continue</button></form>',
+    '<input id="t" type="submit" value="Go">',
+    '<a id="t" href="/billing">Billing</a>',
+    '<button id="t">Next page</button>',
+    '<div id="t" role="tab">Invoices</div>',
+  ])('requires Allow regardless of control markup: %s', async (html) => {
+    consentAnswer = false;
+    const ref = control(html);
+    pageEffects = [
+      {
+        key: 'markup',
+        callId: 'markup',
+        type: 'act-on-page',
+        input: { ref, action: 'click' },
+      },
+    ];
+    await render();
+    expect(consentAsked).toHaveLength(1);
+    expect(repliesFor('markup')[0]?.outcome).toBe('declined');
+  });
+
+  it('does not act when page access is revoked during consent', async () => {
+    const ref = control('<button id="t">Delete account</button>');
+    const clicked = vi.fn();
+    document.querySelector('#t')?.addEventListener('click', clicked);
+    onConsent = () => {
+      widgetCtx.features.pageContext = false;
+    };
+    pageEffects = [
+      {
+        key: 'revoked',
+        callId: 'revoked',
+        type: 'act-on-page',
+        input: { ref, action: 'click' },
+      },
+    ];
+    await render();
+    await vi.waitFor(() => expect(repliesFor('revoked')).toHaveLength(1));
+    expect(repliesFor('revoked')[0]?.outcome).toBe('declined');
+    expect(clicked).not.toHaveBeenCalled();
   });
 
   it('a No is answered as declined, and nothing is clicked', async () => {
@@ -169,7 +435,7 @@ describe('AgentChatPageActions', () => {
     ]);
   });
 
-  it('does not ask before an ordinary click', async () => {
+  it('asks before an ordinary click and executes it only after Allow', async () => {
     const ref = control('<button id="t">Show details</button>');
     pageEffects = [
       {
@@ -181,12 +447,149 @@ describe('AgentChatPageActions', () => {
     ];
     await render();
 
-    expect(consentAsked).toEqual([]);
+    expect(consentAsked).toEqual([
+      { callId: 'c-ordinary', action: 'click', controlName: 'Show details' },
+    ]);
     // Positive control: it still answered the call — after the page settled,
     // and with a real outcome, not the catch-all an exception would give.
     await vi.waitFor(() => expect(repliesFor('c-ordinary')).toHaveLength(1));
     expect(repliesFor('c-ordinary')[0]?.outcome).toBe('no_change');
   });
+
+  it.each([
+    {
+      label: 'Arabic payment',
+      html: '<button id="t">ادفع الآن</button>',
+      action: 'click',
+      event: 'click',
+    },
+    {
+      label: 'generic Continue',
+      html: '<button id="t">Continue</button>',
+      action: 'click',
+      event: 'click',
+    },
+    {
+      label: 'auto-saving text',
+      html: '<input id="t" aria-label="Display name" value="Before">',
+      action: 'fill',
+      value: 'After',
+      event: 'input',
+    },
+    {
+      label: 'auto-saving selection',
+      html: '<select id="t" aria-label="Plan"><option value="basic">Basic</option><option value="pro">Pro</option></select>',
+      action: 'select',
+      value: 'pro',
+      event: 'change',
+    },
+    {
+      label: 'auto-saving checkbox',
+      html: '<input id="t" type="checkbox" aria-label="Automatic renewal">',
+      action: 'check',
+      event: 'change',
+    },
+    {
+      label: 'auto-saving switch off',
+      html: '<input id="t" type="checkbox" checked aria-label="Automatic renewal">',
+      action: 'uncheck',
+      event: 'change',
+    },
+  ])(
+    'declining $label prevents any host event; allowing a new call acts once',
+    async ({ html, action, value, event }) => {
+      consentAnswer = false;
+      const ref = control(html);
+      const target = document.querySelector<HTMLElement>('#t');
+      if (!target) throw new Error('missing fixture');
+      const changed = vi.fn(() => {
+        target.dataset.acted = 'true';
+      });
+      target.addEventListener(event, changed);
+      const effect = {
+        key: 'denied',
+        callId: 'denied',
+        type: 'act-on-page' as const,
+        input: { ref, action, value },
+      };
+      pageEffects = [effect];
+      await render();
+      expect(consentAsked).toHaveLength(1);
+      expect(consentAsked[0]?.value).toBe(value);
+      expect(changed).not.toHaveBeenCalled();
+      expect(repliesFor('denied')[0]?.outcome).toBe('declined');
+
+      consentAnswer = true;
+      pageEffects = [{ ...effect, key: 'allowed', callId: 'allowed' }];
+      await render();
+      await vi.waitFor(() => expect(repliesFor('allowed')).toHaveLength(1));
+      expect(repliesFor('allowed')[0]?.outcome).toBe('done');
+      expect(changed).toHaveBeenCalledOnce();
+    },
+  );
+
+  it('shows the visible dropdown choice for an opaque option value', async () => {
+    consentAnswer = false;
+    const ref = control(
+      '<select id="t" aria-label="Plan"><option value="plan_1">Basic</option><option value="plan_42">Pro — $49/month</option></select>',
+    );
+    pageEffects = [
+      {
+        key: 'opaque',
+        callId: 'opaque',
+        type: 'act-on-page',
+        input: { ref, action: 'select', value: 'plan_42' },
+      },
+    ];
+    await render();
+    expect(consentAsked[0]).toMatchObject({
+      value: 'plan_42',
+      valueLabel: 'Pro — $49/month',
+    });
+    expect(document.querySelector<HTMLSelectElement>('#t')?.value).toBe(
+      'plan_1',
+    );
+  });
+
+  it.each(['label', 'value', 'removed', 'replaced', 'disabled', 'ambiguous'])(
+    'declines when the approved dropdown option is %s before execution',
+    async (change) => {
+      const ref = control(
+        '<select id="t" aria-label="Plan"><option value="plan_1">Basic</option><option value="plan_42">Pro — $49/month</option></select>',
+      );
+      const select = document.querySelector<HTMLSelectElement>('#t');
+      const option = select?.options.item(1);
+      if (!select || !option) throw new Error('missing select fixture');
+      const changed = vi.fn();
+      select.addEventListener('change', changed);
+      onConsent = () => {
+        if (change === 'label') option.label = 'Enterprise — $499/month';
+        if (change === 'value') option.value = 'plan_499';
+        if (change === 'removed') option.remove();
+        if (change === 'replaced') option.replaceWith(option.cloneNode(true));
+        if (change === 'disabled') option.disabled = true;
+        if (change === 'ambiguous') {
+          const collision = document.createElement('option');
+          collision.value = 'different';
+          collision.label = 'plan_42';
+          select.append(collision);
+        }
+      };
+      pageEffects = [
+        {
+          key: change,
+          callId: change,
+          type: 'act-on-page',
+          input: { ref, action: 'select', value: 'plan_42' },
+        },
+      ];
+      await render();
+      await vi.waitFor(() => expect(repliesFor(change)).toHaveLength(1));
+      expect(repliesFor(change)[0]?.outcome).toBe('declined');
+      expect(changed).not.toHaveBeenCalled();
+      expect(select.value).toBe('plan_1');
+    },
+  );
 
   it('answers a reference that means nothing without touching the page', async () => {
     pageEffects = [
@@ -201,8 +604,56 @@ describe('AgentChatPageActions', () => {
 
     expect(consentAsked).toEqual([]);
     expect(repliesFor('c-gone')).toEqual([
-      { callId: 'c-gone', outcome: 'gone', detail: undefined },
+      {
+        callId: 'c-gone',
+        outcome: 'gone',
+        detail: undefined,
+        page: { controls: [], truncated: false },
+      },
     ]);
+  });
+
+  it('returns fresh controls for a stale ref without executing a replacement', async () => {
+    const oldRef = control('<button id="t">Old screen</button>');
+    document.querySelector('#t')?.remove();
+    control('<button id="t">Next screen</button>');
+    const clicked = vi.fn();
+    document.querySelector('#t')?.addEventListener('click', clicked);
+    document.body.insertAdjacentHTML(
+      'beforeend',
+      '<div data-opencx-private><button>PRIVATE_CONTROL</button></div>',
+    );
+    pageEffects = [
+      {
+        key: 'stale',
+        callId: 'stale',
+        type: 'act-on-page',
+        input: { ref: oldRef, action: 'click' },
+      },
+    ];
+    await render();
+    const reply = repliesFor('stale')[0];
+    expect(reply?.outcome).toBe('gone');
+    expect(reply?.page?.controls.map((row) => row.name)).toEqual([
+      'Next screen',
+    ]);
+    expect(clicked).not.toHaveBeenCalled();
+    expect(consentAsked).toHaveLength(0);
+
+    widgetCtx.features.pageContext = false;
+    pageEffects = [
+      {
+        key: 'revoked-stale',
+        callId: 'revoked-stale',
+        type: 'act-on-page',
+        input: { ref: oldRef, action: 'click' },
+      },
+    ];
+    await render();
+    expect(repliesFor('revoked-stale')[0]).toMatchObject({
+      outcome: 'declined',
+    });
+    expect(repliesFor('revoked-stale')[0]?.page).toBeUndefined();
   });
 
   it('answers an action it does not recognise instead of guessing', async () => {

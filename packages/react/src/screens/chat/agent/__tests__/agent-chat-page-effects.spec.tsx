@@ -30,8 +30,12 @@ vi.mock('@shardsui/notation', () => ({
 let replies: Array<{ callId: string; outcome: string }> = [];
 
 vi.mock('@opencx/widget-react-headless', () => ({
+  useWidget: () => ({
+    widgetCtx: { features: { pageContext: true, clientTools: true } },
+  }),
   useAgentChatUi: () => ({
     pageEffects,
+    isStreaming: true,
     replyToPageCall: (callId: string, outcome: string) =>
       replies.push({ callId, outcome }),
   }),

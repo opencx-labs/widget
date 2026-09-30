@@ -1,3 +1,4 @@
+import { isPageElementPrivate, safePageText } from '../page-privacy';
 /**
  * The accessible name of a control — the words a screen reader would say.
  *
@@ -32,20 +33,7 @@ const truncate = (text: string): string =>
  * anything the customer would say. Browsers insert a space at a block
  * boundary when they compute a name; so does this.
  */
-const BLOCK_LEVEL =
-  'address,article,aside,blockquote,br,dd,details,div,dl,dt,fieldset,figcaption,figure,footer,form,h1,h2,h3,h4,h5,h6,header,hr,li,main,nav,ol,p,pre,section,summary,table,td,th,tr,ul';
-
-function visibleText(el: Element): string {
-  const clone = el.cloneNode(true);
-  if (!(clone instanceof Element)) return '';
-  clone
-    .querySelectorAll('[aria-hidden="true"], script, style, noscript')
-    .forEach((hidden) => hidden.remove());
-  clone
-    .querySelectorAll(BLOCK_LEVEL)
-    .forEach((block) => block.insertAdjacentText('beforebegin', ' '));
-  return collapse(clone.textContent ?? '');
-}
+const visibleText = safePageText;
 
 /** The `<label>`s a form control is wired to, native or `for`-attached. */
 function labelText(el: HTMLElement): string {
@@ -72,6 +60,7 @@ function labelText(el: HTMLElement): string {
  * than inventing a name out of markup.
  */
 export function accessibleName(el: HTMLElement): string {
+  if (isPageElementPrivate(el)) return '';
   const labelledBy = el.getAttribute('aria-labelledby');
   if (labelledBy) {
     const text = labelledBy

@@ -15,16 +15,26 @@ For all the available options, check [the documentation](https://docs.open.cx/wi
 
 ## Self-hosting
 
-Since v5 the embed is two files: `script.js` is a tiny classic loader that
-injects `widget.js` as an ES module from the same directory, and `widget.js`
-lazy-loads a few hashed chunks (the chart renderer, for one) from that
-directory too. If you copy the build onto your own CDN:
+`dist-embed/script.js` is a self-contained classic script. Copy that single file
+to your own server, as with v4. No sibling module or lazy chunks are required.
+Apply your site's existing script CSP policy to the script tag.
 
-- publish the WHOLE `dist-embed/` directory, not `script.js` alone;
-- serve it with `Access-Control-Allow-Origin` (module scripts are fetched in
-  CORS mode);
-- keep the previous chunks around when you redeploy, or give `widget.js` a
-  short cache TTL, so a cached `widget.js` never points at a chunk that no
-  longer exists;
-- under a nonce-based CSP, the loader copies the nonce from its own `<script>`
-  tag onto the injected module tag.
+Repeated script loads reuse the first loaded widget runtime and its React root.
+Calling `initOpenScript` again updates its options. To switch widget versions,
+reload the page.
+
+## Opt into v5 runtime features
+
+An unchanged configuration keeps classic send/poll delivery. To enable streaming
+and personal service connections, declare both explicitly:
+
+```js
+initOpenScript({
+  token: 'YOUR_WIDGET_TOKEN',
+  streaming: true,
+  capabilities: { connections: true },
+});
+```
+
+Streaming also requires backend support. Companion layout is selected separately
+with `displayMode: 'companion'`; changing layout alone does not change delivery.

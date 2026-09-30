@@ -6,9 +6,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
 const sendMessage = vi.fn();
+const widgetCtx = { features: { pageContext: false } };
 
 vi.mock('@opencx/widget-react-headless', () => ({
   useMessages: () => ({ sendMessage }),
+  useWidget: () => ({ widgetCtx }),
   // The real formatter, so the message this card actually sends is asserted
   // rather than a stand-in.
   formatAskQuestionsAnswers: (
@@ -82,7 +84,9 @@ function click(el: HTMLElement) {
 
 beforeEach(() => {
   sendMessage.mockClear();
+  widgetCtx.features.pageContext = false;
   container = document.createElement('div');
+  container.id = 'opencx-root';
   document.body.appendChild(container);
   root = createRoot(container);
 });
@@ -90,6 +94,75 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount());
   container.remove();
+});
+
+describe('clarification page context at submission', () => {
+  let host: HTMLDivElement;
+
+  beforeEach(() => {
+    // jsdom has no layout. Native visibility/privacy behavior is covered by
+    // send-context.browser.spec.ts; these cases exercise the answer send path.
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(
+      new DOMRect(0, 0, 100, 20),
+    );
+    host = document.createElement('div');
+    host.innerHTML = '<button>Old screen</button>';
+    document.body.appendChild(host);
+  });
+
+  afterEach(() => {
+    host.remove();
+    vi.restoreAllMocks();
+  });
+
+  it('sends fresh controls without stale controls, private fields or widget UI', () => {
+    widgetCtx.features.pageContext = true;
+    render(<ClarificationQuestions request={request()} />);
+    click(optionButtons()[0]!);
+    host.innerHTML = `
+      <button>Open payments</button>
+      <div data-opencx-private><button>PRIVATE_CONTROL</button></div>
+      <input type="password" aria-label="Password" value="PRIVATE_PASSWORD">
+      <input aria-label="Search" value="PRIVATE_FIELD_VALUE">
+    `;
+    click(button('send'));
+    expect(sendMessage).toHaveBeenCalledExactlyOnceWith({
+      content: 'Q: Which order is this about?\nA: The May order',
+      clientContext: {
+        page_controls: [
+          { ref: expect.any(String), role: 'button', name: 'Open payments' },
+          { ref: expect.any(String), role: 'textbox', name: 'Search' },
+        ],
+      },
+    });
+  });
+
+  it('does not share the page when permission is revoked while answering', () => {
+    widgetCtx.features.pageContext = true;
+    render(<ClarificationQuestions request={request()} />);
+    click(optionButtons()[0]!);
+    widgetCtx.features.pageContext = false;
+    click(button('send'));
+    expect(sendMessage).toHaveBeenCalledExactlyOnceWith({
+      content: 'Q: Which order is this about?\nA: The May order',
+      clientContext: undefined,
+    });
+  });
+
+  it('reads the current permission when sharing is enabled after the question appears', () => {
+    render(<ClarificationQuestions request={request()} />);
+    click(optionButtons()[0]!);
+    widgetCtx.features.pageContext = true;
+    click(button('send'));
+    expect(sendMessage).toHaveBeenCalledExactlyOnceWith({
+      content: 'Q: Which order is this about?\nA: The May order',
+      clientContext: {
+        page_controls: [
+          { ref: expect.any(String), role: 'button', name: 'Old screen' },
+        ],
+      },
+    });
+  });
 });
 
 describe('ClarificationQuestions', () => {

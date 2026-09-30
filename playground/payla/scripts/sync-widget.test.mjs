@@ -61,7 +61,6 @@ test('syncWidgetBuild preserves the last good copy when the build is incomplete'
     const destination = join(root, 'public', 'opencx-widget');
     mkdirSync(source, { recursive: true });
     mkdirSync(destination, { recursive: true });
-    writeFileSync(join(source, 'script.js'), 'loader without module');
     writeFileSync(join(destination, 'script.js'), 'last good loader');
     writeFileSync(join(destination, 'widget.js'), 'last good module');
 
@@ -76,6 +75,26 @@ test('syncWidgetBuild preserves the last good copy when the build is incomplete'
     assert.equal(
       readFileSync(join(destination, 'widget.js'), 'utf8'),
       'last good module',
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('syncWidgetBuild accepts the self-contained embed', () => {
+  const root = mkdtempSync(join(tmpdir(), 'opencx-widget-sync-'));
+  try {
+    const source = join(root, 'dist-embed');
+    const destination = join(root, 'public');
+    mkdirSync(source);
+    writeFileSync(join(source, 'script.js'), 'standalone');
+    assert.equal(
+      syncWidgetBuild({ source, destination, logger: silentLogger }),
+      true,
+    );
+    assert.equal(
+      readFileSync(join(destination, 'script.js'), 'utf8'),
+      'standalone',
     );
   } finally {
     rmSync(root, { recursive: true, force: true });
