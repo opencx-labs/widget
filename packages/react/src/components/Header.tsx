@@ -410,22 +410,39 @@ const defaultCloseWidgetButton = {
   icon: 'X',
 } satisfies HeaderButtonU;
 
+/**
+ * The header buttons to render for a screen. Without configured buttons the
+ * popover gets a small-screen Close; the companion never does — its corner
+ * controls (PanelControls) already carry Close in every layout, so a second
+ * one would sit right beside it on phones.
+ */
+export function resolveHeaderButtons({
+  configured,
+  isCompanion,
+}: {
+  configured: HeaderButtonU[] | undefined;
+  isCompanion: boolean;
+}): HeaderButtonU[] {
+  if (configured && configured.length > 0) return configured;
+  return isCompanion ? [] : [defaultCloseWidgetButton];
+}
+
 export function Header__Buttons() {
   const {
     routerState: { screen },
   } = useWidgetRouter();
-  const { headerButtons } = useConfig();
+  const config = useConfig();
+  const { headerButtons } = config;
 
-  const buttons =
-    screen === 'chat'
-      ? headerButtons?.chatScreen
-      : screen === 'sessions'
-        ? headerButtons?.sessionsScreen
-        : [];
-
-  if (!buttons || buttons.length === 0) {
-    return <Header__Buttons__Item button={defaultCloseWidgetButton} />;
-  }
+  const buttons = resolveHeaderButtons({
+    configured:
+      screen === 'chat'
+        ? headerButtons?.chatScreen
+        : screen === 'sessions'
+          ? headerButtons?.sessionsScreen
+          : [],
+    isCompanion: config.displayMode === 'companion' && !config.inline,
+  });
 
   return (
     <>
