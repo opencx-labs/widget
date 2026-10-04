@@ -1,5 +1,11 @@
 # @opencx/widget-core
 
+## 5.1.0
+
+### Minor Changes
+
+- 16180b9: Headless streaming runs in React Native. The streaming engine no longer crashes on mount where there is no `document`; `streamingFetch` sends and resumes streamed replies through a fetch that can stream (`expo/fetch`); `useAgentChatUi().resumeInterruptedTurn()` lets the app resume a dropped reply on its own foreground and reconnect signals; and the resume request no longer depends on `URLSearchParams.set`.
+
 ## 5.0.0
 
 ### Major Changes
