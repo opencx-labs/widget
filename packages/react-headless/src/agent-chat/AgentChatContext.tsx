@@ -50,6 +50,13 @@ export type AgentChatUiValue = {
   /** The last turn failed — the transcript shows an error row with retry. */
   turnFailed: boolean;
   retryFailedTurn: () => void;
+  /**
+   * Resume a reply whose stream dropped mid-turn; a no-op unless the last
+   * turn is unresolved. Browsers trigger it when the tab is visible again or
+   * the network returns. Hosts without a DOM call it themselves, e.g. React
+   * Native on `AppState` becoming `active` and on reconnect.
+   */
+  resumeInterruptedTurn: () => void;
   /** Messages the user queued mid-turn — rendered in the composer's queue pill. */
   queuedUserMessages: WidgetUserMessage[];
   /** Drop one queued (not-yet-sent) message from the pill. */
@@ -108,6 +115,7 @@ export const DEFAULT_AGENT_CHAT_UI: AgentChatUiValue = {
   liveTurnKey: null,
   turnFailed: false,
   retryFailedTurn: () => {},
+  resumeInterruptedTurn: () => {},
   queuedUserMessages: [],
   removeQueued: () => {},
   stop: () => {},
@@ -149,6 +157,7 @@ function ActiveAgentChatProvider({
     liveTurnKey,
     turnFailed,
     retryFailedTurn,
+    resumeInterruptedTurn,
     queuedUserMessages,
     removeQueued,
     stop,
@@ -242,6 +251,7 @@ function ActiveAgentChatProvider({
       liveTurnKey,
       turnFailed,
       retryFailedTurn,
+      resumeInterruptedTurn,
       queuedUserMessages,
       removeQueued,
       stop,
@@ -265,6 +275,7 @@ function ActiveAgentChatProvider({
       liveTurnKey,
       turnFailed,
       retryFailedTurn,
+      resumeInterruptedTurn,
       queuedUserMessages,
       removeQueued,
       stop,

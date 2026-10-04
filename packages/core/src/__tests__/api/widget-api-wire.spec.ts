@@ -167,4 +167,15 @@ suite('widget API — wire format (real ApiCaller, stubbed fetch)', () => {
       api.startConnection('server-1', 'expired-request'),
     ).rejects.toBeInstanceOf(ConnectionRequestExpiredError);
   });
+
+  test('stream transport takes the embedder streamingFetch, none by default', () => {
+    const streamingFetch = vi.fn<typeof fetch>();
+    const withFetch = new ApiCaller({
+      config: { token: 'tok', streamingFetch },
+    });
+    expect(withFetch.getStreamTransportOptions().fetch).toBe(streamingFetch);
+
+    const plain = new ApiCaller({ config: { token: 'tok' } });
+    expect(plain.getStreamTransportOptions().fetch).toBeUndefined();
+  });
 });

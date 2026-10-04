@@ -110,6 +110,7 @@ export const TestUtils = {
             reconnectApi: (sessionId: string) =>
               `http://localhost:8080/backend/widget/v5/chat/${sessionId}/stream`,
             headers: {},
+            fetch: undefined,
           });
       },
       listApprovalPreferences(target, _returnValue) {

@@ -237,13 +237,15 @@ export class ApiCaller {
 
   /**
    * Wiring for the agent-chat streaming adapter: the send endpoint, the
-   * session-scoped reconnect endpoint, and the shared auth headers.
-   * Computed lazily so a later `setAuthToken` is always reflected.
+   * session-scoped reconnect endpoint, the shared auth headers, and the
+   * embedder's streaming fetch. Computed lazily so a later `setAuthToken` is
+   * always reflected.
    */
   getStreamTransportOptions = (): {
     api: string;
     reconnectApi: (sessionId: string) => string;
     headers: Record<string, string>;
+    fetch: typeof fetch | undefined;
   } => {
     const { baseUrl, headers } = this.getStreamAuthContext();
     return {
@@ -251,6 +253,7 @@ export class ApiCaller {
       reconnectApi: (sessionId: string) =>
         streamUrl(baseUrl, RECONNECT_PATH, sessionId),
       headers,
+      fetch: this.config.streamingFetch,
     };
   };
 
