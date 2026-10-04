@@ -154,6 +154,7 @@ function ui(partial: Partial<AgentChatUiValue>): AgentChatUiValue {
     resolvePageAction: () => {},
     requestPageActionConsent: async () => false,
     retryFailedTurn: () => {},
+    resumeInterruptedTurn: () => {},
     queuedUserMessages: [],
     removeQueued: () => {},
     stop: () => {},

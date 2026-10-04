@@ -20,12 +20,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AgentChatQueue } from './agent-chat-queue';
 import { applyPresentation } from './apply-presentation';
 import { mapUiPartsToItems, type StreamingTurnItem } from './agent-chat-stream';
-import { buildAgentChatTransport } from './agent-chat-transport';
+import {
+  appendPresentationParams,
+  buildAgentChatTransport,
+} from './agent-chat-transport';
 import {
   mergeTurnSources,
   parseTurnSettledPart,
   type TurnRenderSource,
 } from './agent-turn-sources';
+import { subscribeToResumeSignals } from './resume-signals';
 import { stopAgentChatTurn } from './stop-agent-chat-turn';
 
 /** Internal safety bound; a full backlog rejects the newest send. */
@@ -135,15 +139,15 @@ export function useAgentChat({
       buildAgentChatTransport({
         ...api.getStreamTransportOptions(),
         headers: () => api.getStreamTransportOptions().headers,
-        reconnectApi: (id) => {
-          const url = new URL(api.getStreamTransportOptions().reconnectApi(id));
-          const presentation = configRef.current.presentation;
-          if (presentation?.toolActivity)
-            url.searchParams.set('toolActivity', presentation.toolActivity);
-          if (presentation?.reasoning !== undefined)
-            url.searchParams.set('reasoning', String(presentation.reasoning));
-          return url.toString();
-        },
+        reconnectApi: (id) =>
+          appendPresentationParams(
+            api.getStreamTransportOptions().reconnectApi(id),
+            configRef.current.presentation,
+          ),
+        // Resolved per request too, so a `streamingFetch` swapped on a live
+        // provider carries the next send.
+        fetch: (input, init) =>
+          (configRef.current.streamingFetch ?? globalThis.fetch)(input, init),
       }),
     [api],
   );
@@ -924,21 +928,17 @@ export function useAgentChat({
   // turn looks unresolved — errored, or still held by `settling` — probe the
   // reconnect endpoint: a live turn replays, a finished one 204s and the
   // poll reconciles.
-  useEffect(() => {
-    const rearm = () => {
-      if (document.visibilityState !== 'visible') return;
-      if (!sessionId) return;
-      if (isStreaming) return;
-      if (error === undefined && !settling) return;
-      resumeStream();
-    };
-    document.addEventListener('visibilitychange', rearm);
-    window.addEventListener('online', rearm);
-    return () => {
-      document.removeEventListener('visibilitychange', rearm);
-      window.removeEventListener('online', rearm);
-    };
+  const resumeInterruptedTurn = useCallback(() => {
+    if (!sessionId) return;
+    if (isStreaming) return;
+    if (error === undefined && !settling) return;
+    resumeStream();
   }, [sessionId, isStreaming, settling, error, resumeStream]);
+
+  useEffect(
+    () => subscribeToResumeSignals(resumeInterruptedTurn),
+    [resumeInterruptedTurn],
+  );
 
   // Release the overlay and queue only once history contains every row named
   // by the settled turn. Older streams without row IDs fall back to an
@@ -1093,6 +1093,7 @@ export function useAgentChat({
     /** The last turn failed — the transcript renders a visible error row. */
     turnFailed: error !== undefined,
     retryFailedTurn,
+    resumeInterruptedTurn,
     queuedUserMessages,
     removeQueued,
     stop: stopTurn,

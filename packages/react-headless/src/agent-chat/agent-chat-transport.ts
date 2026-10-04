@@ -1,3 +1,4 @@
+import type { WidgetConfig } from '@opencx/widget-core';
 import { DefaultChatTransport, type UIMessage } from 'ai';
 
 /** Wiring the api layer hands the agent-chat transport (send + reconnect URLs + auth). */
@@ -13,7 +14,29 @@ export type AgentChatTransportOptions = {
    * without Authorization (401) for the rest of the session.
    */
   headers: () => Record<string, string>;
+  /** Sends and resumes the stream; the global fetch when omitted. */
+  fetch?: typeof fetch;
 };
+
+/**
+ * The reconnect URL carrying the embed's presentation choices. Built as a
+ * string: React Native 0.76 (Expo 52) throws "URLSearchParams.set is not
+ * implemented".
+ */
+export function appendPresentationParams(
+  url: string,
+  presentation: WidgetConfig['presentation'],
+): string {
+  const params: string[] = [];
+  if (presentation?.toolActivity)
+    params.push(
+      `toolActivity=${encodeURIComponent(presentation.toolActivity)}`,
+    );
+  if (presentation?.reasoning !== undefined)
+    params.push(`reasoning=${String(presentation.reasoning)}`);
+  if (params.length === 0) return url;
+  return `${url}${url.includes('?') ? '&' : '?'}${params.join('&')}`;
+}
 
 /** Build the reconnect request used by `useChat` to resume a session stream. */
 export function agentChatReconnectPreparer(options: AgentChatTransportOptions) {
@@ -34,6 +57,7 @@ export function buildAgentChatTransport(
   return new DefaultChatTransport<UIMessage>({
     api: options.api,
     headers: () => options.headers(),
+    fetch: options.fetch,
     // Every send carries its full body; a send without one is a programming
     // error, and an empty body would be rejected server-side just as loudly.
     prepareSendMessagesRequest: ({ body }) => ({ body: body ?? {} }),

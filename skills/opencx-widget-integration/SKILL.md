@@ -92,6 +92,12 @@ needed. Hooks such as `useMessages` must run beneath it. In v5, a custom streami
 also uses `useAgentChatUi` for live items, stop, queued messages, and clarification.
 `useMessages().messagesState` alone does not describe the whole live turn.
 
+For streaming in React Native (Expo SDK 52+), pass `streamingFetch` from
+`expo/fetch`, polyfill `structuredClone` and `TextDecoderStream` before the
+widget is imported, and call `useAgentChatUi().resumeInterruptedTurn()` when
+`AppState` becomes `active` and when connectivity returns. The headless package
+README has the snippet.
+
 ## Configure the public API
 
 Pass configuration under React's `options` prop or directly to `initOpenScript`.

@@ -64,3 +64,33 @@ opt-outs. Changing visibility refreshes existing history; `useAgentChatUi()`
 immediately hides opted-out activity in both live and cached turns, including
 while that refresh is pending or fails. Integrations keeping a separate cache
 can use `applyPresentation(items, presentation)` to apply the same display rules.
+
+## React Native
+
+Streaming in React Native needs Expo SDK 52 or later and three things from the
+app:
+
+```tsx
+import { fetch as expoFetch } from 'expo/fetch';
+
+<WidgetProvider
+  components={yourComponents}
+  options={{
+    token: '<WIDGET_TOKEN>',
+    streaming: true,
+    streamingFetch: expoFetch as typeof fetch,
+  }}
+>
+  <YourChat />
+</WidgetProvider>;
+```
+
+1. `streamingFetch`: React Native's built-in fetch cannot read a response
+   while it arrives. Every other request keeps using the global fetch.
+2. Globals the stream reader uses: `structuredClone` and `TextDecoderStream`.
+   Install polyfills for them at startup, before the widget is imported.
+3. Resuming a dropped reply: browsers resume when the tab is visible again or
+   the network returns. React Native has neither event, so call
+   `useAgentChatUi().resumeInterruptedTurn()` when `AppState` becomes
+   `active` and when connectivity returns. It does nothing unless the last
+   reply was cut off.

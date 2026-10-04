@@ -380,6 +380,12 @@ export interface WidgetConfig {
    * Runtime changes wait for accepted sends and reply reconciliation to finish.
    */
   streaming?: boolean;
+  /**
+   * Fetch for sending and resuming streamed replies; defaults to the global
+   * fetch, which every other request uses. React Native's built-in fetch
+   * cannot read a response while it arrives: pass `fetch` from `expo/fetch`.
+   */
+  streamingFetch?: typeof fetch;
   /** Visibility may only be reduced from the organization's defaults. */
   presentation?: {
     /** False shows each complete message while retaining live plans and tools. */
