@@ -144,6 +144,10 @@ export function useAgentChat({
             api.getStreamTransportOptions().reconnectApi(id),
             configRef.current.presentation,
           ),
+        // Resolved per request too, so a `streamingFetch` swapped on a live
+        // provider carries the next send.
+        fetch: (input, init) =>
+          (configRef.current.streamingFetch ?? globalThis.fetch)(input, init),
       }),
     [api],
   );

@@ -44,8 +44,10 @@
     "@opencx/tsconfig": "workspace:*",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
+    "@types/react-test-renderer": "^19.3.0",
     "ai": "^7.0.31",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "react-test-renderer": "^19.2.8"
   }
 }

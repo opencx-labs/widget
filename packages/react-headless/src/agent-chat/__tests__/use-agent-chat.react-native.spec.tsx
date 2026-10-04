@@ -11,9 +11,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * What a React Native host needs from the streaming engine:
- * - the embedder's `streamingFetch` (the api layer hands it over) carries the
- *   stream, because React Native's own fetch cannot read a response as it
- *   arrives;
+ * - the embedder's `streamingFetch` carries the stream, because React
+ *   Native's own fetch cannot read a response as it arrives, and a swapped
+ *   one carries the next request;
  * - the resume request carries the presentation choices without
  *   `URLSearchParams.set`, which React Native 0.76 does not implement;
  * - a dropped reply can be resumed on the host's own signal
@@ -72,7 +72,6 @@ const fakeWidgetCtx = {
       api: 'http://test/chat',
       reconnectApi: (id: string) => `http://test/chat/${id}`,
       headers: {},
-      fetch: streamingFetch,
     }),
     stopStream: vi.fn(async () => {}),
     sendPageReply: vi.fn(async () => {}),
@@ -140,6 +139,7 @@ describe('useAgentChat on a React Native host', () => {
         <Probe
           config={{
             token: 't',
+            streamingFetch,
             presentation: { toolActivity: 'details', reasoning: false },
           }}
         />,
@@ -152,6 +152,25 @@ describe('useAgentChat on a React Native host', () => {
       'http://test/chat/sess-1?toolActivity=details&reasoning=false',
     ]);
     expect(globalFetch).not.toHaveBeenCalled();
+  });
+
+  it('a streamingFetch swapped on a live provider carries the next request', async () => {
+    const replacement = vi.fn(async () => sseResponse());
+    await act(async () =>
+      root.render(<Probe config={{ token: 't', streamingFetch }} />),
+    );
+    await act(async () =>
+      root.render(
+        <Probe config={{ token: 't', streamingFetch: replacement }} />,
+      ),
+    );
+
+    await capturedTransport?.reconnectToStream({ chatId: 'sess-1' });
+
+    expect(replacement.mock.calls.map(requestedUrl)).toEqual([
+      'http://test/chat/sess-1',
+    ]);
+    expect(streamingFetch).not.toHaveBeenCalled();
   });
 
   it('resumeInterruptedTurn is a no-op on a healthy turn and resumes a failed one', async () => {
