@@ -6,6 +6,7 @@ export type {
   WidgetComponentKey,
   WidgetUserMessage,
   WidgetAgentMessage,
+  WidgetMessageOptions,
   WidgetAiMessage,
   WidgetSystemMessage__StateCheckpoint,
   WidgetSystemMessage__CsatRequested,

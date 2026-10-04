@@ -93,6 +93,8 @@ export type OpenCxComponentNameU =
   | 'chat/bot_loading/bouncing_dots_container'
   | 'chat/suggested_reply_btn'
   | 'chat/might_solve_user_issue_suggested_replies_container'
+  | 'chat/agent_msg/options'
+  | 'chat/agent_msg/option_btn'
 
   /* ------------------------------------------------------ */
   /*                        Companion                       */

@@ -9,6 +9,7 @@ import { cn } from '../lib/utils/cn.js';
 import { ReplyQuote } from '../ReplyQuote.js';
 import { RichText } from '../RichText.js';
 import { MessageAfterComponent } from './MessageAfterComponent.js';
+import { MessageOptions } from '../MessageOptions.js';
 
 /**
  * `prose` ships its own gray palette; repoint every color it paints (body,
@@ -172,6 +173,9 @@ export function AgentMessageDefaultComponent(
             );
           })
         : message.length > 0 && bubble(message)}
+      {type === 'AGENT' && props.messageOptions && (
+        <MessageOptions messageId={id} messageOptions={props.messageOptions} />
+      )}
     </div>
   );
 }

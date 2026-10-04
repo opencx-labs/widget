@@ -117,7 +117,11 @@ export type WidgetAgentMessage = {
   attachments?: MessageAttachmentType[];
   /** The earlier message of this conversation a teammate's reply answers. */
   replyTo?: WidgetMessageReplyTo;
+  /** Options the visitor can tap; a tap is sent with `SendMessageInput.optionReply`. */
+  messageOptions?: WidgetMessageOptions;
 };
+
+export type WidgetMessageOptions = NonNullable<MessageDto['messageOptions']>;
 
 export type WidgetSystemMessage__StateCheckpoint = {
   id: string;
