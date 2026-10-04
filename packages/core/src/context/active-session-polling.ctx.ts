@@ -170,6 +170,7 @@ export class ActiveSessionPollingCtx {
     }
 
     if (data?.history && data.history.length > 0) {
+      this.reconcileOptionPicks(data.history);
       // Get a fresh reference to current messages after the poll is done
       const prevMessages = this.messageCtx.state.get().messages;
       const newMessages = data.history
@@ -210,6 +211,16 @@ export class ActiveSessionPollingCtx {
     }
   };
 
+  /** A pick recorded elsewhere (another tab) lands on the message this tab already shows. */
+  private reconcileOptionPicks = (history: MessageDto[]): void => {
+    for (const row of history) {
+      const pickedOptionId = row.messageOptions?.pickedOptionId;
+      if (pickedOptionId) {
+        this.messageCtx.setMessageOptionPick(row.publicId, pickedOptionId);
+      }
+    }
+  };
+
   mapHistoryToMessage = (history: MessageDto): WidgetMessageU | null => {
     const commonFields = {
       id: history.publicId,
@@ -246,6 +257,9 @@ export class ActiveSessionPollingCtx {
           isAi: false,
         },
         ...this.constructReplyTo(history),
+        ...(history.messageOptions
+          ? { messageOptions: history.messageOptions }
+          : {}),
       };
     }
 

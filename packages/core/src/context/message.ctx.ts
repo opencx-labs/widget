@@ -44,6 +44,8 @@ export type SendMessageInput = {
    */
   withPageEntity?: boolean;
   exitModePrompt?: string;
+  /** The send is a tap on an option of an agent message (`messageOptions`). */
+  optionReply?: { messageId: string; optionId: string };
   /**
    * Signals that the send has passed validation, has a session, and is owned
    * by a send engine. This lets composers clear immediately without changing
@@ -225,6 +227,12 @@ export const buildSendMessageBody = ({
     page_effects: config.capabilities?.pageEffects,
   },
   exit_mode_prompt: input.exitModePrompt,
+  option_reply: input.optionReply
+    ? {
+        message_id: input.optionReply.messageId,
+        option_id: input.optionReply.optionId,
+      }
+    : undefined,
   initial_messages:
     initialMessages.length > 0
       ? initialMessages.map((m) => ({ uuid: m.id, content: m.data.message }))
@@ -505,6 +513,12 @@ export class MessageCtx {
    * break an accepted send.
    */
   notifySendAccepted = (input: SendMessageInput): void => {
+    if (input.optionReply) {
+      this.setMessageOptionPick(
+        input.optionReply.messageId,
+        input.optionReply.optionId,
+      );
+    }
     try {
       input.onAccepted?.();
     } catch (error) {
@@ -679,6 +693,37 @@ export class MessageCtx {
     );
   }
 
+  /** Set or clear the picked option of an agent message already in the transcript. */
+  setMessageOptionPick = (
+    messageId: string,
+    pickedOptionId: string | null,
+  ): void => {
+    const messages = this.state.get().messages;
+    const index = messages.findIndex((message) => message.id === messageId);
+    const target = messages[index];
+    if (!target || target.type !== 'AGENT' || !target.messageOptions) return;
+    if (target.messageOptions.pickedOptionId === pickedOptionId) return;
+    const nextMessages = [...messages];
+    nextMessages[index] = {
+      ...target,
+      messageOptions: { ...target.messageOptions, pickedOptionId },
+    };
+    this.state.setPartial({ messages: nextMessages });
+  };
+
+  private releaseFailedOptionPick = (input: SendMessageInput): void => {
+    if (!input.optionReply) return;
+    const { messageId, optionId } = input.optionReply;
+    const target = this.state.get().messages.find((m) => m.id === messageId);
+    if (
+      target?.type !== 'AGENT' ||
+      target.messageOptions?.pickedOptionId !== optionId
+    ) {
+      return;
+    }
+    this.setMessageOptionPick(messageId, null);
+  };
+
   sendMessage = async (input: SendMessageInput): Promise<void> => {
     // Streaming: the headless useChat engine owns the whole turn lifecycle
     // (optimistic render, streaming, interrupt-send, stop). An imperative
@@ -784,6 +829,7 @@ export class MessageCtx {
           this.sessionCtx.sessionState.setPartial({ session: data.session });
         }
       } else {
+        this.releaseFailedOptionPick(input);
         const errorMessage = this.toBotErrorMessage(
           data?.error?.message || translate(this.config, 'turn_failed_message'),
         );
@@ -794,6 +840,7 @@ export class MessageCtx {
       }
     } catch (error) {
       if (!localAbortController?.signal.aborted) {
+        this.releaseFailedOptionPick(input);
         log.error('failed to send message', error);
       }
     } finally {

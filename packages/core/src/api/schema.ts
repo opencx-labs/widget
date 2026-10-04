@@ -1508,6 +1508,16 @@ export interface components {
       exit_mode_prompt?: string;
       /** @description A prompt to be given to the AI for a customized response, should be used after an action form is submitted */
       action_form_submitted_prompt?: string;
+      /** @description The message is a tap on one of an agent message's `messageOptions`. It is recorded with the option's label as its text; an option that is not on a message of this session is rejected with a 400. */
+      option_reply?: {
+        /**
+         * Format: uuid
+         * @description The agent message whose option was tapped.
+         */
+        message_id: string;
+        /** @description The id of the tapped option. */
+        option_id: string;
+      };
       initial_messages?: {
         uuid: string;
         content: string;
@@ -1843,6 +1853,13 @@ export interface components {
           name?: string | null;
           avatar?: string | null;
         };
+      };
+      messageOptions?: {
+        options: {
+          id: string;
+          label: string;
+        }[];
+        pickedOptionId: string | null;
       };
     };
     WidgetSessionAndHistoryDto: {
