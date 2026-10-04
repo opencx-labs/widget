@@ -82,20 +82,20 @@ describe('MessageOptions', () => {
     });
   });
 
-  it('an older options message is disabled while the newest stays tappable', () => {
+  it('an older unpicked options message shows nothing while the newest stays tappable', () => {
     const older = agentMessage('older');
     const newest = agentMessage('newest');
     messages = [older, newest];
 
-    const olderButtons = render(older);
-    act(() => olderButtons[0]?.click());
-
-    expect(olderButtons.every((b) => b.disabled)).toBe(true);
-    expect(sendMessage).not.toHaveBeenCalled();
-    expect(render(newest).every((b) => !b.disabled)).toBe(true);
+    expect(render(older)).toEqual([]);
+    expect(container.textContent).toBe('');
+    expect(render(newest).map((b) => [b.textContent, b.disabled])).toEqual([
+      ['Yes', false],
+      ['No', false],
+    ]);
   });
 
-  it('a picked message is disabled and marks the picked option', () => {
+  it('a picked message keeps only the picked option, pressed and not tappable', () => {
     const picked = agentMessage('picked', {
       ...options,
       pickedOptionId: 'opt-no',
@@ -103,17 +103,39 @@ describe('MessageOptions', () => {
     messages = [picked];
 
     const buttons = render(picked);
+    act(() => buttons[0]?.click());
 
-    expect(buttons.every((b) => b.disabled)).toBe(true);
-    expect(buttons.map((b) => b.dataset.picked)).toEqual(['false', 'true']);
+    expect(
+      buttons.map((b) => [
+        b.textContent,
+        b.disabled,
+        b.dataset.picked,
+        b.getAttribute('aria-pressed'),
+      ]),
+    ).toEqual([['No', true, 'true', 'true']]);
+    expect(sendMessage).not.toHaveBeenCalled();
   });
 
-  it('a closed session disables the options; the same message is tappable while open', () => {
+  it('a picked message keeps its receipt after a newer options message arrives and after the session closes', () => {
+    const picked = agentMessage('picked', {
+      ...options,
+      pickedOptionId: 'opt-yes',
+    });
+    const newest = agentMessage('newest');
+    messages = [picked, newest];
+
+    expect(render(picked).map((b) => b.textContent)).toEqual(['Yes']);
+    isOpened = false;
+    expect(render(picked).map((b) => b.textContent)).toEqual(['Yes']);
+  });
+
+  it('a closed session shows nothing for an unpicked message; the same message is tappable while open', () => {
     const newest = agentMessage('newest');
     messages = [newest];
 
-    expect(render(newest).every((b) => !b.disabled)).toBe(true);
+    expect(render(newest).map((b) => b.disabled)).toEqual([false, false]);
     isOpened = false;
-    expect(render(newest).every((b) => b.disabled)).toBe(true);
+    expect(render(newest)).toEqual([]);
+    expect(container.textContent).toBe('');
   });
 });
