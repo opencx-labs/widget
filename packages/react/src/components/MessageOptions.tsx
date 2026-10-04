@@ -57,7 +57,8 @@ export function MessageOptions({
     <div
       {...dc('chat/agent_msg/options')}
       role="group"
-      className="flex flex-row flex-wrap gap-1.5"
+      // Rows sit far enough apart on touch screens that the 48px tap areas never overlap.
+      className="flex flex-row flex-wrap gap-1.5 [@media(pointer:coarse)]:gap-y-3"
     >
       {messageOptions.options.map((option) => (
         <Button
