@@ -88,6 +88,11 @@ export type OpenCxComponentNameU =
   | 'chat/queued_sends/item'
   | 'chat/queued_sends/remove'
   | 'chat/queued_sends/send_now'
+  /* ------------------------ CSAT ------------------------ */
+  | 'chat/csat/root'
+  | 'chat/csat/feedback_label'
+  | 'chat/csat/feedback'
+  | 'chat/csat/submit'
   /* --------------------- Chat Utils --------------------- */
   | 'chat/bot_loading/root'
   | 'chat/bot_loading/bouncing_dots_container'
