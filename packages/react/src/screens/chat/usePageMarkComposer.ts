@@ -33,7 +33,10 @@ export function usePageMarkComposer({
   }, [inputRef]);
   const uploadSnapshot = useCallback(
     async (file: File): Promise<string | null> => {
-      if (!widgetCtx.features.pageContext) return null;
+      // The upload route is closed when attachments are off: the mark is
+      // sent without its picture rather than as a refused request.
+      if (!widgetCtx.features.pageContext || !widgetCtx.features.attachments)
+        return null;
       try {
         const { fileUrl } = await widgetCtx.api.uploadFile({
           file,
