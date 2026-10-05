@@ -135,8 +135,9 @@ compatible renderer. The stock UI asks the visitor to approve every page action.
 Headless clients must implement page effects and consent before advertising that
 capability. No client flag can enable an organization-disabled feature.
 
-`features.dictation` can narrow the organization's dictation setting. There is no
-`enablePageMarks` option or `features.attachments` toggle. `initialQuestions`
+`features.dictation` and `features.attachments` can narrow the organization's
+dictation and attachment settings; `false` turns them off in this embed. There is
+no `enablePageMarks` option. `initialQuestions`
 works with polling; `requireInitialQuestion: true` requires a selection before
 typing when usable starters exist. Companion places starters above the composer.
 

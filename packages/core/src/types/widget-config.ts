@@ -438,6 +438,13 @@ export interface WidgetConfig {
     dictation?: boolean;
 
     /**
+     * Whether visitors can attach files (paperclip, drag and drop, paste).
+     * Only available when your organization allows attachments.
+     * @default org setting
+     */
+    attachments?: boolean;
+
+    /**
      * Opt in to reading host-page control names and attaching page marks.
      * Requires organization support. Host-supplied `context` is independent
      * and remains forwarded even when this is false.

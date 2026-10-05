@@ -109,6 +109,7 @@ suite('WidgetCtx.features (server-enabled, embed-narrowed)', () => {
         preamble: false,
         inlineUi: false,
         dictation: false,
+        attachments: false,
         pageContext: false,
         pageActions: false,
         clientTools: false,
@@ -116,8 +117,7 @@ suite('WidgetCtx.features (server-enabled, embed-narrowed)', () => {
     });
     expect(ctx.features).toEqual({
       dictation: false,
-      // Attachments have no embed toggle: the org decides alone.
-      attachments: true,
+      attachments: false,
       pageContext: false,
       pageActions: false,
       clientTools: false,
@@ -132,6 +132,7 @@ suite('WidgetCtx.features (server-enabled, embed-narrowed)', () => {
         preamble: true,
         inlineUi: true,
         dictation: true,
+        attachments: true,
         pageContext: true,
         clientTools: true,
       },
@@ -144,6 +145,25 @@ suite('WidgetCtx.features (server-enabled, embed-narrowed)', () => {
       clientTools: false,
     });
   });
+
+  test.each([
+    { org: true, embed: undefined, expected: true },
+    { org: true, embed: true, expected: true },
+    { org: true, embed: false, expected: false },
+    { org: false, embed: undefined, expected: false },
+    { org: false, embed: true, expected: false },
+  ])(
+    'attachments: org $org + embed $embed → $expected',
+    async ({ org, embed, expected }) => {
+      serverFeatures({ attachments: org, dictation: true });
+      const ctx = await init(
+        embed === undefined ? {} : { features: { attachments: embed } },
+      );
+      expect(ctx.features.attachments).toBe(expected);
+      // The toggle narrows attachments only, never a neighbouring feature.
+      expect(ctx.features.dictation).toBe(true);
+    },
+  );
 
   test('page context off also disables page actions', async () => {
     serverFeatures({ page_context: true, client_tools: true, dictation: true });
