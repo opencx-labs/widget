@@ -97,9 +97,13 @@ suite('resolveSendFeatures', () => {
       page_actions: false,
       client_tools: false,
     });
-    // `dictation` is composer-only: it never rides the send body.
+    // `dictation` and `attachments` are composer-only: they never ride the
+    // send body.
     expect(
-      resolveSendFeatures({ token: 't', features: { dictation: false } }),
+      resolveSendFeatures({
+        token: 't',
+        features: { dictation: false, attachments: false },
+      }),
     ).toEqual({
       page_context: false,
       page_actions: false,

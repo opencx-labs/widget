@@ -12,6 +12,13 @@ beforeEach(() => draftState.reset());
 const sendMessageSpy = vi.fn();
 const rememberSentTextSpy = vi.fn();
 const handleCancelUploadSpy = vi.fn();
+const appendFilesSpy = vi.fn();
+const emptyTheFilesSpy = vi.fn();
+const uploadFileSpy = vi.fn();
+/** The options ChatInput passes to `useDropzone` on its latest render. */
+let dropzoneOptions:
+  | { onDrop: (files: File[]) => void; disabled: boolean }
+  | undefined;
 const detachSpy = vi.fn();
 const recallOnSentSpy = vi.fn();
 const onStopSpy = vi.fn();
@@ -96,13 +103,15 @@ vi.mock('@opencx/widget-react-headless', () => ({
   useUploadFiles: () => ({
     allFiles,
     handleCancelUpload: handleCancelUploadSpy,
-    appendFiles: vi.fn(),
+    appendFiles: appendFilesSpy,
+    emptyTheFiles: emptyTheFilesSpy,
     isUploading: false,
     successFiles: allFiles,
   }),
   useWidget: () => ({
     widgetCtx: {
       streaming: true,
+      api: { uploadFile: uploadFileSpy },
       get features() {
         return {
           dictation: dictationEnabled,
@@ -154,12 +163,18 @@ vi.mock('../../../page-marks/mark-source', () => ({
 }));
 
 vi.mock('react-dropzone', () => ({
-  useDropzone: () => ({
-    // The real hook passes a caller's `ref` through to the root element.
-    getRootProps: (props: Record<string, unknown> = {}) => props,
-    getInputProps: () => ({}),
-    open: vi.fn(),
-  }),
+  useDropzone: (options: {
+    onDrop: (files: File[]) => void;
+    disabled: boolean;
+  }) => {
+    dropzoneOptions = options;
+    return {
+      // The real hook passes a caller's `ref` through to the root element.
+      getRootProps: (props: Record<string, unknown> = {}) => props,
+      getInputProps: () => ({}),
+      open: vi.fn(),
+    };
+  },
 }));
 
 vi.mock('framer-motion', async (importOriginal) => ({
@@ -888,6 +903,78 @@ describe('ChatInput send acceptance', () => {
       container.querySelector('button[aria-label="mark_page"]'),
     ).not.toBeNull();
   });
+
+  function pasteFile(textarea: HTMLTextAreaElement, file: File) {
+    const event = new Event('paste', { bubbles: true, cancelable: true });
+    Object.defineProperty(event, 'clipboardData', { value: { files: [file] } });
+    textarea.dispatchEvent(event);
+  }
+
+  it.each([
+    { attachments: true, uploads: 1 },
+    { attachments: false, uploads: 0 },
+  ])(
+    'attachments=$attachments: drop and paste upload only when allowed',
+    async ({ attachments, uploads }) => {
+      canAttach = attachments;
+      const { textarea } = await renderInput();
+      const file = new File(['passport'], 'passport.png', {
+        type: 'image/png',
+      });
+
+      expect(dropzoneOptions?.disabled).toBe(!attachments);
+      await act(async () => dropzoneOptions?.onDrop([file]));
+      expect(appendFilesSpy).toHaveBeenCalledTimes(uploads);
+
+      appendFilesSpy.mockClear();
+      await act(async () => pasteFile(textarea, file));
+      expect(appendFilesSpy).toHaveBeenCalledTimes(uploads);
+    },
+  );
+
+  it.each([
+    { attachments: true, files: 1, emptied: 0 },
+    { attachments: false, files: 0, emptied: 1 },
+  ])(
+    'attachments=$attachments after a file was queued: the send carries only allowed files',
+    async ({ attachments, files, emptied }) => {
+      emptyTheFilesSpy.mockClear();
+      const { textarea } = await renderInput();
+      // The host narrows the embed while the visitor has a file queued.
+      canAttach = attachments;
+      await renderInput();
+      expect(emptyTheFilesSpy).toHaveBeenCalledTimes(emptied);
+
+      const sent = await submit(textarea);
+      expect(sent.attachments).toHaveLength(files);
+    },
+  );
+
+  it.each([
+    { attachments: true, uploads: 1 },
+    { attachments: false, uploads: 0 },
+  ])(
+    'attachments=$attachments: a mark snapshot uploads only when allowed',
+    async ({ attachments, uploads }) => {
+      vi.mocked(beginSnapshotUpload).mockClear();
+      uploadFileSpy.mockReset();
+      uploadFileSpy.mockResolvedValue({
+        fileUrl: 'https://storage.test/m.jpg',
+      });
+      canAttach = attachments;
+      allFiles = [];
+      const { textarea } = await renderInput();
+      await submit(textarea);
+
+      const upload = vi.mocked(beginSnapshotUpload).mock.calls[0]?.[1];
+      if (!upload) throw new Error('the send did not start a snapshot upload');
+      const url = await upload(
+        new File(['px'], 'mark.jpg', { type: 'image/jpeg' }),
+      );
+      expect(uploadFileSpy).toHaveBeenCalledTimes(uploads);
+      expect(url).toBe(attachments ? 'https://storage.test/m.jpg' : null);
+    },
+  );
 
   it('@ opens the mention menu; a pick highlights the @Title in the text and the send carries the mention', async () => {
     vi.useFakeTimers();

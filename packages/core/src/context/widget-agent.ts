@@ -108,7 +108,10 @@ export function resolveClientFeatures(
   const toggles = config.features;
   return {
     dictation: narrowFeature(agent.features.dictation, toggles?.dictation),
-    attachments: agent.features.attachments,
+    attachments: narrowFeature(
+      agent.features.attachments,
+      toggles?.attachments,
+    ),
     pageContext: agent.features.pageContext && toggles?.pageContext === true,
     clientTools:
       agent.features.clientTools &&

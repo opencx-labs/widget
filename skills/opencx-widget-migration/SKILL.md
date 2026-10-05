@@ -123,10 +123,10 @@ const options: WidgetConfig = {
 Install matching `@opencx/widget-core` explicitly when importing `WidgetConfig`
 in the host application, and type-check the options against that declaration.
 
-`features.dictation`, `features.pageContext`, `features.clientTools` and
-`features.pageActions` narrow the organization's enabled features. They cannot
-turn on disabled organization features. Page marks require the explicit
-page-context opt-in. Attachments have no per-embed toggle; remove any experimental
+`features.dictation`, `features.attachments`, `features.pageContext`,
+`features.clientTools` and `features.pageActions` narrow the organization's
+enabled features. They cannot turn on disabled organization features. Page marks
+require the explicit page-context opt-in. Remove any experimental
 `enablePageMarks` option.
 
 Share only approved context: it can enter session history and the agent's input.

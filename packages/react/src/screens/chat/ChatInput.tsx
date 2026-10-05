@@ -210,9 +210,15 @@ export function ChatInput({
     allFiles,
     handleCancelUpload,
     appendFiles,
+    emptyTheFiles,
     isUploading,
     successFiles,
   } = useUploadFiles();
+  // Attachments switched off mid-draft (the host narrowed the embed): queued
+  // files go with the paperclip instead of riding the next send.
+  useEffect(() => {
+    if (!canAttach && allFiles.length > 0) emptyTheFiles();
+  }, [canAttach, allFiles.length, emptyTheFiles]);
 
   const isHandedOff = !!sessionState.session?.isHandedOff;
 
@@ -278,7 +284,9 @@ export function ChatInput({
       detach(mark);
       return false;
     });
-    const submittedFiles = [...successFiles];
+    const submittedFiles = widgetCtx.features.attachments
+      ? [...successFiles]
+      : [];
     if (
       !submittedText.trim() &&
       submittedFiles.length === 0 &&
