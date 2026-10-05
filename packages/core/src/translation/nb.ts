@@ -20,6 +20,8 @@ export const NorwegianBokmalLanguage: TranslationInterface = {
   csat_title: 'Hvordan var samtalen din?',
   csat_submitted_title: 'Du vurderte samtalen som',
   csat_feedback_placeholder: 'Fortell oss mer... (valgfritt)',
+  csat_feedback_label: 'Del tilbakemeldingen din',
+  csat_submit: 'Send',
   follow_up_placeholder: 'Følg opp…',
   companion_layout_label: 'Oppsett',
   companion_layout_floating: 'Flytende',

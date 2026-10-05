@@ -20,6 +20,8 @@ export const EstonianLanguage: TranslationInterface = {
   csat_title: 'Milline oli teie vestlus?',
   csat_submitted_title: 'Hindasite vestlust kui',
   csat_feedback_placeholder: 'Rääkige meile rohkem... (valikuline)',
+  csat_feedback_label: 'Jagage oma tagasisidet',
+  csat_submit: 'Saada',
   follow_up_placeholder: 'Küsi juurde…',
   companion_layout_label: 'Paigutus',
   companion_layout_floating: 'Hõljuv',

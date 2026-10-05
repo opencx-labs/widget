@@ -20,6 +20,8 @@ export const PolishLanguage: TranslationInterface = {
   csat_title: 'Jak przebiegła Twoja rozmowa?',
   csat_submitted_title: 'Oceniłeś rozmowę jako',
   csat_feedback_placeholder: 'Powiedz nam więcej... (opcjonalnie)',
+  csat_feedback_label: 'Podziel się opinią',
+  csat_submit: 'Wyślij',
   follow_up_placeholder: 'Dopytaj…',
   companion_layout_label: 'Układ',
   companion_layout_floating: 'Pływający',

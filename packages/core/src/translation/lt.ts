@@ -20,6 +20,8 @@ export const LithuanianLanguage: TranslationInterface = {
   csat_title: 'Koks buvo jūsų pokalbis?',
   csat_submitted_title: 'Pokalbį įvertinote kaip',
   csat_feedback_placeholder: 'Papasakokite daugiau... (neprivaloma)',
+  csat_feedback_label: 'Pasidalykite savo nuomone',
+  csat_submit: 'Siųsti',
   follow_up_placeholder: 'Tęsti…',
   companion_layout_label: 'Išdėstymas',
   companion_layout_floating: 'Slankusis',

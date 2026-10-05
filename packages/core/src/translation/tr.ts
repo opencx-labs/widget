@@ -20,6 +20,8 @@ export const TurkishLanguage: TranslationInterface = {
   csat_title: 'Görüşmeniz nasıldı?',
   csat_submitted_title: 'Görüşmeyi şöyle değerlendirdiniz',
   csat_feedback_placeholder: 'Bize daha fazlasını anlatın... (isteğe bağlı)',
+  csat_feedback_label: 'Görüşlerinizi paylaşın',
+  csat_submit: 'Gönder',
   follow_up_placeholder: 'Devam et…',
   companion_layout_label: 'Düzen',
   companion_layout_floating: 'Kayan',

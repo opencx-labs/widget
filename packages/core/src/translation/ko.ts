@@ -20,6 +20,8 @@ export const KoreanLanguage: TranslationInterface = {
   csat_title: '대화는 어떠셨나요?',
   csat_submitted_title: '대화를 다음과 같이 평가했습니다',
   csat_feedback_placeholder: '더 알려주세요... (선택 사항)',
+  csat_feedback_label: '의견을 공유해 주세요',
+  csat_submit: '보내기',
   follow_up_placeholder: '이어서 질문…',
   companion_layout_label: '레이아웃',
   companion_layout_floating: '플로팅',

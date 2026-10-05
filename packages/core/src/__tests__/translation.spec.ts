@@ -49,6 +49,14 @@ describe('translations', () => {
     'support_chat_aria_label',
   ] satisfies TranslationKeyU[];
 
+  // Keys added after a locale shipped get the same English-fallback blind
+  // spot, so they join the sweep.
+  const mustBeLocalized = [
+    ...previouslyHardcoded,
+    'csat_feedback_label',
+    'csat_submit',
+  ] satisfies TranslationKeyU[];
+
   /**
    * `language.key` pairs whose translation is genuinely the English word, so
    * the sweep below does not report them. Keep this list short and explicit —
@@ -58,24 +66,28 @@ describe('translations', () => {
     // "No" is the Spanish and Italian word too.
     'es.close_conversation_cancel',
     'it.close_conversation_cancel',
+    // "Send" is the Danish and Norwegian imperative too.
+    'da.csat_submit',
+    'nb.csat_submit',
+    'no.csat_submit',
   ]);
 
   it('recognizes English copy as English', () => {
     // Positive control for the per-language sweep: prove the comparison fires
     // when the copy really is English, so an empty result there means
     // "everything was translated" rather than "nothing was compared".
-    expect(previouslyHardcoded).toHaveLength(9);
+    expect(mustBeLocalized).toHaveLength(11);
     expect(
-      previouslyHardcoded.filter(
+      mustBeLocalized.filter(
         (key) => getTranslation(key, 'en', undefined) === EnglishLanguage[key],
       ),
-    ).toEqual(previouslyHardcoded);
+    ).toEqual(mustBeLocalized);
   });
 
   it.each(LANGUAGES.filter((language) => language !== 'en'))(
-    '%s localizes the labels that used to be hardcoded',
+    '%s localizes every key that must not fall back to English',
     (language) => {
-      const stillEnglish = previouslyHardcoded.filter(
+      const stillEnglish = mustBeLocalized.filter(
         (key) =>
           getTranslation(key, language, undefined) === EnglishLanguage[key] &&
           !sharedWithEnglish.has(`${language}.${key}`),
