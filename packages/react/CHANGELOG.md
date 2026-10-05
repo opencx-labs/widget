@@ -1,5 +1,17 @@
 # @opencx/widget-react
 
+## 5.3.0
+
+### Minor Changes
+
+- 73bf88f: `features.attachments: false` turns file attachments off in an embed: no paperclip, and dropped or pasted files are ignored. Like `features.dictation`, it can only narrow the organization's setting; `true` cannot turn attachments on when the organization turned them off.
+
+### Patch Changes
+
+- Updated dependencies [73bf88f]
+  - @opencx/widget-core@5.3.0
+  - @opencx/widget-react-headless@5.3.0
+
 ## 5.2.0
 
 ### Minor Changes
