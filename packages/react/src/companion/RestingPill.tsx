@@ -3,7 +3,11 @@ import { motion, useReducedMotion } from 'framer-motion';
 import React from 'react';
 import { PILL_SIZE } from './companion-geometry';
 import { CompanionFaceIcon } from './CompanionFaceIcon';
-import { UnreadMark } from '../components/UnreadBadge';
+import {
+  UnreadMark,
+  UnreadMarkHostStyles,
+  unreadMarkInsetOnDisc,
+} from '../components/UnreadBadge';
 import { EASE_OUT, QUICK_TWEEN } from '../motion';
 
 /**
@@ -107,6 +111,12 @@ export function RestingPill({
   measureRef: (node: HTMLDivElement | null) => void;
 }) {
   const reduceMotion = useReducedMotion();
+  // The bar clips to its own rounded shape, so the mark (and its 2px ring)
+  // stays inside the disc, like the active-chats count on the other side.
+  const unreadInset = Math.max(
+    3,
+    unreadMarkInsetOnDisc(PILL_SIZE, unreadShowCount),
+  );
   return (
     <motion.div
       style={{
@@ -194,22 +204,31 @@ export function RestingPill({
           fontFamily: 'ui-sans-serif, system-ui, sans-serif',
         }}
       >
-        <CompanionIcon
-          icon={icon}
-          pillBackground={pillBackground}
-          size={PILL_SIZE}
-        />
-        {visible && (
-          <UnreadMark
-            count={unreadCount}
-            showCount={unreadShowCount}
-            style={{
-              top: PILL_SIZE * 0.14,
-              insetInlineEnd: 'auto',
-              insetInlineStart: PILL_SIZE * 0.86 - (unreadShowCount ? 18 : 10),
-            }}
+        <span
+          style={{
+            position: 'relative',
+            display: 'flex',
+            flexShrink: 0,
+            width: PILL_SIZE,
+            height: PILL_SIZE,
+          }}
+        >
+          <CompanionIcon
+            icon={icon}
+            pillBackground={pillBackground}
+            size={PILL_SIZE}
           />
-        )}
+          {visible && unreadCount > 0 && (
+            <>
+              <UnreadMarkHostStyles />
+              <UnreadMark
+                count={unreadCount}
+                showCount={unreadShowCount}
+                style={{ top: unreadInset, insetInlineEnd: unreadInset }}
+              />
+            </>
+          )}
+        </span>
         <motion.span
           initial={false}
           animate={{ opacity: docked ? 1 : 0 }}

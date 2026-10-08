@@ -52,10 +52,12 @@ describe('unread indicator', () => {
     act(() => root.render(<UnreadBadge count={3} />));
     expect(badge()?.textContent).toBe('');
     expect(badge()?.getAttribute('aria-hidden')).toBe('true');
+    expect(badge()?.getAttribute('data-unread-look')).toBe('dot');
 
     config.current = { token: '', unreadIndicator: 'count' };
     act(() => root.render(<UnreadBadge count={120} key="count" />));
     expect(badge()?.textContent).toBe('99+');
+    expect(badge()?.getAttribute('data-unread-look')).toBe('count');
 
     config.current = { token: '', unreadIndicator: false };
     act(() => root.render(<UnreadBadge count={3} key="off" />));

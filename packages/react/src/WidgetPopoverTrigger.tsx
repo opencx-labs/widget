@@ -13,20 +13,41 @@ import { MotionDiv } from './components/lib/MotionDiv';
 import { cn } from './components/lib/utils/cn';
 import { Wobble, WOBBLE_MAX_MOVEMENT_PIXELS } from './components/lib/wobble';
 import { ChatBubbleSvg } from './components/svg/ChatBubbleSvg';
-import { UnreadBadge, useUnreadLabel } from './components/UnreadBadge';
+import {
+  UnreadBadge,
+  unreadMarkInsetOnDisc,
+  useUnreadLabel,
+  useUnreadLook,
+} from './components/UnreadBadge';
 import { useTheme } from './hooks/useTheme';
 import { useTriggerLabel } from './hooks/useTriggerLabel';
 import { dc } from './utils/data-component';
 import { renderCustomTrigger } from './utils/render-custom-trigger';
 
-const initialContent = buildFrameHtml();
+const initialContent = buildFrameHtml({ transparent: true });
+
+/** Room around the button so the unread mark can sit on its corner. */
+const BADGE_OVERHANG_PIXELS = 6;
+const FRAME_PADDING_PIXELS = {
+  x: WOBBLE_MAX_MOVEMENT_PIXELS.x + BADGE_OVERHANG_PIXELS,
+  y: WOBBLE_MAX_MOVEMENT_PIXELS.y + BADGE_OVERHANG_PIXELS,
+};
+
+/** Keep the button where the theme offset puts it, despite the frame padding. */
+const offsetMinusOverhang = (offset: number | string) =>
+  typeof offset === 'number' ? offset - BADGE_OVERHANG_PIXELS : offset;
 
 function WidgetPopoverTrigger() {
   const { isOpen, setIsOpen } = useWidgetTrigger();
   const { assets, customComponents } = useConfig();
   const { count: unreadCount } = useUnread();
   const unreadLabel = useUnreadLabel(unreadCount);
+  const showUnreadCount = useUnreadLook() === 'count';
   const { theme } = useTheme();
+  const badgeInset = unreadMarkInsetOnDisc(
+    theme.widgetTrigger.size.button,
+    showUnreadCount,
+  );
 
   const baseLabel = useTriggerLabel();
   const triggerLabel =
@@ -46,21 +67,19 @@ function WidgetPopoverTrigger() {
       initialContent={initialContent}
       title="OpenCX Live Chat Trigger"
       style={{
-        height: `calc(${theme.widgetTrigger.size.button}px + ${WOBBLE_MAX_MOVEMENT_PIXELS.x * 2}px)`,
-        width: `calc(${theme.widgetTrigger.size.button}px + ${WOBBLE_MAX_MOVEMENT_PIXELS.y * 2}px)`,
+        height: `calc(${theme.widgetTrigger.size.button}px + ${FRAME_PADDING_PIXELS.y * 2}px)`,
+        width: `calc(${theme.widgetTrigger.size.button}px + ${FRAME_PADDING_PIXELS.x * 2}px)`,
         fontSize: '16px',
         position: 'fixed',
         zIndex: theme.widgetTrigger.zIndex,
-        right: theme.widgetTrigger.offset.right,
-        bottom: theme.widgetTrigger.offset.bottom,
-        left: theme.widgetTrigger.offset.left,
+        right: offsetMinusOverhang(theme.widgetTrigger.offset.right),
+        bottom: offsetMinusOverhang(theme.widgetTrigger.offset.bottom),
+        left: offsetMinusOverhang(theme.widgetTrigger.offset.left),
 
         // reset iframe defaults
         boxSizing: 'border-box',
         borderWidth: '0px',
-
-        // A quick fix for the white square background of the iframe when the hosting website switches to dark mode
-        borderRadius: '100%',
+        background: 'transparent',
       }}
     >
       <FrameDocument
@@ -84,7 +103,7 @@ function WidgetPopoverTrigger() {
           {!isOpen && (
             <UnreadBadge
               count={unreadCount}
-              style={{ top: '14%', insetInlineEnd: '14%' }}
+              style={{ top: badgeInset, insetInlineEnd: badgeInset }}
             />
           )}
           <Wobble>

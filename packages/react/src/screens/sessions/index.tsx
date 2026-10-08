@@ -122,12 +122,7 @@ function SessionCard({
       {unreadLabel && (
         <>
           <span className="sr-only">{unreadLabel}</span>
-          <UnreadBadge
-            count={1}
-            indicator="dot"
-            component="sessions/unread"
-            style={{ position: 'static', flexShrink: 0, boxShadow: 'none' }}
-          />
+          <UnreadBadge count={1} indicator="dot" component="sessions/unread" />
         </>
       )}
       <ChevronRightIcon className="size-4 text-muted-foreground shrink-0 rtl:-scale-100" />
