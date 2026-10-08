@@ -7,6 +7,7 @@ export type OpenCxComponentNameU =
   /*                         Trigger                        */
   /* ------------------------------------------------------ */
   | 'trigger/btn'
+  | 'trigger/unread'
 
   /* ------------------------------------------------------ */
   /*                     Sessions Screen                    */
@@ -15,6 +16,7 @@ export type OpenCxComponentNameU =
   | 'sessions/header'
   | 'sessions/list'
   | 'sessions/new_conversation_btn'
+  | 'sessions/unread'
 
   /* ------------------------------------------------------ */
   /*                       Chat Screen                      */

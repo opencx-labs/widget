@@ -169,6 +169,8 @@ export type TranslationInterface = {
   companion_active_chats?: string;
   companion_other_sessions?: string;
   companion_working_chats?: string;
+  /** Launcher badge label: sessions with a reply the visitor has not seen. */
+  unread_sessions?: string;
   companion_expand_chat: string;
   companion_sidebar_dock_label: string;
   companion_sidebar_side_label: string;

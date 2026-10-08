@@ -18,7 +18,7 @@ type SessionState = {
   isCreatingSession: boolean;
   isResolvingSession: boolean;
 };
-type SessionsState = {
+export type SessionsState = {
   /** List of all user sessions */
   data: SessionDto[];
   /** A cursor to get the next page of sessions */

@@ -38,6 +38,7 @@ export const EnglishLanguage: TranslationInterface = {
   companion_active_chats: '{count} active sessions',
   companion_other_sessions: 'Other open sessions: {count}',
   companion_working_chats: '{count} working',
+  unread_sessions: '{count} unread',
   companion_history: 'Conversation history',
   companion_expand_chat: 'Expand chat',
   companion_sidebar_dock_label: 'Dock',
