@@ -43,7 +43,7 @@ function WidgetPopoverTrigger() {
   const { count: unreadCount } = useUnread();
   const unreadLabel = useUnreadLabel(unreadCount);
   const showUnreadCount = useUnreadLook() === 'count';
-  const { theme } = useTheme();
+  const { theme, triggerSide } = useTheme();
   const badgeInset = unreadMarkInsetOnDisc(
     theme.widgetTrigger.size.button,
     showUnreadCount,
@@ -103,7 +103,11 @@ function WidgetPopoverTrigger() {
           {!isOpen && (
             <UnreadBadge
               count={unreadCount}
-              style={{ top: badgeInset, insetInlineEnd: badgeInset }}
+              // The top corner on the launcher's docked side. The frame's text
+              // direction follows the widget language, the launcher's side
+              // follows the host page, so an inline-end inset can land on the
+              // inner corner.
+              style={{ top: badgeInset, [triggerSide]: badgeInset }}
             />
           )}
           <Wobble>
