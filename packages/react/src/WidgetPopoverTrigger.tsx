@@ -3,12 +3,17 @@ import IFrame from '@uiw/react-iframe';
 import { AnimatePresence } from 'framer-motion';
 import { ChevronDownIcon } from 'lucide-react';
 import React from 'react';
-import { useConfig, useWidgetTrigger } from '@opencx/widget-react-headless';
+import {
+  useConfig,
+  useUnread,
+  useWidgetTrigger,
+} from '@opencx/widget-react-headless';
 import { buildFrameHtml, FrameDocument } from './components/FrameDocument';
 import { MotionDiv } from './components/lib/MotionDiv';
 import { cn } from './components/lib/utils/cn';
 import { Wobble, WOBBLE_MAX_MOVEMENT_PIXELS } from './components/lib/wobble';
 import { ChatBubbleSvg } from './components/svg/ChatBubbleSvg';
+import { UnreadBadge, useUnreadLabel } from './components/UnreadBadge';
 import { useTheme } from './hooks/useTheme';
 import { useTriggerLabel } from './hooks/useTriggerLabel';
 import { dc } from './utils/data-component';
@@ -19,15 +24,20 @@ const initialContent = buildFrameHtml();
 function WidgetPopoverTrigger() {
   const { isOpen, setIsOpen } = useWidgetTrigger();
   const { assets, customComponents } = useConfig();
+  const { count: unreadCount } = useUnread();
+  const unreadLabel = useUnreadLabel(unreadCount);
   const { theme } = useTheme();
 
-  const triggerLabel = useTriggerLabel();
+  const baseLabel = useTriggerLabel();
+  const triggerLabel =
+    unreadLabel && !isOpen ? `${baseLabel} · ${unreadLabel}` : baseLabel;
 
   if (customComponents?.widgetTrigger) {
     return renderCustomTrigger(
       customComponents.widgetTrigger,
       isOpen,
       setIsOpen,
+      unreadCount,
     );
   }
 
@@ -64,13 +74,19 @@ function WidgetPopoverTrigger() {
           aria-label={triggerLabel}
           title={triggerLabel}
           className={cn(
-            'font-sans flex items-center justify-center rounded-full',
+            'relative font-sans flex items-center justify-center rounded-full',
           )}
           style={{
             height: theme.widgetTrigger.size.button,
             width: theme.widgetTrigger.size.button,
           }}
         >
+          {!isOpen && (
+            <UnreadBadge
+              count={unreadCount}
+              style={{ top: '14%', insetInlineEnd: '14%' }}
+            />
+          )}
           <Wobble>
             <div
               {...dc('trigger/btn')}

@@ -113,6 +113,10 @@ Use the installed `WidgetConfig` declaration for exact keys and defaults.
 - Custom UI: `options.customComponents` supplies render slots; React's separate
   `components` prop replaces named internals. Follow the installed callback types.
   Slot callbacks receive `react` for rendering with the widget's React instance.
+- Unread replies: the launcher shows a dot for sessions with a reply the visitor
+  has not opened; `unreadIndicator` switches to `'count'` or `false`. Host pages
+  badge their own UI with `hooks.onUnreadCountChange`; the `widgetTrigger` slot
+  receives `unreadCount`. The backend keeps the read state, per visitor.
 - Identity: distinguish the organization widget `token` from `user.token` for
   visitor authentication. Follow the [authentication guide](https://docs.open.cx/widget/authentication)
   for the selected version; use the application's server for signing credentials.

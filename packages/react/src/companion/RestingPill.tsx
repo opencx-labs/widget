@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import React from 'react';
 import { PILL_SIZE } from './companion-geometry';
 import { CompanionFaceIcon } from './CompanionFaceIcon';
+import { UnreadMark } from '../components/UnreadBadge';
 import { EASE_OUT, QUICK_TWEEN } from '../motion';
 
 /**
@@ -82,10 +83,15 @@ export function RestingPill({
   pickerOpen = false,
   working = false,
   sessions,
+  unreadCount = 0,
+  unreadShowCount = false,
 }: {
   /** The shell is resting as a pill (vs. morphed open) — show this look */
   sessions?: React.ReactNode;
   activeCount?: number;
+  /** Sessions with a reply the visitor has not looked at; marks the disc. */
+  unreadCount?: number;
+  unreadShowCount?: boolean;
   countLabel?: string;
   onOpenChats?: (anchor: HTMLButtonElement, pointer: boolean) => void;
   pickerOpen?: boolean;
@@ -193,6 +199,17 @@ export function RestingPill({
           pillBackground={pillBackground}
           size={PILL_SIZE}
         />
+        {visible && (
+          <UnreadMark
+            count={unreadCount}
+            showCount={unreadShowCount}
+            style={{
+              top: PILL_SIZE * 0.14,
+              insetInlineEnd: 'auto',
+              insetInlineStart: PILL_SIZE * 0.86 - (unreadShowCount ? 18 : 10),
+            }}
+          />
+        )}
         <motion.span
           initial={false}
           animate={{ opacity: docked ? 1 : 0 }}
