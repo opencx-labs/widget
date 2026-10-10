@@ -288,6 +288,7 @@ export class MessageCtx {
    * user bubble shows no page-mark chips either.
    */
   private readonly getSendsPageContext: () => boolean;
+  private readonly onVisitorSend: (() => void) | undefined;
   public get sendsPageContext(): boolean {
     return this.getSendsPageContext();
   }
@@ -333,6 +334,7 @@ export class MessageCtx {
     getRequestConfig,
     isStreaming,
     getSendsPageContext,
+    onVisitorSend,
   }: {
     config: WidgetConfig;
     api: ApiCaller;
@@ -345,7 +347,10 @@ export class MessageCtx {
     getRequestConfig?: () => WidgetConfig;
     isStreaming?: () => boolean;
     getSendsPageContext?: () => boolean;
+    /** Runs synchronously at the start of every send, inside the visitor's click or keypress. */
+    onVisitorSend?: () => void;
   }) {
+    this.onVisitorSend = onVisitorSend;
     this.config = config;
     this.getClientCapabilities =
       getClientCapabilities ?? (() => this.getRequestConfig().capabilities);
@@ -725,6 +730,7 @@ export class MessageCtx {
   };
 
   sendMessage = async (input: SendMessageInput): Promise<void> => {
+    this.onVisitorSend?.();
     // Streaming: the headless useChat engine owns the whole turn lifecycle
     // (optimistic render, streaming, interrupt-send, stop). An imperative
     // `newChat({ message })` can send before that surface's mount effect, so

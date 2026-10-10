@@ -294,6 +294,7 @@ export function ChatInput({
     )
       return;
     const submittedFileIds = allFiles.map((file) => file.id);
+    widgetCtx.unreadCtx.primeSound();
     // Upload only after Send. Attaching or discarding a mark stays local.
     submittedMarks.forEach((mark) => beginSnapshotUpload(mark, uploadSnapshot));
     void Promise.all(

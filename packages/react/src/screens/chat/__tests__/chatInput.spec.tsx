@@ -1,6 +1,13 @@
 import { beginSnapshotUpload } from '../../../page-marks/mark-thumbnail';
 import { createComposerDraftMock } from './composer-draft';
-import type { DictationTarget, SendMessageInput } from '@opencx/widget-core';
+import {
+  PrimitiveState,
+  UnreadCtx,
+  type DictationTarget,
+  type SendMessageInput,
+  type SessionsState,
+  type WidgetConfig,
+} from '@opencx/widget-core';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -35,6 +42,22 @@ let sendsPageContext = true;
 let marksShareable = true;
 let configContext: Record<string, unknown> | undefined;
 let conversationGeneration = 0;
+function buildUnreadCtx(config: WidgetConfig) {
+  return new UnreadCtx({
+    config,
+    api: { markSessionRead: async () => ({}) },
+    sessionsState: new PrimitiveState<SessionsState>({
+      data: [],
+      cursor: undefined,
+      isLastPage: false,
+      didStartInitialFetch: true,
+      isInitialFetchLoading: false,
+      didLoadFirstPage: true,
+    }),
+    setSessions: () => undefined,
+  });
+}
+let unreadCtx = buildUnreadCtx({ token: '' });
 const mentionSearch = vi.fn(async () => [
   {
     type: 'workflow',
@@ -119,6 +142,9 @@ vi.mock('@opencx/widget-react-headless', () => ({
           pageContext: sendsPageContext,
           clientTools: false,
         };
+      },
+      get unreadCtx() {
+        return unreadCtx;
       },
       messageCtx: {
         blocksSendWhileAwaitingReply: false,
@@ -285,6 +311,7 @@ describe('ChatInput send acceptance', () => {
     dictationError = null;
     capturedInput = null;
     configContext = undefined;
+    unreadCtx = buildUnreadCtx({ token: '' });
     marks = [{ shape: 'box', elements: [{ name: 'button "Save"' }] }];
     allFiles = [
       {
@@ -312,6 +339,7 @@ describe('ChatInput send acceptance', () => {
     if (rootMounted) act(() => root.unmount());
     container.remove();
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   async function renderInput() {
@@ -434,6 +462,39 @@ describe('ChatInput send acceptance', () => {
       pendingSnapshots.get(mark)!('https://files.test/a.jpg'),
     );
     expect(capturedInput?.content).toBe('same conversation');
+    expect(sendMessageSpy).toHaveBeenCalledOnce();
+    pendingSnapshots.delete(mark);
+  });
+
+  it('readies the reply sound inside the Send click, before a snapshot upload delays the send', async () => {
+    const resume = vi.fn(() => Promise.resolve());
+    vi.stubGlobal(
+      'AudioContext',
+      class {
+        state = 'suspended';
+        resume = resume;
+      },
+    );
+    unreadCtx = buildUnreadCtx({
+      token: '',
+      unreadNotifications: { sound: true },
+    });
+    const mark = marks[0]!;
+    pendingSnapshots.set(mark, () => {});
+    const { textarea } = await renderInput();
+    await act(async () => setTextareaValue(textarea, 'hello'));
+    act(() => {
+      container
+        .querySelector<HTMLButtonElement>('button[aria-label="send_message"]')!
+        .click();
+      // Still inside the click: a browser unlocks audio only here.
+      expect(resume).toHaveBeenCalledOnce();
+    });
+    expect(sendMessageSpy).not.toHaveBeenCalled();
+
+    await act(async () =>
+      pendingSnapshots.get(mark)!('https://files.test/a.jpg'),
+    );
     expect(sendMessageSpy).toHaveBeenCalledOnce();
     pendingSnapshots.delete(mark);
   });

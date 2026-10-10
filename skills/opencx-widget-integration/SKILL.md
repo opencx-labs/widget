@@ -117,6 +117,9 @@ Use the installed `WidgetConfig` declaration for exact keys and defaults.
   has not opened; `unreadIndicator` switches to `'count'` or `false`. Host pages
   badge their own UI with `hooks.onUnreadCountChange`; the `widgetTrigger` slot
   receives `unreadCount`. The backend keeps the read state, per visitor.
+  `unreadNotifications: { sound: true }` (opt-in) plays a built-in chime on
+  each new reply, or `sound: '<url>'` plays the site's own audio;
+  `hooks.onUnreadReply` fires for each new reply for custom notifications.
 - Identity: distinguish the organization widget `token` from `user.token` for
   visitor authentication. Follow the [authentication guide](https://docs.open.cx/widget/authentication)
   for the selected version; use the application's server for signing credentials.

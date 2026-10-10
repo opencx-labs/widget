@@ -173,6 +173,7 @@ export class WidgetCtx {
       getSendsPageContext: () => this.features.pageContext,
       getClientCapabilities,
       getRequestConfig,
+      onVisitorSend: () => this.unreadCtx.primeSound(),
     });
 
     this.uploadCtx = new UploadCtx(this.api);
