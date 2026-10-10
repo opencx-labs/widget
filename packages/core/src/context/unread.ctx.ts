@@ -2,6 +2,8 @@ import type { SessionDto } from '../types/dtos';
 import type { WidgetConfig } from '../types/widget-config';
 import { log } from '../utils/log';
 import { PrimitiveState } from '../utils/PrimitiveState';
+import { isNewerSession, sessionUpdatedAt } from '../utils/session-recency';
+import { playUnreadSound, primeUnreadSound } from '../utils/unread-sound';
 import type { SessionsState } from './session.ctx';
 
 /** The one backend call this needs; `ApiCaller.markSessionRead` satisfies it. */
@@ -25,6 +27,9 @@ export type UnreadState = {
  */
 const READ_RETRY_DELAY_MS = 5_000;
 
+/** A burst of replies chimes once. */
+const MIN_CHIME_GAP_MS = 2_000;
+
 /**
  * The launcher dot. The backend owns the read state: every session row
  * carries `unread`, and this reports which session is on screen so the
@@ -46,23 +51,42 @@ export class UnreadCtx {
   private lastNotifiedCount: number | null = null;
   private subscriptions: Array<() => void> = [];
   private disposed = false;
+  /**
+   * Sessions this page has already reported as seen. A session without a
+   * backend read marker is never flagged, so the first look is reported
+   * even when nothing is unread; that is what starts tracking it.
+   */
+  private reportedSessionIds = new Set<string>();
+  /** How each session looked at the last evaluation, to spot new replies. */
+  private lastSeen = new Map<string, { unread: boolean; updatedAt: number }>();
+  /**
+   * The newest `updatedAt` of the list as it loaded. A session that shows up
+   * later counts as news only if it moved after that: a later page of the
+   * list brings older sessions, not new replies. `null` until the list loads.
+   */
+  private loadedUpTo: number | null = null;
+  private lastChimeAt = Number.NEGATIVE_INFINITY;
+  private playSound: () => void;
 
   constructor({
     config,
     api,
     sessionsState,
     setSessions,
+    playSound = playUnreadSound,
   }: {
     config: WidgetConfig;
     api: UnreadApi;
     sessionsState: PrimitiveState<SessionsState>;
     /** Merges the backend's answer to a read call into the shared list. */
     setSessions: (sessions: SessionDto[]) => void;
+    playSound?: () => void;
   }) {
     this.config = config;
     this.api = api;
     this.sessionsState = sessionsState;
     this.setSessions = setSessions;
+    this.playSound = playSound;
     this.subscriptions.push(
       sessionsState.subscribe(({ data }) => this.evaluate(data)),
     );
@@ -78,6 +102,14 @@ export class UnreadCtx {
   };
 
   /**
+   * Readies the reply chime when the embed turned it on. Call it while the
+   * visitor clicks or types, the only moment a browser unlocks audio.
+   */
+  primeSound = () => {
+    if (this.config.unreadNotifications?.sound) primeUnreadSound();
+  };
+
+  /**
    * Which session the visitor is actually looking at: widget open, chat
    * screen with its transcript showing, tab visible. `null` otherwise.
    * Looking at a session is what clears its dot; opening the widget onto the
@@ -89,17 +121,56 @@ export class UnreadCtx {
   };
 
   private evaluate = (rows: SessionDto[]) => {
+    const loaded = this.sessionsState.get().didLoadFirstPage;
+    const loadedUpTo = this.loadedUpTo;
+    if (loaded && loadedUpTo === null) {
+      this.loadedUpTo = Math.max(
+        Number.NEGATIVE_INFINITY,
+        ...rows.map(sessionUpdatedAt),
+      );
+    }
     const unreadSessionIds: string[] = [];
+    const replies: SessionDto[] = [];
     for (const row of rows) {
-      if (row.unread !== true) continue;
+      const before = this.lastSeen.get(row.id);
+      const updatedAt = sessionUpdatedAt(row);
+      this.lastSeen.set(row.id, { unread: row.unread === true, updatedAt });
       if (row.id === this.viewingSessionId) {
-        this.markViewedSessionRead(row.id);
+        if (
+          row.unread === true ||
+          (row.unread === false && !this.reportedSessionIds.has(row.id))
+        ) {
+          this.markViewedSessionRead(row.id);
+        }
         continue;
       }
+      if (row.unread !== true) continue;
       unreadSessionIds.push(row.id);
+      if (loadedUpTo === null) continue;
+      const isNews = before
+        ? !before.unread || updatedAt > before.updatedAt
+        : updatedAt > loadedUpTo;
+      if (isNews) replies.push(row);
     }
     this.state.set({ unreadSessionIds, count: unreadSessionIds.length });
     this.notifyCount(unreadSessionIds.length);
+    this.announceReplies(replies);
+  };
+
+  private announceReplies = (replies: SessionDto[]) => {
+    if (replies.length === 0) return;
+    for (const session of replies) {
+      try {
+        this.config.hooks?.onUnreadReply?.({ session });
+      } catch (hookError) {
+        log.error('onUnreadReply hook failed', hookError);
+      }
+    }
+    if (!this.config.unreadNotifications?.sound) return;
+    const now = Date.now();
+    if (now - this.lastChimeAt < MIN_CHIME_GAP_MS) return;
+    this.lastChimeAt = now;
+    this.playSound();
   };
 
   private markViewedSessionRead = (sessionId: string) => {
@@ -110,12 +181,13 @@ export class UnreadCtx {
       .markSessionRead({ sessionId })
       .then(({ data }) => {
         if (!data || this.disposed) return;
+        this.reportedSessionIds.add(sessionId);
         // A poll that landed meanwhile may carry a newer reply: keep that row
         // and report the session once more instead of hiding the reply.
         const current = this.sessionsState
           .get()
           .data.find((row) => row.id === data.id);
-        if (current && isNewer(current, data)) lookAgain = true;
+        if (current && isNewerSession(current, data)) lookAgain = true;
         else this.setSessions([data]);
       })
       .catch((error: unknown) => {
@@ -150,8 +222,4 @@ export class UnreadCtx {
       log.error('onUnreadCountChange hook failed', hookError);
     }
   };
-}
-
-function isNewer(row: SessionDto, than: SessionDto): boolean {
-  return new Date(row.updatedAt).getTime() > new Date(than.updatedAt).getTime();
 }
