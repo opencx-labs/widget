@@ -28,6 +28,8 @@ export type SessionsState = {
   /** Did fetch for the first time */
   didStartInitialFetch: boolean;
   isInitialFetchLoading: boolean;
+  /** A first page came back from the backend, even an empty one. Stays `false` while requests fail. */
+  didLoadFirstPage: boolean;
 };
 
 export class SessionCtx {
@@ -57,6 +59,7 @@ export class SessionCtx {
      * Initialize this as `true` so it always starts loading until the first fetch is done
      */
     isInitialFetchLoading: true,
+    didLoadFirstPage: false,
   });
 
   constructor({
@@ -344,6 +347,9 @@ export class SessionCtx {
     const { data } = await this.getSessions({ cursor: undefined });
     if (!data) return;
     this.setSessions(data.items);
+    if (!this.sessionsState.get().didLoadFirstPage) {
+      this.sessionsState.setPartial({ didLoadFirstPage: true });
+    }
   };
 
   resolveSession = async () => {

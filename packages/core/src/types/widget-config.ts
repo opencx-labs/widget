@@ -802,6 +802,15 @@ export interface WidgetConfig {
      * navigation. See `unreadIndicator` for the built-in dot.
      */
     onUnreadCountChange?: (count: number) => void;
+
+    /**
+     * Fires when a reply lands, while the page is open, in a session the
+     * visitor is not looking at: the session turns unread, or an unread one
+     * gets another reply. Replies already waiting when the page loads do not
+     * fire. Use it for your own notification: the page title, a browser
+     * notification. See `unreadNotifications.sound` for the built-in chime.
+     */
+    onUnreadReply?: (ctx: { session: SessionDto }) => void;
   };
 
   /**
@@ -826,6 +835,25 @@ export interface WidgetConfig {
    * @default 'dot'
    */
   unreadIndicator?: 'dot' | 'count' | false;
+
+  /**
+   * Ways to tell the visitor a reply came in beyond the launcher mark. All
+   * off unless turned on here.
+   */
+  unreadNotifications?: {
+    /**
+     * Plays a short chime when a reply lands in a session the visitor is not
+     * looking at (the moments `hooks.onUnreadReply` fires), at most once
+     * every few seconds. `true` plays the built-in chime, generated in the
+     * browser with no file to load; a URL plays that audio instead, which the
+     * page's content security policy must allow. Browsers allow sound only
+     * after the visitor has clicked or typed on the page, so a reply before
+     * that stays silent.
+     *
+     * @default false
+     */
+    sound?: boolean | string;
+  };
 
   /**
    * The target attribute for all links in the AI or human agents responses.

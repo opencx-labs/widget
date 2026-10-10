@@ -67,4 +67,49 @@ suite('unread sessions across the widget runtime', () => {
     ]);
     expect(root.unreadCtx.state.get().count).toBe(1);
   });
+
+  test('a failed first sessions request does not make replies that were already waiting count as new', async () => {
+    vi.useFakeTimers();
+    try {
+      TestUtils.mock.ApiCaller.getExternalWidgetConfig(ApiCaller, undefined);
+      const waiting = buildSession({ id: 'waiting', unread: true });
+      vi.mocked(ApiCaller.prototype.getSessions)
+        .mockClear()
+        .mockResolvedValueOnce({
+          response: new Response(null, { status: 503 }),
+          data: undefined,
+          error: { message: 'unavailable' },
+        })
+        .mockResolvedValue({
+          response: new Response(),
+          data: { items: [waiting], next: null },
+        });
+      const replies: string[] = [];
+      const root = await WidgetCtx.initialize({
+        config: {
+          token: 'test',
+          user: { token: 'visitor' },
+          hooks: { onUnreadReply: ({ session }) => replies.push(session.id) },
+        },
+      });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(ApiCaller.prototype.getSessions).toHaveBeenCalledOnce();
+
+      await vi.advanceTimersByTimeAsync(60_000);
+      // Positive control: the second poll landed and the session counts.
+      expect(root.unreadCtx.state.get().count).toBe(1);
+      expect(replies).toEqual([]);
+
+      const reply = new Date(Date.now() + 1_000).toISOString();
+      vi.mocked(ApiCaller.prototype.getSessions).mockResolvedValue({
+        response: new Response(),
+        data: { items: [{ ...waiting, updatedAt: reply }], next: null },
+      });
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(replies).toEqual(['waiting']);
+      root.dispose();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

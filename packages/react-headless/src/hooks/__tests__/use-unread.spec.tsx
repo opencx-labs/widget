@@ -53,6 +53,7 @@ function fakeCtx(config: WidgetConfig) {
     isLastPage: false,
     didStartInitialFetch: true,
     isInitialFetchLoading: false,
+    didLoadFirstPage: true,
   });
   const sessionState = new PrimitiveState<{
     session: SessionDto | null;
