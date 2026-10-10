@@ -3,6 +3,11 @@ import { motion, useReducedMotion } from 'framer-motion';
 import React from 'react';
 import { PILL_SIZE } from './companion-geometry';
 import { CompanionFaceIcon } from './CompanionFaceIcon';
+import {
+  UnreadMark,
+  UnreadMarkHostStyles,
+  unreadMarkInsetOnDisc,
+} from '../components/UnreadBadge';
 import { EASE_OUT, QUICK_TWEEN } from '../motion';
 
 /**
@@ -82,10 +87,15 @@ export function RestingPill({
   pickerOpen = false,
   working = false,
   sessions,
+  unreadCount = 0,
+  unreadShowCount = false,
 }: {
   /** The shell is resting as a pill (vs. morphed open) — show this look */
   sessions?: React.ReactNode;
   activeCount?: number;
+  /** Sessions with a reply the visitor has not looked at; marks the disc. */
+  unreadCount?: number;
+  unreadShowCount?: boolean;
   countLabel?: string;
   onOpenChats?: (anchor: HTMLButtonElement, pointer: boolean) => void;
   pickerOpen?: boolean;
@@ -101,6 +111,12 @@ export function RestingPill({
   measureRef: (node: HTMLDivElement | null) => void;
 }) {
   const reduceMotion = useReducedMotion();
+  // The bar clips to its own rounded shape, so the mark (and its 2px ring)
+  // stays inside the disc, like the active-chats count on the other side.
+  const unreadInset = Math.max(
+    3,
+    unreadMarkInsetOnDisc(PILL_SIZE, unreadShowCount),
+  );
   return (
     <motion.div
       style={{
@@ -188,11 +204,31 @@ export function RestingPill({
           fontFamily: 'ui-sans-serif, system-ui, sans-serif',
         }}
       >
-        <CompanionIcon
-          icon={icon}
-          pillBackground={pillBackground}
-          size={PILL_SIZE}
-        />
+        <span
+          style={{
+            position: 'relative',
+            display: 'flex',
+            flexShrink: 0,
+            width: PILL_SIZE,
+            height: PILL_SIZE,
+          }}
+        >
+          <CompanionIcon
+            icon={icon}
+            pillBackground={pillBackground}
+            size={PILL_SIZE}
+          />
+          {visible && unreadCount > 0 && (
+            <>
+              <UnreadMarkHostStyles />
+              <UnreadMark
+                count={unreadCount}
+                showCount={unreadShowCount}
+                style={{ top: unreadInset, insetInlineEnd: unreadInset }}
+              />
+            </>
+          )}
+        </span>
         <motion.span
           initial={false}
           animate={{ opacity: docked ? 1 : 0 }}

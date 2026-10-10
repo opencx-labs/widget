@@ -241,6 +241,52 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/backend/widget/v2/session/{sessionId}/read': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          sessionId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description WidgetSession */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['WidgetSessionDto'];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorDto'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/backend/widget/v2/create-session': {
     parameters: {
       query?: never;
@@ -1741,6 +1787,12 @@ export interface components {
       channel: string;
       isVerified: boolean;
       lastMessage: string | null;
+      /**
+       * Someone other than the visitor wrote the newest customer-visible
+       * message after the visitor last looked at the session. Absent on older
+       * backends, which keep no read marker.
+       */
+      unread?: boolean;
       modeId: string | null;
       latestStateCheckpointPayload: {
         [key: string]: unknown;

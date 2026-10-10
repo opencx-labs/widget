@@ -14,10 +14,12 @@ export function renderCustomTrigger(
   customTrigger: CustomTrigger,
   isOpen: boolean,
   setIsOpen: (open: boolean) => void,
+  unreadCount: number,
 ) {
   return customTrigger({
     react: React,
     isOpen,
     setIsOpen: (open: boolean) => setIsOpen(open),
+    unreadCount,
   });
 }

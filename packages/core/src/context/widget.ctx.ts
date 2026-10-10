@@ -11,6 +11,7 @@ import { MessageCtx } from './message.ctx';
 import { RouterCtx } from './router.ctx';
 import { SessionCtx } from './session.ctx';
 import { StorageCtx } from './storage.ctx';
+import { UnreadCtx } from './unread.ctx';
 import {
   resolveClientFeatures,
   resolveWidgetAgent,
@@ -46,6 +47,8 @@ export class WidgetCtx {
   public dictationCtx: DictationCtx;
   public routerCtx: RouterCtx;
   public storageCtx?: StorageCtx;
+  /** Shared by every conversation runtime: the launcher has one dot. */
+  public unreadCtx: UnreadCtx;
   public modes: ModeDto[] = [];
 
   public org: {
@@ -86,6 +89,7 @@ export class WidgetCtx {
     sessions: number;
   } | null = null;
   private activeSessionPollingCtx: ActiveSessionPollingCtx;
+  private readonly ownsUnreadCtx: boolean;
   private disposed = false;
 
   private constructor({
@@ -145,6 +149,16 @@ export class WidgetCtx {
       sessionsPollingIntervalSeconds:
         WidgetCtx.pollingIntervalsSeconds.sessions,
     });
+
+    this.ownsUnreadCtx = !parent;
+    this.unreadCtx =
+      parent?.unreadCtx ??
+      new UnreadCtx({
+        config: this.config,
+        api: this.api,
+        sessionsState: this.sessionCtx.sessionsState,
+        setSessions: this.sessionCtx.setSessions,
+      });
 
     this.messageCtx = new MessageCtx({
       config: this.config,
@@ -262,6 +276,7 @@ export class WidgetCtx {
     this.disposed = true;
     this.routerCtx.dispose();
     this.activeSessionPollingCtx.dispose();
+    if (this.ownsUnreadCtx) this.unreadCtx.dispose();
     const cleanup = this.sessionCtx.dispose({ clearActiveSession });
     this.messageCtx.reset();
     this.uploadCtx.reset();

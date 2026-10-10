@@ -726,6 +726,8 @@ export interface WidgetConfig {
       react: typeof React;
       isOpen: boolean;
       setIsOpen: (open: boolean) => void;
+      /** Sessions with a reply the visitor has not looked at yet. */
+      unreadCount: number;
     }) => ReturnType<typeof React.createElement> | null;
   };
 
@@ -792,6 +794,14 @@ export interface WidgetConfig {
       message: WidgetMessageU;
       session: SessionDto;
     }) => void;
+
+    /**
+     * Fires with the number of sessions holding a reply the visitor has not
+     * looked at yet: once when the widget knows the answer, then on every
+     * change. Use it to badge a custom launcher, the page title, or your own
+     * navigation. See `unreadIndicator` for the built-in dot.
+     */
+    onUnreadCountChange?: (count: number) => void;
   };
 
   /**
@@ -802,6 +812,20 @@ export interface WidgetConfig {
    * @default false
    */
   oneOpenSessionAllowed?: boolean;
+
+  /**
+   * How the launcher shows sessions holding a reply the visitor has not
+   * looked at yet: a red dot, the number of such sessions, or nothing.
+   *
+   * Looking at a session clears it — opening the widget onto the sessions
+   * list does not. The read state lives on the backend, so it follows the
+   * visitor across devices. `false` hides the built-in indicator and the
+   * per-session dots in the list; `hooks.onUnreadCountChange` and the
+   * `unreadCount` passed to `customComponents.widgetTrigger` keep working.
+   *
+   * @default 'dot'
+   */
+  unreadIndicator?: 'dot' | 'count' | false;
 
   /**
    * The target attribute for all links in the AI or human agents responses.

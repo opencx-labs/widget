@@ -419,6 +419,23 @@ export class ApiCaller {
     });
   };
 
+  /** The visitor is looking at this session right now. */
+  markSessionRead = async ({
+    sessionId,
+    abortSignal,
+  }: {
+    sessionId: string;
+    abortSignal?: AbortSignal;
+  }) => {
+    return await this.client.POST(
+      '/backend/widget/v2/session/{sessionId}/read',
+      {
+        params: { path: { sessionId } },
+        signal: abortSignal,
+      },
+    );
+  };
+
   getSessions = async ({
     cursor,
     filters,

@@ -3,6 +3,7 @@ import {
   useBot,
   useConfig,
   useSessions,
+  useUnread,
   useWidgetRouter,
 } from '@opencx/widget-react-headless';
 import { AnimatePresence } from 'framer-motion';
@@ -24,6 +25,7 @@ import { Skeleton } from '../../components/lib/skeleton';
 import { cn } from '../../components/lib/utils/cn';
 import { MemoizedReactMarkdown } from '../../components/MemoizedReactMarkdown';
 import { PoweredByOpen } from '../../components/PoweredByOpen';
+import { UnreadBadge, useUnreadLabel } from '../../components/UnreadBadge';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useSetWidgetSize } from '../../hooks/useSetWidgetSize';
 import { useTheme } from '../../hooks/useTheme';
@@ -47,6 +49,8 @@ function SessionCard({
   const { humanAgent } = useConfig();
   const bot = useBot();
   const { toChatScreen } = useWidgetRouter();
+  const { isUnread } = useUnread();
+  const unreadLabel = useUnreadLabel(isUnread(session.id) ? 1 : 0);
 
   const assigneeName =
     session.assignee.kind === 'human'
@@ -115,6 +119,12 @@ function SessionCard({
           </AnimatePresence>
         </div>
       </div>
+      {unreadLabel && (
+        <>
+          <span className="sr-only">{unreadLabel}</span>
+          <UnreadBadge count={1} indicator="dot" component="sessions/unread" />
+        </>
+      )}
       <ChevronRightIcon className="size-4 text-muted-foreground shrink-0 rtl:-scale-100" />
     </Button>
   );

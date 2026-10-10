@@ -13,6 +13,7 @@ import {
   useConfig,
   useMessages,
   useSessions,
+  useUnread,
   useWidget,
   useWidgetLayout,
   useWidgetTrigger,
@@ -25,6 +26,7 @@ import { useCanHover } from '../hooks/useCanHover';
 import { useTheme } from '../hooks/useTheme';
 import { useTranslation } from '../hooks/useTranslation';
 import { useTriggerLabel } from '../hooks/useTriggerLabel';
+import { useUnreadLabel, useUnreadLook } from '../components/UnreadBadge';
 import { renderCustomTrigger } from '../utils/render-custom-trigger';
 import { CompanionContent } from './CompanionContent';
 import { CompanionFrame } from './CompanionFrame';
@@ -41,6 +43,7 @@ import { ChatPicker } from './ChatPicker';
 import { SessionCircles } from './SessionCircles';
 import { useChatPicker } from './useChatPicker';
 import { useCompanionOpenSync } from './useCompanionOpenSync';
+import { UnreadViewing } from '../components/UnreadViewing';
 import {
   CHAT_SHADOW,
   DOCK_SHADOW,
@@ -70,6 +73,7 @@ export function WidgetCompanion() {
   const { isOpen, setIsOpen } = useWidgetTrigger();
   const { openChats, activeId } = useCompanionChats();
   const activeChatCount = openChats.length;
+  const { count: unreadCount } = useUnread();
   const workingChatCount = openChats.filter((chat) => chat.working).length;
   const { widgetCtx, contentIframeRef } = useWidget();
   const { companion, assets, customComponents, initialQuestions } = useConfig();
@@ -162,7 +166,12 @@ export function WidgetCompanion() {
    * theme.widgetTrigger.offset.bottom (useTheme supplies the default), so
    * embedders who position the popover trigger keep their offset here. */
   const bottomOffset = theme.widgetTrigger.offset.bottom;
-  const pillAriaLabel = useTriggerLabel();
+  const unreadLook = useUnreadLook();
+  const unreadLabel = useUnreadLabel(unreadCount);
+  const baseTriggerLabel = useTriggerLabel();
+  const pillAriaLabel = unreadLabel
+    ? `${baseTriggerLabel} · ${unreadLabel}`
+    : baseTriggerLabel;
 
   // Resting dock: the pill carries a label bar by default — a bare icon
   // has no affordance. `hover` expands on pointer hover only (icon-only on
@@ -525,10 +534,14 @@ export function WidgetCompanion() {
 
   return createPortal(
     <>
+      {/* The input bar keeps the panel open with the transcript hidden, so a
+          reply polled in there stays unseen. */}
+      <UnreadViewing transcriptVisible={state === 'chat'} />
       {/* Embedder-supplied trigger (same contract as popover mode) — it
           replaces the resting pill entirely and drives the panel via
           setIsOpen; the panel still opens from the bottom-center baseline. */}
-      {customTrigger && renderCustomTrigger(customTrigger, isOpen, setIsOpen)}
+      {customTrigger &&
+        renderCustomTrigger(customTrigger, isOpen, setIsOpen, unreadCount)}
 
       {isPill && picker.anchor && !hasCustomTrigger && (
         <ChatPicker
@@ -740,6 +753,8 @@ export function WidgetCompanion() {
               pillBackground={pillBackground}
               dir={dir}
               measureRef={dockContentRef}
+              unreadCount={unreadLook === false ? 0 : unreadCount}
+              unreadShowCount={unreadLook === 'count'}
             />
           )}
 

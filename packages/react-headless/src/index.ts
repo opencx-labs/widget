@@ -31,6 +31,8 @@ export { useMessages } from './hooks/useMessages';
 export { usePrimitiveState } from './hooks/usePrimitiveState';
 export { useSessions } from './hooks/useSessions';
 export { useWidgetRouter } from './hooks/useWidgetRouter';
+export { useUnread } from './hooks/useUnread';
+export { useUnreadViewing } from './hooks/useUnreadViewing';
 export { type FileWithProgress, useUploadFiles } from './hooks/useUploadFiles';
 export {
   useWidgetTrigger,

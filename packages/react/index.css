@@ -27,12 +27,41 @@
   .opencx-fade-up {
     animation: opencx-fade-up 0.3s cubic-bezier(0.23, 1, 0.32, 1) both;
   }
+
+  /* The unread mark on the launcher and on a session row. Restyle it from
+     `cssOverrides` through these selectors; the companion pill mirrors the
+     rule in CompanionControlStyles because it renders in the host page. */
+  [data-component='trigger/unread'],
+  [data-component='sessions/unread'] {
+    @apply pointer-events-none rounded-full bg-destructive text-center font-semibold text-destructive-foreground tabular-nums;
+    font-size: 11px;
+    line-height: 18px;
+    box-shadow: 0 0 0 2px hsl(var(--opencx-background));
+  }
+  [data-component='trigger/unread'] {
+    position: absolute;
+    z-index: 1;
+  }
+  [data-component='sessions/unread'] {
+    flex-shrink: 0;
+    box-shadow: none;
+  }
+  [data-unread-look='dot'] {
+    width: 9px;
+    height: 9px;
+  }
+  [data-unread-look='count'] {
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    font-size: 10px;
+    line-height: 16px;
+  }
   .opencx-placeholder-in {
     animation: opencx-placeholder-in 0.2s cubic-bezier(0.23, 1, 0.32, 1) both;
   }
   .opencx-placeholder-out {
-    animation: opencx-placeholder-out 0.18s cubic-bezier(0.23, 1, 0.32, 1)
-      both;
+    animation: opencx-placeholder-out 0.18s cubic-bezier(0.23, 1, 0.32, 1) both;
   }
 
   @keyframes opencx-text-shimmer {

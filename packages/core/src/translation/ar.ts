@@ -38,6 +38,7 @@ export const ArabicLanguage: TranslationInterface = {
   companion_active_chats: '{count} جلسات نشطة',
   companion_other_sessions: 'الجلسات المفتوحة الأخرى: {count}',
   companion_working_chats: '{count} قيد العمل',
+  unread_sessions: '{count} غير مقروءة',
   companion_history: 'سجل المحادثات',
   companion_expand_chat: 'توسيع المحادثة',
   companion_sidebar_dock_label: 'الإرساء',

@@ -194,6 +194,32 @@ export const TestUtils = {
             },
           });
       },
+      markSessionRead(target, returnValue) {
+        target.prototype.markSessionRead = vi
+          .fn(target.prototype.markSessionRead)
+          .mockResolvedValue({
+            response: new Response(),
+            data: {
+              id: genUuid(),
+              ticketNumber: 1,
+              title: null,
+              assignee: { kind: 'ai', name: null, avatarUrl: null },
+              channel: '',
+              createdAt: new Date().toISOString(),
+              isHandedOff: false,
+              isOpened: true,
+              isVerified: false,
+              lastMessage: '',
+              unread: false,
+              updatedAt: new Date().toISOString(),
+              modeId: null,
+              latestStateCheckpointPayload: null,
+              sessionAttributes: {},
+              customStatus: null,
+              ...returnValue?.data,
+            },
+          });
+      },
       resolveSession(target, returnValue) {
         target.prototype.resolveSession = vi
           .fn(target.prototype.resolveSession)

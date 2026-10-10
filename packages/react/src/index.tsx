@@ -21,6 +21,7 @@ import { WidgetContent, WidgetPopoverContent } from './WidgetPopoverContent';
 import { WidgetPopoverTrigger } from './WidgetPopoverTrigger';
 import { WidgetPopoverAnchor } from './WidgetPopoverAnchor';
 import { WidgetCompanion } from './companion/WidgetCompanion';
+import { UnreadViewing } from './components/UnreadViewing';
 import { PageMarksProvider } from './page-marks/PageMarksProvider';
 import { AgentChatPageActions } from './screens/chat/agent/AgentChatPageActions';
 import { AgentChatPageEffects } from './screens/chat/agent/AgentChatPageEffects';
@@ -46,6 +47,7 @@ function WidgetPopoverTriggerAndContent() {
 
   return (
     <PopoverPrimitive.Root open={isOpen} onOpenChange={setIsOpen}>
+      <UnreadViewing />
       <WidgetPopoverAnchor />
       <WidgetPopoverTrigger />
       <WidgetPopoverContent />
@@ -166,7 +168,14 @@ const Widget = React.forwardRef<
             <AgentChatPageEffects />
             <AgentChatPageActions />
             <WidgetImperativeHandler widgetRef={ref} />
-            {options.inline ? <WidgetContent /> : <WidgetDisplayRoot />}
+            {options.inline ? (
+              <>
+                <UnreadViewing />
+                <WidgetContent />
+              </>
+            ) : (
+              <WidgetDisplayRoot />
+            )}
           </PageMarksProvider>
         </WidgetTriggerProvider>
       </WidgetProvider>

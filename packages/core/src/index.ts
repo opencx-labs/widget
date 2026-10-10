@@ -47,6 +47,8 @@ export type {
   WidgetPageContext,
 } from './types/widget-config';
 export type { ExternalStorage } from './types/external-storage';
+export { UnreadCtx, type UnreadState } from './context/unread.ctx';
+export type { SessionsState } from './context/session.ctx';
 export type { OpenCxComponentNameU } from './types/component-name';
 export type { IconNameU } from './types/icons';
 export {
