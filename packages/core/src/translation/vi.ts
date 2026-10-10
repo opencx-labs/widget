@@ -20,6 +20,8 @@ export const VietnameseLanguage: TranslationInterface = {
   csat_title: 'Cuộc trò chuyện của bạn thế nào?',
   csat_submitted_title: 'Bạn đã đánh giá cuộc trò chuyện là',
   csat_feedback_placeholder: 'Cho chúng tôi biết thêm... (tùy chọn)',
+  csat_feedback_label: 'Chia sẻ ý kiến của bạn',
+  csat_submit: 'Gửi',
   follow_up_placeholder: 'Hỏi thêm…',
   companion_layout_label: 'Bố cục',
   companion_layout_floating: 'Nổi',

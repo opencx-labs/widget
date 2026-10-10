@@ -20,6 +20,8 @@ export const ItalianLanguage: TranslationInterface = {
   csat_title: 'Com’è andata la tua conversazione?',
   csat_submitted_title: 'Hai valutato la conversazione come',
   csat_feedback_placeholder: 'Dicci di più... (facoltativo)',
+  csat_feedback_label: 'Condividi la tua opinione',
+  csat_submit: 'Invia',
   follow_up_placeholder: 'Continua…',
   companion_layout_label: 'Layout',
   companion_layout_floating: 'Mobile',

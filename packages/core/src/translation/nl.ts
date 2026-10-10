@@ -20,6 +20,8 @@ export const DutchLanguage: TranslationInterface = {
   csat_title: 'Hoe was je gesprek?',
   csat_submitted_title: 'Je hebt het gesprek beoordeeld als',
   csat_feedback_placeholder: 'Vertel ons meer... (optioneel)',
+  csat_feedback_label: 'Deel je mening',
+  csat_submit: 'Verzenden',
   follow_up_placeholder: 'Verder vragen…',
   companion_layout_label: 'Indeling',
   companion_layout_floating: 'Zwevend',

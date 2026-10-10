@@ -20,6 +20,8 @@ export const LuxembourgishLanguage: TranslationInterface = {
   csat_title: 'Wéi war Är Konversatioun?',
   csat_submitted_title: 'Dir hutt d’Konversatioun bewäert als',
   csat_feedback_placeholder: 'Sot eis méi... (fakultativ)',
+  csat_feedback_label: 'Deelt Är Meenung mat eis',
+  csat_submit: 'Schécken',
   follow_up_placeholder: 'Nofroen…',
   companion_layout_label: 'Layout',
   companion_layout_floating: 'Schwebend',

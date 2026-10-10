@@ -20,6 +20,8 @@ export const FilipinoLanguage: TranslationInterface = {
   csat_title: 'Kumusta ang iyong usapan?',
   csat_submitted_title: 'Ni-rate mo ang usapan bilang',
   csat_feedback_placeholder: 'Sabihin pa sa amin... (opsyonal)',
+  csat_feedback_label: 'Ibahagi ang iyong opinyon',
+  csat_submit: 'Ipadala',
   follow_up_placeholder: 'Magpatuloy…',
   companion_layout_label: 'Ayos',
   companion_layout_floating: 'Lumulutang',

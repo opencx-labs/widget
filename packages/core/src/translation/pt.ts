@@ -20,6 +20,8 @@ export const PortugueseLanguage: TranslationInterface = {
   csat_title: 'Como foi a sua conversa?',
   csat_submitted_title: 'Você avaliou a conversa como',
   csat_feedback_placeholder: 'Conte-nos mais... (opcional)',
+  csat_feedback_label: 'Deixe a sua opinião',
+  csat_submit: 'Enviar',
   follow_up_placeholder: 'Continuar…',
   companion_layout_label: 'Esquema',
   companion_layout_floating: 'Flutuante',

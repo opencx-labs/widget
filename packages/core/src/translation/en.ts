@@ -20,6 +20,8 @@ export const EnglishLanguage: TranslationInterface = {
   csat_title: 'How was your conversation?',
   csat_submitted_title: 'You rated the conversation as',
   csat_feedback_placeholder: 'Tell us more... (optional)',
+  csat_feedback_label: 'Share your feedback',
+  csat_submit: 'Send',
   follow_up_placeholder: 'Follow up…',
   companion_layout_label: 'Layout',
   companion_layout_floating: 'Floating',

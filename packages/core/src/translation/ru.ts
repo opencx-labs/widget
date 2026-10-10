@@ -20,6 +20,8 @@ export const RussianLanguage: TranslationInterface = {
   csat_title: 'Как прошёл ваш разговор?',
   csat_submitted_title: 'Вы оценили разговор как',
   csat_feedback_placeholder: 'Расскажите подробнее... (необязательно)',
+  csat_feedback_label: 'Поделитесь своим мнением',
+  csat_submit: 'Отправить',
   follow_up_placeholder: 'Уточнить…',
   companion_layout_label: 'Макет',
   companion_layout_floating: 'Плавающий',

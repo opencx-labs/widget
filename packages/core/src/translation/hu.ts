@@ -20,6 +20,8 @@ export const HungarianLanguage: TranslationInterface = {
   csat_title: 'Milyen volt a beszélgetése?',
   csat_submitted_title: 'A beszélgetést így értékelte',
   csat_feedback_placeholder: 'Mondjon többet... (opcionális)',
+  csat_feedback_label: 'Ossza meg véleményét',
+  csat_submit: 'Küldés',
   follow_up_placeholder: 'További kérdés…',
   companion_layout_label: 'Elrendezés',
   companion_layout_floating: 'Lebegő',

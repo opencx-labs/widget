@@ -20,6 +20,8 @@ export const DanishLanguage: TranslationInterface = {
   csat_title: 'Hvordan var din samtale?',
   csat_submitted_title: 'Du vurderede samtalen som',
   csat_feedback_placeholder: 'Fortæl os mere... (valgfrit)',
+  csat_feedback_label: 'Del din feedback',
+  csat_submit: 'Send',
   follow_up_placeholder: 'Følg op…',
   companion_layout_label: 'Layout',
   companion_layout_floating: 'Flydende',

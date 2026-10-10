@@ -20,6 +20,8 @@ export const RomanianLanguage: TranslationInterface = {
   csat_title: 'Cum a fost conversația ta?',
   csat_submitted_title: 'Ai evaluat conversația ca',
   csat_feedback_placeholder: 'Spune-ne mai multe... (opțional)',
+  csat_feedback_label: 'Spune-ne părerea ta',
+  csat_submit: 'Trimite',
   follow_up_placeholder: 'Continuă…',
   companion_layout_label: 'Aspect',
   companion_layout_floating: 'Flotant',

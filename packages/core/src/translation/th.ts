@@ -20,6 +20,8 @@ export const ThaiLanguage: TranslationInterface = {
   csat_title: 'การสนทนาของคุณเป็นอย่างไรบ้าง?',
   csat_submitted_title: 'คุณให้คะแนนการสนทนาว่า',
   csat_feedback_placeholder: 'บอกเราเพิ่มเติม... (ไม่บังคับ)',
+  csat_feedback_label: 'แบ่งปันความคิดเห็นของคุณ',
+  csat_submit: 'ส่ง',
   follow_up_placeholder: 'ถามต่อ…',
   companion_layout_label: 'เค้าโครง',
   companion_layout_floating: 'แบบลอย',

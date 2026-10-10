@@ -20,6 +20,8 @@ export const BengaliLanguage: TranslationInterface = {
   csat_title: 'আপনার কথোপকথন কেমন ছিল?',
   csat_submitted_title: 'আপনি কথোপকথনটি মূল্যায়ন করেছেন',
   csat_feedback_placeholder: 'আমাদের আরও বলুন... (ঐচ্ছিক)',
+  csat_feedback_label: 'আপনার মতামত জানান',
+  csat_submit: 'পাঠান',
   follow_up_placeholder: 'আরও জিজ্ঞাসা করুন…',
   companion_layout_label: 'লেআউট',
   companion_layout_floating: 'ভাসমান',
