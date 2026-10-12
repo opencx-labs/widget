@@ -66,6 +66,15 @@ afterEach(() => {
 });
 
 describe('MessageCtx send acceptance', () => {
+  it('an accepted send retires the last reply verdict on either engine', () => {
+    const { messageCtx } = buildCtx({ streaming: true, withSession: true });
+    messageCtx.state.setPartial({ lastAIResMightSolveUserIssue: true });
+    expect(messageCtx.state.get().lastAIResMightSolveUserIssue).toBe(true);
+
+    messageCtx.notifySendAccepted({ content: 'one more question' });
+    expect(messageCtx.state.get().lastAIResMightSolveUserIssue).toBe(false);
+  });
+
   it('invalidates prepared ownership on every reset, even with the same session id', () => {
     const { messageCtx, sessionCtx } = buildCtx({
       streaming: false,

@@ -5,6 +5,7 @@ import type {
   WidgetMessageU,
   WidgetUserMessage,
 } from '@opencx/widget-core';
+import { isRecord } from '@opencx/widget-core';
 import type { ChatOnFinishCallback, UIMessage } from 'ai';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -154,13 +155,17 @@ let hookValue: ReturnType<typeof useAgentChat> | null = null;
 // re-run the turn-boundary effect on every commit.
 const CONFIG = { token: 't', context: { page: { url: '/orders' } } };
 
+let switchSession: (next: string | null) => void = () => {};
+
 function Probe() {
   const [rows, setRows] = React.useState<PersistedRow[]>([]);
   setTranscript = setRows;
+  const [sessionId, setSessionId] = React.useState<string | null>('sess-1');
+  switchSession = setSessionId;
   hookValue = useAgentChat({
     widgetCtx: fakeWidgetCtx,
     config: CONFIG,
-    sessionId: 'sess-1',
+    sessionId,
     persistedMessages: rows as unknown as WidgetMessageU[],
   });
   return null;
@@ -526,5 +531,117 @@ describe('useAgentChat follow-up queue', () => {
       'send:and my address',
     ]);
     expect(hookValue?.queuedUserMessages).toEqual([]);
+  });
+
+  describe('lastAIResMightSolveUserIssue', () => {
+    /** Every value the hook wrote to the flag, in order. */
+    const flagWrites = () =>
+      fakeMessageCtx.state.setPartial.mock.calls.flatMap((call: unknown[]) => {
+        const [partial] = call;
+        return isRecord(partial) && 'lastAIResMightSolveUserIssue' in partial
+          ? [partial.lastAIResMightSolveUserIssue]
+          : [];
+      });
+    const finished = (metadata?: unknown): UIMessage => ({
+      id: 'a-live',
+      role: 'assistant',
+      metadata,
+      parts: [{ type: 'text', text: FULL }],
+    });
+    /**
+     * `useChat` hands one snapshot array to `onFinish` and to `messages`;
+     * `snapshot` overrides what `messages` shows (throttled, another chat).
+     */
+    async function finish(
+      message: UIMessage,
+      outcome: {
+        isAbort?: boolean;
+        isDisconnect?: boolean;
+        isError?: boolean;
+      } = {},
+      snapshot?: UIMessage[],
+    ) {
+      const messages = [message];
+      await act(async () => {
+        finishStream({
+          message,
+          messages,
+          isAbort: outcome.isAbort ?? false,
+          isDisconnect: outcome.isDisconnect ?? false,
+          isError: outcome.isError ?? false,
+        });
+        setChatState({
+          status: outcome.isError ? 'error' : 'ready',
+          messages: snapshot ?? messages,
+        });
+      });
+      return messages;
+    }
+
+    it.each([
+      [{ mightSolveUserIssue: true }, true],
+      [{ mightSolveUserIssue: false }, false],
+      [undefined, false],
+    ])(
+      'a completed turn with metadata %j sets %s',
+      async (metadata, verdict) => {
+        await liveTurn();
+        await finish(finished(metadata));
+        expect(flagWrites()).toEqual([verdict]);
+      },
+    );
+
+    // The same verdict sets true on a completed turn (first row above).
+    it.each([{ isAbort: true }, { isDisconnect: true }, { isError: true }])(
+      'a turn that ended with %j sets nothing',
+      async (outcome) => {
+        await liveTurn();
+        await finish(finished({ mightSolveUserIssue: true }), outcome);
+        expect(flagWrites()).toEqual([]);
+      },
+    );
+
+    it('a follow-up queued during the turn supersedes its verdict', async () => {
+      await liveTurn();
+      await act(async () => {
+        await registeredSend()({ content: 'follow-up' });
+      });
+      await finish(finished({ mightSolveUserIssue: true }));
+      expect(flagWrites()).toEqual([]);
+    });
+
+    it('waits for the throttled snapshot, then sets the verdict', async () => {
+      await liveTurn();
+      const messages = await finish(
+        finished({ mightSolveUserIssue: true }),
+        {},
+        partialTurn(),
+      );
+      expect(flagWrites()).toEqual([]);
+      await act(async () => {
+        setChatState({ status: 'ready', messages });
+      });
+      expect(flagWrites()).toEqual([true]);
+    });
+
+    it.each(['sess-2', null])(
+      'a finish landing with a switch to %s never marks the new conversation',
+      async (next) => {
+        await liveTurn();
+        await act(async () => {
+          const message = finished({ mightSolveUserIssue: true });
+          finishStream({
+            message,
+            messages: [message],
+            isAbort: false,
+            isDisconnect: false,
+            isError: false,
+          });
+          switchSession(next);
+          setChatState({ status: 'ready', messages: [] });
+        });
+        expect(flagWrites()).toEqual([]);
+      },
+    );
   });
 });

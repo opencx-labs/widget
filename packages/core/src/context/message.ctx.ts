@@ -510,9 +510,11 @@ export class MessageCtx {
   /**
    * Fire the caller's `onAccepted` once a send is validated, has a session,
    * and is owned by an engine. A consumer callback must never be able to
-   * break an accepted send.
+   * break an accepted send. A new message also retires the last reply's
+   * `lastAIResMightSolveUserIssue`, whichever engine sends it.
    */
   notifySendAccepted = (input: SendMessageInput): void => {
+    this.state.setPartial({ lastAIResMightSolveUserIssue: false });
     if (input.optionReply) {
       this.setMessageOptionPick(
         input.optionReply.messageId,

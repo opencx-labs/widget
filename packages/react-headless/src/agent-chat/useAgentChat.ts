@@ -3,6 +3,7 @@ import {
   buildSendMessageBody,
   resolveClientPresentation,
   genUuid,
+  isRecord,
   log,
   type SendMessageInput,
   type StagedUserTurn,
@@ -194,6 +195,20 @@ export function useAgentChat({
   messagesRef.current = messages;
 
   const queueRef = useRef(new AgentChatQueue<QueuedSend>(MAX_QUEUED_SENDS));
+
+  // A completed turn of THIS conversation (its snapshot is the current one)
+  // sets the verdict; a follow-up already queued supersedes it.
+  useEffect(() => {
+    if (!completedStream || completedStream.messages !== messages) return;
+    const { isAbort, isDisconnect, isError, message } = completedStream;
+    if (isAbort || isDisconnect || isError || queueRef.current.size > 0) return;
+    messageCtx.state.setPartial({
+      lastAIResMightSolveUserIssue:
+        isRecord(message.metadata) &&
+        message.metadata.mightSolveUserIssue === true,
+    });
+  }, [completedStream, messages, messageCtx]);
+
   // `in-flight`: a send is handed to useChat until the turn's boundary, so a
   // burst of ready-state sends can't overlap.
   // `stopping`: a user stop is in flight (client abort + server cancel + the
