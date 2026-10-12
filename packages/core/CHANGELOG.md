@@ -1,5 +1,11 @@
 # @opencx/widget-core
 
+## 5.4.1
+
+### Patch Changes
+
+- 6bfdfb1: With streaming on, `lastAIResMightSolveUserIssue` is set again once an AI reply completes, so the "This was helpful" prompt shows and headless shells can act on it. It resets when the visitor sends; a stopped, failed or superseded reply leaves it `false`.
+
 ## 5.4.0
 
 ### Minor Changes
