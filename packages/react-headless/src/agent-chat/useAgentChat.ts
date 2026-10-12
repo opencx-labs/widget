@@ -29,6 +29,7 @@ import {
   parseTurnSettledPart,
   type TurnRenderSource,
 } from './agent-turn-sources';
+import { readMightSolveUserIssue } from './might-solve-user-issue';
 import { subscribeToResumeSignals } from './resume-signals';
 import { stopAgentChatTurn } from './stop-agent-chat-turn';
 
@@ -194,6 +195,29 @@ export function useAgentChat({
   messagesRef.current = messages;
 
   const queueRef = useRef(new AgentChatQueue<QueuedSend>(MAX_QUEUED_SENDS));
+
+  // The finished turn's verdict drives `lastAIResMightSolveUserIssue`, which
+  // the blocking engine sets from the send response: the "This was helpful"
+  // prompt and embedders' automations read it. Only a completed turn sets it,
+  // and a follow-up already queued behind it supersedes it, as a newer send
+  // does there.
+  useEffect(() => {
+    if (!completedStream) return;
+    if (
+      completedStream.isAbort ||
+      completedStream.isDisconnect ||
+      completedStream.isError
+    ) {
+      return;
+    }
+    if (queueRef.current.size > 0) return;
+    messageCtx.state.setPartial({
+      lastAIResMightSolveUserIssue: readMightSolveUserIssue(
+        completedStream.message,
+      ),
+    });
+  }, [completedStream, messageCtx]);
+
   // `in-flight`: a send is handed to useChat until the turn's boundary, so a
   // burst of ready-state sends can't overlap.
   // `stopping`: a user stop is in flight (client abort + server cancel + the
@@ -555,6 +579,9 @@ export function useAgentChat({
             return;
           }
           setQueueVersion((v) => v + 1);
+          // A new message retires the last reply's verdict, as on the
+          // blocking engine.
+          messageCtx.state.setPartial({ lastAIResMightSolveUserIssue: false });
           messageCtx.notifySendAccepted(input);
         },
       );

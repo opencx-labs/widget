@@ -159,4 +159,41 @@ describe('useChat applies data parts arriving after finish', () => {
     // The text survived alongside it.
     expect(assistant?.parts.some((part) => part.type === 'text')).toBe(true);
   });
+
+  it('the finish chunk metadata reaches onFinish, past the post-finish part', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            sseBody(
+              STREAM_CHUNKS.map((chunk) =>
+                chunk.type === 'finish'
+                  ? { ...chunk, messageMetadata: { mightSolveUserIssue: true } }
+                  : chunk,
+              ),
+            ),
+            { headers: { 'Content-Type': 'text/event-stream' } },
+          ),
+      ),
+    );
+    await act(async () => {
+      root.render(<Probe />);
+    });
+    await act(async () => {
+      await hookValue?.sendMessage({ text: 'hi' });
+    });
+    await vi.waitFor(() => {
+      expect(onFinish).toHaveBeenCalledOnce();
+    });
+
+    const completed = onFinish.mock.calls[0]?.[0];
+    expect(completed?.message.role).toBe('assistant');
+    expect(completed?.message.metadata).toEqual({ mightSolveUserIssue: true });
+    expect(
+      completed?.message.parts.some(
+        (part) => part.type === 'data-turn-settled',
+      ),
+    ).toBe(true);
+  });
 });
