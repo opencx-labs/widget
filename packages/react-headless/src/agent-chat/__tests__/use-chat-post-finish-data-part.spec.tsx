@@ -26,7 +26,7 @@ const STREAM_CHUNKS: Array<Record<string, unknown>> = [
   { type: 'text-start', id: 't1' },
   { type: 'text-delta', id: 't1', delta: 'hello' },
   { type: 'text-end', id: 't1' },
-  { type: 'finish' },
+  { type: 'finish', messageMetadata: { mightSolveUserIssue: true } },
   // Emitted by the backend AFTER persistence — post-finish by design.
   { type: 'data-turn-settled', data: { turn_id: 'T1', message_uuids: ['r1'] } },
 ];
@@ -144,6 +144,8 @@ describe('useChat applies data parts arriving after finish', () => {
       isError: false,
       isDisconnect: false,
     });
+    // The verdict the hook reads rides on `finish`, past the post-finish part.
+    expect(completed?.message.metadata).toEqual({ mightSolveUserIssue: true });
     const assistant = hookValue?.messages.at(-1);
     expect(assistant?.role).toBe('assistant');
     const settledPart = assistant?.parts.find(
@@ -158,42 +160,5 @@ describe('useChat applies data parts arriving after finish', () => {
     });
     // The text survived alongside it.
     expect(assistant?.parts.some((part) => part.type === 'text')).toBe(true);
-  });
-
-  it('the finish chunk metadata reaches onFinish, past the post-finish part', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(
-        async () =>
-          new Response(
-            sseBody(
-              STREAM_CHUNKS.map((chunk) =>
-                chunk.type === 'finish'
-                  ? { ...chunk, messageMetadata: { mightSolveUserIssue: true } }
-                  : chunk,
-              ),
-            ),
-            { headers: { 'Content-Type': 'text/event-stream' } },
-          ),
-      ),
-    );
-    await act(async () => {
-      root.render(<Probe />);
-    });
-    await act(async () => {
-      await hookValue?.sendMessage({ text: 'hi' });
-    });
-    await vi.waitFor(() => {
-      expect(onFinish).toHaveBeenCalledOnce();
-    });
-
-    const completed = onFinish.mock.calls[0]?.[0];
-    expect(completed?.message.role).toBe('assistant');
-    expect(completed?.message.metadata).toEqual({ mightSolveUserIssue: true });
-    expect(
-      completed?.message.parts.some(
-        (part) => part.type === 'data-turn-settled',
-      ),
-    ).toBe(true);
   });
 });

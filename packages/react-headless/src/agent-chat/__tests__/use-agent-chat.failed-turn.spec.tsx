@@ -62,7 +62,6 @@ function buildUserMessage(content: string): WidgetUserMessage {
 const fakeReconcileAfterStream = vi.fn(async () => {});
 
 const fakeMessageCtx = {
-  state: { setPartial: vi.fn() },
   stageUserTurn: vi.fn(
     async (input: SendMessageInput): Promise<StagedUserTurn | null> => ({
       sessionId: 'sess-1',

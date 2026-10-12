@@ -105,7 +105,6 @@ const stopStreamSpy = vi.fn(() => {
 });
 
 const fakeMessageCtx = {
-  state: { setPartial: vi.fn() },
   stageUserTurn: vi.fn(
     async (input: SendMessageInput): Promise<StagedUserTurn | null> => ({
       sessionId: 'sess-1',

@@ -53,7 +53,6 @@ type PreparedAgentTurn = {
 } | null;
 
 const fakeMessageCtx = {
-  state: { setPartial: vi.fn() },
   stageUserTurn: vi.fn(
     async (input: SendMessageInput): Promise<PreparedAgentTurn> => ({
       sessionId: 'sess-1',

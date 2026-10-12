@@ -3,6 +3,7 @@ import {
   buildSendMessageBody,
   resolveClientPresentation,
   genUuid,
+  isRecord,
   log,
   type SendMessageInput,
   type StagedUserTurn,
@@ -29,7 +30,6 @@ import {
   parseTurnSettledPart,
   type TurnRenderSource,
 } from './agent-turn-sources';
-import { readMightSolveUserIssue } from './might-solve-user-issue';
 import { subscribeToResumeSignals } from './resume-signals';
 import { stopAgentChatTurn } from './stop-agent-chat-turn';
 
@@ -196,28 +196,16 @@ export function useAgentChat({
 
   const queueRef = useRef(new AgentChatQueue<QueuedSend>(MAX_QUEUED_SENDS));
 
-  // The finished turn's verdict drives `lastAIResMightSolveUserIssue`, which
-  // the blocking engine sets from the send response: the "This was helpful"
-  // prompt and embedders' automations read it. Only a completed turn sets it,
-  // and a follow-up already queued behind it supersedes it, as a newer send
-  // does there. The completion must also be this conversation's: after a
-  // reset or switch `useChat` serves another conversation's snapshot, so a
-  // finish landing with (or after) it never matches and never writes.
+  // A completed turn of THIS conversation (its snapshot is the current one)
+  // sets the verdict; a follow-up already queued supersedes it.
   useEffect(() => {
-    if (!completedStream) return;
-    if (completedStream.messages !== messages) return;
-    if (
-      completedStream.isAbort ||
-      completedStream.isDisconnect ||
-      completedStream.isError
-    ) {
-      return;
-    }
-    if (queueRef.current.size > 0) return;
+    if (!completedStream || completedStream.messages !== messages) return;
+    const { isAbort, isDisconnect, isError, message } = completedStream;
+    if (isAbort || isDisconnect || isError || queueRef.current.size > 0) return;
     messageCtx.state.setPartial({
-      lastAIResMightSolveUserIssue: readMightSolveUserIssue(
-        completedStream.message,
-      ),
+      lastAIResMightSolveUserIssue:
+        isRecord(message.metadata) &&
+        message.metadata.mightSolveUserIssue === true,
     });
   }, [completedStream, messages, messageCtx]);
 
@@ -582,9 +570,6 @@ export function useAgentChat({
             return;
           }
           setQueueVersion((v) => v + 1);
-          // A new message retires the last reply's verdict, as on the
-          // blocking engine.
-          messageCtx.state.setPartial({ lastAIResMightSolveUserIssue: false });
           messageCtx.notifySendAccepted(input);
         },
       );
