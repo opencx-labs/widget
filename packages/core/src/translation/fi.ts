@@ -20,6 +20,8 @@ export const FinnishLanguage: TranslationInterface = {
   csat_title: 'Millainen keskustelusi oli?',
   csat_submitted_title: 'Arvioit keskustelun',
   csat_feedback_placeholder: 'Kerro lisää... (valinnainen)',
+  csat_feedback_label: 'Kerro mielipiteesi',
+  csat_submit: 'Lähetä',
   follow_up_placeholder: 'Jatka…',
   companion_layout_label: 'Asettelu',
   companion_layout_floating: 'Kelluva',

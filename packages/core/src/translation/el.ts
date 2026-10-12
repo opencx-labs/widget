@@ -20,6 +20,8 @@ export const GreekLanguage: TranslationInterface = {
   csat_title: 'Πώς ήταν η συνομιλία σας;',
   csat_submitted_title: 'Βαθμολογήσατε τη συνομιλία ως',
   csat_feedback_placeholder: 'Πείτε μας περισσότερα... (προαιρετικό)',
+  csat_feedback_label: 'Μοιραστείτε τη γνώμη σας',
+  csat_submit: 'Αποστολή',
   follow_up_placeholder: 'Συνέχεια…',
   companion_layout_label: 'Διάταξη',
   companion_layout_floating: 'Αιωρούμενο',

@@ -1,9 +1,9 @@
 import { useCsat } from '@opencx/widget-react-headless';
 import { AnimatePresence } from 'framer-motion';
-import { ArrowUpIcon } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { useIsSmallScreen } from '../hooks/useIsSmallScreen';
 import { useTranslation } from '../hooks/useTranslation';
+import { dc } from '../utils/data-component';
 import { Button } from './lib/button';
 import { MotionDiv__VerticalReveal } from './lib/MotionDiv__VerticalReveal';
 import { cn } from './lib/utils/cn';
@@ -39,6 +39,7 @@ const CSAT_SCORES = [
 export function CsatSurvey() {
   const { isSmallScreen } = useIsSmallScreen();
   const { t } = useTranslation();
+  const feedbackId = useId();
   const {
     submitCsat,
     isCsatRequested,
@@ -65,7 +66,10 @@ export function CsatSurvey() {
   if (!isCsatRequested && !isCsatSubmitted) return null;
 
   return (
-    <div className="w-1/2 min-w-80 max-w-96 mx-auto overflow-hidden">
+    <div
+      {...dc('chat/csat/root')}
+      className="w-1/2 min-w-80 max-w-96 mx-auto overflow-hidden"
+    >
       {/* ------------------------ TITLE ----------------------- */}
       <AnimatePresence mode="wait">
         {isCsatRequested && !score ? (
@@ -130,8 +134,20 @@ export function CsatSurvey() {
       <AnimatePresence mode="wait">
         {(score || submittedScore) && (
           <MotionDiv__VerticalReveal key="feedback-box">
-            <div className="pb-2 px-2 flex items-end">
+            <div className="pb-2 px-2 flex flex-col gap-2">
+              <label
+                htmlFor={feedbackId}
+                {...dc('chat/csat/feedback_label')}
+                className={cn(
+                  'text-sm text-muted-foreground',
+                  isCsatSubmitted && 'sr-only',
+                )}
+              >
+                {t('csat_feedback_label')}
+              </label>
               <textarea
+                id={feedbackId}
+                {...dc('chat/csat/feedback')}
                 // Thw `rows` attribute will take effect in browsers that do not support [field-sizing:content;] (Firefox and Safari as of now)
                 rows={3}
                 className={cn(
@@ -157,18 +173,17 @@ export function CsatSurvey() {
                   isCsatRequested ? t('csat_feedback_placeholder') : undefined
                 }
               />
-              <Button
-                size="fit"
-                onClick={handleSubmit}
-                disabled={!score}
-                className={cn(
-                  'transition-all overflow-hidden',
-                  'rounded-full size-8 flex items-center justify-center p-0',
-                  isCsatSubmitted && 'opacity-0 size-0',
-                )}
-              >
-                <ArrowUpIcon className="size-4" />
-              </Button>
+              {isCsatRequested && (
+                <Button
+                  size="sm"
+                  onClick={handleSubmit}
+                  disabled={!score}
+                  {...dc('chat/csat/submit')}
+                  className="self-end max-w-full whitespace-normal rounded-full"
+                >
+                  {t('csat_submit')}
+                </Button>
+              )}
             </div>
           </MotionDiv__VerticalReveal>
         )}

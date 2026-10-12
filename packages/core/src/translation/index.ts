@@ -150,6 +150,8 @@ export type TranslationInterface = {
   csat_title: string;
   csat_submitted_title: string;
   csat_feedback_placeholder: string;
+  csat_feedback_label: string;
+  csat_submit: string;
   follow_up_placeholder: string;
   companion_layout_label: string;
   companion_layout_floating: string;
