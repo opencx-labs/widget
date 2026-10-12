@@ -200,9 +200,12 @@ export function useAgentChat({
   // the blocking engine sets from the send response: the "This was helpful"
   // prompt and embedders' automations read it. Only a completed turn sets it,
   // and a follow-up already queued behind it supersedes it, as a newer send
-  // does there.
+  // does there. The completion must also be this conversation's: after a
+  // reset or switch `useChat` serves another conversation's snapshot, so a
+  // finish landing with (or after) it never matches and never writes.
   useEffect(() => {
     if (!completedStream) return;
+    if (completedStream.messages !== messages) return;
     if (
       completedStream.isAbort ||
       completedStream.isDisconnect ||
@@ -216,7 +219,7 @@ export function useAgentChat({
         completedStream.message,
       ),
     });
-  }, [completedStream, messageCtx]);
+  }, [completedStream, messages, messageCtx]);
 
   // `in-flight`: a send is handed to useChat until the turn's boundary, so a
   // burst of ready-state sends can't overlap.

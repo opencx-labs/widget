@@ -112,11 +112,15 @@ import { useAgentChat } from '../useAgentChat';
 
 const CONFIG = { token: 't' };
 
+let switchSession: (next: string | null) => void = () => {};
+
 function Probe() {
+  const [sessionId, setSessionId] = React.useState<string | null>('sess-1');
+  switchSession = setSessionId;
   useAgentChat({
     widgetCtx: fakeWidgetCtx,
     config: CONFIG,
-    sessionId: 'sess-1',
+    sessionId,
     persistedMessages: [] as WidgetMessageU[],
   });
   return null;
@@ -173,17 +177,20 @@ describe('useAgentChat — lastAIResMightSolveUserIssue', () => {
       isError?: boolean;
     } = {},
   ) {
+    // One snapshot array, as `useChat` hands the same one to `onFinish` and
+    // to its `messages`.
+    const messages = [message];
     await act(async () => {
       finishStream({
         message,
-        messages: [message],
+        messages,
         isAbort: outcome.isAbort ?? false,
         isDisconnect: outcome.isDisconnect ?? false,
         isError: outcome.isError ?? false,
       });
       setChatState({
         status: outcome.isError ? 'error' : 'ready',
-        messages: [message],
+        messages,
       });
     });
   }
@@ -232,4 +239,48 @@ describe('useAgentChat — lastAIResMightSolveUserIssue', () => {
     await finish(reply({ mightSolveUserIssue: true }));
     expect(flagWrites()).toEqual([false, false]);
   });
+
+  it('waits for the throttled snapshot to catch up, then sets the verdict', async () => {
+    await streamTurn();
+    const message = reply({ mightSolveUserIssue: true });
+    const messages = [message];
+    await act(async () => {
+      finishStream({
+        message,
+        messages,
+        isAbort: false,
+        isDisconnect: false,
+        isError: false,
+      });
+      setChatState({ status: 'ready', messages: [reply()] });
+    });
+    expect(flagWrites()).toEqual([false]);
+
+    await act(async () => {
+      setChatState({ status: 'ready', messages });
+    });
+    expect(flagWrites()).toEqual([false, true]);
+  });
+
+  it.each(['sess-2', null])(
+    'a finish landing with a switch to %s never marks the new conversation',
+    async (nextSessionId) => {
+      await streamTurn();
+      // The same completion sets true when it stays in its conversation
+      // (first case above).
+      const message = reply({ mightSolveUserIssue: true });
+      await act(async () => {
+        finishStream({
+          message,
+          messages: [message],
+          isAbort: false,
+          isDisconnect: false,
+          isError: false,
+        });
+        switchSession(nextSessionId);
+        setChatState({ status: 'ready', messages: [] });
+      });
+      expect(flagWrites()).toEqual([false]);
+    },
+  );
 });
