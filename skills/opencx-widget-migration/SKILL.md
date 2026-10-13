@@ -16,18 +16,18 @@ where the migration requires a change. This skill does not require another skill
 npm view @opencx/widget-react dist-tags --json --prefer-online
 ```
 
-Widget 5.0.0 is the stable release published on 2026-09-30. Re-check registry tags
+These examples pin the published stable release `5.4.1`. Re-check registry tags
 before selecting a newer target; use a prerelease only when requested. Keep the
 old version and configuration for rollback. Customers staying on v4 should pin
 `4.0.63`, since `latest` can move to a new major. For a repeatable stable migration:
 
 ```bash
-npm install --save-exact @opencx/widget-react@5.0.0
+npm install --save-exact @opencx/widget-react@5.4.1
 ```
 
 Use the customer's package manager. For headless integrations, install
-`@opencx/widget-react-headless@5.0.0` and
-`@opencx/widget-core@5.0.0`. Match any other directly installed OpenCX widget
+`@opencx/widget-react-headless@5.4.1` and
+`@opencx/widget-core@5.4.1`. Match any other directly installed OpenCX widget
 packages to that exact version. React 18 and 19 are supported.
 
 For script embeds, use:
@@ -35,7 +35,7 @@ For script embeds, use:
 ```html
 <script
   defer
-  src="https://unpkg.com/@opencx/widget@5.0.0/dist-embed/script.js"
+  src="https://unpkg.com/@opencx/widget@5.4.1/dist-embed/script.js"
 ></script>
 <script>
   window.addEventListener('DOMContentLoaded', () => {
@@ -52,7 +52,7 @@ reconciles persisted history and human replies. Layout and delivery are independ
 
 ## Review migration-sensitive behavior
 
-- **Self-hosted assets:** 5.0.0's `dist-embed/script.js` is a self-contained classic
+- **Self-hosted assets:** stable v5's `dist-embed/script.js` is a self-contained classic
   script; copying it is sufficient for the widget code. Repeated loads reuse one
   runtime. Earlier betas used `widget.js` and lazy chunks; preserve those complete
   versioned directories for already-open tabs when upgrading. API, attachment and
@@ -91,6 +91,32 @@ reconciles persisted history and human replies. Layout and delivery are independ
   `requireInitialQuestion: true` requires a selection before typing. Companion
   places starters above the disabled composer; the popover hides the composer
   until a question is selected.
+
+## Account for the selected stable v5 version
+
+- 5.1.0 adds `streamingFetch` and `resumeInterruptedTurn()` for React Native
+  streaming. Expo needs the documented polyfills and foreground/connectivity
+  resume handling; use the public headless guide for setup.
+- 5.2.0 adds `WidgetAgentMessage.messageOptions` and `SendMessageInput.optionReply`.
+  Custom renderers must restrict taps to the newest unpicked options message of
+  an open session and retain the picked choice as a receipt.
+- 5.3.0 adds `features.attachments: false`. It hides upload controls, ignores
+  dropped/pasted files, clears queued files and skips page-mark snapshot uploads.
+  It cannot enable an organization-disabled feature.
+- 5.4.0 adds default unread dots. `unreadIndicator: 'count'` shows unread sessions
+  in loaded history; `false` hides built-in marks while leaving the count hook and
+  custom-trigger count available. Older backends without unread state show no
+  marks. A headless browser shell needs `useUnreadViewing` below its trigger
+  provider; native shells must report actual viewing through `unreadCtx` instead
+  of mounting the browser hook. Opening a list does not mark its rows read.
+- 5.4.1 restores `lastAIResMightSolveUserIssue` after completed streamed replies
+  when the backend supplies the verdict. An accepted send resets it; aborted,
+  failed, disconnected, superseded or different-session turns cannot carry a
+  positive result into the current session.
+
+Preserve the customer's requested target version. These additions do not require
+turning on streaming, page access, or personal connections for an existing embed.
+See [session and feedback hooks](https://docs.open.cx/widget/custom-components-headless).
 
 ## Adopt v5 options when requested
 
@@ -189,7 +215,7 @@ verify the backend supports the flow before enabling it.
 - The stock UI handles form elicitation. Custom headless UIs must add the form
   list/response flow using published core declarations, including field validation,
   selection limits, decline/cancel, and expiry; rendering live text alone is not
-  sufficient. There is no public `useElicitation` hook in 5.0.0.
+  sufficient. There is no public `useElicitation` hook in 5.4.1.
 - Simple approvals may be remembered for the exact account/server/tool/inputs/form.
   Test **Always allow**, a changed request that still asks, and **Connections →
   Saved approvals → Remove approval**. Disconnect removes the personal grant and
@@ -205,7 +231,10 @@ belongs in a browser callback or widget configuration.
 
 Build and type-check the customer app. Test the default popover, custom slots and
 CSS, message round trips, attachments, and history after reload. If enabled, test
-streaming, Stop, another send during a reply, and reloaded turn history. For
+streaming, Stop, another send during a reply, reloaded turn history, and the
+feedback flag after completed versus interrupted or superseded replies. Check
+unread state on the list versus a loaded visible transcript, including a hidden
+tab and a minimized Companion shell. For
 companion integrations, test layouts, Escape, mobile sizing, and current context
 after navigation. State which flows were tested against a real backend.
 

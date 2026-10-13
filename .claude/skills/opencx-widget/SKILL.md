@@ -10,7 +10,7 @@ Four publishable packages, always released together at one version (changesets
 
 | Package                         | Owns                                                                                                                                                                                                |
 | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@opencx/widget-core`           | Framework-neutral runtime: `WidgetCtx` and its contexts (contact, session, message, router, csat, dictation, storage), the OpenAPI client, `WidgetConfig` types, translations. No React at runtime. |
+| `@opencx/widget-core`           | Framework-neutral runtime: `WidgetCtx` and its contexts (contact, session, message, router, unread, csat, dictation, storage), the OpenAPI client, `WidgetConfig` types, translations. No React at runtime. |
 | `@opencx/widget-react-headless` | `WidgetProvider` + hooks (`useConfig`, `useMessages`, `useSessions`, …) and the streaming engine (`useAgentChat`, `useAgentChatUi`). No styling.                                                    |
 | `@opencx/widget-react`          | The styled widget: popover and companion shells, screens, composer, json-render inline UI, page marks. Exports `Widget`, `HostedSpecRenderer`, `segmentContent`.                                    |
 | `@opencx/widget`                | The embed: `dist-embed/script.js` (classic loader) + `dist-embed/widget.js` (ES module) + lazy chunks. Installs `window.initOpenScript`.                                                            |
@@ -22,10 +22,10 @@ Tooling packages `@opencx/tsconfig` and `@opencx/eslint-config` version independ
 
 - **Dependency direction**: core ← headless ← react ← embed. Core never imports React at runtime; react never reaches into headless internals — only the barrels.
 - **One log prefix**: `import { log } from '@opencx/widget-core'`; never `console.*` in library code. The widget runs inside customers' pages.
-- **One engine switch**: `widgetCtx.streaming` (server-decided from `/widget/v2/config` → `agent.streaming`). `ChatScreen` picks `AgentChatMain` or `ChatMain`; `MessageCtx.sendMessage` routes to the registered streaming handler or the blocking send. Do not add a second flag.
-- **Feature narrowing** (`packages/core/src/context/widget-agent.ts`): the org's effective features come from the backend; `config.features.*` can only switch one OFF. Read the resolved answers from `widgetCtx.features` (`dictation`, `attachments`, `pageContext`, `clientTools`), never the raw flags. An org switch alone turns a feature on for every embed; `enablePageMarks`-style opt-ins do not exist. The narrowing (`narrowFeature`, module-private) applies to `dictation` and `attachments`; `pageContext`, `clientTools` and `pageActions` additionally need an explicit embed `true`. The other two `config.features` keys, `preamble` and `inlineUi`, are backend-only — no `widgetCtx.features` entry; `resolveSendFeatures` just snake-cases the whole toggle block onto every send (`preamble`, `inline_ui`, `page_context`, `client_tools`).
+- **One engine switch**: `widgetCtx.streaming` requires both `config.streaming === true` and backend `agent.streaming`; omission keeps polling. Accepted work retains its transport until it settles. `ChatScreen` picks `AgentChatMain` or `ChatMain`; `MessageCtx.sendMessage` routes to the registered streaming handler or the blocking send. Do not add a second flag.
+- **Feature narrowing** (`packages/core/src/context/widget-agent.ts`): read the resolved `widgetCtx.features` (`dictation`, `attachments`, `pageContext`, `clientTools`, `pageActions`). Dictation and attachments inherit the org value unless the embed disables them. Page context, client tools and page actions require explicit embed `true` plus org permission; actions require all three. `resolveSendFeatures` forwards only supported backend toggles (`preamble`, `inline_ui`, `page_context`, `client_tools`, `page_actions`); local dictation and attachment controls are not sent as feature flags. `enablePageMarks` is not an option.
 - **Host context always rides**: `config.context` (object or function, resolved at send time) is sent with every message on both engines, as in v4. `features.pageContext` gates only the widget-made page context (page marks, picked elements) and its affordances.
-- **Context follows the page, on us**: pass `context` as a function (the send resolves it fresh) and the entity pill re-reads it when the host URL changes — `useHostLocation` in headless watches `popstate`/`hashchange` and polls `location.href` for silent `pushState` routers. For a change with no URL change the host fires `window.dispatchEvent(new Event('opencx:context-changed'))` (`HOST_CONTEXT_CHANGED_EVENT`). The React embed needs neither: a new `context` prop re-renders. Never ask hosts to re-init the widget on navigation.
+- **Context follows the page, on us**: pass `context` as a function (the send resolves it fresh) and the entity pill re-reads it when the host URL changes — `useHostLocation` in headless watches `popstate`/`hashchange` and polls `location.href` for silent `pushState` routers. For a change with no URL change the host fires `window.dispatchEvent(new Event('opencx:context-changed'))` (`HOST_CONTEXT_CHANGED_EVENT`). In React, use a context callback that reads current state; replacing `options.context` does not update every initialized core context. Never ask hosts to re-init the widget on navigation.
 - **One wire body**: `buildSendMessageBody` in `message.ctx.ts` builds the request for both the blocking send and the stream. Both endpoints take `WidgetSendMessageInputDto`.
 - **Companion defaults live at the use site** with a matching `@default` in the `WidgetConfig` JSDoc — the repo convention (below), not a defaults table.
 - **Motion**: tokens in `packages/react/src/motion.ts`; CSS animations in `packages/react/index.css` with the `opencx-` prefix; `MOTION.md` + `motion-contract.spec.ts` enforce durations/easing. Keybindings in `utils/keybindings.ts` — never a literal key check in a component.
@@ -55,6 +55,7 @@ concatenate numbers and words in JSX. Core code uses `translate(config, key)`.
 
 ## Where things live
 
+- Unread state: core `UnreadCtx` derives counts from loaded session rows and owns mark-read requests. Headless `useUnread` reads it; browser shells mount `useUnreadViewing` once with actual transcript visibility. Do not treat opening the list or the Companion input bar as reading a session.
 - Streaming engine: `packages/react-headless/src/agent-chat/` — `useAgentChat.ts` (queue, steer, stop, retention, reconnect), `agent-chat-stream.ts` (UI parts → render items), `agent-turn-sources.ts` (settled turns), `ask-questions.ts` + `pending-clarification.ts`, `AgentChatContext.tsx` (the `useAgentChatUi` value the styled layer reads).
 - Companion shell: `packages/react/src/companion/` — `WidgetCompanion.tsx` (state machine pill/input/chat + isOpen sync), `CompanionContent.tsx`, `LayoutPicker.tsx`, `useCompanionHostEffects.ts` (sidebar app-frame + scroll lock, leased), `companion-geometry.ts`. Layout state: headless `useWidgetLayout` + core `companion-layout.ts` (normalization) + `StorageCtx` (visitor preferences).
 - Inline UI: `packages/react/src/json-render/` — `catalog.ts` (the component vocabulary), `registry.tsx` (renderers), `props.ts` (zod props), `SpecRenderer.tsx`, `ui-prompt.ts` (CODEGEN ONLY: `pnpm -F @opencx/widget-react gen:ui-prompt` writes the prompt into the backend repo).
@@ -80,34 +81,42 @@ types, `pnpm -F @opencx/widget-core build` before type-checking the consumers.
 
 ## Releasing
 
-v5 ships as a pre-release. In changesets **pre mode** (`beta`) `csv` produces
-`5.0.0-beta.N` and `csp` publishes it under the npm `beta` dist-tag; `latest` keeps
-pointing at 4.0.x until pre mode is exited.
+Stable v5 is published under `latest`; beta is a separate prerelease channel.
+Check registry tags and `.changeset/pre.json` before choosing a release channel.
+Use Changesets to keep all four public packages at one version:
 
 ```bash
-pnpm cs:pre           # once per pre-release line: changeset pre enter beta
-pnpm cs               # changeset: pick ALL FOUR packages, write a real summary
-pnpm csv              # apply → bumps versions + CHANGELOGs (fixed group keeps them equal)
-git commit -am "chore(release): vX" && git push --follow-tags
-pnpm x                                       # the gate
-pnpm publish -r --tag beta --no-git-checks   # the publish
+pnpm install --frozen-lockfile
+pnpm csv              # apply pending changesets: versions and changelogs
+pnpm x                # clean production builds, JSX checks, lint, types, tests
 ```
 
-**Publish with `pnpm publish -r`, not `csp`, while the account has 2FA on
-writes.** `csp`'s `changeset publish` fires all four in parallel; with
-two-factor set to "authorization and writes" each authenticates separately
-and npm rate-limits the OTP endpoint (`E429 ... rate limited otp`, nothing
-published). `-r` publishes the same four sequentially, skips the `private`
-tooling packages, and converts `workspace:*` to the real version. Always
-pass `--tag`: an untagged publish goes to `latest` even for a `-beta.N`.
-Never pass `--otp` — `-r` ignores it and prompts, and a pre-generated code
-expires during packing; wait for `Enter OTP:` then read a fresh one.
-Re-running skips what already published, so a partial publish just needs
-the same command again.
+Commit the generated versions and changelogs through the repository's release PR
+before publishing. Build and publish from the merged commit; if the merge changes
+files beyond the validated tree, validate that tree first. Do not skip protected
+review or include unrelated working-tree edits.
 
-`pnpm cs:pre:exit` leaves pre mode; the next `csv` + `csp` then cuts the final `5.0.0`
-to `latest`. Always commit the version bump after publishing — an uncommitted bump once
-desynced the registry from the repo.
+For a stable release:
+
+```bash
+pnpm -r --filter @opencx/widget-core --filter @opencx/widget-react-headless \
+  --filter @opencx/widget-react --filter @opencx/widget \
+  publish --tag latest --access public --no-git-checks
+```
+
+This publishes the packages sequentially and converts workspace dependencies to
+released versions. Complete npm's login or publish approval only if requested by
+the CLI; do not pre-supply an OTP. For a partial publish, first check exactly which
+versions exist and retry only missing packages with the same validated artifacts.
+
+Verify all four registry versions and internal dependencies, downloaded tarball
+contents, and the pinned embed CDN script. npm can acknowledge a publish before
+its metadata or tarball is available; poll with a bounded timeout and report any
+remaining gap. Check the GitHub release/tag separately and point it at the merged
+release commit. Publication does not prove that OpenCX consumers have upgraded.
+
+Only enter Changesets pre mode for an explicitly requested prerelease line, and
+publish it under its intended tag rather than `latest`.
 
 See [references/architecture.md](references/architecture.md) for the message lifecycle and
 the streaming turn state machine.

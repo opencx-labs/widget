@@ -17,9 +17,8 @@ the user's version choice. Check registry tags when selecting a new version:
 npm view @opencx/widget-react dist-tags --json --prefer-online
 ```
 
-Widget 5.0.0 is the stable release published on 2026-09-30. These examples pin
-`5.0.0`; re-check registry tags before choosing a newer version. Use a prerelease
-only when requested. To remain on v4, pin `4.0.63` instead of `latest`, which can
+These examples pin the published stable release `5.4.1`. Re-check registry tags
+before choosing a newer version. Use a prerelease only when requested. To remain on v4, pin `4.0.63` instead of `latest`, which can
 move to a new major. Do not add v5-only options to a v4 installation. Installing
 this skill does not install the widget.
 
@@ -42,7 +41,7 @@ this order; `defer` completes before `DOMContentLoaded`.
 ```html
 <script
   defer
-  src="https://unpkg.com/@opencx/widget@5.0.0/dist-embed/script.js"
+  src="https://unpkg.com/@opencx/widget@5.4.1/dist-embed/script.js"
 ></script>
 <script>
   window.addEventListener('DOMContentLoaded', () => {
@@ -55,18 +54,18 @@ For inline HTML, provide `<div id="opencx-root"></div>` in the body and set
 `inline: true`. Mount only one integration on a page; do not also mount React
 `Widget` beside the script embed.
 
-Widget 5.0.0's `dist-embed/script.js` is a self-contained classic script. Copying
+Widget 5.4.1's `dist-embed/script.js` is a self-contained classic script. Copying
 that file is sufficient for self-hosting the widget code; it does not fetch a
 separate `widget.js` or lazy code chunks. API, attachment and configured asset
 requests still need the host's normal permissions. Verify CSP with the script
 and initializer. Repeated script loads reuse one runtime. Earlier betas used a
 split loader; keep their complete versioned directories available for open tabs
-when replacing them with 5.0.0.
+when replacing them with a stable v5 build.
 
 ## React installation
 
 ```bash
-npm install --save-exact @opencx/widget-react@5.0.0
+npm install --save-exact @opencx/widget-react@5.4.1
 ```
 
 Mount the widget once in the app shell:
@@ -92,7 +91,7 @@ needed. Hooks such as `useMessages` must run beneath it. In v5, a custom streami
 also uses `useAgentChatUi` for live items, stop, queued messages, and clarification.
 `useMessages().messagesState` alone does not describe the whole live turn.
 
-For streaming in React Native (Expo SDK 52+), pass `streamingFetch` from
+For streaming in React Native (Widget 5.1.0+, Expo SDK 52+), pass `streamingFetch` from
 `expo/fetch`, polyfill `structuredClone` and `TextDecoderStream` before the
 widget is imported, and call `useAgentChatUi().resumeInterruptedTurn()` when
 `AppState` becomes `active` and when connectivity returns. The headless package
@@ -113,10 +112,12 @@ Use the installed `WidgetConfig` declaration for exact keys and defaults.
 - Custom UI: `options.customComponents` supplies render slots; React's separate
   `components` prop replaces named internals. Follow the installed callback types.
   Slot callbacks receive `react` for rendering with the widget's React instance.
-- Unread replies: the launcher shows a dot for sessions with a reply the visitor
-  has not opened; `unreadIndicator` switches to `'count'` or `false`. Host pages
-  badge their own UI with `hooks.onUnreadCountChange`; the `widgetTrigger` slot
-  receives `unreadCount`. The backend keeps the read state, per visitor.
+- Unread replies (5.4.0+): `unreadIndicator` defaults to `'dot'`; `'count'` shows
+  unread sessions in loaded history, not message count or a backend-wide total.
+  `false` hides built-in launcher/list marks; `hooks.onUnreadCountChange(count)`
+  and the `widgetTrigger` slot's `unreadCount` keep working. The backend owns
+  read state; older backends that omit it produce no marks. Opening the list or
+  minimizing Companion to its input bar does not mark a session as read.
 - Identity: distinguish the organization widget `token` from `user.token` for
   visitor authentication. Follow the [authentication guide](https://docs.open.cx/widget/authentication)
   for the selected version; use the application's server for signing credentials.
@@ -140,9 +141,10 @@ Headless clients must implement page effects and consent before advertising that
 capability. No client flag can enable an organization-disabled feature.
 
 `features.dictation` and `features.attachments` can narrow the organization's
-dictation and attachment settings; `false` turns them off in this embed. There is
-no `enablePageMarks` option. `initialQuestions`
-works with polling; `requireInitialQuestion: true` requires a selection before
+dictation and attachment settings; `false` turns them off in this embed. The
+attachment toggle requires 5.3.0+: it also ignores dropped/pasted files, clears
+queued files and skips page-mark snapshot uploads. There is no `enablePageMarks`
+option. `initialQuestions` works with polling; `requireInitialQuestion: true` requires a selection before
 typing when usable starters exist. Companion places starters above the composer.
 
 Host-supplied context can enter session history and the agent's input. If the
@@ -176,6 +178,36 @@ dispatch `window.dispatchEvent(new Event('opencx:context-changed'))` so the pill
 refreshes too. In React, keep changing values behind a ref or store that the
 context function reads: do not assume replacing `options.context` updates every
 initialized core context. Do not reinitialize on every route change.
+
+## Session state in a custom headless UI
+
+- **Unread state (5.4.0+):** `useUnread()` returns `count`, `hasUnread`,
+  `unreadSessionIds`, and `isUnread(sessionId)`. A browser shell calls
+  `useUnreadViewing({ transcriptVisible })` once below `WidgetProvider` and
+  `WidgetTriggerProvider`, keeping the trigger and router aligned with its UI.
+  A loaded transcript must be visible in an open widget and a visible browser
+  tab. Pass `false` when the shell hides it; showing a badge alone does not report
+  reading. The stock widget already handles this. The hook uses `document`, so
+  do not mount it in React Native: drive
+  `widgetCtx.unreadCtx.setViewingSessionId` from the native app's foreground,
+  loaded-history and transcript visibility state: pass the session ID while
+  actually viewing it and `null` when hidden, backgrounded or unmounted.
+- **Macro options (5.2.0+):** read an `AGENT` message's `messageOptions` and send
+  `{ content: option.label, optionReply: { messageId: message.id, optionId: option.id } }`
+  through `useMessages().sendMessage`. Only the newest unpicked options message
+  in an open session is tappable. Keep the picked label as a disabled receipt;
+  hide older unpicked choices. Follow the resulting message state on failure.
+  These are separate from streaming clarification questions.
+- **Feedback after streaming (5.4.1+):** use
+  `useMessages().messagesState.lastAIResMightSolveUserIssue` for the helpfulness
+  prompt or a custom feedback flow. An accepted send resets it. A completed
+  streamed reply sets it from the backend verdict; stopped, failed, disconnected,
+  superseded, or different-session completions must not trigger the prompt.
+  Older backends without the verdict leave it false. It is not proof that a
+  session is resolved or the visitor gave a positive rating.
+
+See the [headless guide](https://docs.open.cx/widget/custom-components-headless)
+for the provider contract and examples.
 
 ## Personal connections and approval forms (v5)
 
@@ -254,7 +286,10 @@ not promise arbitrary ready-credential import during user authentication.
 Run the host application's build/type checks. In a browser, verify opening,
 sending and receiving a message, history after reload, and the configured layout.
 For v5, exercise streaming/stop if enabled and navigate before sending to confirm
-current context. If personal access is enabled, also verify token renewal,
+current context. Check unread marks while closed, on the sessions list, and on a
+loaded visible transcript. For custom headless UI, verify hidden/background state
+and that interrupted or superseded replies do not trigger feedback. If personal
+access is enabled, also verify token renewal,
 account switching, Connect return/cancel/blocked-popup behavior, a fresh session,
 and disconnect. Test form submission, invalid selections, decline/cancel, expiry,
 and removal of a saved approval. Check failed script/module requests and `[opencx]` console errors
