@@ -33,7 +33,11 @@ const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 function buildCtx({
   config: configOverrides = {},
-}: { config?: Partial<WidgetConfig> } = {}) {
+  playSound = vi.fn(),
+}: {
+  config?: Partial<WidgetConfig>;
+  playSound?: () => void;
+} = {}) {
   const config: WidgetConfig = { token: 'tok', ...configOverrides };
   const sessionsState = new PrimitiveState<SessionsState>({
     data: [],
@@ -41,11 +45,16 @@ function buildCtx({
     isLastPage: false,
     didStartInitialFetch: false,
     isInitialFetchLoading: true,
+    didLoadFirstPage: false,
   });
   const rowsById = new Map<string, SessionDto>();
   const setRows = (rows: SessionDto[]) => {
     for (const row of rows) rowsById.set(row.id, row);
-    sessionsState.setPartial({ data: rows, isInitialFetchLoading: false });
+    sessionsState.setPartial({
+      data: rows,
+      isInitialFetchLoading: false,
+      didLoadFirstPage: true,
+    });
   };
   // The backend answers a read with the session as it should now show.
   const markSessionRead = vi.fn(
@@ -66,6 +75,7 @@ function buildCtx({
     api: { markSessionRead },
     sessionsState,
     setSessions,
+    playSound,
   });
   return { unreadCtx, setRows, markSessionRead, sessionsState };
 }
@@ -262,6 +272,145 @@ describe('unread sessions', () => {
       await vi.advanceTimersByTimeAsync(5_000);
       expect(markSessionRead).toHaveBeenCalledTimes(1);
       expect(counts).toEqual([1, 0]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('reports a session the visitor opens once per page even when nothing flags it, so the backend starts tracking it', async () => {
+    const { unreadCtx, setRows, markSessionRead } = buildCtx();
+    const a = buildSession({ id: 'a', unread: false });
+    const legacy = buildSession({ id: 'legacy' });
+    delete legacy.unread;
+    setRows([a, legacy]);
+
+    // A backend without read markers has no read route to call.
+    unreadCtx.setViewingSessionId('legacy');
+    await settle();
+    expect(markSessionRead).not.toHaveBeenCalled();
+
+    unreadCtx.setViewingSessionId('a');
+    await settle();
+    expect(markSessionRead).toHaveBeenCalledExactlyOnceWith({ sessionId: 'a' });
+
+    setRows([{ ...a }, legacy]);
+    unreadCtx.setViewingSessionId(null);
+    unreadCtx.setViewingSessionId('a');
+    await settle();
+    expect(markSessionRead).toHaveBeenCalledTimes(1);
+  });
+
+  it('announces each reply that lands while the page is open, even one with the same text, but not what was waiting at load or is on screen', async () => {
+    const replies: string[] = [];
+    const { unreadCtx, setRows } = buildCtx({
+      config: {
+        hooks: { onUnreadReply: ({ session }) => replies.push(session.id) },
+      },
+    });
+    const at = (minute: number) =>
+      `2026-10-10T10:${String(minute).padStart(2, '0')}:00.000Z`;
+    const waiting = buildSession({
+      id: 'waiting',
+      unread: true,
+      updatedAt: at(0),
+    });
+    const a = buildSession({ id: 'a', updatedAt: at(0) });
+    const b = buildSession({ id: 'b', updatedAt: at(0) });
+    setRows([waiting, a, b]);
+    expect(replies).toEqual([]);
+
+    const firstThanks = {
+      ...a,
+      unread: true,
+      lastMessage: 'Thanks',
+      updatedAt: at(1),
+    };
+    setRows([waiting, firstThanks, b]);
+    expect(replies).toEqual(['a']);
+    setRows([waiting, firstThanks, b]);
+    expect(replies).toEqual(['a']);
+    setRows([waiting, { ...firstThanks, updatedAt: at(2) }, b]);
+    expect(replies).toEqual(['a', 'a']);
+
+    unreadCtx.setViewingSessionId('b');
+    setRows([
+      waiting,
+      { ...firstThanks, updatedAt: at(2) },
+      { ...b, unread: true, updatedAt: at(3) },
+    ]);
+    await settle();
+    expect(replies).toEqual(['a', 'a']);
+    unreadCtx.setViewingSessionId(null);
+
+    // A later page of the list brings an older session that was already
+    // waiting; a session started elsewhere after load arrives with a reply.
+    const olderPage = buildSession({
+      id: 'older',
+      unread: true,
+      updatedAt: '2026-10-09T08:00:00.000Z',
+    });
+    const startedElsewhere = buildSession({
+      id: 'elsewhere',
+      unread: true,
+      updatedAt: at(4),
+    });
+    setRows([
+      startedElsewhere,
+      waiting,
+      { ...firstThanks, updatedAt: at(2) },
+      b,
+      olderPage,
+    ]);
+    expect(replies).toEqual(['a', 'a', 'elsewhere']);
+  });
+
+  it('chimes once per batch of replies, at most every few seconds, only when the embed turns sound on', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-10T10:00:00.000Z'));
+    try {
+      const at = (second: number) =>
+        new Date(Date.UTC(2026, 9, 10, 10, 0, second)).toISOString();
+      const a = buildSession({ id: 'a', updatedAt: at(0) });
+      const b = buildSession({ id: 'b', updatedAt: at(0) });
+
+      const replies: string[] = [];
+      const silent = vi.fn();
+      const off = buildCtx({
+        config: {
+          hooks: { onUnreadReply: ({ session }) => replies.push(session.id) },
+        },
+        playSound: silent,
+      });
+      off.setRows([a]);
+      off.setRows([{ ...a, unread: true, updatedAt: at(1) }]);
+      expect(replies).toEqual(['a']);
+      expect(silent).not.toHaveBeenCalled();
+
+      const chime = vi.fn();
+      const on = buildCtx({
+        config: { unreadNotifications: { sound: true } },
+        playSound: chime,
+      });
+      on.setRows([a, b]);
+      on.setRows([
+        { ...a, unread: true, updatedAt: at(1) },
+        { ...b, unread: true, updatedAt: at(1) },
+      ]);
+      expect(chime).toHaveBeenCalledOnce();
+
+      await vi.advanceTimersByTimeAsync(1_000);
+      on.setRows([
+        { ...a, unread: true, updatedAt: at(2) },
+        { ...b, unread: true, updatedAt: at(1) },
+      ]);
+      expect(chime).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(2_000);
+      on.setRows([
+        { ...a, unread: true, updatedAt: at(3) },
+        { ...b, unread: true, updatedAt: at(1) },
+      ]);
+      expect(chime).toHaveBeenCalledTimes(2);
     } finally {
       vi.useRealTimers();
     }

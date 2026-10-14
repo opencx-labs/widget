@@ -67,4 +67,87 @@ suite('unread sessions across the widget runtime', () => {
     ]);
     expect(root.unreadCtx.state.get().count).toBe(1);
   });
+
+  test('a failed first sessions request does not make replies that were already waiting count as new', async () => {
+    vi.useFakeTimers();
+    try {
+      TestUtils.mock.ApiCaller.getExternalWidgetConfig(ApiCaller, undefined);
+      const waiting = buildSession({ id: 'waiting', unread: true });
+      vi.mocked(ApiCaller.prototype.getSessions)
+        .mockClear()
+        .mockResolvedValueOnce({
+          response: new Response(null, { status: 503 }),
+          data: undefined,
+          error: { message: 'unavailable' },
+        })
+        .mockResolvedValue({
+          response: new Response(),
+          data: { items: [waiting], next: null },
+        });
+      const replies: string[] = [];
+      const root = await WidgetCtx.initialize({
+        config: {
+          token: 'test',
+          user: { token: 'visitor' },
+          hooks: { onUnreadReply: ({ session }) => replies.push(session.id) },
+        },
+      });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(ApiCaller.prototype.getSessions).toHaveBeenCalledOnce();
+
+      await vi.advanceTimersByTimeAsync(60_000);
+      // Positive control: the second poll landed and the session counts.
+      expect(root.unreadCtx.state.get().count).toBe(1);
+      expect(replies).toEqual([]);
+
+      const reply = new Date(Date.now() + 1_000).toISOString();
+      vi.mocked(ApiCaller.prototype.getSessions).mockResolvedValue({
+        response: new Response(),
+        data: { items: [{ ...waiting, updatedAt: reply }], next: null },
+      });
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(replies).toEqual(['waiting']);
+      root.dispose();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('an older copy of a session from a slower poll does not bring back a reply that was already announced', async () => {
+    TestUtils.mock.ApiCaller.getExternalWidgetConfig(ApiCaller, undefined);
+    vi.mocked(ApiCaller.prototype.getSessions).mockResolvedValue({
+      response: new Response(),
+      data: { items: [], next: null },
+    });
+    const replies: string[] = [];
+    const root = await WidgetCtx.initialize({
+      config: {
+        token: 'test',
+        user: { token: 'visitor' },
+        hooks: { onUnreadReply: ({ session }) => replies.push(session.id) },
+      },
+    });
+    await settle();
+    const before = buildSession({
+      id: 'a',
+      updatedAt: '2026-10-14T10:00:00.000Z',
+    });
+    const reply = {
+      ...before,
+      unread: true,
+      lastMessage: 'Your order shipped',
+      updatedAt: '2026-10-14T10:01:00.000Z',
+    };
+    root.sessionCtx.setSessions([before]);
+    root.sessionCtx.setSessions([reply]);
+    expect(replies).toEqual(['a']);
+
+    root.sessionCtx.setSessions([before]);
+    expect(root.sessionCtx.sessionsState.get().data).toEqual([reply]);
+    expect(root.unreadCtx.state.get().count).toBe(1);
+
+    root.sessionCtx.setSessions([reply]);
+    expect(replies).toEqual(['a']);
+    root.dispose();
+  });
 });
