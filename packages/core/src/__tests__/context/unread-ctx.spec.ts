@@ -142,6 +142,29 @@ describe('unread sessions', () => {
     expect(unreadCtx.state.get().unreadSessionIds).toEqual(['a']);
   });
 
+  it('reports a session the visitor opens once per page even when nothing flags it, so the backend starts tracking it', async () => {
+    const { unreadCtx, setRows, markSessionRead } = buildCtx();
+    const a = buildSession({ id: 'a', unread: false });
+    const legacy = buildSession({ id: 'legacy' });
+    delete legacy.unread;
+    setRows([a, legacy]);
+
+    // A backend without read markers has no read route to call.
+    unreadCtx.setViewingSessionId('legacy');
+    await settle();
+    expect(markSessionRead).not.toHaveBeenCalled();
+
+    unreadCtx.setViewingSessionId('a');
+    await settle();
+    expect(markSessionRead).toHaveBeenCalledExactlyOnceWith({ sessionId: 'a' });
+
+    setRows([{ ...a }, legacy]);
+    unreadCtx.setViewingSessionId(null);
+    unreadCtx.setViewingSessionId('a');
+    await settle();
+    expect(markSessionRead).toHaveBeenCalledTimes(1);
+  });
+
   it('survives a backend that has no read marker yet, and a failed read call', async () => {
     const { unreadCtx, setRows, markSessionRead } = buildCtx();
     const legacy = buildSession({ id: 'legacy' });
