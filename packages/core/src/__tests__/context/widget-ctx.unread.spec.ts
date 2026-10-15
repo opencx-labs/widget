@@ -67,4 +67,31 @@ suite('unread sessions across the widget runtime', () => {
     ]);
     expect(root.unreadCtx.state.get().count).toBe(1);
   });
+
+  test('a session the visitor just created is reported as seen before the next sessions poll', async () => {
+    TestUtils.mock.ApiCaller.getExternalWidgetConfig(ApiCaller, undefined);
+    const widgetCtx = await WidgetCtx.initialize({
+      config: { token: 'test', user: { token: 'visitor' } },
+    });
+    await settle();
+    const created = buildSession({ id: 'created', unread: false });
+    vi.mocked(widgetCtx.api.createSession).mockResolvedValueOnce({
+      response: new Response(),
+      data: created,
+    });
+    vi.mocked(widgetCtx.api.markSessionRead).mockResolvedValueOnce({
+      response: new Response(),
+      data: created,
+    });
+
+    await expect(widgetCtx.sessionCtx.createSession()).resolves.toEqual(
+      created,
+    );
+    widgetCtx.unreadCtx.setViewingSessionId('created');
+    await settle();
+    expect(widgetCtx.api.markSessionRead).toHaveBeenCalledWith({
+      sessionId: 'created',
+    });
+    widgetCtx.dispose();
+  });
 });
