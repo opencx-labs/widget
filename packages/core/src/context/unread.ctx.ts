@@ -46,6 +46,12 @@ export class UnreadCtx {
   private lastNotifiedCount: number | null = null;
   private subscriptions: Array<() => void> = [];
   private disposed = false;
+  /**
+   * Sessions this page has already reported as seen. A session without a
+   * backend read marker is never flagged, so the first look is reported
+   * even when nothing is unread; that is what starts tracking it.
+   */
+  private reportedSessionIds = new Set<string>();
 
   constructor({
     config,
@@ -91,11 +97,16 @@ export class UnreadCtx {
   private evaluate = (rows: SessionDto[]) => {
     const unreadSessionIds: string[] = [];
     for (const row of rows) {
-      if (row.unread !== true) continue;
       if (row.id === this.viewingSessionId) {
-        this.markViewedSessionRead(row.id);
+        if (
+          row.unread === true ||
+          (row.unread === false && !this.reportedSessionIds.has(row.id))
+        ) {
+          this.markViewedSessionRead(row.id);
+        }
         continue;
       }
+      if (row.unread !== true) continue;
       unreadSessionIds.push(row.id);
     }
     this.state.set({ unreadSessionIds, count: unreadSessionIds.length });
@@ -110,6 +121,7 @@ export class UnreadCtx {
       .markSessionRead({ sessionId })
       .then(({ data }) => {
         if (!data || this.disposed) return;
+        this.reportedSessionIds.add(sessionId);
         // A poll that landed meanwhile may carry a newer reply: keep that row
         // and report the session once more instead of hiding the reply.
         const current = this.sessionsState

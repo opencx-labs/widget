@@ -288,6 +288,7 @@ export class SessionCtx {
       return { session: null, status: response?.status, error };
 
     this.sessionState.setPartial({ session });
+    this.setSessions([session]);
     try {
       this.config.hooks?.onSessionCreated?.({ session });
     } catch (hookError) {
