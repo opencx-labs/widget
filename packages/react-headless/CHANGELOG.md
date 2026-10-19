@@ -1,5 +1,13 @@
 # @opencx/widget-react-headless
 
+## 5.4.2
+
+### Patch Changes
+
+- 9b828f9: The unread dot lights again. The widget now tells the backend the first time the visitor looks at a session, even when nothing in it is unread, so later replies in that session show the dot. A session the visitor just started joins the sessions list right away, so it is tracked even if the widget is closed before the next refresh.
+- Updated dependencies [9b828f9]
+  - @opencx/widget-core@5.4.2
+
 ## 5.4.1
 
 ### Patch Changes
