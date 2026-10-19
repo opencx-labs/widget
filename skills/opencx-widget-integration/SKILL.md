@@ -17,7 +17,7 @@ the user's version choice. Check registry tags when selecting a new version:
 npm view @opencx/widget-react dist-tags --json --prefer-online
 ```
 
-These examples pin the published stable release `5.4.1`. Re-check registry tags
+These examples pin the published stable release `5.4.2`. Re-check registry tags
 before choosing a newer version. Use a prerelease only when requested. To remain on v4, pin `4.0.63` instead of `latest`, which can
 move to a new major. Do not add v5-only options to a v4 installation. Installing
 this skill does not install the widget.
@@ -41,7 +41,7 @@ this order; `defer` completes before `DOMContentLoaded`.
 ```html
 <script
   defer
-  src="https://unpkg.com/@opencx/widget@5.4.1/dist-embed/script.js"
+  src="https://unpkg.com/@opencx/widget@5.4.2/dist-embed/script.js"
 ></script>
 <script>
   window.addEventListener('DOMContentLoaded', () => {
@@ -54,7 +54,7 @@ For inline HTML, provide `<div id="opencx-root"></div>` in the body and set
 `inline: true`. Mount only one integration on a page; do not also mount React
 `Widget` beside the script embed.
 
-Widget 5.4.1's `dist-embed/script.js` is a self-contained classic script. Copying
+Widget 5.4.2's `dist-embed/script.js` is a self-contained classic script. Copying
 that file is sufficient for self-hosting the widget code; it does not fetch a
 separate `widget.js` or lazy code chunks. API, attachment and configured asset
 requests still need the host's normal permissions. Verify CSP with the script
@@ -65,7 +65,7 @@ when replacing them with a stable v5 build.
 ## React installation
 
 ```bash
-npm install --save-exact @opencx/widget-react@5.4.1
+npm install --save-exact @opencx/widget-react@5.4.2
 ```
 
 Mount the widget once in the app shell:
@@ -191,7 +191,11 @@ initialized core context. Do not reinitialize on every route change.
   do not mount it in React Native: drive
   `widgetCtx.unreadCtx.setViewingSessionId` from the native app's foreground,
   loaded-history and transcript visibility state: pass the session ID while
-  actually viewing it and `null` when hidden, backgrounded or unmounted.
+  actually viewing it and `null` when hidden, backgrounded or unmounted. From
+  5.4.2, report the first visible view even when nothing is unread yet; it
+  starts tracking later replies. Newly created sessions enter loaded history
+  immediately, before the next poll. Do not gate visibility reporting on
+  `useUnread().count`.
 - **Macro options (5.2.0+):** read an `AGENT` message's `messageOptions` and send
   `{ content: option.label, optionReply: { messageId: message.id, optionId: option.id } }`
   through `useMessages().sendMessage`. Only the newest unpicked options message

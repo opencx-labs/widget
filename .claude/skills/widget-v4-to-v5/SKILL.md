@@ -7,7 +7,7 @@ description: Migrate an OpenCX widget integration from v4 or a v5 beta to stable
 
 Read [the public migration skill](../../../skills/opencx-widget-migration/SKILL.md)
 for the maintained installation commands, compatibility boundaries, defaults,
-identity handling, and verification steps. Its examples currently pin 5.4.1;
+identity handling, and verification steps. Its examples currently pin 5.4.2;
 preserve the requested target and verify the published version before changing it.
 Use that guide instead of keeping a second copy of the migration contract here.
 

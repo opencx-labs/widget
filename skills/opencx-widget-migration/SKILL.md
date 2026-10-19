@@ -16,18 +16,18 @@ where the migration requires a change. This skill does not require another skill
 npm view @opencx/widget-react dist-tags --json --prefer-online
 ```
 
-These examples pin the published stable release `5.4.1`. Re-check registry tags
+These examples pin the published stable release `5.4.2`. Re-check registry tags
 before selecting a newer target; use a prerelease only when requested. Keep the
 old version and configuration for rollback. Customers staying on v4 should pin
 `4.0.63`, since `latest` can move to a new major. For a repeatable stable migration:
 
 ```bash
-npm install --save-exact @opencx/widget-react@5.4.1
+npm install --save-exact @opencx/widget-react@5.4.2
 ```
 
 Use the customer's package manager. For headless integrations, install
-`@opencx/widget-react-headless@5.4.1` and
-`@opencx/widget-core@5.4.1`. Match any other directly installed OpenCX widget
+`@opencx/widget-react-headless@5.4.2` and
+`@opencx/widget-core@5.4.2`. Match any other directly installed OpenCX widget
 packages to that exact version. React 18 and 19 are supported.
 
 For script embeds, use:
@@ -35,7 +35,7 @@ For script embeds, use:
 ```html
 <script
   defer
-  src="https://unpkg.com/@opencx/widget@5.4.1/dist-embed/script.js"
+  src="https://unpkg.com/@opencx/widget@5.4.2/dist-embed/script.js"
 ></script>
 <script>
   window.addEventListener('DOMContentLoaded', () => {
@@ -113,6 +113,10 @@ reconciles persisted history and human replies. Layout and delivery are independ
   when the backend supplies the verdict. An accepted send resets it; aborted,
   failed, disconnected, superseded or different-session turns cannot carry a
   positive result into the current session.
+- 5.4.2 reports the first visible view even when a session has no unread reply,
+  so later replies can light the indicator. Newly created sessions join loaded
+  history immediately. A custom headless shell must report actual transcript
+  visibility even when its unread count is zero.
 
 Preserve the customer's requested target version. These additions do not require
 turning on streaming, page access, or personal connections for an existing embed.
@@ -215,7 +219,7 @@ verify the backend supports the flow before enabling it.
 - The stock UI handles form elicitation. Custom headless UIs must add the form
   list/response flow using published core declarations, including field validation,
   selection limits, decline/cancel, and expiry; rendering live text alone is not
-  sufficient. There is no public `useElicitation` hook in 5.4.1.
+  sufficient. There is no public `useElicitation` hook in 5.4.2.
 - Simple approvals may be remembered for the exact account/server/tool/inputs/form.
   Test **Always allow**, a changed request that still asks, and **Connections →
   Saved approvals → Remove approval**. Disconnect removes the personal grant and
@@ -233,8 +237,8 @@ Build and type-check the customer app. Test the default popover, custom slots an
 CSS, message round trips, attachments, and history after reload. If enabled, test
 streaming, Stop, another send during a reply, reloaded turn history, and the
 feedback flag after completed versus interrupted or superseded replies. Check
-unread state on the list versus a loaded visible transcript, including a hidden
-tab and a minimized Companion shell. For
+unread state on the list versus a loaded visible transcript, including its first
+view with no unread replies, a hidden tab and a minimized Companion shell. For
 companion integrations, test layouts, Escape, mobile sizing, and current context
 after navigation. State which flows were tested against a real backend.
 

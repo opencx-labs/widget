@@ -65,6 +65,10 @@ attachments on, nothing page-aware. A failed fetch throws `WidgetInitializationE
 count from loaded session rows, excluding the transcript currently being viewed;
 it is not a backend-wide unread total. It reports reading to the backend, merges
 the response without hiding newer replies, and stops retries/results after disposal.
+From 5.4.2, the first visible view also reports a row with `unread: false` if it
+has not already been successfully reported on that page. A row without an
+`unread` field does not trigger the read route. Created sessions enter loaded
+rows immediately, so a first view can be reported before the next poll.
 
 A browser shell's `useUnreadViewing` requires an open widget, the chat screen,
 loaded initial history, a visible transcript and a visible document. Companion's
