@@ -49,7 +49,7 @@ const STREAM_CHUNKS: Array<Record<string, unknown>> = [
   { type: 'tool-output-available', toolCallId: 'c1', output: TOOL_OUTPUT },
   { type: 'text-start', id: 't1' },
   // One character per delta: the shape the server sent before opencx#3879.
-  ...[...TEXT].map((delta) => ({ type: 'text-delta', id: 't1', delta })),
+  ...TEXT.split('').map((delta) => ({ type: 'text-delta', id: 't1', delta })),
   { type: 'text-end', id: 't1' },
   { type: 'finish' },
 ];
