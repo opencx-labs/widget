@@ -1,5 +1,14 @@
 # @opencx/widget-react
 
+## 5.4.3
+
+### Patch Changes
+
+- 60967f3: Streamed replies no longer copy the whole message on every update. On slower runtimes such as React Native, long replies could pile up enough work per update to hit React's update limit and crash with "Maximum update depth exceeded".
+- Updated dependencies [60967f3]
+  - @opencx/widget-core@5.4.3
+  - @opencx/widget-react-headless@5.4.3
+
 ## 5.4.2
 
 ### Patch Changes
