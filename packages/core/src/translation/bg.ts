@@ -20,6 +20,8 @@ export const BulgarianLanguage: TranslationInterface = {
   csat_title: 'Как мина разговорът ви?',
   csat_submitted_title: 'Оценихте разговора като',
   csat_feedback_placeholder: 'Кажете ни повече... (по желание)',
+  csat_feedback_label: 'Споделете мнението си',
+  csat_submit: 'Изпрати',
   follow_up_placeholder: 'Продължете…',
   companion_layout_label: 'Оформление',
   companion_layout_floating: 'Плаващ',

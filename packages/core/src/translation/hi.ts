@@ -20,6 +20,8 @@ export const HindiLanguage: TranslationInterface = {
   csat_title: 'आपकी बातचीत कैसी रही?',
   csat_submitted_title: 'आपने बातचीत को आंका',
   csat_feedback_placeholder: 'हमें और बताएं... (वैकल्पिक)',
+  csat_feedback_label: 'अपनी राय साझा करें',
+  csat_submit: 'भेजें',
   follow_up_placeholder: 'आगे पूछें…',
   companion_layout_label: 'लेआउट',
   companion_layout_floating: 'फ़्लोटिंग',

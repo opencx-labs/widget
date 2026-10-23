@@ -20,6 +20,8 @@ export const IcelandicLanguage: TranslationInterface = {
   csat_title: 'Hvernig var samtalið þitt?',
   csat_submitted_title: 'Þú gafst samtalinu einkunnina',
   csat_feedback_placeholder: 'Segðu okkur meira... (valfrjálst)',
+  csat_feedback_label: 'Segðu okkur þína skoðun',
+  csat_submit: 'Senda',
   follow_up_placeholder: 'Spyrja nánar…',
   companion_layout_label: 'Útlit',
   companion_layout_floating: 'Fljótandi',

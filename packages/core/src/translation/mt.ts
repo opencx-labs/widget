@@ -20,6 +20,8 @@ export const MalteseLanguage: TranslationInterface = {
   csat_title: 'Kif kienet il-konversazzjoni tiegħek?',
   csat_submitted_title: 'Int ivvalutajt il-konversazzjoni bħala',
   csat_feedback_placeholder: 'Għidilna aktar... (mhux obbligatorju)',
+  csat_feedback_label: 'Aqsam l-opinjoni tiegħek',
+  csat_submit: 'Ibgħat',
   follow_up_placeholder: 'Kompli l-mistoqsija…',
   companion_layout_label: 'Tqassim',
   companion_layout_floating: 'Galleġġjanti',

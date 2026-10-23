@@ -20,6 +20,8 @@ export const CzechLanguage: TranslationInterface = {
   csat_title: 'Jaká byla vaše konverzace?',
   csat_submitted_title: 'Konverzaci jste ohodnotili jako',
   csat_feedback_placeholder: 'Řekněte nám více... (nepovinné)',
+  csat_feedback_label: 'Podělte se o svůj názor',
+  csat_submit: 'Odeslat',
   follow_up_placeholder: 'Pokračovat…',
   companion_layout_label: 'Rozvržení',
   companion_layout_floating: 'Plovoucí',
