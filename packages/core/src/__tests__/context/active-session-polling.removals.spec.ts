@@ -272,6 +272,50 @@ suite('poll removes rows the backend no longer returns', () => {
     expect(ids()).toEqual([A]);
   });
 
+  test('a row added by a non-removing response survives a removing request that overlapped it', async () => {
+    // p2 and p3 overlap; p2 lands first and can remove. p4 is issued, then p3
+    // lands with the new row R without moving the cutoff. p4 may remove, but
+    // it overlapped p3 and may have been read before R was written: R stays.
+    // A request issued after all of them may remove R.
+    const { pollSpy, poll, ids } = build();
+    const R = 'b1b1b1b1-0000-4000-8000-00000000000c';
+    const p2 = deferred();
+    const p3 = deferred();
+    const p4 = deferred();
+    pollSpy
+      .mockResolvedValueOnce(response([agentRow({ publicId: A })]))
+      .mockReturnValueOnce(p2.promise)
+      .mockReturnValueOnce(p3.promise)
+      .mockReturnValueOnce(p4.promise)
+      .mockResolvedValueOnce(
+        response([agentRow({ publicId: A }), agentRow({ publicId: R })]),
+      )
+      .mockResolvedValueOnce(response([agentRow({ publicId: A })]));
+
+    await poll();
+    const poll2 = poll();
+    const poll3 = poll();
+    p2.resolve(response([agentRow({ publicId: A })]));
+    await poll2;
+    const poll4 = poll();
+    p3.resolve(
+      response([agentRow({ publicId: A }), agentRow({ publicId: R })]),
+    );
+    await poll3;
+    expect(ids()).toEqual([A, R]);
+    p4.resolve(response([agentRow({ publicId: A })]));
+    await poll4;
+
+    expect(ids()).toEqual([A, R]);
+
+    await poll();
+    expect(ids()).toEqual([A, R]);
+    // Positive control: once no in-flight request overlapped the add, a
+    // response without R removes it.
+    await poll();
+    expect(ids()).toEqual([A]);
+  });
+
   test('polls slower than the interval still remove a deleted row within a few polls', async () => {
     // Every request is issued before the previous response lands. Only a
     // response that could remove moves the cutoff, so the next request issued

@@ -30,6 +30,13 @@ export class ActiveSessionPollingCtx {
   private seenHistoryIds = new Set<string>();
   /** Ids a poll removed. A response issued before the delete may still carry one; it must not come back. */
   private removedHistoryIds = new Set<string>();
+  /**
+   * Rows added by a response that could not remove, keyed to the highest seq
+   * issued when it landed. A removing response with a seq at or below that
+   * overlapped it and may have been read before the row was written, so it
+   * must not remove the row.
+   */
+  private protectedUntilSeq = new Map<string, number>();
   /** Session a poll response has landed for since the conversation started. */
   private landedPollSessionId: string | null = null;
   /** Polls overlap (the poller does not await them), so responses are ordered by issue. */
@@ -75,6 +82,7 @@ export class ActiveSessionPollingCtx {
         if ((session?.id ?? null) === this.landedPollSessionId) return;
         this.seenHistoryIds = new Set();
         this.removedHistoryIds = new Set();
+        this.protectedUntilSeq = new Map();
         this.removableAfterSeq = 0;
         this.landedPollSessionId = null;
       }),
@@ -226,13 +234,20 @@ export class ActiveSessionPollingCtx {
       // are not in the seen set, so they are never removed. A response that
       // may not remove still feeds the seen set, so its rows stay removable.
       const polledIds = new Set(data.history.map((row) => row.publicId));
+      // A row a non-removing response added, that this request overlapped, is
+      // kept: this request may have been read before the row was written.
+      const missingIds = mayRemove
+        ? Array.from(this.seenHistoryIds).filter((id) => !polledIds.has(id))
+        : [];
       const removedIds = new Set(
-        mayRemove
-          ? Array.from(this.seenHistoryIds).filter((id) => !polledIds.has(id))
-          : [],
+        missingIds.filter((id) => (this.protectedUntilSeq.get(id) ?? 0) < seq),
       );
       if (mayRemove) {
-        this.seenHistoryIds = polledIds;
+        // A protected row stays in the seen set so a later poll can remove it.
+        this.seenHistoryIds = new Set([
+          ...polledIds,
+          ...missingIds.filter((id) => !removedIds.has(id)),
+        ]);
       } else {
         polledIds.forEach((id) => this.seenHistoryIds.add(id));
       }
@@ -249,6 +264,11 @@ export class ActiveSessionPollingCtx {
           (newMsg) =>
             !prevMessages.some((existingMsg) => existingMsg.id === newMsg.id),
         );
+      if (!mayRemove) {
+        newMessages.forEach((m) =>
+          this.protectedUntilSeq.set(m.id, this.pollSeq),
+        );
+      }
       // A kept reply quoting a removed row would keep showing its text; the
       // backend drops such quotes on reload, so drop them here too.
       let droppedQuote = false;
