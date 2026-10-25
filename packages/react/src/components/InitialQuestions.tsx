@@ -1,5 +1,11 @@
 import { log } from '@opencx/widget-core';
-import { useBot, useConfig, useMessages } from '@opencx/widget-react-headless';
+import {
+  useBot,
+  useConfig,
+  useMessages,
+  usePrimitiveState,
+  useWidget,
+} from '@opencx/widget-react-headless';
 import { motion, useReducedMotion } from 'framer-motion';
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { EASE_OUT } from '../motion';
@@ -10,18 +16,45 @@ import { SuggestedReplyButton } from './SuggestedReplyButton';
 import { Button } from './lib/button';
 import { cn } from './lib/utils/cn';
 
-/** Starter prompts and declined replies are local UI, never session messages. */
-export function InitialQuestions({
-  companion = false,
-  stacked = false,
-  className,
-  onConfirmingChange,
-}: {
+type InitialQuestionsProps = {
   companion?: boolean;
   stacked?: boolean;
   className?: string;
   onConfirmingChange?: (confirming: boolean) => void;
-}) {
+};
+
+/** Keep local choices scoped to the current session and configured questions. */
+export function InitialQuestions(props: InitialQuestionsProps) {
+  const { initialQuestions } = useConfig();
+  const { widgetCtx } = useWidget();
+  const generation = usePrimitiveState(
+    widgetCtx.messageCtx.conversationGeneration,
+  );
+  // Compare values so a host rebuilding equivalent options preserves a prompt.
+  const choicesKey = JSON.stringify(
+    initialQuestions?.map((question) => {
+      if (typeof question === 'string') return question;
+      return [
+        question.text,
+        question.confirm?.message,
+        question.confirm?.confirmLabel,
+        question.confirm?.cancelLabel,
+        question.confirm?.cancelMessage,
+      ];
+    }),
+  );
+  return (
+    <InitialQuestionChoices key={`${generation}:${choicesKey}`} {...props} />
+  );
+}
+
+/** Starter prompts and declined replies are local UI, never session messages. */
+function InitialQuestionChoices({
+  companion = false,
+  stacked = false,
+  className,
+  onConfirmingChange,
+}: InitialQuestionsProps) {
   const { initialQuestions, hooks } = useConfig();
   const { sendMessage, messagesState } = useMessages();
   const bot = useBot();

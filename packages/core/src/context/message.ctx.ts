@@ -299,12 +299,13 @@ export class MessageCtx {
   private bufferedAgentSends: SendMessageInput[] = [];
 
   private sendMessageAbortController = new AbortController();
-  private conversationGeneration = 0;
+  /** Changes even when an empty session resets to another empty session. */
+  public readonly conversationGeneration = new PrimitiveState(0);
 
   /** Bind asynchronous preparation to this chat, including resets to a new empty chat. */
   captureConversation = (): (() => boolean) => {
-    const generation = this.conversationGeneration;
-    return () => generation === this.conversationGeneration;
+    const generation = this.conversationGeneration.get();
+    return () => generation === this.conversationGeneration.get();
   };
 
   private messageIdsDispatchedToOnMessageReceivedHook = new Set<string>();
@@ -358,7 +359,7 @@ export class MessageCtx {
   }
 
   reset = () => {
-    this.conversationGeneration++;
+    this.conversationGeneration.set(this.conversationGeneration.get() + 1);
     this.sendMessageAbortController.abort('Resetting chat');
     this.bufferedAgentSends = [];
     this.state.reset();

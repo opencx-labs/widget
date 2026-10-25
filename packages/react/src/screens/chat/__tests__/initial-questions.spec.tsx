@@ -1,3 +1,4 @@
+import { PrimitiveState } from '@opencx/widget-core';
 import type { WidgetConfig, WidgetMessageU } from '@opencx/widget-core';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -7,6 +8,7 @@ Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
 let config: WidgetConfig;
 let messages: WidgetMessageU[];
+const conversationGeneration = new PrimitiveState(0);
 const sendMessage = vi.fn(async ({ content }: { content: string }) => {
   messages = [
     {
@@ -19,7 +21,10 @@ const sendMessage = vi.fn(async ({ content }: { content: string }) => {
   ];
 });
 
-vi.mock('@opencx/widget-react-headless', () => ({
+vi.mock('@opencx/widget-react-headless', async (importOriginal) => ({
+  usePrimitiveState: (
+    await importOriginal<typeof import('@opencx/widget-react-headless')>()
+  ).usePrimitiveState,
   useConfig: () => config,
   useMessages: () => ({
     messagesState: { messages },
@@ -34,6 +39,7 @@ vi.mock('@opencx/widget-react-headless', () => ({
   useWidget: () => ({
     widgetCtx: {
       features: { attachments: true, pageContext: false },
+      messageCtx: { conversationGeneration },
     },
     componentStore: { getComponent: () => undefined },
   }),
