@@ -245,7 +245,7 @@ export class ActiveSessionPollingCtx {
       if (mayRemove) {
         // A protected row stays in the seen set so a later poll can remove it.
         this.seenHistoryIds = new Set([
-          ...polledIds,
+          ...Array.from(polledIds),
           ...missingIds.filter((id) => !removedIds.has(id)),
         ]);
       } else {
