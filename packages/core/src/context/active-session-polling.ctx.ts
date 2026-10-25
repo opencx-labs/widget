@@ -26,6 +26,28 @@ export class ActiveSessionPollingCtx {
   private subscriptions: Array<() => void> = [];
   /** Session the in-flight post-stream reconcile belongs to, if any. */
   private reconcilingSessionId: string | null = null;
+  /** Ids the latest polls returned; only these can be removed by a later poll. */
+  private seenHistoryIds = new Set<string>();
+  /** Ids a poll removed. A response issued before the delete may still carry one; it must not come back. */
+  private removedHistoryIds = new Set<string>();
+  /**
+   * Rows added by a response that could not remove, keyed to the highest seq
+   * issued when it landed. A removing response with a seq at or below that
+   * overlapped it and may have been read before the row was written, so it
+   * must not remove the row.
+   */
+  private protectedUntilSeq = new Map<string, number>();
+  /** Session a poll response has landed for since the conversation started. */
+  private landedPollSessionId: string | null = null;
+  /** Polls overlap (the poller does not await them), so responses are ordered by issue. */
+  private pollSeq = 0;
+  private lastAppliedSeq = 0;
+  /**
+   * Highest seq issued when the last response was applied. A request issued
+   * while that response was in flight has no known snapshot order against it
+   * (the server may have read it first), so it may add rows but never remove.
+   */
+  private removableAfterSeq = 0;
 
   constructor({
     api,
@@ -50,6 +72,22 @@ export class ActiveSessionPollingCtx {
   }
 
   private registerPolling = () => {
+    /**
+     * A new conversation starts with nothing seen, and its first poll is an
+     * initial fetch again. Registered first so it runs before the poller
+     * below starts the new session's first fetch.
+     */
+    this.subscriptions.push(
+      this.sessionCtx.sessionState.subscribe(({ session }) => {
+        if ((session?.id ?? null) === this.landedPollSessionId) return;
+        this.seenHistoryIds = new Set();
+        this.removedHistoryIds = new Set();
+        this.protectedUntilSeq = new Map();
+        this.removableAfterSeq = 0;
+        this.landedPollSessionId = null;
+      }),
+    );
+
     this.subscriptions.push(
       this.sessionCtx.sessionState.subscribe(({ session }) => {
         if (session?.id) {
@@ -153,12 +191,17 @@ export class ActiveSessionPollingCtx {
      *    in this case, we want to show a loading indicator until the initial fetch is done
      * 2. There is a single message in state, which is the optimistically rendered user message,
      *    in this case, we don't want to show a loading indicator
+     * A session whose last message was deleted has no messages either, but a
+     * poll has already landed for it, so it is not an initial fetch.
      */
-    const isInitialFetch = this.messageCtx.state.get().messages.length === 0;
+    const isInitialFetch =
+      this.landedPollSessionId !== sessionId &&
+      this.messageCtx.state.get().messages.length === 0;
     if (isInitialFetch) {
       this.messageCtx.state.setPartial({ isInitialFetchLoading: true });
     }
 
+    const seq = ++this.pollSeq;
     const { data } = await this.api.pollSessionAndHistory({
       sessionId,
       abortSignal,
@@ -169,27 +212,88 @@ export class ActiveSessionPollingCtx {
       this.sessionCtx.setSessions([data.session]);
     }
 
-    if (data?.history && data.history.length > 0) {
-      this.reconcileOptionPicks(data.history);
+    if (data?.history) {
+      // A response that lands after a newer one was applied is stale: it may
+      // still add rows, but it must never remove one the newer response kept.
+      const isStale = seq < this.lastAppliedSeq;
+      // A request that overlapped the last applied response may have been
+      // read by the server first, so it may add rows but never remove one.
+      const mayRemove = !isStale && seq > this.removableAfterSeq;
+      if (!isStale) this.lastAppliedSeq = seq;
+      // Only a response that could remove moves the cutoff. Polls slower than
+      // the interval overlap constantly; if every response moved it, no
+      // response would ever be issued after the cutoff and deletions would
+      // never land.
+      if (mayRemove) this.removableAfterSeq = this.pollSeq;
+      this.landedPollSessionId = sessionId;
+      if (data.history.length > 0) {
+        this.reconcileOptionPicks(data.history);
+      }
+      // A row an earlier poll returned and this one does not was deleted.
+      // Rows no poll has returned (optimistic sends, unsettled stream rows)
+      // are not in the seen set, so they are never removed. A response that
+      // may not remove still feeds the seen set, so its rows stay removable.
+      const polledIds = new Set(data.history.map((row) => row.publicId));
+      // A row a non-removing response added, that this request overlapped, is
+      // kept: this request may have been read before the row was written.
+      const missingIds = mayRemove
+        ? Array.from(this.seenHistoryIds).filter((id) => !polledIds.has(id))
+        : [];
+      const removedIds = new Set(
+        missingIds.filter((id) => (this.protectedUntilSeq.get(id) ?? 0) < seq),
+      );
+      if (mayRemove) {
+        // A protected row stays in the seen set so a later poll can remove it.
+        this.seenHistoryIds = new Set([
+          ...Array.from(polledIds),
+          ...missingIds.filter((id) => !removedIds.has(id)),
+        ]);
+      } else {
+        polledIds.forEach((id) => this.seenHistoryIds.add(id));
+      }
+      removedIds.forEach((id) => this.removedHistoryIds.add(id));
       // Get a fresh reference to current messages after the poll is done
       const prevMessages = this.messageCtx.state.get().messages;
+      // A response issued before a delete still carries the deleted row; it
+      // must not bring it back.
       const newMessages = data.history
         .map(this.mapHistoryToMessage)
         .filter((msg): msg is WidgetMessageU => msg !== null)
+        .filter((newMsg) => !this.removedHistoryIds.has(newMsg.id))
         .filter(
           (newMsg) =>
             !prevMessages.some((existingMsg) => existingMsg.id === newMsg.id),
         );
-      // Only commit when the poll actually surfaced NEW rows. A poll that
+      if (!mayRemove) {
+        newMessages.forEach((m) =>
+          this.protectedUntilSeq.set(m.id, this.pollSeq),
+        );
+      }
+      // A kept reply quoting a removed row would keep showing its text; the
+      // backend drops such quotes on reload, so drop them here too.
+      let droppedQuote = false;
+      const keptMessages = prevMessages.flatMap((m) => {
+        if (removedIds.has(m.id)) return [];
+        if ('replyTo' in m && m.replyTo && removedIds.has(m.replyTo.id)) {
+          droppedQuote = true;
+          return [{ ...m, replyTo: undefined }];
+        }
+        return [m];
+      });
+      // Only commit when the poll actually added or removed rows. A poll that
       // returns only already-known messages must NOT replace the array with a
       // fresh reference — that re-renders the whole transcript on every tick
       // (visible flicker during a stream, and it remounts the lazy recharts
       // chart into an empty 0-measured ResponsiveContainer). The steady state
       // of an idle/streaming session is "poll returns the same rows", so this
       // guard is what keeps the surface still between real updates.
-      if (newMessages.length > 0) {
+      if (
+        newMessages.length > 0 ||
+        keptMessages.length !== prevMessages.length ||
+        droppedQuote
+      ) {
         this.messageCtx.state.setPartial({
-          messages: [...prevMessages, ...newMessages],
+          messages: [...keptMessages, ...newMessages],
         });
         if (isInitialFetch) {
           // Opening an existing session: history flows in as one batch. The user
