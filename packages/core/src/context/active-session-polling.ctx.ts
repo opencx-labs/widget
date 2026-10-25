@@ -211,10 +211,12 @@ export class ActiveSessionPollingCtx {
       // A request that overlapped the last applied response may have been
       // read by the server first, so it may add rows but never remove one.
       const mayRemove = !isStale && seq > this.removableAfterSeq;
-      if (!isStale) {
-        this.lastAppliedSeq = seq;
-        this.removableAfterSeq = this.pollSeq;
-      }
+      if (!isStale) this.lastAppliedSeq = seq;
+      // Only a response that could remove moves the cutoff. Polls slower than
+      // the interval overlap constantly; if every response moved it, no
+      // response would ever be issued after the cutoff and deletions would
+      // never land.
+      if (mayRemove) this.removableAfterSeq = this.pollSeq;
       this.landedPollSessionId = sessionId;
       if (data.history.length > 0) {
         this.reconcileOptionPicks(data.history);

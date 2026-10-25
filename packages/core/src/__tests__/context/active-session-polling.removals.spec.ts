@@ -272,6 +272,39 @@ suite('poll removes rows the backend no longer returns', () => {
     expect(ids()).toEqual([A]);
   });
 
+  test('polls slower than the interval still remove a deleted row within a few polls', async () => {
+    // Every request is issued before the previous response lands. Only a
+    // response that could remove moves the cutoff, so the next request issued
+    // after it may remove again; B must not stay forever.
+    const { pollSpy, poll, ids } = build();
+    const p2 = deferred();
+    const p3 = deferred();
+    const p4 = deferred();
+    pollSpy
+      .mockResolvedValueOnce(
+        response([agentRow({ publicId: A }), agentRow({ publicId: B })]),
+      )
+      .mockReturnValueOnce(p2.promise)
+      .mockReturnValueOnce(p3.promise)
+      .mockReturnValueOnce(p4.promise);
+
+    await poll();
+    const poll2 = poll();
+    const poll3 = poll();
+    p2.resolve(
+      response([agentRow({ publicId: A }), agentRow({ publicId: B })]),
+    );
+    await poll2;
+    const poll4 = poll();
+    p3.resolve(response([agentRow({ publicId: A })]));
+    await poll3;
+    expect(ids()).toEqual([A, B]);
+    p4.resolve(response([agentRow({ publicId: A })]));
+    await poll4;
+
+    expect(ids()).toEqual([A]);
+  });
+
   test('a kept reply loses its quote of a removed row', async () => {
     const { pollSpy, poll, messageCtx } = build();
     const quoted = {
