@@ -1,5 +1,11 @@
 # @opencx/widget-core
 
+## 5.5.0
+
+### Minor Changes
+
+- Ask visitors to confirm an initial question before sending it. Declining restores the choices, can show a local reply, and notifies the host page without creating a session. Existing string questions keep sending immediately.
+
 ## 5.4.3
 
 ### Patch Changes

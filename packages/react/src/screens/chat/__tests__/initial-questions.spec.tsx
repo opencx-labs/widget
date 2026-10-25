@@ -124,9 +124,7 @@ describe('required initial questions', () => {
       );
 
       if (position === 'above-chat-input')
-        expect(questions()[0]!.parentElement?.classList.contains('pb-4')).toBe(
-          true,
-        );
+        expect(questions()[0]!.closest('.pb-4')).not.toBeNull();
       await act(async () => questions()[0]!.click());
       render();
       expect(sendMessage).toHaveBeenCalledExactlyOnceWith({
@@ -158,7 +156,7 @@ describe('required initial questions', () => {
     },
   );
 
-  it.each([undefined, [], ['', '   ', '\n']])(
+  it.each([undefined, [], ['', '   ', '\n'], [{ text: '  ' }]])(
     'keeps the composer when there are no usable questions: %j',
     (initialQuestions) => {
       config.initialQuestions = initialQuestions;
@@ -210,5 +208,122 @@ describe('required initial questions', () => {
     config.initialQuestions = [];
     render();
     expect(composer()).not.toBeNull();
+  });
+
+  it.each(['above-chat-input', 'below-initial-messages'] as const)(
+    'recovers from a throwing decline hook and permits confirming at %s',
+    async (position) => {
+      config.initialQuestionsPosition = position;
+      const declined = vi.fn(() => {
+        throw new Error('host failed');
+      });
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+      config.hooks = { onInitialQuestionDeclined: declined };
+      config.initialQuestions = [
+        {
+          text: 'Cancel my order',
+          confirm: {
+            message: 'Are you sure?',
+            confirmLabel: 'Confirm',
+            cancelLabel: 'Back',
+          },
+        },
+      ];
+      const button = (label: string) => {
+        const match = Array.from(container.querySelectorAll('button')).find(
+          (element) => element.textContent === label,
+        );
+        if (!match) throw new Error(`Missing button: ${label}`);
+        return match;
+      };
+      try {
+        render();
+        await act(async () => button('Cancel my order').click());
+        expect(composer()).toBeNull();
+        const back = button('Back');
+        await act(async () => {
+          back.click();
+          back.click();
+        });
+        expect(sendMessage).not.toHaveBeenCalled();
+        expect(declined).toHaveBeenCalledExactlyOnceWith({
+          question: 'Cancel my order',
+        });
+        expect(logged).toHaveBeenCalledWith(
+          '[opencx] onInitialQuestionDeclined hook failed',
+          expect.any(Error),
+        );
+        expect(questions()).toHaveLength(1);
+        await act(async () => button('Cancel my order').click());
+        const confirm = button('Confirm');
+        await act(async () => {
+          confirm.click();
+          confirm.click();
+        });
+        render();
+        expect(sendMessage).toHaveBeenCalledExactlyOnceWith({
+          content: 'Cancel my order',
+        });
+        expect(composer()).not.toBeNull();
+      } finally {
+        logged.mockRestore();
+      }
+    },
+  );
+
+  it('sends an object without confirmation through the normal trimmed path', async () => {
+    config.initialQuestions = [{ text: '  Track my order  ' }];
+    render();
+    const question = questions().item(0);
+    await act(async () => question.click());
+    render();
+    expect(sendMessage).toHaveBeenCalledExactlyOnceWith({
+      content: 'Track my order',
+    });
+    expect(composer()).not.toBeNull();
+  });
+
+  it('restores the choices after a rejected send and allows retrying confirmation', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    config.initialQuestions = [
+      {
+        text: 'Cancel my order',
+        confirm: {
+          message: 'Are you sure?',
+          confirmLabel: 'Confirm',
+          cancelLabel: 'Back',
+        },
+      },
+    ];
+    sendMessage.mockRejectedValueOnce(new Error('send failed'));
+    const confirm = () => {
+      const button = Array.from(container.querySelectorAll('button')).find(
+        (element) => element.textContent === 'Confirm',
+      );
+      if (!button) throw new Error('Missing confirm button');
+      return button;
+    };
+    try {
+      render();
+      await act(async () => questions().item(0).click());
+      expect(document.activeElement).toBe(confirm());
+      await act(async () => confirm().click());
+      expect(composer()).toBeNull();
+      expect(questions().item(0).disabled).toBe(false);
+      expect(logged).toHaveBeenCalledWith(
+        '[opencx] Initial question send failed',
+        expect.any(Error),
+      );
+      await act(async () => questions().item(0).click());
+      await act(async () => confirm().click());
+      render();
+      expect(sendMessage).toHaveBeenCalledTimes(2);
+      expect(sendMessage).toHaveBeenLastCalledWith({
+        content: 'Cancel my order',
+      });
+      expect(composer()).not.toBeNull();
+    } finally {
+      logged.mockRestore();
+    }
   });
 });

@@ -7,6 +7,7 @@ import { cn } from './lib/utils/cn.js';
 export function SuggestedReplyButton({
   suggestion,
   className,
+  onClick,
   ...props
 }: ButtonProps & { suggestion: string }) {
   const { sendMessage } = useMessages();
@@ -23,7 +24,7 @@ export function SuggestedReplyButton({
       size="sm"
       className={cn('rounded-xl w-fit', className)}
       {...props}
-      onClick={handleSend}
+      onClick={onClick ?? handleSend}
     >
       {suggestion}
     </Button>

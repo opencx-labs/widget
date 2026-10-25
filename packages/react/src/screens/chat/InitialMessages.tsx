@@ -2,6 +2,7 @@ import React from 'react';
 import type { WidgetAiMessage } from '@opencx/widget-core';
 import { useBot, useMessages, useConfig } from '@opencx/widget-react-headless';
 import { AgentMessageGroup } from '../../components/AgentMessageGroup';
+import { InitialQuestions } from '../../components/InitialQuestions';
 
 /**
  * The greeting shown at the top of a fresh conversation.
@@ -15,11 +16,7 @@ export function InitialMessages() {
   } = useMessages();
   const config = useConfig();
   const bot = useBot();
-  const {
-    advancedInitialMessages = [],
-    initialQuestions,
-    initialQuestionsPosition,
-  } = config;
+  const { advancedInitialMessages = [], initialQuestionsPosition } = config;
 
   if (messages.length > 0) return null;
 
@@ -31,23 +28,23 @@ export function InitialMessages() {
         ['Hello, how can I help you?'];
 
   return (
-    <AgentMessageGroup
-      messages={texts.map(
-        (m, index) =>
-          ({
-            component: 'bot_message',
-            data: { message: m },
-            id: `${index}-${m}`,
-            type: 'AI',
-            timestamp: null,
-          }) satisfies WidgetAiMessage,
+    <div className="flex flex-col gap-2">
+      <AgentMessageGroup
+        messages={texts.map(
+          (m, index) =>
+            ({
+              component: 'bot_message',
+              data: { message: m },
+              id: `${index}-${m}`,
+              type: 'AI',
+              timestamp: null,
+            }) satisfies WidgetAiMessage,
+        )}
+        agent={bot}
+      />
+      {initialQuestionsPosition === 'below-initial-messages' && (
+        <InitialQuestions stacked className="ps-8" />
       )}
-      suggestedReplies={
-        initialQuestionsPosition === 'below-initial-messages'
-          ? initialQuestions
-          : undefined
-      }
-      agent={bot}
-    />
+    </div>
   );
 }

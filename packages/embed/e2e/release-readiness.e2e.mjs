@@ -15,7 +15,12 @@ before(async () => {
 });
 after(async () => browser?.close());
 
-async function fixture(t, options = {}, reducedMotion = 'no-preference') {
+async function fixture(
+  t,
+  options = {},
+  reducedMotion = 'no-preference',
+  hookScript = '',
+) {
   const context = await browser.newContext({
     viewport: { width: 1280, height: 900 },
     reducedMotion,
@@ -69,14 +74,14 @@ async function fixture(t, options = {}, reducedMotion = 'no-preference') {
     }
     if (url.pathname === '/')
       return route.fulfill({
-        contentType: 'text/html',
+        contentType: 'text/html; charset=utf-8',
         // A concrete CSP allowing the classic script and authored styles. No
         // dynamic script chunks, eval, cross-origin connections, or live images.
         headers: {
           'Content-Security-Policy':
             "default-src 'none'; script-src 'self' 'nonce-fixture'; style-src 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; frame-src 'self' about:; font-src data:;",
         },
-        body: `<!doctype html><html><body><script src="/script.js"></script><script nonce="fixture">window.fixtureOptions=${JSON.stringify({ token: 'fixture-bot', apiUrl: 'https://fixture.test', language: 'en', collectUserData: false, ...options }).replace(/</g, '\\u003c')};initOpenScript(window.fixtureOptions);</script></body></html>`,
+        body: `<!doctype html><html><body><script src="/script.js"></script><script nonce="fixture">window.fixtureOptions=${JSON.stringify({ token: 'fixture-bot', apiUrl: 'https://fixture.test', language: 'en', collectUserData: false, ...options }).replace(/</g, '\\u003c')};${hookScript};initOpenScript(window.fixtureOptions);</script></body></html>`,
       });
     if (url.pathname === '/script.js')
       return route.fulfill({
@@ -161,6 +166,241 @@ async function fixture(t, options = {}, reducedMotion = 'no-preference') {
   }
   return { page, frame, requests, open };
 }
+
+for (const variant of [
+  { mode: 'popover', position: 'above-chat-input', language: 'en' },
+  { mode: 'popover', position: 'below-initial-messages', language: 'el' },
+  { mode: 'companion', position: 'above-chat-input', language: 'el' },
+  {
+    mode: 'companion',
+    position: 'below-initial-messages',
+    language: 'en',
+    isOpen: true,
+  },
+]) {
+  test(`initial question confirmation: ${variant.mode}/${variant.position}/${variant.language}/${Boolean(variant.isOpen)}`, async (t) => {
+    const greek = variant.language === 'el';
+    const text = greek
+      ? 'Αναφορά περιστατικού ασφάλειας'
+      : 'I have a security incident';
+    const message = greek
+      ? 'Έχετε να αναφερετε περιστατικό ασφάλειας;'
+      : 'Do you have a security incident to report?';
+    const confirmLabel = greek ? 'Ναι' : 'Yes';
+    const cancelLabel = greek ? 'Όχι' : 'No';
+    const cancelMessage = greek
+      ? 'Ευχαριστούμε που επικοινωνήσατε μαζί μας'
+      : 'Thank you for contacting us';
+    const { page, frame, requests, open } = await fixture(
+      t,
+      {
+        displayMode: variant.mode,
+        isOpen: variant.isOpen,
+        initialQuestionsPosition: variant.position,
+        language: variant.language,
+        initialMessages: [
+          'For reporting a security incident, please select the option below:',
+        ],
+        initialQuestions: [
+          {
+            text,
+            confirm: { message, confirmLabel, cancelLabel, cancelMessage },
+          },
+          'Track my order',
+        ],
+        requireInitialQuestion: true,
+        streaming: false,
+      },
+      'reduce',
+      `
+      window.declinedQuestions = [];
+      window.createdSessions = [];
+      window.receivedMessages = [];
+      window.fixtureOptions.hooks = {
+        onInitialQuestionDeclined: (ctx) => window.declinedQuestions.push(ctx),
+        onSessionCreated: (ctx) => window.createdSessions.push(ctx),
+        onMessageReceived: (ctx) => window.receivedMessages.push(ctx),
+      };
+    `,
+    );
+    if (!variant.isOpen) await open();
+    const starters =
+      variant.mode === 'companion' && !variant.isOpen
+        ? page.frameLocator('iframe[title="Suggested questions"]')
+        : frame;
+    const creates = () =>
+      requests.filter((request) => request.path.endsWith('/create-session'));
+    const sends = () =>
+      requests.filter((request) => request.path.endsWith('/chat/send'));
+    const choice = starters.getByRole('button', { name: text, exact: true });
+    await choice.click();
+    await starters.getByText(message, { exact: true }).waitFor();
+    await frame.locator('textarea').waitFor({ state: 'hidden' });
+    assert.equal(creates().length, 0);
+    assert.equal(sends().length, 0);
+    await starters
+      .getByRole('button', { name: cancelLabel, exact: true })
+      .evaluate((button) => {
+        button.click();
+        button.click();
+      });
+    await starters.getByText(cancelMessage, { exact: true }).waitFor();
+    await choice.waitFor();
+    assert.equal(creates().length, 0, 'declining never creates a session');
+    assert.equal(sends().length, 0, 'declining never sends a message');
+    assert.deepEqual(await page.evaluate(() => window.declinedQuestions), [
+      { question: text },
+    ]);
+    assert.deepEqual(await page.evaluate(() => window.createdSessions), []);
+    assert.deepEqual(await page.evaluate(() => window.receivedMessages), []);
+    assert.equal(
+      await choice.isVisible(),
+      true,
+      'declining leaves the widget open',
+    );
+
+    // Same data and runtime: confirming proves both network paths are live.
+    await choice.click();
+    await starters
+      .getByRole('button', { name: confirmLabel, exact: true })
+      .waitFor();
+    // Sending expands Companion and removes its starters iframe. Dispatch from
+    // the host so the test result does not depend on that frame staying alive.
+    await page.evaluate(
+      ({ label, quickAsk }) => {
+        const iframe = document.querySelector(
+          `iframe[title="${quickAsk ? 'Suggested questions' : 'OpenCX Live Chat'}"]`,
+        );
+        const button = Array.from(
+          iframe.contentDocument.querySelectorAll('button'),
+        ).find((element) => element.textContent === label);
+        if (!button) throw new Error(`Missing confirmation button: ${label}`);
+        button.click();
+        button.click();
+      },
+      {
+        label: confirmLabel,
+        quickAsk: variant.mode === 'companion' && !variant.isOpen,
+      },
+    );
+    await frame.getByText('FIXTURE_REPLY_1', { exact: true }).waitFor();
+    assert.equal(creates().length, 1);
+    assert.equal(sends().length, 1);
+    assert.equal(sends()[0].body.content, text);
+    assert.equal(await frame.locator('textarea').isEnabled(), true);
+    assert.deepEqual(await page.evaluate(() => window.declinedQuestions), [
+      { question: text },
+    ]);
+    assert.equal(await page.evaluate(() => window.createdSessions.length), 1);
+    assert.equal(await page.evaluate(() => window.receivedMessages.length), 1);
+    assert.equal(await frame.getByText(message, { exact: true }).count(), 0);
+    assert.equal(
+      await frame.getByText(cancelMessage, { exact: true }).count(),
+      0,
+    );
+  });
+}
+
+test('initial question confirmation: plain strings and objects without confirmation still send immediately', async (t) => {
+  for (const question of [
+    '  Track my order  ',
+    { text: '  Track my order  ' },
+  ]) {
+    const { frame, requests, open } = await fixture(
+      t,
+      {
+        initialQuestions: [question],
+        requireInitialQuestion: true,
+        streaming: false,
+      },
+      'reduce',
+    );
+    await open();
+    await frame
+      .getByRole('button', { name: 'Track my order', exact: true })
+      .click();
+    await frame.getByText('FIXTURE_REPLY_1', { exact: true }).waitFor();
+    const sends = requests.filter((request) =>
+      request.path.endsWith('/chat/send'),
+    );
+    assert.equal(sends.length, 1);
+    assert.equal(sends[0].body.content, 'Track my order');
+    assert.equal(
+      requests.filter((request) => request.path.endsWith('/create-session'))
+        .length,
+      1,
+    );
+  }
+});
+
+test('initial question confirmation: host controls closing and reopening after declining', async (t) => {
+  const { page, frame, requests } = await fixture(
+    t,
+    {
+      isOpen: true,
+      streaming: false,
+      initialQuestions: [
+        {
+          text: 'Cancel my order',
+          confirm: {
+            message: 'Are you sure?',
+            confirmLabel: 'Yes',
+            cancelLabel: 'No',
+          },
+        },
+      ],
+      requireInitialQuestion: true,
+    },
+    'reduce',
+    `
+    const options = window.fixtureOptions;
+    window.showSupportPopup = function () {
+      const popupOptions = {
+        ...options,
+        isOpen: true,
+        hooks: {
+          onInitialQuestionDeclined: () => {
+            window.initOpenScript({ ...popupOptions, isOpen: false });
+          },
+        },
+      };
+      window.initOpenScript(popupOptions);
+      window.fixtureOptions = popupOptions;
+    };
+    window.showSupportPopup();
+  `,
+  );
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await frame
+      .getByRole('button', { name: 'Cancel my order', exact: true })
+      .click();
+    await frame.getByRole('button', { name: 'No', exact: true }).click();
+    await page
+      .locator('iframe[title="OpenCX Live Chat"]')
+      .waitFor({ state: 'hidden' });
+    assert.equal(
+      requests.filter((request) =>
+        /create-session|chat\/send/.test(request.path),
+      ).length,
+      0,
+    );
+    await page.evaluate(() => window.showSupportPopup());
+  }
+  await frame
+    .getByRole('button', { name: 'Cancel my order', exact: true })
+    .click();
+  await frame.getByRole('button', { name: 'Yes', exact: true }).click();
+  await frame.getByText('FIXTURE_REPLY_1', { exact: true }).waitFor();
+  assert.equal(
+    requests.filter((request) => request.path.endsWith('/create-session'))
+      .length,
+    1,
+  );
+  assert.equal(
+    requests.filter((request) => request.path.endsWith('/chat/send')).length,
+    1,
+  );
+});
 
 for (const variant of [
   { mode: 'companion', layout: 'compact', language: 'en', width: 1280 },
