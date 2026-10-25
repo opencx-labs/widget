@@ -26,6 +26,13 @@ export class ActiveSessionPollingCtx {
   private subscriptions: Array<() => void> = [];
   /** Session the in-flight post-stream reconcile belongs to, if any. */
   private reconcilingSessionId: string | null = null;
+  /** Ids the latest polls returned; only these can be removed by a later poll. */
+  private seenHistoryIds = new Set<string>();
+  /** Session a poll response has landed for since the conversation started. */
+  private landedPollSessionId: string | null = null;
+  /** Polls overlap (the poller does not await them), so responses are ordered by issue. */
+  private pollSeq = 0;
+  private lastAppliedSeq = 0;
 
   constructor({
     api,
@@ -50,6 +57,19 @@ export class ActiveSessionPollingCtx {
   }
 
   private registerPolling = () => {
+    /**
+     * A new conversation starts with nothing seen, and its first poll is an
+     * initial fetch again. Registered first so it runs before the poller
+     * below starts the new session's first fetch.
+     */
+    this.subscriptions.push(
+      this.sessionCtx.sessionState.subscribe(({ session }) => {
+        if ((session?.id ?? null) === this.landedPollSessionId) return;
+        this.seenHistoryIds = new Set();
+        this.landedPollSessionId = null;
+      }),
+    );
+
     this.subscriptions.push(
       this.sessionCtx.sessionState.subscribe(({ session }) => {
         if (session?.id) {
@@ -153,12 +173,17 @@ export class ActiveSessionPollingCtx {
      *    in this case, we want to show a loading indicator until the initial fetch is done
      * 2. There is a single message in state, which is the optimistically rendered user message,
      *    in this case, we don't want to show a loading indicator
+     * A session whose last message was deleted has no messages either, but a
+     * poll has already landed for it, so it is not an initial fetch.
      */
-    const isInitialFetch = this.messageCtx.state.get().messages.length === 0;
+    const isInitialFetch =
+      this.landedPollSessionId !== sessionId &&
+      this.messageCtx.state.get().messages.length === 0;
     if (isInitialFetch) {
       this.messageCtx.state.setPartial({ isInitialFetchLoading: true });
     }
 
+    const seq = ++this.pollSeq;
     const { data } = await this.api.pollSessionAndHistory({
       sessionId,
       abortSignal,
@@ -169,8 +194,15 @@ export class ActiveSessionPollingCtx {
       this.sessionCtx.setSessions([data.session]);
     }
 
-    if (data?.history && data.history.length > 0) {
-      this.reconcileOptionPicks(data.history);
+    if (data?.history) {
+      // A response that lands after a newer one was applied is stale: it may
+      // still add rows, but it must never remove one the newer response kept.
+      const isStale = seq < this.lastAppliedSeq;
+      if (!isStale) this.lastAppliedSeq = seq;
+      this.landedPollSessionId = sessionId;
+      if (data.history.length > 0) {
+        this.reconcileOptionPicks(data.history);
+      }
       // Get a fresh reference to current messages after the poll is done
       const prevMessages = this.messageCtx.state.get().messages;
       const newMessages = data.history
@@ -180,16 +212,35 @@ export class ActiveSessionPollingCtx {
           (newMsg) =>
             !prevMessages.some((existingMsg) => existingMsg.id === newMsg.id),
         );
-      // Only commit when the poll actually surfaced NEW rows. A poll that
+      // A row an earlier poll returned and this one does not was deleted.
+      // Rows no poll has returned (optimistic sends, unsettled stream rows)
+      // are not in the seen set, so they are never removed. A stale response
+      // removes nothing; the rows it returns stay removable by the next poll.
+      const polledIds = new Set(data.history.map((row) => row.publicId));
+      const removedIds = isStale
+        ? []
+        : Array.from(this.seenHistoryIds).filter((id) => !polledIds.has(id));
+      if (isStale) {
+        polledIds.forEach((id) => this.seenHistoryIds.add(id));
+      } else {
+        this.seenHistoryIds = polledIds;
+      }
+      const keptMessages = prevMessages.filter(
+        (m) => !removedIds.includes(m.id),
+      );
+      // Only commit when the poll actually added or removed rows. A poll that
       // returns only already-known messages must NOT replace the array with a
       // fresh reference — that re-renders the whole transcript on every tick
       // (visible flicker during a stream, and it remounts the lazy recharts
       // chart into an empty 0-measured ResponsiveContainer). The steady state
       // of an idle/streaming session is "poll returns the same rows", so this
       // guard is what keeps the surface still between real updates.
-      if (newMessages.length > 0) {
+      if (
+        newMessages.length > 0 ||
+        keptMessages.length !== prevMessages.length
+      ) {
         this.messageCtx.state.setPartial({
-          messages: [...prevMessages, ...newMessages],
+          messages: [...keptMessages, ...newMessages],
         });
         if (isInitialFetch) {
           // Opening an existing session: history flows in as one batch. The user
