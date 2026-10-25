@@ -229,9 +229,78 @@ suite('poll removes rows the backend no longer returns', () => {
       response([agentRow({ publicId: A }), agentRow({ publicId: B })]),
     );
     await olderPoll;
+
+    // The stale response was issued before the delete: B must not flicker back.
+    expect(ids()).toEqual([A]);
+
     await poll();
 
     expect(ids()).toEqual([A]);
+  });
+
+  test('a request that overlapped the last applied response may add but not remove', async () => {
+    // A tick and a post-stream reconcile are in flight together. The server
+    // reads the later-issued one first, before the AI row R commits, so its
+    // response lacks R while the earlier-issued one has it. Landing order is
+    // the earlier one first: R must not blank out when the later one lands.
+    const { pollSpy, poll, ids } = build();
+    const R = 'b1b1b1b1-0000-4000-8000-00000000000c';
+    const tick = deferred();
+    const reconcile = deferred();
+    pollSpy
+      .mockResolvedValueOnce(response([agentRow({ publicId: A })]))
+      .mockReturnValueOnce(tick.promise)
+      .mockReturnValueOnce(reconcile.promise)
+      .mockResolvedValueOnce(response([agentRow({ publicId: A })]));
+
+    await poll();
+    const tickPoll = poll();
+    const reconcilePoll = poll();
+    tick.resolve(
+      response([agentRow({ publicId: A }), agentRow({ publicId: R })]),
+    );
+    await tickPoll;
+    expect(ids()).toEqual([A, R]);
+    reconcile.resolve(response([agentRow({ publicId: A })]));
+    await reconcilePoll;
+
+    expect(ids()).toEqual([A, R]);
+
+    // A request issued after both landed is ordered: it may remove R.
+    await poll();
+
+    expect(ids()).toEqual([A]);
+  });
+
+  test('a kept reply loses its quote of a removed row', async () => {
+    const { pollSpy, poll, messageCtx } = build();
+    const quoted = {
+      publicId: A,
+      text: 'Can we access your account?',
+      sender: { kind: 'agent' as const, name: 'Dana' },
+    };
+    pollSpy
+      .mockResolvedValueOnce(
+        response([
+          agentRow({ publicId: A }),
+          agentRow({ publicId: B, replyTo: quoted }),
+        ]),
+      )
+      .mockResolvedValueOnce(
+        response([agentRow({ publicId: B, replyTo: quoted })]),
+      );
+
+    await poll();
+    const before = messageCtx.state.get().messages.find((m) => m.id === B);
+    expect(before && 'replyTo' in before ? before.replyTo?.id : undefined).toBe(
+      A,
+    );
+
+    await poll();
+
+    const after = messageCtx.state.get().messages.find((m) => m.id === B);
+    expect(after).toBeDefined();
+    expect(after && 'replyTo' in after ? after.replyTo : null).toBeUndefined();
   });
 
   test('the poll bookkeeping resets with the conversation', async () => {

@@ -28,11 +28,19 @@ export class ActiveSessionPollingCtx {
   private reconcilingSessionId: string | null = null;
   /** Ids the latest polls returned; only these can be removed by a later poll. */
   private seenHistoryIds = new Set<string>();
+  /** Ids a poll removed. A response issued before the delete may still carry one; it must not come back. */
+  private removedHistoryIds = new Set<string>();
   /** Session a poll response has landed for since the conversation started. */
   private landedPollSessionId: string | null = null;
   /** Polls overlap (the poller does not await them), so responses are ordered by issue. */
   private pollSeq = 0;
   private lastAppliedSeq = 0;
+  /**
+   * Highest seq issued when the last response was applied. A request issued
+   * while that response was in flight has no known snapshot order against it
+   * (the server may have read it first), so it may add rows but never remove.
+   */
+  private removableAfterSeq = 0;
 
   constructor({
     api,
@@ -66,6 +74,8 @@ export class ActiveSessionPollingCtx {
       this.sessionCtx.sessionState.subscribe(({ session }) => {
         if ((session?.id ?? null) === this.landedPollSessionId) return;
         this.seenHistoryIds = new Set();
+        this.removedHistoryIds = new Set();
+        this.removableAfterSeq = 0;
         this.landedPollSessionId = null;
       }),
     );
@@ -198,36 +208,56 @@ export class ActiveSessionPollingCtx {
       // A response that lands after a newer one was applied is stale: it may
       // still add rows, but it must never remove one the newer response kept.
       const isStale = seq < this.lastAppliedSeq;
-      if (!isStale) this.lastAppliedSeq = seq;
+      // A request that overlapped the last applied response may have been
+      // read by the server first, so it may add rows but never remove one.
+      const mayRemove = !isStale && seq > this.removableAfterSeq;
+      if (!isStale) {
+        this.lastAppliedSeq = seq;
+        this.removableAfterSeq = this.pollSeq;
+      }
       this.landedPollSessionId = sessionId;
       if (data.history.length > 0) {
         this.reconcileOptionPicks(data.history);
       }
+      // A row an earlier poll returned and this one does not was deleted.
+      // Rows no poll has returned (optimistic sends, unsettled stream rows)
+      // are not in the seen set, so they are never removed. A response that
+      // may not remove still feeds the seen set, so its rows stay removable.
+      const polledIds = new Set(data.history.map((row) => row.publicId));
+      const removedIds = new Set(
+        mayRemove
+          ? Array.from(this.seenHistoryIds).filter((id) => !polledIds.has(id))
+          : [],
+      );
+      if (mayRemove) {
+        this.seenHistoryIds = polledIds;
+      } else {
+        polledIds.forEach((id) => this.seenHistoryIds.add(id));
+      }
+      removedIds.forEach((id) => this.removedHistoryIds.add(id));
       // Get a fresh reference to current messages after the poll is done
       const prevMessages = this.messageCtx.state.get().messages;
+      // A response issued before a delete still carries the deleted row; it
+      // must not bring it back.
       const newMessages = data.history
         .map(this.mapHistoryToMessage)
         .filter((msg): msg is WidgetMessageU => msg !== null)
+        .filter((newMsg) => !this.removedHistoryIds.has(newMsg.id))
         .filter(
           (newMsg) =>
             !prevMessages.some((existingMsg) => existingMsg.id === newMsg.id),
         );
-      // A row an earlier poll returned and this one does not was deleted.
-      // Rows no poll has returned (optimistic sends, unsettled stream rows)
-      // are not in the seen set, so they are never removed. A stale response
-      // removes nothing; the rows it returns stay removable by the next poll.
-      const polledIds = new Set(data.history.map((row) => row.publicId));
-      const removedIds = isStale
-        ? []
-        : Array.from(this.seenHistoryIds).filter((id) => !polledIds.has(id));
-      if (isStale) {
-        polledIds.forEach((id) => this.seenHistoryIds.add(id));
-      } else {
-        this.seenHistoryIds = polledIds;
-      }
-      const keptMessages = prevMessages.filter(
-        (m) => !removedIds.includes(m.id),
-      );
+      // A kept reply quoting a removed row would keep showing its text; the
+      // backend drops such quotes on reload, so drop them here too.
+      let droppedQuote = false;
+      const keptMessages = prevMessages.flatMap((m) => {
+        if (removedIds.has(m.id)) return [];
+        if ('replyTo' in m && m.replyTo && removedIds.has(m.replyTo.id)) {
+          droppedQuote = true;
+          return [{ ...m, replyTo: undefined }];
+        }
+        return [m];
+      });
       // Only commit when the poll actually added or removed rows. A poll that
       // returns only already-known messages must NOT replace the array with a
       // fresh reference — that re-renders the whole transcript on every tick
@@ -237,7 +267,8 @@ export class ActiveSessionPollingCtx {
       // guard is what keeps the surface still between real updates.
       if (
         newMessages.length > 0 ||
-        keptMessages.length !== prevMessages.length
+        keptMessages.length !== prevMessages.length ||
+        droppedQuote
       ) {
         this.messageCtx.state.setPartial({
           messages: [...keptMessages, ...newMessages],
