@@ -111,6 +111,7 @@ export function CompanionContent({
   placeholder,
   hideAttachTools,
   onInputHeightChange,
+  confirmingInitialQuestion = false,
 }: {
   state: 'input' | 'chat';
   layout: WidgetCompanionLayoutU;
@@ -135,6 +136,7 @@ export function CompanionContent({
   canExpand: boolean;
   /** Live height of the quick-ask composer, so the shell card grows with it */
   onInputHeightChange: (height: number) => void;
+  confirmingInitialQuestion?: boolean;
 }) {
   const { companion } = useConfig();
   const initialQuestionRequired = useInitialQuestionRequired();
@@ -260,22 +262,32 @@ export function CompanionContent({
             {/* The shell clips this composer to a thin strip, so a `side="top"`
               tooltip would bleed above the bar as a dark sliver. */}
             <SuppressTooltips>
-              <ChatInput
-                disabled={initialQuestionRequired}
-                hideAttachTools={hideAttachTools}
-                placeholder={placeholder}
-                trailingActions={
-                  initialQuestionRequired ? (
-                    <FrameIconButton
-                      label={t('companion_close')}
-                      onClick={onDismiss}
-                      className="size-8"
-                    >
-                      <XIcon className="size-4" />
-                    </FrameIconButton>
-                  ) : undefined
-                }
-              />
+              {initialQuestionRequired && confirmingInitialQuestion ? (
+                <FrameIconButton
+                  label={t('companion_close')}
+                  onClick={onDismiss}
+                  className="size-8"
+                >
+                  <XIcon className="size-4" />
+                </FrameIconButton>
+              ) : (
+                <ChatInput
+                  disabled={initialQuestionRequired}
+                  hideAttachTools={hideAttachTools}
+                  placeholder={placeholder}
+                  trailingActions={
+                    initialQuestionRequired ? (
+                      <FrameIconButton
+                        label={t('companion_close')}
+                        onClick={onDismiss}
+                        className="size-8"
+                      >
+                        <XIcon className="size-4" />
+                      </FrameIconButton>
+                    ) : undefined
+                  }
+                />
+              )}
             </SuppressTooltips>
             {canExpand ? (
               // Only the composer expands the minimized conversation. Keep the

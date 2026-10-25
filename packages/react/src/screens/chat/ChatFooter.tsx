@@ -13,7 +13,7 @@ import { CircleCheckIcon } from 'lucide-react';
 import React from 'react';
 import { CsatSurvey } from '../../components/CsatSurvey';
 import { MightSolveUserIssueSuggestedReplies } from '../../components/MightSolveUserIssueSuggestedReplies';
-import { SuggestedReplyButton } from '../../components/SuggestedReplyButton';
+import { InitialQuestions } from '../../components/InitialQuestions';
 import { MotionDiv__VerticalReveal } from '../../components/lib/MotionDiv__VerticalReveal';
 import { Button } from '../../components/lib/button';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -105,19 +105,9 @@ export function ChatFooter() {
             {noMessages &&
               initialQuestions &&
               initialQuestionsPosition !== 'below-initial-messages' && (
-                <div
-                  className={cn(
-                    'flex items-center flex-row justify-end gap-2 flex-wrap px-2',
-                    initialQuestionRequired && 'pb-4',
-                  )}
-                >
-                  {initialQuestions?.map((iq, index) => (
-                    <SuggestedReplyButton
-                      key={`${iq}-${index}`}
-                      suggestion={iq}
-                    />
-                  ))}
-                </div>
+                <InitialQuestions
+                  className={cn('px-2', initialQuestionRequired && 'pb-4')}
+                />
               )}
 
             {!initialQuestionRequired && <ChatInput />}

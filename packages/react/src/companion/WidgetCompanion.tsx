@@ -1,4 +1,5 @@
 import { CompanionQuestions } from './CompanionQuestions';
+import { initialQuestionText } from '../utils/initial-question';
 import { motion, useReducedMotion } from 'framer-motion';
 import React, {
   useCallback,
@@ -141,8 +142,12 @@ export function WidgetCompanion() {
   const showsQuickQuestions =
     state === 'input' &&
     messagesState.messages.length === 0 &&
-    initialQuestions?.some((question) => question.trim().length > 0) === true;
+    initialQuestions?.some(
+      (question) => initialQuestionText(question).trim().length > 0,
+    ) === true;
   const [questionsHeight, setQuestionsHeight] = useState(0);
+  const [confirmingInitialQuestion, setConfirmingInitialQuestion] =
+    useState(false);
   const hasCountAction = activeChatCount > 0;
   const picker = useChatPicker();
   const closePickerRef = useRef(picker.close);
@@ -621,6 +626,8 @@ export function WidgetCompanion() {
               }}
             >
               <CompanionQuestions
+                key={activeId}
+                onConfirmingChange={setConfirmingInitialQuestion}
                 onHeightChange={setQuestionsHeight}
                 onDismiss={dismissPanel}
                 onToggleFullscreen={handleToggleFullscreen}
@@ -799,6 +806,7 @@ export function WidgetCompanion() {
                 }}
               >
                 <CompanionContent
+                  confirmingInitialQuestion={confirmingInitialQuestion}
                   key={activeId}
                   state={state === 'chat' ? 'chat' : 'input'}
                   layout={panelLayout}

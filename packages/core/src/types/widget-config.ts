@@ -583,15 +583,30 @@ export interface WidgetConfig {
 
   /**
    * Suggested initial questions that the contact sees in a new chat session.
-   * If a user clicks on one of the suggested questions, the widget will send it as the user's first message.
+   * Plain strings and objects without `confirm` send immediately on selection.
+   * With `confirm`, show a local prompt before sending the original text.
+   * Declining sends nothing and does not create a session or close the widget.
    * @default undefined
    * @example - ['What is my account balance?', 'How do I pay my bill?', 'How do I change my address?']
    */
-  initialQuestions?: string[];
+  initialQuestions?: Array<
+    | string
+    | {
+        text: string;
+        confirm?: {
+          message: string;
+          confirmLabel: string;
+          cancelLabel: string;
+          /** Optional local reply shown after declining. Never persisted. */
+          cancelMessage?: string;
+        };
+      }
+  >;
 
   /**
    * Hide the message composer until the contact chooses an initial question.
-   * Applies to conversations with no messages; starting a new chat requires
+   * Confirmation does not unlock the composer until the question is sent.
+   * Applies to sessions with no messages; starting a new chat requires
    * another choice. Ignored when there are no non-empty `initialQuestions`.
    * @default false
    */
@@ -767,6 +782,13 @@ export interface WidgetConfig {
    * Lifecycle hooks that fire on certain widget events.
    */
   hooks?: {
+    /**
+     * Fires when the visitor declines an initial question's confirmation.
+     * Receives the configured question text. No message or session is created.
+     * The widget stays open unless the host closes it in this hook.
+     */
+    onInitialQuestionDeclined?: (ctx: { question: string }) => void;
+
     /**
      * Fires when the widget navigates to the chat screen,
      * whether opening an existing session or starting a new one.
