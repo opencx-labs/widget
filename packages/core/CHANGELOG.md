@@ -1,5 +1,15 @@
 # @opencx/widget-core
 
+## 5.6.0
+
+### Minor Changes
+
+- 654efc8: Options on messages sent by a workflow (which arrive as AI messages, `WidgetAiMessage.messageOptions`) now show as buttons too, like a teammate's macro. When a workflow asks a question whose options run a workflow (the backend sends `requireTap`), the chat popover hides the composer (the same way `requireInitialQuestion` does) and the companion bar disables it, until the visitor taps one of its options. The lock lifts on the tap, when the session closes, or when a newer agent or AI message arrives, and never applies while a reply is still streaming, so it can be stopped. A tap whose send fails before it reaches the server, or that is removed from the queue, makes the options tappable again. Options that do not require a tap leave the composer as it was. `WidgetMessageOptions.requireTap` carries the flag, and custom UIs can use `isAwaitingRequiredTap(messages, session)` and `tappableOptionsMessage(messages, session)` from `@opencx/widget-core` to apply the same rule.
+
+### Patch Changes
+
+- 654efc8: With streaming on, the first message of a new conversation keeps its waiting state until the reply ends, and a reply that arrives as a separate message (for example a workflow's message with options) shows right after the turn instead of on the next poll.
+
 ## 5.5.0
 
 ### Minor Changes
