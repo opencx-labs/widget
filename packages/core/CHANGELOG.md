@@ -1,5 +1,11 @@
 # @opencx/widget-core
 
+## 5.4.4
+
+### Patch Changes
+
+- 8699f22: A message a teammate deletes from the inbox now disappears from an open chat on the next poll instead of staying until reload.
+
 ## 5.4.3
 
 ### Patch Changes
