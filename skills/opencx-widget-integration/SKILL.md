@@ -202,8 +202,9 @@ initialized core context. Do not reinitialize on every route change.
   in an open session is tappable. Keep the picked label as a disabled receipt;
   hide older unpicked choices. Follow the resulting message state on failure.
   These are separate from streaming clarification questions. From 5.5.0,
-  `messageOptions.requireTap: true` means the visitor must tap: lock the
-  composer (typing, send, attachments) while
+  workflow-sent options arrive on `AI` messages too: treat `AGENT` and `AI`
+  messages alike. `messageOptions.requireTap: true` means the visitor must
+  tap: lock the composer (typing, send, attachments) while
   `isAwaitingRequiredTap(messagesState.messages, sessionState.session)` from
   `@opencx/widget-core` is true. `tappableOptionsMessage` returns the message
   whose options are tappable, so both follow one rule.

@@ -9,10 +9,10 @@ import { dc } from '../utils/data-component.js';
 import { Button } from './lib/button.js';
 
 /**
- * Only the first tap on the newest options message of an open session counts
- * (`tappableOptionsMessage`), so only it shows the options. After a tap only
- * the picked one stays, as a receipt; options that can no longer be tapped are
- * not shown.
+ * Only the first tap on the newest options message (agent or AI) of an open
+ * session counts (`tappableOptionsMessage`), so only it shows the options.
+ * After a tap only the picked one stays, as a receipt; options that can no
+ * longer be tapped are not shown.
  */
 export function MessageOptions({
   messageId,

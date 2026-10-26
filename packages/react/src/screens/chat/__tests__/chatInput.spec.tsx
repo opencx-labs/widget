@@ -4,6 +4,7 @@ import type {
   DictationTarget,
   SendMessageInput,
   WidgetAgentMessage,
+  WidgetAiMessage,
   WidgetMessageOptions,
   WidgetMessageU,
 } from '@opencx/widget-core';
@@ -1117,6 +1118,23 @@ describe('ChatInput send acceptance', () => {
     };
   }
 
+  /** The backend serializes a workflow's messages (its send-macro action too) as AI. */
+  function workflowMessage(
+    id: string,
+    messageOptions?: WidgetMessageOptions,
+  ): WidgetAiMessage {
+    return {
+      id,
+      type: 'AI',
+      component: 'bot_message',
+      data: { message: 'Do you have a security incident to report?' },
+      timestamp: null,
+      ...(messageOptions ? { messageOptions } : {}),
+    };
+  }
+
+  const sentBy = { teammate: teammateMessage, workflow: workflowMessage };
+
   /** What the visitor can do with the composer right now. */
   function composerState(textarea: HTMLTextAreaElement) {
     return {
@@ -1139,22 +1157,41 @@ describe('ChatInput send acceptance', () => {
   };
 
   it.each([
-    { requireTap: 'true', messageOptions: requiredTap, locked: true },
     {
+      from: 'teammate',
+      requireTap: 'true',
+      messageOptions: requiredTap,
+      locked: true,
+    },
+    {
+      from: 'teammate',
       requireTap: 'false',
       messageOptions: { ...requiredTap, requireTap: false },
       locked: false,
     },
     {
+      from: 'teammate',
       requireTap: 'absent',
       messageOptions: { options: requiredTap.options, pickedOptionId: null },
       locked: false,
     },
-  ])(
-    'requireTap=$requireTap: unpicked options on the newest agent message lock the composer only when they require a tap',
-    async ({ messageOptions, locked }) => {
+    {
+      from: 'workflow',
+      requireTap: 'true',
+      messageOptions: requiredTap,
+      locked: true,
+    },
+    {
+      from: 'workflow',
+      requireTap: 'absent',
+      messageOptions: { options: requiredTap.options, pickedOptionId: null },
+      locked: false,
+    },
+  ] as const)(
+    '$from requireTap=$requireTap: unpicked options on the newest message lock the composer only when they require a tap',
+    async ({ from, messageOptions, locked }) => {
       session = { isOpened: true };
-      messages = [teammateMessage('question', messageOptions)];
+      messages = [sentBy[from]('question', messageOptions)];
       const { textarea } = await renderInput();
 
       expect(composerState(textarea)).toEqual(locked ? LOCKED : OPEN);
@@ -1166,33 +1203,44 @@ describe('ChatInput send acceptance', () => {
     },
   );
 
-  it('a tap on the required question unlocks the composer at once', async () => {
-    session = { isOpened: true };
-    messages = [teammateMessage('question', requiredTap)];
-    const { textarea } = await renderInput();
-    expect(composerState(textarea)).toEqual(LOCKED);
+  it.each(['teammate', 'workflow'] as const)(
+    'a tap on the required %s question unlocks the composer at once',
+    async (from) => {
+      session = { isOpened: true };
+      messages = [sentBy[from]('question', requiredTap)];
+      const { textarea } = await renderInput();
+      expect(composerState(textarea)).toEqual(LOCKED);
 
-    // The tap is marked picked when the send is accepted, before any reply.
-    messages = [
-      teammateMessage('question', { ...requiredTap, pickedOptionId: 'opt-no' }),
-    ];
-    await renderInput();
-    expect(composerState(textarea)).toEqual(OPEN);
-  });
+      // The tap is marked picked when the send is accepted, before any reply.
+      messages = [
+        sentBy[from]('question', { ...requiredTap, pickedOptionId: 'opt-no' }),
+      ];
+      await renderInput();
+      expect(composerState(textarea)).toEqual(OPEN);
+    },
+  );
 
-  it('a newer agent message without options unlocks the composer', async () => {
-    session = { isOpened: true };
-    messages = [teammateMessage('question', requiredTap)];
-    const { textarea } = await renderInput();
-    expect(composerState(textarea)).toEqual(LOCKED);
+  it.each([
+    { question: 'teammate', newer: 'teammate' },
+    { question: 'workflow', newer: 'workflow' },
+    // An AI reply after a teammate's question moves the conversation on too.
+    { question: 'teammate', newer: 'workflow' },
+  ] as const)(
+    'a newer $newer message without options unlocks the composer after a $question question',
+    async ({ question, newer }) => {
+      session = { isOpened: true };
+      messages = [sentBy[question]('question', requiredTap)];
+      const { textarea } = await renderInput();
+      expect(composerState(textarea)).toEqual(LOCKED);
 
-    messages = [
-      teammateMessage('question', requiredTap),
-      teammateMessage('follow-up'),
-    ];
-    await renderInput();
-    expect(composerState(textarea)).toEqual(OPEN);
-  });
+      messages = [
+        sentBy[question]('question', requiredTap),
+        sentBy[newer]('follow-up'),
+      ];
+      await renderInput();
+      expect(composerState(textarea)).toEqual(OPEN);
+    },
+  );
 
   it('a closed session hides the options, so it never leaves the composer locked', async () => {
     session = { isOpened: true };

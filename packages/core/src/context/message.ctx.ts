@@ -14,6 +14,7 @@ import type {
 import { translate } from '../translation';
 import { log } from '../utils/log';
 import { PrimitiveState } from '../utils/PrimitiveState';
+import { isAgentOrAiMessage } from '../utils/message-options';
 import { genUuid } from '../utils/uuid';
 import { SessionCtx } from './session.ctx';
 import type { ContactCtx } from './contact.ctx';
@@ -695,7 +696,7 @@ export class MessageCtx {
     );
   }
 
-  /** Set or clear the picked option of an agent message already in the transcript. */
+  /** Set or clear the picked option of an agent or AI message already in the transcript. */
   setMessageOptionPick = (
     messageId: string,
     pickedOptionId: string | null,
@@ -703,7 +704,9 @@ export class MessageCtx {
     const messages = this.state.get().messages;
     const index = messages.findIndex((message) => message.id === messageId);
     const target = messages[index];
-    if (!target || target.type !== 'AGENT' || !target.messageOptions) return;
+    if (!target || !isAgentOrAiMessage(target) || !target.messageOptions) {
+      return;
+    }
     if (target.messageOptions.pickedOptionId === pickedOptionId) return;
     const nextMessages = [...messages];
     nextMessages[index] = {
@@ -718,7 +721,8 @@ export class MessageCtx {
     const { messageId, optionId } = input.optionReply;
     const target = this.state.get().messages.find((m) => m.id === messageId);
     if (
-      target?.type !== 'AGENT' ||
+      !target ||
+      !isAgentOrAiMessage(target) ||
       target.messageOptions?.pickedOptionId !== optionId
     ) {
       return;

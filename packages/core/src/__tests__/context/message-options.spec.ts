@@ -1,5 +1,6 @@
 // A teammate's macro can carry options the visitor taps. The options ride the
-// agent row from history, the tap goes back as `option_reply`, and the tapped
+// agent row from history (an AI row when a workflow sent the macro), the tap
+// goes back as `option_reply`, and the tapped
 // option renders as picked at once — polls never rewrite a message they
 // already delivered, so nothing else would mark it.
 import { expect, suite, test, vi } from 'vitest';
@@ -81,7 +82,7 @@ function agentRow(overrides: Partial<MessageDto> = {}): MessageDto {
 }
 
 suite('macro options on the widget', () => {
-  test('an agent row carries its options; a row without them gets no key', () => {
+  test('an agent or AI row carries its options; a row without them gets no key', () => {
     const { polling } = build();
 
     const withOptions = polling.mapHistoryToMessage(
@@ -107,6 +108,23 @@ suite('macro options on the widget', () => {
       type: 'AGENT',
       messageOptions: { ...OPTIONS, requireTap: true },
     });
+
+    // A workflow's send-macro action is serialized as an AI row.
+    const fromWorkflow = polling.mapHistoryToMessage(
+      agentRow({
+        sender: { kind: 'ai', name: 'AI Copilot' },
+        messageOptions: { ...OPTIONS, requireTap: true },
+      }),
+    );
+    const plainAi = polling.mapHistoryToMessage(
+      agentRow({ sender: { kind: 'ai', name: 'AI Copilot' } }),
+    );
+    expect(fromWorkflow).toMatchObject({
+      type: 'AI',
+      messageOptions: { ...OPTIONS, requireTap: true },
+    });
+    expect(plainAi).toMatchObject({ type: 'AI' });
+    expect(plainAi).not.toHaveProperty('messageOptions');
   });
 
   test('a tap is sent as option_reply; a typed message sends none', () => {
@@ -136,13 +154,15 @@ suite('macro options on the widget', () => {
     expect(typed.option_reply).toBeUndefined();
   });
 
-  function withTwoOptionMessages() {
+  /** `ai`: the options came from a workflow, whose rows arrive as AI. */
+  function withTwoOptionMessages(kind: 'agent' | 'ai' = 'agent') {
     const ctx = build();
+    const sender = { kind, name: 'Dana' };
     const tapped = ctx.polling.mapHistoryToMessage(
-      agentRow({ messageOptions: OPTIONS }),
+      agentRow({ sender, messageOptions: OPTIONS }),
     );
     const other = ctx.polling.mapHistoryToMessage(
-      agentRow({ publicId: OTHER_ID, messageOptions: OPTIONS }),
+      agentRow({ sender, publicId: OTHER_ID, messageOptions: OPTIONS }),
     );
     if (!tapped || !other) throw new Error('rows did not map');
     ctx.messageCtx.state.setPartial({ messages: [tapped, other] });
@@ -150,7 +170,7 @@ suite('macro options on the widget', () => {
       const message = ctx.messageCtx.state
         .get()
         .messages.find((m) => m.id === id);
-      return message?.type === 'AGENT'
+      return message?.type === 'AGENT' || message?.type === 'AI'
         ? message.messageOptions?.pickedOptionId
         : undefined;
     };
@@ -161,18 +181,21 @@ suite('macro options on the widget', () => {
     return { ...ctx, pickedOf, tap };
   }
 
-  test('an accepted tap marks only its option picked while the reply is pending', async () => {
-    const { api, messageCtx, pickedOf, tap } = withTwoOptionMessages();
-    const sent = vi
-      .spyOn(api, 'sendMessage')
-      .mockReturnValue(new Promise(() => {}));
+  test.each(['agent', 'ai'] as const)(
+    '%s row: an accepted tap marks only its option picked while the reply is pending',
+    async (kind) => {
+      const { api, messageCtx, pickedOf, tap } = withTwoOptionMessages(kind);
+      const sent = vi
+        .spyOn(api, 'sendMessage')
+        .mockReturnValue(new Promise(() => {}));
 
-    void messageCtx.sendMessage(tap);
-    await vi.waitFor(() => expect(sent).toHaveBeenCalledTimes(1));
+      void messageCtx.sendMessage(tap);
+      await vi.waitFor(() => expect(sent).toHaveBeenCalledTimes(1));
 
-    expect(pickedOf(TAPPED_ID)).toBe('opt-yes');
-    expect(pickedOf(OTHER_ID)).toBeNull();
-  });
+      expect(pickedOf(TAPPED_ID)).toBe('opt-yes');
+      expect(pickedOf(OTHER_ID)).toBeNull();
+    },
+  );
 
   test('a tap the engine never sends leaves the options tappable', async () => {
     const { api, messageCtx, pickedOf, tap } = withTwoOptionMessages();
@@ -185,17 +208,20 @@ suite('macro options on the widget', () => {
     expect(pickedOf(TAPPED_ID)).toBeNull();
   });
 
-  test('a tap whose send fails is released so the visitor can tap again', async () => {
-    const { api, messageCtx, pickedOf, tap } = withTwoOptionMessages();
-    const sent = vi
-      .spyOn(api, 'sendMessage')
-      .mockRejectedValue(new Error('network down'));
+  test.each(['agent', 'ai'] as const)(
+    '%s row: a tap whose send fails is released so the visitor can tap again',
+    async (kind) => {
+      const { api, messageCtx, pickedOf, tap } = withTwoOptionMessages(kind);
+      const sent = vi
+        .spyOn(api, 'sendMessage')
+        .mockRejectedValue(new Error('network down'));
 
-    await messageCtx.sendMessage(tap);
+      await messageCtx.sendMessage(tap);
 
-    expect(sent).toHaveBeenCalledTimes(1);
-    expect(pickedOf(TAPPED_ID)).toBeNull();
-  });
+      expect(sent).toHaveBeenCalledTimes(1);
+      expect(pickedOf(TAPPED_ID)).toBeNull();
+    },
+  );
 
   test('a failed tap keeps a different pick confirmed while it was in flight', async () => {
     const { api, messageCtx, pickedOf, tap } = withTwoOptionMessages();

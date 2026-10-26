@@ -1,4 +1,8 @@
-import type { WidgetAgentMessage, WidgetMessageU } from '@opencx/widget-core';
+import type {
+  WidgetAgentMessage,
+  WidgetAiMessage,
+  WidgetMessageU,
+} from '@opencx/widget-core';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -37,6 +41,21 @@ function agentMessage(
   };
 }
 
+/** A workflow's send-macro action: the backend serializes it as an AI row. */
+function workflowMessage(
+  id: string,
+  messageOptions: WidgetAiMessage['messageOptions'] = options,
+): WidgetAiMessage {
+  return {
+    id,
+    type: 'AI',
+    component: 'bot_message',
+    data: { message: 'Do you have a security incident to report?' },
+    timestamp: null,
+    messageOptions,
+  };
+}
+
 let container: HTMLDivElement;
 let root: Root;
 
@@ -53,7 +72,7 @@ afterEach(() => {
   container.remove();
 });
 
-function render(message: WidgetAgentMessage) {
+function render(message: WidgetAgentMessage | WidgetAiMessage) {
   const messageOptions = message.messageOptions;
   if (!messageOptions) throw new Error('message has no options');
   act(() =>
@@ -66,13 +85,16 @@ function render(message: WidgetAgentMessage) {
 
 describe('MessageOptions', () => {
   it.each([
-    { kind: 'plain', messageOptions: options },
+    { kind: 'plain', newest: agentMessage('newest') },
     // The composer is locked meanwhile, so these buttons are the only way on.
-    { kind: 'tap-required', messageOptions: { ...options, requireTap: true } },
+    {
+      kind: 'tap-required',
+      newest: agentMessage('newest', { ...options, requireTap: true }),
+    },
+    { kind: 'workflow (AI)', newest: workflowMessage('newest') },
   ])(
     '$kind: the newest unpicked options message of an open session is tappable and sends the tap',
-    ({ messageOptions }) => {
-      const newest = agentMessage('newest', messageOptions);
+    ({ newest }) => {
       messages = [newest];
 
       const buttons = render(newest);

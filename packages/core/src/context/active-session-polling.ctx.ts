@@ -1,6 +1,7 @@
 import type { ApiCaller } from '../api/api-caller';
 import type { ActionCallDto, MessageDto } from '../types/dtos';
 import {
+  type WidgetMessageOptions,
   type WidgetMessageReplyTo,
   type WidgetMessageU,
   type WidgetSystemMessageU,
@@ -361,9 +362,7 @@ export class ActiveSessionPollingCtx {
           isAi: false,
         },
         ...this.constructReplyTo(history),
-        ...(history.messageOptions
-          ? { messageOptions: history.messageOptions }
-          : {}),
+        ...this.constructMessageOptions(history),
       };
     }
 
@@ -395,6 +394,8 @@ export class ActiveSessionPollingCtx {
             : undefined,
         },
         ...this.constructReplyTo(history),
+        // Workflow messages (a sent macro) arrive as AI and carry options too.
+        ...this.constructMessageOptions(history),
       };
     }
 
@@ -426,6 +427,12 @@ export class ActiveSessionPollingCtx {
       },
     };
   };
+
+  /** A message's tappable options, spread so a row without them adds no key. */
+  constructMessageOptions = (
+    history: MessageDto,
+  ): { messageOptions?: WidgetMessageOptions } =>
+    history.messageOptions ? { messageOptions: history.messageOptions } : {};
 
   constructSystemMessage = (
     history: MessageDto,

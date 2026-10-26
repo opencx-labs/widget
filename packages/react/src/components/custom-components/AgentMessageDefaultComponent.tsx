@@ -173,7 +173,8 @@ export function AgentMessageDefaultComponent(
             );
           })
         : message.length > 0 && bubble(message)}
-      {type === 'AGENT' && props.messageOptions && (
+      {/* Teammate macros arrive as AGENT, workflow-sent ones as AI. */}
+      {props.messageOptions && (
         <MessageOptions messageId={id} messageOptions={props.messageOptions} />
       )}
     </div>

@@ -117,9 +117,11 @@ reconciles persisted history and human replies. Layout and delivery are independ
   so later replies can light the indicator. Newly created sessions join loaded
   history immediately. A custom headless shell must report actual transcript
   visibility even when its unread count is zero.
-- 5.5.0 adds `messageOptions.requireTap`. Custom composers must stay locked
-  while `isAwaitingRequiredTap(messages, session)` from `@opencx/widget-core`
-  is true; it is false for options without the flag.
+- 5.5.0 adds `messageOptions.requireTap` and carries workflow-sent options on
+  `AI` messages, so custom renderers must show options under `AGENT` and `AI`
+  messages alike. Custom composers must stay locked while
+  `isAwaitingRequiredTap(messages, session)` from `@opencx/widget-core` is
+  true; it is false for options without the flag.
 
 Preserve the customer's requested target version. These additions do not require
 turning on streaming, page access, or personal connections for an existing embed.
