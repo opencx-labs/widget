@@ -76,7 +76,9 @@ async function fixture(t, options = {}, reducedMotion = 'no-preference') {
           'Content-Security-Policy':
             "default-src 'none'; script-src 'self' 'nonce-fixture'; style-src 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; frame-src 'self' about:; font-src data:;",
         },
-        body: `<!doctype html><html><body><script src="/script.js"></script><script nonce="fixture">window.fixtureOptions=${JSON.stringify({ token: 'fixture-bot', apiUrl: 'https://fixture.test', language: 'en', collectUserData: false, ...options }).replace(/</g, '\\u003c')};initOpenScript(window.fixtureOptions);</script></body></html>`,
+        // The backend below supports streaming; these checks cover send/poll
+        // delivery, so the page opts out the way a customer would.
+        body: `<!doctype html><html><body><script src="/script.js"></script><script nonce="fixture">window.fixtureOptions=${JSON.stringify({ token: 'fixture-bot', apiUrl: 'https://fixture.test', language: 'en', collectUserData: false, streaming: false, ...options }).replace(/</g, '\\u003c')};initOpenScript(window.fixtureOptions);</script></body></html>`,
       });
     if (url.pathname === '/script.js')
       return route.fulfill({

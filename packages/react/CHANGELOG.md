@@ -1,5 +1,17 @@
 # @opencx/widget-react
 
+## 5.5.0
+
+### Minor Changes
+
+- de25686: The script embed now streams replies whenever your organization supports streaming, without `streaming: true` in `initOpenScript`. Set `streaming: false` to keep send-and-poll delivery. The React and headless packages are unchanged and still need `streaming: true`.
+
+### Patch Changes
+
+- Updated dependencies [de25686]
+  - @opencx/widget-core@5.5.0
+  - @opencx/widget-react-headless@5.5.0
+
 ## 5.4.4
 
 ### Patch Changes

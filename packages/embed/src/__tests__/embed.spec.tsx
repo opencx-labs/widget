@@ -54,3 +54,18 @@ it('reuses the initializer when scripts are repeated before initialization', asy
   window.initOpenScript({ token: 'bot' });
   expect(fixture.createRoot).toHaveBeenCalledOnce();
 });
+
+it.each([
+  [undefined, true],
+  [true, true],
+  [false, false],
+])(
+  'requests streaming unless the page opts out: streaming %s',
+  async (streaming, requested) => {
+    await import('../index');
+    window.initOpenScript({ token: 'bot', streaming });
+    expect(fixture.render.mock.calls.at(-1)?.[0].props.options.streaming).toBe(
+      requested,
+    );
+  },
+);

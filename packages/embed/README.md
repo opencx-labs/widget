@@ -23,18 +23,18 @@ Repeated script loads reuse the first loaded widget runtime and its React root.
 Calling `initOpenScript` again updates its options. To switch widget versions,
 reload the page.
 
-## Opt into v5 runtime features
+## Delivery and v5 runtime features
 
-An unchanged configuration keeps classic send/poll delivery. To enable streaming
-and personal service connections, declare both explicitly:
+The script streams replies when your organization supports streaming and uses
+classic send/poll delivery otherwise. Set `streaming: false` to keep send/poll.
+Personal service connections stay off until declared:
 
 ```js
 initOpenScript({
   token: 'YOUR_WIDGET_TOKEN',
-  streaming: true,
   capabilities: { connections: true },
 });
 ```
 
-Streaming also requires backend support. Companion layout is selected separately
-with `displayMode: 'companion'`; changing layout alone does not change delivery.
+Companion layout is selected separately with `displayMode: 'companion'`;
+changing layout alone does not change delivery.

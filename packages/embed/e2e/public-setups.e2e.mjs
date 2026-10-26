@@ -91,6 +91,15 @@ for (const name of ['trunkrs', 'deonlinedrogist', 'qoyod']) {
             sessionAttributes: {},
             customStatus: null,
           };
+          const history = [];
+          const row = (id, text, kind) => ({
+            publicId: id,
+            type: 'message',
+            content: { text },
+            sender: { kind, name: null },
+            sentAt: new Date().toISOString(),
+            systemMessagePayload: null,
+          });
           await context.route('**/*', async (route) => {
             const request = route.request(),
               url = new URL(request.url());
@@ -161,8 +170,47 @@ for (const name of ['trunkrs', 'deonlinedrogist', 'qoyod']) {
                   assistMode: false,
                 },
               });
+            if (url.pathname === '/backend/widget/v5/chat/stream') {
+              const { uuid, content } = request.postDataJSON();
+              // The reply reaches polling only after the test has seen it
+              // rendered from the stream.
+              history.push(row(uuid, content, 'user'));
+              const events = [
+                { type: 'start', messageId: 'fixture-reply' },
+                { type: 'start-step' },
+                { type: 'text-start', id: 'reply' },
+                {
+                  type: 'text-delta',
+                  id: 'reply',
+                  delta: 'LOCAL_COMPAT_REPLY',
+                },
+                { type: 'text-end', id: 'reply' },
+                { type: 'finish-step' },
+                { type: 'finish' },
+              ];
+              return route.fulfill({
+                status: 200,
+                headers: {
+                  'Content-Type': 'text/event-stream',
+                  'x-vercel-ai-ui-message-stream': 'v1',
+                },
+                body:
+                  events.map((e) => `data: ${JSON.stringify(e)}\n\n`).join('') +
+                  'data: [DONE]\n\n',
+              });
+            }
             if (url.pathname === '/backend/widget/v2/poll/fixture-session')
-              return json({ session, history: [] });
+              return json({ session, history });
+            if (
+              url.pathname ===
+              '/backend/widget/v5/chat/fixture-session/messages'
+            )
+              return json({ turns: [] });
+            // No interrupted turn to resume.
+            if (
+              url.pathname === '/backend/widget/v5/chat/fixture-session/stream'
+            )
+              return route.fulfill({ status: 204 });
             unexpected.push(url.pathname);
             return route.fulfill({ status: 404, body: '{}' });
           });
@@ -214,13 +262,23 @@ for (const name of ['trunkrs', 'deonlinedrogist', 'qoyod']) {
             'Local compatibility test',
           );
           await frame.locator('textarea').press('Enter');
+          // Polling has no reply yet, so this text can only come from the stream.
           await frame
             .getByText('LOCAL_COMPAT_REPLY', { exact: true })
             .waitFor();
+          // Persist it as the backend would, for the reopen below.
+          history.push(row('fixture-reply', 'LOCAL_COMPAT_REPLY', 'ai'));
           const send = requests.find(
-            (r) => r.path === '/backend/widget/v2/chat/send',
+            (r) => r.path === '/backend/widget/v5/chat/stream',
           );
-          assert.ok(send, 'legacy send endpoint must remain the default');
+          assert.ok(
+            send,
+            'an unchanged embed streams when the organization supports it',
+          );
+          assert.ok(
+            !requests.some((r) => r.path === '/backend/widget/v2/chat/send'),
+            'the legacy send endpoint is not used alongside streaming',
+          );
           assert.equal(send.body.features.page_context, false);
           assert.equal(send.body.features.client_tools, false);
           if (name === 'trunkrs') {

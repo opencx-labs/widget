@@ -125,8 +125,12 @@ Use the installed `WidgetConfig` declaration for exact keys and defaults.
 
 ## v5 context and features
 
-An omitted or false `streaming` keeps polling, including with v2 agents and
-verified users. Set `streaming: true` only for requested live features supported
+From 5.5.0, the script embed (`initOpenScript`) streams when `streaming` is
+omitted and the organization supports it; `streaming: false` keeps polling.
+Earlier script versions, including the pinned examples above, stream only with
+`streaming: true`. In the React and headless packages, omitted or false keeps
+polling, including with v2 agents and
+verified users; set `streaming: true` only for requested live features supported
 by the organization. Live replies use SSE; polling still reconciles persisted
 history and human replies. Layout, agent version and delivery are independent:
 Companion does not turn on streaming or page access, and the popover can use the
@@ -201,7 +205,7 @@ initialized core context. Do not reinitialize on every route change.
   through `useMessages().sendMessage`. Only the newest unpicked options message
   in an open session is tappable. Keep the picked label as a disabled receipt;
   hide older unpicked choices. Follow the resulting message state on failure.
-  These are separate from streaming clarification questions. From 5.5.0,
+  These are separate from streaming clarification questions. From 5.6.0,
   workflow-sent options arrive on `AI` messages too: treat `AGENT` and `AI`
   messages alike. `messageOptions.requireTap: true` means the visitor must
   tap: lock the composer (typing, send, attachments) while

@@ -45,9 +45,11 @@ For script embeds, use:
 ```
 
 Keep the default popover unless the customer also requests the companion. The
-companion is selected by `displayMode: 'companion'`. Omitted or false `streaming`
-keeps polling, including with v2 agents and verified users. `streaming: true`
-requires organization support and uses SSE for live replies; polling still
+companion is selected by `displayMode: 'companion'`. From 5.5.0 the script embed
+streams when `streaming` is omitted and the organization supports it;
+`streaming: false` keeps polling. In the React and headless packages, omitted or
+false keeps polling. Streaming requires organization support and uses SSE for
+live replies; polling still
 reconciles persisted history and human replies. Layout and delivery are independent.
 
 ## Review migration-sensitive behavior
@@ -62,9 +64,11 @@ reconciles persisted history and human replies. Layout and delivery are independ
   resource-loading CSS and positioning are still removed. Re-test custom markup.
 - **User message shape:** `deliveredAt` is restored as a deprecated alias of
   `timestamp`, including queued messages and restored history.
-- **Runtime defaults:** unchanged configurations keep polling and disable personal
-  service connections. Existing beta users must opt in with `streaming: true`
-  and `capabilities.connections: true` to retain those features. Page collection
+- **Runtime defaults:** unchanged configurations disable personal service
+  connections. From 5.5.0 the script embed streams when the organization supports
+  it; React and headless integrations keep polling unless `streaming: true`.
+  Existing beta users must opt in with `capabilities.connections: true`, plus
+  `streaming: true` in React or headless, to retain those features. Page collection
   requires `features.pageContext: true`; agent actions additionally require
   `features.clientTools: true` and `features.pageActions: true`. Page context
   and actions default off and require organization support plus embed opt-in.
@@ -117,7 +121,10 @@ reconciles persisted history and human replies. Layout and delivery are independ
   so later replies can light the indicator. Newly created sessions join loaded
   history immediately. A custom headless shell must report actual transcript
   visibility even when its unread count is zero.
-- 5.5.0 adds `messageOptions.requireTap` and carries workflow-sent options on
+- 5.5.0 makes the script embed stream when the organization supports it, without
+  `streaming: true`. Keep an existing embed on send/poll with `streaming: false`.
+  React and headless integrations are unchanged.
+- 5.6.0 adds `messageOptions.requireTap` and carries workflow-sent options on
   `AI` messages, so custom renderers must show options under `AGENT` and `AI`
   messages alike. Custom composers must stay locked while
   `isAwaitingRequiredTap(messages, session)` from `@opencx/widget-core` is

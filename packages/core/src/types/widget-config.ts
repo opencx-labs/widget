@@ -375,8 +375,9 @@ export interface WidgetConfig {
   token: string;
 
   /**
-   * Set true to opt into streaming when the organization supports it.
-   * Omitted or false preserves v4 send/poll delivery, even with the new agent.
+   * True streams replies when the organization supports it; false keeps v4
+   * send/poll delivery. Omitted keeps send/poll in the React and headless
+   * packages, while the script embed (`initOpenScript`) streams.
    * Runtime changes wait for accepted sends and reply reconciliation to finish.
    */
   streaming?: boolean;

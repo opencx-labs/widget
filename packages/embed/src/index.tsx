@@ -33,7 +33,11 @@ function initOpenScript(options: WidgetConfig) {
     }
     root = createRoot(container);
   }
-  root.render(<Widget options={options} />);
+  // The script embed ships the full streaming UI, so it streams whenever the
+  // organization supports it. `streaming: false` keeps send/poll delivery.
+  root.render(
+    <Widget options={{ ...options, streaming: options.streaming ?? true }} />,
+  );
 }
 
 // Retain the initializer as well as its root: a repeated IIFE carries another
