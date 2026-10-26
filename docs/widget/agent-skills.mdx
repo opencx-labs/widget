@@ -81,8 +81,11 @@ Widget 5.0.0 was released as stable on September 30, 2026. The skills use exact
 versions and check the registry before selecting newer releases. Sites staying
 on v4 should pin `4.0.63`; `latest` can move to a new major.
 
-Omitted delivery and layout options keep polling and the classic popover. Streaming,
-personal connections and page access require explicit opt-ins. Companion changes
+Omitted layout options keep the classic popover. From 5.5.0 the script embed
+streams when the organization supports it (`streaming: false` keeps polling);
+earlier versions and the React and headless packages keep polling unless
+`streaming: true`. Personal connections and
+page access require explicit opt-ins. Companion changes
 the layout without granting those permissions. See [Migration to v5](/widget/migrate-to-v5)
 for the delivery, authentication and page-action contract.
 

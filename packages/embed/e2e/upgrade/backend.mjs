@@ -98,7 +98,9 @@ export function createBackend(profile) {
           agent: {
             name: 'Backend Agent',
             avatar_url: null,
-            streaming: true,
+            // An org without streaming: unchanged v4 configs keep send/poll.
+            // public-setups covers an unchanged embed on a streaming org.
+            streaming: false,
             features: {
               attachments: true,
               dictation: false,

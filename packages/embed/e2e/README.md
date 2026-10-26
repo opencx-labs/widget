@@ -34,7 +34,7 @@ done
 ```
 
 Checks cover visible opening through customer launchers, contact collection,
-message/reply flow, v2 delivery default despite backend streaming support,
+message/reply flow, streaming by default when the backend supports it,
 page-context/client-tools default opt-out, closing, reopening, RTL, country token,
 one root, and browser errors. Real keystrokes are used because Firefox's bulk
 fill shortcut did not insert text into the newly opened iframe.
