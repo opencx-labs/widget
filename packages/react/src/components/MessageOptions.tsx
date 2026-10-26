@@ -1,4 +1,7 @@
-import type { WidgetMessageOptions } from '@opencx/widget-core';
+import {
+  type WidgetMessageOptions,
+  tappableOptionsMessage,
+} from '@opencx/widget-core';
 import { useMessages, useSessions } from '@opencx/widget-react-headless';
 import { CheckIcon } from 'lucide-react';
 import React from 'react';
@@ -6,9 +9,10 @@ import { dc } from '../utils/data-component.js';
 import { Button } from './lib/button.js';
 
 /**
- * Only the first tap on the newest options message of an open session counts,
- * so only it shows the options. After a tap only the picked one stays, as a
- * receipt; options that can no longer be tapped are not shown.
+ * Only the first tap on the newest options message of an open session counts
+ * (`tappableOptionsMessage`), so only it shows the options. After a tap only
+ * the picked one stays, as a receipt; options that can no longer be tapped are
+ * not shown.
  */
 export function MessageOptions({
   messageId,
@@ -20,14 +24,10 @@ export function MessageOptions({
   const { messagesState, sendMessage } = useMessages();
   const { sessionState } = useSessions();
 
-  const newestWithOptions = messagesState.messages.findLast(
-    (message) => message.type === 'AGENT' && message.messageOptions,
-  );
   const { pickedOptionId } = messageOptions;
   const tappable =
-    pickedOptionId === null &&
-    newestWithOptions?.id === messageId &&
-    sessionState.session?.isOpened !== false;
+    tappableOptionsMessage(messagesState.messages, sessionState.session)?.id ===
+    messageId;
   const picked = messageOptions.options.find(
     (option) => option.id === pickedOptionId,
   );

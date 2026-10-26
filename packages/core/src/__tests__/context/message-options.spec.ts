@@ -98,6 +98,15 @@ suite('macro options on the widget', () => {
       data: { message: 'Can we access your account?' },
     });
     expect(plain).not.toHaveProperty('messageOptions');
+
+    // The composer locks on this flag, so the row must carry it through.
+    const requiringTap = polling.mapHistoryToMessage(
+      agentRow({ messageOptions: { ...OPTIONS, requireTap: true } }),
+    );
+    expect(requiringTap).toMatchObject({
+      type: 'AGENT',
+      messageOptions: { ...OPTIONS, requireTap: true },
+    });
   });
 
   test('a tap is sent as option_reply; a typed message sends none', () => {

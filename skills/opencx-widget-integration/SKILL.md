@@ -201,7 +201,12 @@ initialized core context. Do not reinitialize on every route change.
   through `useMessages().sendMessage`. Only the newest unpicked options message
   in an open session is tappable. Keep the picked label as a disabled receipt;
   hide older unpicked choices. Follow the resulting message state on failure.
-  These are separate from streaming clarification questions.
+  These are separate from streaming clarification questions. From 5.5.0,
+  `messageOptions.requireTap: true` means the visitor must tap: lock the
+  composer (typing, send, attachments) while
+  `isAwaitingRequiredTap(messagesState.messages, sessionState.session)` from
+  `@opencx/widget-core` is true. `tappableOptionsMessage` returns the message
+  whose options are tappable, so both follow one rule.
 - **Feedback after streaming (5.4.1+):** use
   `useMessages().messagesState.lastAIResMightSolveUserIssue` for the helpfulness
   prompt or a custom feedback flow. An accepted send resets it. A completed

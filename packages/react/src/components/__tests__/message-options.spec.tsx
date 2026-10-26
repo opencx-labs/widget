@@ -65,22 +65,29 @@ function render(message: WidgetAgentMessage) {
 }
 
 describe('MessageOptions', () => {
-  it('the newest unpicked options message of an open session is tappable and sends the tap', () => {
-    const newest = agentMessage('newest');
-    messages = [newest];
+  it.each([
+    { kind: 'plain', messageOptions: options },
+    // The composer is locked meanwhile, so these buttons are the only way on.
+    { kind: 'tap-required', messageOptions: { ...options, requireTap: true } },
+  ])(
+    '$kind: the newest unpicked options message of an open session is tappable and sends the tap',
+    ({ messageOptions }) => {
+      const newest = agentMessage('newest', messageOptions);
+      messages = [newest];
 
-    const buttons = render(newest);
-    act(() => buttons[0]?.click());
+      const buttons = render(newest);
+      act(() => buttons[0]?.click());
 
-    expect(buttons.map((b) => [b.textContent, b.disabled])).toEqual([
-      ['Yes', false],
-      ['No', false],
-    ]);
-    expect(sendMessage).toHaveBeenCalledWith({
-      content: 'Yes',
-      optionReply: { messageId: 'newest', optionId: 'opt-yes' },
-    });
-  });
+      expect(buttons.map((b) => [b.textContent, b.disabled])).toEqual([
+        ['Yes', false],
+        ['No', false],
+      ]);
+      expect(sendMessage).toHaveBeenCalledWith({
+        content: 'Yes',
+        optionReply: { messageId: 'newest', optionId: 'opt-yes' },
+      });
+    },
+  );
 
   it('an older unpicked options message shows nothing while the newest stays tappable', () => {
     const older = agentMessage('older');

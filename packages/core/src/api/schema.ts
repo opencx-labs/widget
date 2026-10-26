@@ -1912,6 +1912,8 @@ export interface components {
           label: string;
         }[];
         pickedOptionId: string | null;
+        /** @description True when the visitor must answer by tapping one of the options; absent otherwise. */
+        requireTap?: boolean;
       };
     };
     WidgetSessionAndHistoryDto: {

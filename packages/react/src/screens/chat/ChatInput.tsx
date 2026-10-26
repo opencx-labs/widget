@@ -1,6 +1,10 @@
 import { ElicitationForm } from '../../components/ElicitationForm';
 import { ConnectionCard } from '../../components/ConnectionCard';
-import { type SendMessageDto, log } from '@opencx/widget-core';
+import {
+  type SendMessageDto,
+  isAwaitingRequiredTap,
+  log,
+} from '@opencx/widget-core';
 import {
   useAgentChatUi,
   useComposerDraft,
@@ -78,7 +82,7 @@ export function ChatInput({
   trailingActions,
   placeholder,
   hideAttachTools,
-  disabled = false,
+  disabled: disabledByParent = false,
 }: {
   /** Keep the composer visible while a required starter must be chosen. */
   disabled?: boolean;
@@ -106,7 +110,8 @@ export function ChatInput({
   const composerRootRef = useRef<HTMLDivElement>(null);
   const mirrorRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(true);
-  const { sendMessage, rememberSentText, getSentTextHistory } = useMessages();
+  const { messagesState, sendMessage, rememberSentText, getSentTextHistory } =
+    useMessages();
   const { widgetCtx, componentStore } = useWidget();
   // Org features narrowed by the embed: no attachments → no paperclip, no
   // drop, no paste; no page marks → no mark button.
@@ -122,6 +127,11 @@ export function ChatInput({
     pendingPageAction,
   } = useAgentChatUi();
   const { sessionState } = useSessions();
+  // A teammate's question answered by tapping one of its options locks the
+  // composer like a required starter does, here so every surface obeys it.
+  const disabled =
+    disabledByParent ||
+    isAwaitingRequiredTap(messagesState.messages, sessionState.session);
   const { t } = useTranslation();
   const {
     text: inputText,

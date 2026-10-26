@@ -97,6 +97,10 @@ export {
 } from './utils/companion-layout';
 export type { WidgetSidebarSideResolvedU } from './utils/companion-layout';
 export { isExhaustive } from './utils/is-exhaustive';
+export {
+  isAwaitingRequiredTap,
+  tappableOptionsMessage,
+} from './utils/message-options';
 
 export {
   type Language,
