@@ -40,7 +40,7 @@ export const ItalianLanguage: TranslationInterface = {
   step_arguments: 'Argomenti',
   step_result: 'Risultato',
   attach_files:
-    'Allega immagini, video, PDF o fogli di calcolo (dimensione massima 25 MB)',
+    'Allega immagini, video, PDF o fogli di calcolo (dimensione massima 50 MB)',
   mark_page_active:
     'Fai clic su un elemento della pagina per contrassegnarlo — Esc per annullare',
   mark_page:

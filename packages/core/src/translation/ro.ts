@@ -40,7 +40,7 @@ export const RomanianLanguage: TranslationInterface = {
   step_arguments: 'Argumente',
   step_result: 'Rezultat',
   attach_files:
-    'Atașează imagini, videoclipuri, PDF-uri sau foi de calcul (dimensiune maximă 25 MB)',
+    'Atașează imagini, videoclipuri, PDF-uri sau foi de calcul (dimensiune maximă 50 MB)',
   mark_page_active:
     'Dă clic pe ceva din pagină pentru a-l marca — Esc pentru anulare',
   mark_page: 'Marchează ceva din pagină pentru a întreba despre acel element',

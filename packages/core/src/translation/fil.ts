@@ -40,7 +40,7 @@ export const FilipinoLanguage: TranslationInterface = {
   step_arguments: 'Mga argumento',
   step_result: 'Resulta',
   attach_files:
-    'Mag-attach ng mga larawan, video, PDF, o spreadsheet (maximum na laki 25 MB)',
+    'Mag-attach ng mga larawan, video, PDF, o spreadsheet (maximum na laki 50 MB)',
   mark_page_active:
     'Mag-click ng kahit ano sa page para markahan ito — Esc para kanselahin',
   mark_page: 'Markahan ang isang bagay sa page para magtanong tungkol dito',

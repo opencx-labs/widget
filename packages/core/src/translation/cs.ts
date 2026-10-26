@@ -40,7 +40,7 @@ export const CzechLanguage: TranslationInterface = {
   step_arguments: 'Argumenty',
   step_result: 'Výsledek',
   attach_files:
-    'Připojit obrázky, videa, PDF nebo tabulky (maximální velikost 25 MB)',
+    'Připojit obrázky, videa, PDF nebo tabulky (maximální velikost 50 MB)',
   mark_page_active:
     'Kliknutím na cokoli na stránce to označíte — klávesou Esc akci zrušíte',
   mark_page: 'Označte něco na stránce a zeptejte se na to',

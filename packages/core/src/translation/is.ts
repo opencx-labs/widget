@@ -40,7 +40,7 @@ export const IcelandicLanguage: TranslationInterface = {
   step_arguments: 'Viðföng',
   step_result: 'Niðurstaða',
   attach_files:
-    'Hengja við myndir, myndskeið, PDF-skjöl eða töflureikna (hámarksstærð 25 MB)',
+    'Hengja við myndir, myndskeið, PDF-skjöl eða töflureikna (hámarksstærð 50 MB)',
   mark_page_active:
     'Smelltu á eitthvað á síðunni til að merkja það — Esc til að hætta við',
   mark_page: 'Merktu eitthvað á síðunni til að spyrja um það',

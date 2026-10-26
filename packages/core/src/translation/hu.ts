@@ -40,7 +40,7 @@ export const HungarianLanguage: TranslationInterface = {
   step_arguments: 'Argumentumok',
   step_result: 'Eredmény',
   attach_files:
-    'Képek, videók, PDF-ek vagy táblázatok csatolása (legfeljebb 25 MB)',
+    'Képek, videók, PDF-ek vagy táblázatok csatolása (legfeljebb 50 MB)',
   mark_page_active:
     'Kattintson valamire az oldalon a megjelöléséhez — Esc a megszakításhoz',
   mark_page: 'Jelöljön meg valamit az oldalon, hogy kérdezhessen róla',

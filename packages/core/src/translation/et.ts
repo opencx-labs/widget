@@ -40,7 +40,7 @@ export const EstonianLanguage: TranslationInterface = {
   step_arguments: 'Argumendid',
   step_result: 'Tulemus',
   attach_files:
-    'Lisa pilte, videoid, PDF-e või arvutustabeleid (maksimaalne suurus 25 MB)',
+    'Lisa pilte, videoid, PDF-e või arvutustabeleid (maksimaalne suurus 50 MB)',
   mark_page_active:
     'Märkimiseks klõpsa lehel ükskõik millel — tühistamiseks vajuta Esc',
   mark_page: 'Märgi lehel midagi, et selle kohta küsida',

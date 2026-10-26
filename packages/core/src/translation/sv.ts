@@ -40,7 +40,7 @@ export const SwedishLanguage: TranslationInterface = {
   step_arguments: 'Argument',
   step_result: 'Resultat',
   attach_files:
-    'Bifoga bilder, videor, PDF-filer eller kalkylblad (maximal storlek 25 MB)',
+    'Bifoga bilder, videor, PDF-filer eller kalkylblad (maximal storlek 50 MB)',
   mark_page_active:
     'Klicka på något på sidan för att markera det — Esc för att avbryta',
   mark_page: 'Markera något på sidan för att fråga om det',

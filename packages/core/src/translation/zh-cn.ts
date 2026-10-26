@@ -39,7 +39,7 @@ export const ChineseSimplifiedLanguage: TranslationInterface = {
   steps: '步骤',
   step_arguments: '参数',
   step_result: '结果',
-  attach_files: '附加图片、视频、PDF 或电子表格（最大 25 MB）',
+  attach_files: '附加图片、视频、PDF 或电子表格（最大 50 MB）',
   mark_page_active: '点击页面上的任意内容进行标记 — 按 Esc 取消',
   mark_page: '标记页面上的内容以便就此提问',
   stop_response: '停止回答',

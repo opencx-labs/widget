@@ -40,7 +40,7 @@ export const BengaliLanguage: TranslationInterface = {
   step_arguments: 'আর্গুমেন্ট',
   step_result: 'ফলাফল',
   attach_files:
-    'ছবি, ভিডিও, PDF বা স্প্রেডশিট সংযুক্ত করুন (সর্বোচ্চ আকার 25 MB)',
+    'ছবি, ভিডিও, PDF বা স্প্রেডশিট সংযুক্ত করুন (সর্বোচ্চ আকার 50 MB)',
   mark_page_active:
     'চিহ্নিত করতে পৃষ্ঠার যেকোনো কিছুতে ক্লিক করুন — বাতিল করতে Esc চাপুন',
   mark_page: 'পৃষ্ঠার কোনো কিছু সম্পর্কে জিজ্ঞাসা করতে সেটি চিহ্নিত করুন',

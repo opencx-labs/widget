@@ -40,7 +40,7 @@ export const SlovakLanguage: TranslationInterface = {
   step_arguments: 'Argumenty',
   step_result: 'Výsledok',
   attach_files:
-    'Priložiť obrázky, videá, PDF súbory alebo tabuľky (maximálna veľkosť 25 MB)',
+    'Priložiť obrázky, videá, PDF súbory alebo tabuľky (maximálna veľkosť 50 MB)',
   mark_page_active:
     'Kliknutím na čokoľvek na stránke to označíte — klávesom Esc akciu zrušíte',
   mark_page: 'Označte niečo na stránke a opýtajte sa na to',

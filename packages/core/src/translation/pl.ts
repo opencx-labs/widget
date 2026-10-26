@@ -40,7 +40,7 @@ export const PolishLanguage: TranslationInterface = {
   step_arguments: 'Argumenty',
   step_result: 'Wynik',
   attach_files:
-    'Dołącz obrazy, filmy, pliki PDF lub arkusze kalkulacyjne (maksymalny rozmiar 25 MB)',
+    'Dołącz obrazy, filmy, pliki PDF lub arkusze kalkulacyjne (maksymalny rozmiar 50 MB)',
   mark_page_active:
     'Kliknij coś na stronie, aby to oznaczyć — Esc, aby anulować',
   mark_page: 'Oznacz coś na stronie, aby o to zapytać',

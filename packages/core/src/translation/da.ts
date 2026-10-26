@@ -40,7 +40,7 @@ export const DanishLanguage: TranslationInterface = {
   step_arguments: 'Argumenter',
   step_result: 'Resultat',
   attach_files:
-    'Vedhæft billeder, videoer, PDF-filer eller regneark (maksimal størrelse 25 MB)',
+    'Vedhæft billeder, videoer, PDF-filer eller regneark (maksimal størrelse 50 MB)',
   mark_page_active:
     'Klik på noget på siden for at markere det — Esc annullerer',
   mark_page: 'Markér noget på siden for at spørge om det',

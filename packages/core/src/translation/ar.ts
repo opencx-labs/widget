@@ -53,7 +53,7 @@ export const ArabicLanguage: TranslationInterface = {
   step_arguments: 'الوسائط',
   step_result: 'النتيجة',
   attach_files:
-    'إرفاق صور أو مقاطع فيديو أو ملفات PDF أو جداول بيانات (الحد الأقصى 25 ميغابايت)',
+    'إرفاق صور أو مقاطع فيديو أو ملفات PDF أو جداول بيانات (الحد الأقصى 50 ميغابايت)',
   mark_page_active: 'انقر على أي شيء في الصفحة لتحديده — اضغط Esc للإلغاء',
   mark_page: 'حدّد شيئًا في الصفحة لطرح سؤال عنه',
   stop_response: 'إيقاف الرد',

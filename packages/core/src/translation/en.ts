@@ -53,7 +53,7 @@ export const EnglishLanguage: TranslationInterface = {
   step_arguments: 'Arguments',
   step_result: 'Result',
   attach_files:
-    'Attach images, videos, PDFs, or spreadsheets (maximum size 25 MB)',
+    'Attach images, videos, PDFs, or spreadsheets (maximum size 50 MB)',
   mark_page_active: 'Click anything on the page to mark it — Esc to cancel',
   mark_page: 'Mark something on the page to ask about it',
   stop_response: 'Stop response',

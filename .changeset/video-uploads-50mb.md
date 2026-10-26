@@ -1,4 +1,5 @@
 ---
+'@opencx/widget-core': patch
 '@opencx/widget-react': patch
 '@opencx/widget': patch
 ---

@@ -39,7 +39,7 @@ export const KoreanLanguage: TranslationInterface = {
   steps: '단계',
   step_arguments: '인수',
   step_result: '결과',
-  attach_files: '이미지, 동영상, PDF 또는 스프레드시트 첨부(최대 크기 25 MB)',
+  attach_files: '이미지, 동영상, PDF 또는 스프레드시트 첨부(최대 크기 50 MB)',
   mark_page_active:
     '페이지에서 표시할 항목을 클릭하세요 — 취소하려면 Esc를 누르세요',
   mark_page: '질문할 페이지의 항목을 표시하세요',

@@ -39,7 +39,7 @@ export const ThaiLanguage: TranslationInterface = {
   steps: 'ขั้นตอน',
   step_arguments: 'อาร์กิวเมนต์',
   step_result: 'ผลลัพธ์',
-  attach_files: 'แนบรูปภาพ วิดีโอ PDF หรือสเปรดชีต (ขนาดสูงสุด 25 MB)',
+  attach_files: 'แนบรูปภาพ วิดีโอ PDF หรือสเปรดชีต (ขนาดสูงสุด 50 MB)',
   mark_page_active:
     'คลิกสิ่งใดก็ได้บนหน้าเพื่อทำเครื่องหมาย — กด Esc เพื่อยกเลิก',
   mark_page: 'ทำเครื่องหมายสิ่งที่อยู่บนหน้าเพื่อถามเกี่ยวกับสิ่งนั้น',
