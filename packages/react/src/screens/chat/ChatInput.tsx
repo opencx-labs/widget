@@ -127,8 +127,9 @@ export function ChatInput({
     pendingPageAction,
   } = useAgentChatUi();
   const { sessionState } = useSessions();
-  // A teammate's question answered by tapping one of its options locks the
-  // composer like a required starter does, here so every surface obeys it.
+  // A macro question (a teammate's or a workflow's) that must be answered by
+  // tapping one of its options locks the composer like a required starter
+  // does, here so every surface obeys it.
   const disabled =
     disabledByParent ||
     isAwaitingRequiredTap(messagesState.messages, sessionState.session);
