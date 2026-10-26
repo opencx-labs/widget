@@ -2,6 +2,7 @@ import type {
   SendMessageInput,
   StagedUserTurn,
   WidgetCtx,
+  WidgetMessageU,
   WidgetUserMessage,
 } from '@opencx/widget-core';
 import React, { act } from 'react';
@@ -117,13 +118,15 @@ const fakeWidgetCtx = {
 import { useAgentChat } from '../useAgentChat';
 
 let hookValue: ReturnType<typeof useAgentChat> | null = null;
+/** The polled transcript; only the option-tap cases put rows in it. */
+let transcript: WidgetMessageU[] = [];
 
 function Probe() {
   hookValue = useAgentChat({
     widgetCtx: fakeWidgetCtx,
     config: { token: 't' },
     sessionId: 'sess-1',
-    persistedMessages: [],
+    persistedMessages: transcript,
   });
   return null;
 }
@@ -231,6 +234,7 @@ describe('useAgentChat unsent option taps', () => {
   afterEach(() => {
     act(() => root.unmount());
     container.remove();
+    transcript = [];
   });
 
   it.each([
@@ -282,6 +286,67 @@ describe('useAgentChat unsent option taps', () => {
       'opt-yes',
     );
   });
+
+  it.each([
+    { meanwhile: 'nothing', otherTap: null, retried: true },
+    {
+      meanwhile: 'the visitor tapped another option',
+      otherTap: {
+        content: 'No',
+        optionReply: { messageId: 'question', optionId: 'opt-no' },
+      },
+      retried: false,
+    },
+  ])(
+    'retry after a failed tap when $meanwhile: retried=$retried',
+    async ({ otherTap, retried }) => {
+      const question = (pickedOptionId: string | null): WidgetMessageU => ({
+        id: 'question',
+        type: 'AI',
+        component: 'bot_message',
+        data: { message: 'Do you have a security incident to report?' },
+        timestamp: null,
+        messageOptions: {
+          options: [
+            { id: 'opt-yes', label: 'Yes' },
+            { id: 'opt-no', label: 'No' },
+          ],
+          pickedOptionId,
+          requireTap: true,
+        },
+      });
+      transcript = [question(null)];
+      await act(async () => root.render(<Probe />));
+      // History is still loading after the failure, so a new send queues.
+      fakeReconcileAfterStream.mockImplementationOnce(
+        () => new Promise(() => {}),
+      );
+      await act(async () => {
+        await registeredSend()(tap);
+      });
+      await act(async () =>
+        setChatState({ status: 'submitted', messages: [] }),
+      );
+      await act(async () => setChatState({ status: 'error', messages: [] }));
+      if (otherTap) {
+        await act(async () => {
+          await registeredSend()(otherTap);
+        });
+        // Accepting it picked its option.
+        transcript = [question('opt-no')];
+        await act(async () => root.render(<Probe />));
+      }
+
+      await act(async () => hookValue?.retryFailedTurn());
+
+      expect(hookValue?.queuedUserMessages.map((m) => m.id)).toEqual(
+        retried ? ['msg-Yes'] : ['msg-No'],
+      );
+      expect(fakeMessageCtx.setMessageOptionPick.mock.calls).toEqual(
+        retried ? [['question', 'opt-yes']] : [],
+      );
+    },
+  );
 
   it('removing a queued tap gives its options back', async () => {
     await act(async () => {

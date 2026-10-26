@@ -3,6 +3,7 @@ import {
   buildSendMessageBody,
   resolveClientPresentation,
   genUuid,
+  isAgentOrAiMessage,
   isRecord,
   log,
   type SendMessageInput,
@@ -618,6 +619,18 @@ export function useAgentChat({
   const retryFailedTurn = useCallback(() => {
     const last = lastDrainedRef.current;
     if (!last) return;
+    // The failure gave a tap's options back. If the visitor has since picked
+    // another one (accepted, maybe still queued), this answer is superseded:
+    // retrying would send both and show the older choice as picked.
+    const tap = last.input.optionReply;
+    const question = tap
+      ? persistedMessages.find((message) => message.id === tap.messageId)
+      : undefined;
+    const pickedNow =
+      question && isAgentOrAiMessage(question)
+        ? question.messageOptions?.pickedOptionId
+        : null;
+    if (tap && pickedNow && pickedNow !== tap.optionId) return;
     const enqueued = queueRef.current.enqueue({
       ...last,
       retryUuid: genUuid(),
@@ -626,12 +639,11 @@ export function useAgentChat({
       log.warn('agent chat queue full; retry not enqueued');
       return;
     }
-    // The failure gave a tap's options back; retrying it picks them again.
-    const tap = last.input.optionReply;
+    // Retrying the tap picks its option again.
     if (tap) messageCtx.setMessageOptionPick(tap.messageId, tap.optionId);
     clearError();
     setQueueVersion((v) => v + 1);
-  }, [clearError, messageCtx]);
+  }, [clearError, messageCtx, persistedMessages]);
 
   // Drop one queued (not-yet-sent) message — the pill's per-row remove button.
   const removeQueued = useCallback(
