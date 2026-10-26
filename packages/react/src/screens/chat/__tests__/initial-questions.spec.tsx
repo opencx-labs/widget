@@ -7,6 +7,7 @@ Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
 let config: WidgetConfig;
 let messages: WidgetMessageU[];
+let isStreaming = false;
 const sendMessage = vi.fn(async ({ content }: { content: string }) => {
   messages = [
     {
@@ -27,6 +28,7 @@ vi.mock('@opencx/widget-react-headless', () => ({
   }),
   useSessions: () => ({ sessionState: { session: null } }),
   useBot: () => undefined,
+  useAgentChatUi: () => ({ isStreaming }),
   useDisplayMode: () => config.displayMode ?? 'popover',
 
   useIsAwaitingBotReply: () => ({ isAwaitingBotReply: false }),
@@ -80,6 +82,7 @@ beforeEach(() => {
     requireInitialQuestion: true,
   };
   messages = [];
+  isStreaming = false;
 
   sendMessage.mockClear();
   container = document.createElement('div');
@@ -108,6 +111,66 @@ const questions = () =>
   container.querySelectorAll<HTMLButtonElement>(
     '[data-component="chat/suggested_reply_btn"]',
   );
+
+describe('options that require a tap', () => {
+  const question = (
+    messageOptions: NonNullable<
+      Extract<WidgetMessageU, { type: 'AI' }>['messageOptions']
+    >,
+  ): WidgetMessageU => ({
+    id: 'question',
+    type: 'AI',
+    component: 'bot_message',
+    data: { message: 'Do you have a security incident to report?' },
+    timestamp: null,
+    messageOptions,
+  });
+  const options = [
+    { id: 'opt-yes', label: 'Yes' },
+    { id: 'opt-no', label: 'No' },
+  ];
+
+  it.each([
+    {
+      case: 'required, untapped',
+      requireTap: true,
+      picked: null,
+      streaming: false,
+      shown: false,
+    },
+    {
+      case: 'not required',
+      requireTap: false,
+      picked: null,
+      streaming: false,
+      shown: true,
+    },
+    {
+      case: 'required, tapped',
+      requireTap: true,
+      picked: 'opt-yes',
+      streaming: false,
+      shown: true,
+    },
+    // The live reply hides the question until it ends; its Stop stays.
+    {
+      case: 'required, untapped, a reply still streaming',
+      requireTap: true,
+      picked: null,
+      streaming: true,
+      shown: true,
+    },
+  ])(
+    'hides the composer only while a required tap is pending ($case)',
+    ({ requireTap, picked, streaming, shown }) => {
+      config.requireInitialQuestion = false;
+      isStreaming = streaming;
+      messages = [question({ options, pickedOptionId: picked, requireTap })];
+      render();
+      expect(composer() !== null).toBe(shown);
+    },
+  );
+});
 
 describe('required initial questions', () => {
   it.each(['above-chat-input', 'below-initial-messages'] as const)(

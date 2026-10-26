@@ -40,6 +40,7 @@ import { PageContextPill } from '../../page-context/PageContextPill';
 import { usePageEntity } from '../../page-context/usePageEntity';
 import { PageMarkOverlay } from '../../page-marks/PageMarkOverlay';
 import { PageMarkPill } from '../../page-marks/PageMarkPill';
+import { composerLockedForTap } from '../../utils/composer-locked-for-tap';
 import { dc } from '../../utils/data-component';
 import {
   formatBinding,
@@ -78,7 +79,7 @@ export function ChatInput({
   trailingActions,
   placeholder,
   hideAttachTools,
-  disabled = false,
+  disabled: disabledByParent = false,
 }: {
   /** Keep the composer visible while a required starter must be chosen. */
   disabled?: boolean;
@@ -106,7 +107,8 @@ export function ChatInput({
   const composerRootRef = useRef<HTMLDivElement>(null);
   const mirrorRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(true);
-  const { sendMessage, rememberSentText, getSentTextHistory } = useMessages();
+  const { messagesState, sendMessage, rememberSentText, getSentTextHistory } =
+    useMessages();
   const { widgetCtx, componentStore } = useWidget();
   // Org features narrowed by the embed: no attachments → no paperclip, no
   // drop, no paste; no page marks → no mark button.
@@ -122,6 +124,20 @@ export function ChatInput({
     pendingPageAction,
   } = useAgentChatUi();
   const { sessionState } = useSessions();
+  // A macro question (a teammate's or a workflow's) that must be answered by
+  // tapping one of its options locks the composer like a required starter
+  // does, here so every surface obeys it.
+  const disabled =
+    disabledByParent ||
+    composerLockedForTap({
+      isStreaming,
+      messages: messagesState.messages,
+      session: sessionState.session,
+    });
+  // For a send that resolves later (see `submit`), which may outlive this
+  // composer: the popover unmounts it while a tap is required.
+  const isStreamingRef = useRef(isStreaming);
+  isStreamingRef.current = isStreaming;
   const { t } = useTranslation();
   const {
     text: inputText,
@@ -330,6 +346,14 @@ export function ChatInput({
     // A reset can reuse this MessageCtx for another session or visitor. Do not
     // send or clear their state when an earlier snapshot upload finishes.
     if (!isCurrentConversation()) return;
+    // A question answered by tapping may have landed while this send waited
+    // for its snapshots: re-read the lock now and keep the draft for later.
+    const lockedNow = composerLockedForTap({
+      isStreaming: isStreamingRef.current,
+      messages: widgetCtx.messageCtx.state.get().messages,
+      session: widgetCtx.sessionCtx.sessionState.get().session,
+    });
+    if (lockedNow) return;
     // Upload preparation yields: permissions or the marked DOM may have changed.
     const readsPage = widgetCtx.features.pageContext;
     const currentMarks = submittedMarks.filter((mark) => {

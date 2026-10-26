@@ -3,6 +3,7 @@ import {
   buildSendMessageBody,
   resolveClientPresentation,
   genUuid,
+  isAgentOrAiMessage,
   isRecord,
   log,
   type SendMessageInput,
@@ -163,6 +164,30 @@ export function useAgentChat({
   // An undefined id keeps the previous SDK stream alive after a session reset.
   const [draftChatId] = useState(genUuid);
 
+  // Preparation is serialized separately from streaming: on a fresh chat the
+  // first send may be creating the session. Followers must wait for that id and
+  // enqueue behind the first send, rather than being dropped or overtaking it.
+  const sendPreparationTailRef = useRef<Promise<void>>(Promise.resolve());
+  const preparingSendsRef = useRef(0);
+  const sendGenerationRef = useRef(0);
+  const previousSessionIdRef = useRef(sessionId);
+
+  // Reattach to a still-live turn (reload, tab switch, a picked session) once
+  // a session exists: a fresh visitor has nothing to resume, and probing on
+  // every page load would fire a spurious reconnect. Never the session this
+  // engine's own first send creates: that send is its only turn, and the SDK's
+  // probe races it — the probe's "nothing live" answer lands mid-send and flips
+  // `status` to ready, so the turn boundary fires early (reconciling before any
+  // row exists) and never again, and a turn with no streamed reply waits for
+  // the next poll. Decided once per session id, on the first render that sees
+  // it: the session store renders the new id while the send is still staged.
+  const resume = useMemo(
+    () =>
+      sessionId !== null &&
+      !(previousSessionIdRef.current === null && preparingSendsRef.current > 0),
+    [sessionId],
+  );
+
   const {
     status,
     messages,
@@ -173,11 +198,7 @@ export function useAgentChat({
     resumeStream,
   } = useChat({
     id: sessionId ?? draftChatId,
-    // Reattach to a still-live turn (reload, tab switch) — but only once a
-    // session actually exists. A fresh visitor has nothing to resume, and the
-    // engine mounts with the shell, so probing unconditionally would fire a
-    // spurious reconnect request on every page load.
-    resume: sessionId !== null,
+    resume,
     transport,
     // Batch token updates: without it every streamed token re-renders the
     // whole chat surface (transcript + composer), which stutters on long
@@ -222,12 +243,6 @@ export function useAgentChat({
   const turnPhaseRef = useRef<TurnPhase>('idle');
   // Stop withdraws DOM authority before the SDK reports that its stream ended.
   const [pageEffectsStopped, setPageEffectsStopped] = useState(false);
-  // Preparation is serialized separately from streaming: on a fresh chat the
-  // first send may be creating the session. Followers must wait for that id and
-  // enqueue behind the first send, rather than being dropped or overtaking it.
-  const sendPreparationTailRef = useRef<Promise<void>>(Promise.resolve());
-  const preparingSendsRef = useRef(0);
-  const sendGenerationRef = useRef(0);
   // Bumped on every enqueue / stop-completion so the drain effect re-evaluates
   // (the queue itself is a ref, so mutating it wouldn't trigger a render).
   const [queueVersion, setQueueVersion] = useState(0);
@@ -269,7 +284,6 @@ export function useAgentChat({
   // The most recently drained send — the retry source for a failed turn.
   const lastDrainedRef = useRef<QueuedSend | null>(null);
   const prevStatusRef = useRef(status);
-  const previousSessionIdRef = useRef(sessionId);
   // Resetting the old turn state happens after commit. Withhold its render
   // sources immediately so a newly selected session never paints the old plan,
   // questions, or streamed content during that intervening frame.
@@ -432,7 +446,9 @@ export function useAgentChat({
         completedStream?.messages === messagesRef.current);
     if (justFinished) {
       setSettling(true);
-      if (turnPhaseRef.current === 'in-flight') turnPhaseRef.current = 'idle';
+      // A drained send's own turn, not a resumed one.
+      const sentTurnEnded = turnPhaseRef.current === 'in-flight';
+      if (sentTurnEnded) turnPhaseRef.current = 'idle';
       // RETENTION, synchronous: the stream's terminal `data-turn-settled`
       // part says exactly which ledger turn this was and which transcript
       // rows it produced — the streamed message becomes those rows' render
@@ -460,6 +476,14 @@ export function useAgentChat({
       if (status === 'ready') {
         const userMessageId = lastDrainedRef.current?.userMessage.id;
         if (userMessageId) messageCtx.markUserMessageDelivered(userMessageId);
+      } else if (
+        sentTurnEnded &&
+        prev !== 'streaming' &&
+        lastDrainedRef.current
+      ) {
+        // Failed before its first chunk, so the server may never have had it:
+        // a tap it carried gives its options back, as in the blocking engine.
+        messageCtx.releaseUnsentOptionPick(lastDrainedRef.current.input);
       }
       // Ingest the finished turn's canonical rows BEFORE draining the next
       // queued message — transcript order is append-order, so the reply must
@@ -595,6 +619,18 @@ export function useAgentChat({
   const retryFailedTurn = useCallback(() => {
     const last = lastDrainedRef.current;
     if (!last) return;
+    // The failure gave a tap's options back. If the visitor has since picked
+    // another one (accepted, maybe still queued), this answer is superseded:
+    // retrying would send both and show the older choice as picked.
+    const tap = last.input.optionReply;
+    const question = tap
+      ? persistedMessages.find((message) => message.id === tap.messageId)
+      : undefined;
+    const pickedNow =
+      question && isAgentOrAiMessage(question)
+        ? question.messageOptions?.pickedOptionId
+        : null;
+    if (tap && pickedNow && pickedNow !== tap.optionId) return;
     const enqueued = queueRef.current.enqueue({
       ...last,
       retryUuid: genUuid(),
@@ -603,17 +639,25 @@ export function useAgentChat({
       log.warn('agent chat queue full; retry not enqueued');
       return;
     }
+    // Retrying the tap picks its option again.
+    if (tap) messageCtx.setMessageOptionPick(tap.messageId, tap.optionId);
     clearError();
     setQueueVersion((v) => v + 1);
-  }, [clearError]);
+  }, [clearError, messageCtx, persistedMessages]);
 
   // Drop one queued (not-yet-sent) message — the pill's per-row remove button.
-  const removeQueued = useCallback((messageId: string) => {
-    const removed = queueRef.current.removeWhere(
-      (item) => item.userMessage.id === messageId,
-    );
-    if (removed) setQueueVersion((v) => v + 1);
-  }, []);
+  const removeQueued = useCallback(
+    (messageId: string) => {
+      const removed = queueRef.current.removeWhere(
+        (item) => item.userMessage.id === messageId,
+      );
+      if (!removed) return;
+      // A removed tap is never sent: its options become tappable again.
+      messageCtx.releaseUnsentOptionPick(removed.input);
+      setQueueVersion((v) => v + 1);
+    },
+    [messageCtx],
+  );
 
   // Stop the live response — and ONLY the response. The queue survives: once
   // the server ACKs the cancel, the drain effect immediately sends the next

@@ -101,6 +101,11 @@ export type WidgetAiMessage<TActionData = unknown> = {
   attachments?: MessageAttachmentType[];
   /** Set when the AI follows up on an earlier message, e.g. after asking the team. */
   replyTo?: WidgetMessageReplyTo;
+  /**
+   * Options the visitor can tap. Workflow messages (e.g. a sent macro) arrive
+   * as AI messages; a tap is sent with `SendMessageInput.optionReply`.
+   */
+  messageOptions?: WidgetMessageOptions;
 };
 
 export type WidgetAgentMessage = {

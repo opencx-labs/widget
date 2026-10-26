@@ -205,7 +205,15 @@ initialized core context. Do not reinitialize on every route change.
   through `useMessages().sendMessage`. Only the newest unpicked options message
   in an open session is tappable. Keep the picked label as a disabled receipt;
   hide older unpicked choices. Follow the resulting message state on failure.
-  These are separate from streaming clarification questions.
+  These are separate from streaming clarification questions. From 5.6.0,
+  workflow-sent options arrive on `AI` messages too: treat `AGENT` and `AI`
+  messages alike. `messageOptions.requireTap: true` means the visitor must
+  tap: lock the composer (typing, send, attachments) while
+  `isAwaitingRequiredTap(messagesState.messages, sessionState.session)` from
+  `@opencx/widget-core` is true and no reply is streaming
+  (`useAgentChatUi().isStreaming`), and re-check it before a delayed send.
+  `tappableOptionsMessage` returns the message whose options are tappable, so
+  both follow one rule.
 - **Feedback after streaming (5.4.1+):** use
   `useMessages().messagesState.lastAIResMightSolveUserIssue` for the helpfulness
   prompt or a custom feedback flow. An accepted send resets it. A completed

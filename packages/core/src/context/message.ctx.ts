@@ -14,6 +14,7 @@ import type {
 import { translate } from '../translation';
 import { log } from '../utils/log';
 import { PrimitiveState } from '../utils/PrimitiveState';
+import { isAgentOrAiMessage } from '../utils/message-options';
 import { genUuid } from '../utils/uuid';
 import { SessionCtx } from './session.ctx';
 import type { ContactCtx } from './contact.ctx';
@@ -695,7 +696,7 @@ export class MessageCtx {
     );
   }
 
-  /** Set or clear the picked option of an agent message already in the transcript. */
+  /** Set or clear the picked option of an agent or AI message already in the transcript. */
   setMessageOptionPick = (
     messageId: string,
     pickedOptionId: string | null,
@@ -703,7 +704,9 @@ export class MessageCtx {
     const messages = this.state.get().messages;
     const index = messages.findIndex((message) => message.id === messageId);
     const target = messages[index];
-    if (!target || target.type !== 'AGENT' || !target.messageOptions) return;
+    if (!target || !isAgentOrAiMessage(target) || !target.messageOptions) {
+      return;
+    }
     if (target.messageOptions.pickedOptionId === pickedOptionId) return;
     const nextMessages = [...messages];
     nextMessages[index] = {
@@ -713,12 +716,18 @@ export class MessageCtx {
     this.state.setPartial({ messages: nextMessages });
   };
 
-  private releaseFailedOptionPick = (input: SendMessageInput): void => {
+  /**
+   * A tap that never reached the server (its send failed before delivery, or
+   * it was removed from the queue) gives its options back, unless another
+   * pick replaced it meanwhile. Either engine calls this.
+   */
+  releaseUnsentOptionPick = (input: SendMessageInput): void => {
     if (!input.optionReply) return;
     const { messageId, optionId } = input.optionReply;
     const target = this.state.get().messages.find((m) => m.id === messageId);
     if (
-      target?.type !== 'AGENT' ||
+      !target ||
+      !isAgentOrAiMessage(target) ||
       target.messageOptions?.pickedOptionId !== optionId
     ) {
       return;
@@ -831,7 +840,7 @@ export class MessageCtx {
           this.sessionCtx.sessionState.setPartial({ session: data.session });
         }
       } else {
-        this.releaseFailedOptionPick(input);
+        this.releaseUnsentOptionPick(input);
         const errorMessage = this.toBotErrorMessage(
           data?.error?.message || translate(this.config, 'turn_failed_message'),
         );
@@ -842,7 +851,7 @@ export class MessageCtx {
       }
     } catch (error) {
       if (!localAbortController?.signal.aborted) {
-        this.releaseFailedOptionPick(input);
+        this.releaseUnsentOptionPick(input);
         log.error('failed to send message', error);
       }
     } finally {

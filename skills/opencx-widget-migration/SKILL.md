@@ -124,6 +124,11 @@ reconciles persisted history and human replies. Layout and delivery are independ
 - 5.5.0 makes the script embed stream when the organization supports it, without
   `streaming: true`. Keep an existing embed on send/poll with `streaming: false`.
   React and headless integrations are unchanged.
+- 5.6.0 adds `messageOptions.requireTap` and carries workflow-sent options on
+  `AI` messages, so custom renderers must show options under `AGENT` and `AI`
+  messages alike. Custom composers must stay locked while
+  `isAwaitingRequiredTap(messages, session)` from `@opencx/widget-core` is
+  true and no reply is streaming; it is false for options without the flag.
 
 Preserve the customer's requested target version. These additions do not require
 turning on streaming, page access, or personal connections for an existing embed.

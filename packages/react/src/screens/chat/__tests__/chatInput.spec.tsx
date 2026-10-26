@@ -1,6 +1,13 @@
 import { beginSnapshotUpload } from '../../../page-marks/mark-thumbnail';
 import { createComposerDraftMock } from './composer-draft';
-import type { DictationTarget, SendMessageInput } from '@opencx/widget-core';
+import type {
+  DictationTarget,
+  SendMessageInput,
+  WidgetAgentMessage,
+  WidgetAiMessage,
+  WidgetMessageOptions,
+  WidgetMessageU,
+} from '@opencx/widget-core';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -34,6 +41,8 @@ let canAttach = true;
 let sendsPageContext = true;
 let marksShareable = true;
 let configContext: Record<string, unknown> | undefined;
+let messages: WidgetMessageU[] = [];
+let session: { isOpened: boolean } | null = null;
 let conversationGeneration = 0;
 const mentionSearch = vi.fn(async () => [
   {
@@ -97,9 +106,9 @@ vi.mock('@opencx/widget-react-headless', () => ({
     sendMessage: sendMessageSpy,
     rememberSentText: rememberSentTextSpy,
     getSentTextHistory: () => [],
-    messagesState: { messages: [] },
+    messagesState: { messages },
   }),
-  useSessions: () => ({ sessionState: { session: null } }),
+  useSessions: () => ({ sessionState: { session } }),
   useUploadFiles: () => ({
     allFiles,
     handleCancelUpload: handleCancelUploadSpy,
@@ -109,6 +118,8 @@ vi.mock('@opencx/widget-react-headless', () => ({
     successFiles: allFiles,
   }),
   useWidget: () => ({
+    // An open session mounts the elicitation form, which reads this.
+    config: {},
     widgetCtx: {
       streaming: true,
       api: { uploadFile: uploadFileSpy },
@@ -127,7 +138,10 @@ vi.mock('@opencx/widget-react-headless', () => ({
           const generation = conversationGeneration;
           return () => generation === conversationGeneration;
         },
+        // The stores `useMessages` / `useSessions` read, for send-time checks.
+        state: { get: () => ({ messages }) },
       },
+      sessionCtx: { sessionState: { get: () => ({ session }) } },
     },
     componentStore: {
       getComponent: (key: string) =>
@@ -285,6 +299,8 @@ describe('ChatInput send acceptance', () => {
     dictationError = null;
     capturedInput = null;
     configContext = undefined;
+    messages = [];
+    session = null;
     marks = [{ shape: 'box', elements: [{ name: 'button "Save"' }] }];
     allFiles = [
       {
@@ -1079,4 +1095,225 @@ describe('ChatInput send acceptance', () => {
     expect(dictationStopSpy).toHaveBeenCalled();
     expect(sendMessageSpy).toHaveBeenCalledTimes(1);
   });
+
+  // A workflow asks "Do you have a security incident to report?" with Yes / No
+  // and the macro requires a tap: the visitor answers by tapping, not typing.
+  const requiredTap: WidgetMessageOptions = {
+    options: [
+      { id: 'opt-yes', label: 'Yes' },
+      { id: 'opt-no', label: 'No' },
+    ],
+    pickedOptionId: null,
+    requireTap: true,
+  };
+
+  function teammateMessage(
+    id: string,
+    messageOptions?: WidgetMessageOptions,
+  ): WidgetAgentMessage {
+    return {
+      id,
+      type: 'AGENT',
+      component: 'agent_message',
+      data: { message: 'Do you have a security incident to report?' },
+      timestamp: null,
+      ...(messageOptions ? { messageOptions } : {}),
+    };
+  }
+
+  /** The backend serializes a workflow's messages (its send-macro action too) as AI. */
+  function workflowMessage(
+    id: string,
+    messageOptions?: WidgetMessageOptions,
+  ): WidgetAiMessage {
+    return {
+      id,
+      type: 'AI',
+      component: 'bot_message',
+      data: { message: 'Do you have a security incident to report?' },
+      timestamp: null,
+      ...(messageOptions ? { messageOptions } : {}),
+    };
+  }
+
+  const sentBy = { teammate: teammateMessage, workflow: workflowMessage };
+
+  /** What the visitor can do with the composer right now. */
+  function composerState(textarea: HTMLTextAreaElement) {
+    return {
+      typing: !textarea.disabled,
+      sending:
+        container.querySelector<HTMLButtonElement>(
+          'button[aria-label="send_message"]',
+        )?.disabled === false,
+      attaching:
+        container.querySelector('button[aria-label="attach_files"]') !== null,
+      dropping: dropzoneOptions?.disabled === false,
+    };
+  }
+  const OPEN = { typing: true, sending: true, attaching: true, dropping: true };
+  const LOCKED = {
+    typing: false,
+    sending: false,
+    attaching: false,
+    dropping: false,
+  };
+
+  it.each([
+    {
+      from: 'teammate',
+      requireTap: 'true',
+      messageOptions: requiredTap,
+      locked: true,
+    },
+    {
+      from: 'teammate',
+      requireTap: 'false',
+      messageOptions: { ...requiredTap, requireTap: false },
+      locked: false,
+    },
+    {
+      from: 'teammate',
+      requireTap: 'absent',
+      messageOptions: { options: requiredTap.options, pickedOptionId: null },
+      locked: false,
+    },
+    {
+      from: 'workflow',
+      requireTap: 'true',
+      messageOptions: requiredTap,
+      locked: true,
+    },
+    {
+      from: 'workflow',
+      requireTap: 'absent',
+      messageOptions: { options: requiredTap.options, pickedOptionId: null },
+      locked: false,
+    },
+  ] as const)(
+    '$from requireTap=$requireTap: unpicked options on the newest message lock the composer only when they require a tap',
+    async ({ from, messageOptions, locked }) => {
+      session = { isOpened: true };
+      messages = [sentBy[from]('question', messageOptions)];
+      const { textarea } = await renderInput();
+
+      expect(composerState(textarea)).toEqual(locked ? LOCKED : OPEN);
+      // Paste reaches the upload path without the paperclip.
+      await act(async () =>
+        pasteFile(textarea, new File(['x'], 'x.png', { type: 'image/png' })),
+      );
+      expect(appendFilesSpy).toHaveBeenCalledTimes(locked ? 0 : 1);
+    },
+  );
+
+  it.each(['teammate', 'workflow'] as const)(
+    'a tap on the required %s question unlocks the composer at once',
+    async (from) => {
+      session = { isOpened: true };
+      messages = [sentBy[from]('question', requiredTap)];
+      const { textarea } = await renderInput();
+      expect(composerState(textarea)).toEqual(LOCKED);
+
+      // The tap is marked picked when the send is accepted, before any reply.
+      messages = [
+        sentBy[from]('question', { ...requiredTap, pickedOptionId: 'opt-no' }),
+      ];
+      await renderInput();
+      expect(composerState(textarea)).toEqual(OPEN);
+    },
+  );
+
+  it.each([
+    { question: 'teammate', newer: 'teammate' },
+    { question: 'workflow', newer: 'workflow' },
+    // An AI reply after a teammate's question moves the conversation on too.
+    { question: 'teammate', newer: 'workflow' },
+  ] as const)(
+    'a newer $newer message without options unlocks the composer after a $question question',
+    async ({ question, newer }) => {
+      session = { isOpened: true };
+      messages = [sentBy[question]('question', requiredTap)];
+      const { textarea } = await renderInput();
+      expect(composerState(textarea)).toEqual(LOCKED);
+
+      messages = [
+        sentBy[question]('question', requiredTap),
+        sentBy[newer]('follow-up'),
+      ];
+      await renderInput();
+      expect(composerState(textarea)).toEqual(OPEN);
+    },
+  );
+
+  it('a closed session hides the options, so it never leaves the composer locked', async () => {
+    session = { isOpened: true };
+    messages = [teammateMessage('question', requiredTap)];
+    const { textarea } = await renderInput();
+    expect(composerState(textarea)).toEqual(LOCKED);
+
+    session = { isOpened: false };
+    await renderInput();
+    expect(composerState(textarea)).toEqual(OPEN);
+  });
+
+  it('a reply still streaming keeps typing and Stop; the question locks the composer once it ends', async () => {
+    // An empty composer mid-stream offers Stop.
+    allFiles = [];
+    marks = [];
+    session = { isOpened: true };
+    messages = [workflowMessage('question', requiredTap)];
+    isStreaming = true;
+    const { textarea } = await renderInput();
+
+    // The live reply hides the question until it ends; the visitor must
+    // still be able to stop it.
+    expect(textarea.disabled).toBe(false);
+    expect(
+      container.querySelector<HTMLButtonElement>(
+        'button[aria-label="stop_response"]',
+      )?.disabled,
+    ).toBe(false);
+
+    isStreaming = false;
+    await renderInput();
+    expect(textarea.disabled).toBe(true);
+    expect(
+      container.querySelector<HTMLButtonElement>(
+        'button[aria-label="send_message"]',
+      )?.disabled,
+    ).toBe(true);
+  });
+
+  it.each([
+    { meanwhile: 'nothing lands', sent: true },
+    { meanwhile: 'a question answered by tapping lands', sent: false },
+  ])(
+    'a send waiting on a mark snapshot after its composer closed: $meanwhile',
+    async ({ sent }) => {
+      const mark = marks[0]!;
+      pendingSnapshots.set(mark, () => {});
+      session = { isOpened: true };
+      const { textarea } = await renderInput();
+      await act(async () => setTextareaValue(textarea, 'is it safe?'));
+      await act(async () =>
+        container
+          .querySelector<HTMLButtonElement>(
+            'button[aria-label="send_message"]',
+          )!
+          .click(),
+      );
+      // The popover unmounts the composer when such a question lands.
+      act(() => root.unmount());
+      rootMounted = false;
+      if (!sent) messages = [workflowMessage('question', requiredTap)];
+      await act(async () =>
+        pendingSnapshots.get(mark)!('https://files.test/a.jpg'),
+      );
+
+      expect(capturedInput?.content ?? null).toBe(sent ? 'is it safe?' : null);
+      // Nothing cleared the draft: an unsent message waits there for the tap.
+      expect(draftState.get().text).toBe('is it safe?');
+      pendingSnapshots.delete(mark);
+    },
+  );
 });

@@ -4,6 +4,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
+/** The transcript the options rule reads; empty unless a test needs it. */
+let messages: unknown[] = [];
+
 /**
  * History-path parity: persisted AI rows keep the raw ` ```spec ` fence (the
  * live stream only transforms fences on the SSE), so the default agent-message
@@ -23,7 +26,7 @@ vi.mock('@opencx/widget-react-headless', () => ({
     componentStore: { getComponent: () => null },
   }),
   useSessions: () => ({ sessionState: { session: null } }),
-  useMessages: () => ({ messagesState: { messages: [] } }),
+  useMessages: () => ({ messagesState: { messages } }),
   useWidgetRouter: () => ({ routerState: { screen: 'chat' } }),
 }));
 
@@ -43,6 +46,7 @@ function render(node: React.ReactElement): HTMLDivElement {
 afterEach(() => {
   act(() => roots.forEach((r) => r.unmount()));
   roots = [];
+  messages = [];
   document.body.innerHTML = '';
 });
 
@@ -130,4 +134,40 @@ describe('AgentMessageDefaultComponent — persisted spec fences', () => {
     // A human pasting patch-like text keeps it as text (code block), no spec render.
     expect(html.textContent).toContain('"op"');
   });
+});
+
+describe('AgentMessageDefaultComponent — macro options', () => {
+  // A teammate's macro arrives as AGENT; a workflow's send-macro action is
+  // serialized as AI. Both must show the options under the bubble.
+  it.each(['AGENT', 'AI'] as const)(
+    '%s message with unpicked options shows them as tappable buttons',
+    (type) => {
+      const message = {
+        ...messageProps(type, 'Do you have a security incident to report?'),
+        messageOptions: {
+          options: [
+            { id: 'opt-yes', label: 'Yes' },
+            { id: 'opt-no', label: 'No' },
+          ],
+          pickedOptionId: null,
+        },
+      };
+      messages = [message];
+      const html = render(
+        // @ts-expect-error partial WidgetComponentProps fixture (see above)
+        <AgentMessageDefaultComponent {...message} />,
+      );
+
+      expect(
+        Array.from(
+          html.querySelectorAll<HTMLButtonElement>(
+            '[data-component="chat/agent_msg/option_btn"]',
+          ),
+        ).map((b) => [b.textContent, b.disabled]),
+      ).toEqual([
+        ['Yes', false],
+        ['No', false],
+      ]);
+    },
+  );
 });
