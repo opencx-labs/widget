@@ -445,7 +445,9 @@ export function useAgentChat({
         completedStream?.messages === messagesRef.current);
     if (justFinished) {
       setSettling(true);
-      if (turnPhaseRef.current === 'in-flight') turnPhaseRef.current = 'idle';
+      // A drained send's own turn, not a resumed one.
+      const sentTurnEnded = turnPhaseRef.current === 'in-flight';
+      if (sentTurnEnded) turnPhaseRef.current = 'idle';
       // RETENTION, synchronous: the stream's terminal `data-turn-settled`
       // part says exactly which ledger turn this was and which transcript
       // rows it produced — the streamed message becomes those rows' render
@@ -473,6 +475,14 @@ export function useAgentChat({
       if (status === 'ready') {
         const userMessageId = lastDrainedRef.current?.userMessage.id;
         if (userMessageId) messageCtx.markUserMessageDelivered(userMessageId);
+      } else if (
+        sentTurnEnded &&
+        prev !== 'streaming' &&
+        lastDrainedRef.current
+      ) {
+        // Failed before its first chunk, so the server may never have had it:
+        // a tap it carried gives its options back, as in the blocking engine.
+        messageCtx.releaseUnsentOptionPick(lastDrainedRef.current.input);
       }
       // Ingest the finished turn's canonical rows BEFORE draining the next
       // queued message — transcript order is append-order, so the reply must
@@ -616,17 +626,26 @@ export function useAgentChat({
       log.warn('agent chat queue full; retry not enqueued');
       return;
     }
+    // The failure gave a tap's options back; retrying it picks them again.
+    const tap = last.input.optionReply;
+    if (tap) messageCtx.setMessageOptionPick(tap.messageId, tap.optionId);
     clearError();
     setQueueVersion((v) => v + 1);
-  }, [clearError]);
+  }, [clearError, messageCtx]);
 
   // Drop one queued (not-yet-sent) message — the pill's per-row remove button.
-  const removeQueued = useCallback((messageId: string) => {
-    const removed = queueRef.current.removeWhere(
-      (item) => item.userMessage.id === messageId,
-    );
-    if (removed) setQueueVersion((v) => v + 1);
-  }, []);
+  const removeQueued = useCallback(
+    (messageId: string) => {
+      const removed = queueRef.current.removeWhere(
+        (item) => item.userMessage.id === messageId,
+      );
+      if (!removed) return;
+      // A removed tap is never sent: its options become tappable again.
+      messageCtx.releaseUnsentOptionPick(removed.input);
+      setQueueVersion((v) => v + 1);
+    },
+    [messageCtx],
+  );
 
   // Stop the live response — and ONLY the response. The queue survives: once
   // the server ACKs the cancel, the drain effect immediately sends the next

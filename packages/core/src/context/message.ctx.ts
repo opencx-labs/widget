@@ -716,7 +716,12 @@ export class MessageCtx {
     this.state.setPartial({ messages: nextMessages });
   };
 
-  private releaseFailedOptionPick = (input: SendMessageInput): void => {
+  /**
+   * A tap that never reached the server (its send failed before delivery, or
+   * it was removed from the queue) gives its options back, unless another
+   * pick replaced it meanwhile. Either engine calls this.
+   */
+  releaseUnsentOptionPick = (input: SendMessageInput): void => {
     if (!input.optionReply) return;
     const { messageId, optionId } = input.optionReply;
     const target = this.state.get().messages.find((m) => m.id === messageId);
@@ -835,7 +840,7 @@ export class MessageCtx {
           this.sessionCtx.sessionState.setPartial({ session: data.session });
         }
       } else {
-        this.releaseFailedOptionPick(input);
+        this.releaseUnsentOptionPick(input);
         const errorMessage = this.toBotErrorMessage(
           data?.error?.message || translate(this.config, 'turn_failed_message'),
         );
@@ -846,7 +851,7 @@ export class MessageCtx {
       }
     } catch (error) {
       if (!localAbortController?.signal.aborted) {
-        this.releaseFailedOptionPick(input);
+        this.releaseUnsentOptionPick(input);
         log.error('failed to send message', error);
       }
     } finally {

@@ -75,6 +75,8 @@ const fakeMessageCtx = {
   })),
   appendUserMessageIfAbsent: vi.fn(),
   markUserMessageDelivered: vi.fn(),
+  releaseUnsentOptionPick: vi.fn(),
+  setMessageOptionPick: vi.fn(),
   notifySendAccepted: vi.fn((input: SendMessageInput) => input.onAccepted?.()),
   registerAgentHandlers: vi.fn(),
   unregisterAgentHandlers: vi.fn(),
@@ -200,5 +202,102 @@ describe('useAgentChat failed turn', () => {
     expect(hookValue?.queuedUserMessages.map((message) => message.id)).toEqual([
       'msg-hi',
     ]);
+  });
+});
+
+/**
+ * A tap is marked picked when its send is accepted. If that send never
+ * reaches the server, the options must come back: otherwise the visitor sees
+ * a receipt for an answer nobody received, with the other choices gone.
+ */
+describe('useAgentChat unsent option taps', () => {
+  const tap: SendMessageInput = {
+    content: 'Yes',
+    optionReply: { messageId: 'question', optionId: 'opt-yes' },
+  };
+  let container: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    await act(async () => {
+      root.render(<Probe />);
+    });
+  });
+
+  afterEach(() => {
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it.each([
+    {
+      turn: 'fails before its first chunk',
+      statuses: ['submitted', 'error'],
+      released: true,
+    },
+    {
+      turn: 'fails after a chunk arrived',
+      statuses: ['submitted', 'streaming', 'error'],
+      released: false,
+    },
+    { turn: 'completes', statuses: ['submitted', 'ready'], released: false },
+    // A later resume of the delivered turn is not the tap's send.
+    {
+      turn: 'completes, then a resume of it fails before a chunk',
+      statuses: ['submitted', 'ready', 'submitted', 'error'],
+      released: false,
+    },
+  ] as const)(
+    'a tapped answer whose turn $turn: options released=$released',
+    async ({ statuses, released }) => {
+      await act(async () => {
+        await registeredSend()(tap);
+      });
+      for (const status of statuses) {
+        await act(async () => setChatState({ status, messages: [] }));
+      }
+
+      expect(fakeMessageCtx.releaseUnsentOptionPick.mock.calls).toEqual(
+        released ? [[tap]] : [],
+      );
+    },
+  );
+
+  it('retrying a failed tap picks its option again', async () => {
+    await act(async () => {
+      await registeredSend()(tap);
+    });
+    await act(async () => setChatState({ status: 'submitted', messages: [] }));
+    await act(async () => setChatState({ status: 'error', messages: [] }));
+    expect(fakeMessageCtx.setMessageOptionPick).not.toHaveBeenCalled();
+
+    await act(async () => hookValue?.retryFailedTurn());
+
+    expect(fakeMessageCtx.setMessageOptionPick).toHaveBeenCalledWith(
+      'question',
+      'opt-yes',
+    );
+  });
+
+  it('removing a queued tap gives its options back', async () => {
+    await act(async () => {
+      await registeredSend()({ content: 'hi' });
+    });
+    // A turn is live, so the tap waits in the queue.
+    await act(async () => setChatState({ status: 'submitted', messages: [] }));
+    await act(async () => {
+      await registeredSend()(tap);
+    });
+    expect(hookValue?.queuedUserMessages.map((m) => m.id)).toEqual(['msg-Yes']);
+    expect(fakeMessageCtx.releaseUnsentOptionPick).not.toHaveBeenCalled();
+
+    await act(async () => hookValue?.removeQueued('msg-Yes'));
+
+    expect(hookValue?.queuedUserMessages).toEqual([]);
+    expect(fakeMessageCtx.releaseUnsentOptionPick.mock.calls).toEqual([[tap]]);
   });
 });
