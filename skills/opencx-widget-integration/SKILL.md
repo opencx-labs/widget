@@ -125,9 +125,11 @@ Use the installed `WidgetConfig` declaration for exact keys and defaults.
 
 ## v5 context and features
 
-The script embed (`initOpenScript`) streams when `streaming` is omitted and the
-organization supports it; `streaming: false` keeps polling. In the React and
-headless packages, omitted or false keeps polling, including with v2 agents and
+From 5.5.0, the script embed (`initOpenScript`) streams when `streaming` is
+omitted and the organization supports it; `streaming: false` keeps polling.
+Earlier script versions, including the pinned examples above, stream only with
+`streaming: true`. In the React and headless packages, omitted or false keeps
+polling, including with v2 agents and
 verified users; set `streaming: true` only for requested live features supported
 by the organization. Live replies use SSE; polling still reconciles persisted
 history and human replies. Layout, agent version and delivery are independent:

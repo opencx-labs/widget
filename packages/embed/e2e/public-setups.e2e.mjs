@@ -172,10 +172,9 @@ for (const name of ['trunkrs', 'deonlinedrogist', 'qoyod']) {
               });
             if (url.pathname === '/backend/widget/v5/chat/stream') {
               const { uuid, content } = request.postDataJSON();
-              history.push(
-                row(uuid, content, 'user'),
-                row('fixture-reply', 'LOCAL_COMPAT_REPLY', 'ai'),
-              );
+              // The reply reaches polling only after the test has seen it
+              // rendered from the stream.
+              history.push(row(uuid, content, 'user'));
               const events = [
                 { type: 'start', messageId: 'fixture-reply' },
                 { type: 'start-step' },
@@ -263,9 +262,12 @@ for (const name of ['trunkrs', 'deonlinedrogist', 'qoyod']) {
             'Local compatibility test',
           );
           await frame.locator('textarea').press('Enter');
+          // Polling has no reply yet, so this text can only come from the stream.
           await frame
             .getByText('LOCAL_COMPAT_REPLY', { exact: true })
             .waitFor();
+          // Persist it as the backend would, for the reopen below.
+          history.push(row('fixture-reply', 'LOCAL_COMPAT_REPLY', 'ai'));
           const send = requests.find(
             (r) => r.path === '/backend/widget/v5/chat/stream',
           );
