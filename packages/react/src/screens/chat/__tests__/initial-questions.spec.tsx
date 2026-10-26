@@ -109,6 +109,49 @@ const questions = () =>
     '[data-component="chat/suggested_reply_btn"]',
   );
 
+describe('options that require a tap', () => {
+  const question = (
+    messageOptions: NonNullable<
+      Extract<WidgetMessageU, { type: 'AI' }>['messageOptions']
+    >,
+  ): WidgetMessageU => ({
+    id: 'question',
+    type: 'AI',
+    component: 'bot_message',
+    data: { message: 'Do you have a security incident to report?' },
+    timestamp: null,
+    messageOptions,
+  });
+  const options = [
+    { id: 'opt-yes', label: 'Yes' },
+    { id: 'opt-no', label: 'No' },
+  ];
+
+  it.each([
+    {
+      case: 'required, untapped',
+      requireTap: true,
+      picked: null,
+      shown: false,
+    },
+    { case: 'not required', requireTap: false, picked: null, shown: true },
+    {
+      case: 'required, tapped',
+      requireTap: true,
+      picked: 'opt-yes',
+      shown: true,
+    },
+  ])(
+    'hides the composer only while a required tap is pending ($case)',
+    ({ requireTap, picked, shown }) => {
+      config.requireInitialQuestion = false;
+      messages = [question({ options, pickedOptionId: picked, requireTap })];
+      render();
+      expect(composer() !== null).toBe(shown);
+    },
+  );
+});
+
 describe('required initial questions', () => {
   it.each(['above-chat-input', 'below-initial-messages'] as const)(
     'sends the selected question and reveals the composer at %s',

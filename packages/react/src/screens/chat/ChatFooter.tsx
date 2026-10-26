@@ -1,3 +1,4 @@
+import { isAwaitingRequiredTap } from '@opencx/widget-core';
 import { cn } from '../../components/lib/utils/cn';
 import { useInitialQuestionRequired } from '../../hooks/useInitialQuestionRequired';
 import {
@@ -86,6 +87,12 @@ export function ChatFooter() {
 
   const noMessages = messagesState.messages.length === 0;
   const initialQuestionRequired = useInitialQuestionRequired();
+  // Like a required starter: a question that must be answered by tapping one
+  // of its options hides the composer here until it is tapped.
+  const tapRequired = isAwaitingRequiredTap(
+    messagesState.messages,
+    sessionState.session,
+  );
 
   return (
     <footer>
@@ -120,7 +127,7 @@ export function ChatFooter() {
                 </div>
               )}
 
-            {!initialQuestionRequired && <ChatInput />}
+            {!initialQuestionRequired && !tapRequired && <ChatInput />}
             <ChatFooterItems />
           </MotionDiv__VerticalReveal>
         )}
