@@ -121,7 +121,7 @@ reconciles persisted history and human replies. Layout and delivery are independ
   `AI` messages, so custom renderers must show options under `AGENT` and `AI`
   messages alike. Custom composers must stay locked while
   `isAwaitingRequiredTap(messages, session)` from `@opencx/widget-core` is
-  true; it is false for options without the flag.
+  true and no reply is streaming; it is false for options without the flag.
 
 Preserve the customer's requested target version. These additions do not require
 turning on streaming, page access, or personal connections for an existing embed.

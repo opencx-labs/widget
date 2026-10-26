@@ -1,10 +1,6 @@
 import { ElicitationForm } from '../../components/ElicitationForm';
 import { ConnectionCard } from '../../components/ConnectionCard';
-import {
-  type SendMessageDto,
-  isAwaitingRequiredTap,
-  log,
-} from '@opencx/widget-core';
+import { type SendMessageDto, log } from '@opencx/widget-core';
 import {
   useAgentChatUi,
   useComposerDraft,
@@ -44,6 +40,7 @@ import { PageContextPill } from '../../page-context/PageContextPill';
 import { usePageEntity } from '../../page-context/usePageEntity';
 import { PageMarkOverlay } from '../../page-marks/PageMarkOverlay';
 import { PageMarkPill } from '../../page-marks/PageMarkPill';
+import { composerLockedForTap } from '../../utils/composer-locked-for-tap';
 import { dc } from '../../utils/data-component';
 import {
   formatBinding,
@@ -132,7 +129,15 @@ export function ChatInput({
   // does, here so every surface obeys it.
   const disabled =
     disabledByParent ||
-    isAwaitingRequiredTap(messagesState.messages, sessionState.session);
+    composerLockedForTap({
+      isStreaming,
+      messages: messagesState.messages,
+      session: sessionState.session,
+    });
+  // For a send that resolves later (see `submit`), which may outlive this
+  // composer: the popover unmounts it while a tap is required.
+  const isStreamingRef = useRef(isStreaming);
+  isStreamingRef.current = isStreaming;
   const { t } = useTranslation();
   const {
     text: inputText,
@@ -341,6 +346,14 @@ export function ChatInput({
     // A reset can reuse this MessageCtx for another session or visitor. Do not
     // send or clear their state when an earlier snapshot upload finishes.
     if (!isCurrentConversation()) return;
+    // A question answered by tapping may have landed while this send waited
+    // for its snapshots: re-read the lock now and keep the draft for later.
+    const lockedNow = composerLockedForTap({
+      isStreaming: isStreamingRef.current,
+      messages: widgetCtx.messageCtx.state.get().messages,
+      session: widgetCtx.sessionCtx.sessionState.get().session,
+    });
+    if (lockedNow) return;
     // Upload preparation yields: permissions or the marked DOM may have changed.
     const readsPage = widgetCtx.features.pageContext;
     const currentMarks = submittedMarks.filter((mark) => {

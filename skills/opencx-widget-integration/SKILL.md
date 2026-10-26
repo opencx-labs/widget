@@ -206,8 +206,10 @@ initialized core context. Do not reinitialize on every route change.
   messages alike. `messageOptions.requireTap: true` means the visitor must
   tap: lock the composer (typing, send, attachments) while
   `isAwaitingRequiredTap(messagesState.messages, sessionState.session)` from
-  `@opencx/widget-core` is true. `tappableOptionsMessage` returns the message
-  whose options are tappable, so both follow one rule.
+  `@opencx/widget-core` is true and no reply is streaming
+  (`useAgentChatUi().isStreaming`), and re-check it before a delayed send.
+  `tappableOptionsMessage` returns the message whose options are tappable, so
+  both follow one rule.
 - **Feedback after streaming (5.4.1+):** use
   `useMessages().messagesState.lastAIResMightSolveUserIssue` for the helpfulness
   prompt or a custom feedback flow. An accepted send resets it. A completed

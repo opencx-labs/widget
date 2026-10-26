@@ -1,7 +1,8 @@
-import { isAwaitingRequiredTap } from '@opencx/widget-core';
 import { cn } from '../../components/lib/utils/cn';
 import { useInitialQuestionRequired } from '../../hooks/useInitialQuestionRequired';
+import { composerLockedForTap } from '../../utils/composer-locked-for-tap';
 import {
+  useAgentChatUi,
   useConfig,
   useCsat,
   useMessages,
@@ -84,15 +85,17 @@ export function ChatFooter() {
     useConfig();
   const { sessionState } = useSessions();
   const { messagesState } = useMessages();
+  const { isStreaming } = useAgentChatUi();
 
   const noMessages = messagesState.messages.length === 0;
   const initialQuestionRequired = useInitialQuestionRequired();
   // Like a required starter: a question that must be answered by tapping one
   // of its options hides the composer here until it is tapped.
-  const tapRequired = isAwaitingRequiredTap(
-    messagesState.messages,
-    sessionState.session,
-  );
+  const tapRequired = composerLockedForTap({
+    isStreaming,
+    messages: messagesState.messages,
+    session: sessionState.session,
+  });
 
   return (
     <footer>

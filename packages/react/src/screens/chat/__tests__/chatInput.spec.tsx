@@ -138,7 +138,10 @@ vi.mock('@opencx/widget-react-headless', () => ({
           const generation = conversationGeneration;
           return () => generation === conversationGeneration;
         },
+        // The stores `useMessages` / `useSessions` read, for send-time checks.
+        state: { get: () => ({ messages }) },
       },
+      sessionCtx: { sessionState: { get: () => ({ session }) } },
     },
     componentStore: {
       getComponent: (key: string) =>
@@ -1252,4 +1255,65 @@ describe('ChatInput send acceptance', () => {
     await renderInput();
     expect(composerState(textarea)).toEqual(OPEN);
   });
+
+  it('a reply still streaming keeps typing and Stop; the question locks the composer once it ends', async () => {
+    // An empty composer mid-stream offers Stop.
+    allFiles = [];
+    marks = [];
+    session = { isOpened: true };
+    messages = [workflowMessage('question', requiredTap)];
+    isStreaming = true;
+    const { textarea } = await renderInput();
+
+    // The live reply hides the question until it ends; the visitor must
+    // still be able to stop it.
+    expect(textarea.disabled).toBe(false);
+    expect(
+      container.querySelector<HTMLButtonElement>(
+        'button[aria-label="stop_response"]',
+      )?.disabled,
+    ).toBe(false);
+
+    isStreaming = false;
+    await renderInput();
+    expect(textarea.disabled).toBe(true);
+    expect(
+      container.querySelector<HTMLButtonElement>(
+        'button[aria-label="send_message"]',
+      )?.disabled,
+    ).toBe(true);
+  });
+
+  it.each([
+    { meanwhile: 'nothing lands', sent: true },
+    { meanwhile: 'a question answered by tapping lands', sent: false },
+  ])(
+    'a send waiting on a mark snapshot after its composer closed: $meanwhile',
+    async ({ sent }) => {
+      const mark = marks[0]!;
+      pendingSnapshots.set(mark, () => {});
+      session = { isOpened: true };
+      const { textarea } = await renderInput();
+      await act(async () => setTextareaValue(textarea, 'is it safe?'));
+      await act(async () =>
+        container
+          .querySelector<HTMLButtonElement>(
+            'button[aria-label="send_message"]',
+          )!
+          .click(),
+      );
+      // The popover unmounts the composer when such a question lands.
+      act(() => root.unmount());
+      rootMounted = false;
+      if (!sent) messages = [workflowMessage('question', requiredTap)];
+      await act(async () =>
+        pendingSnapshots.get(mark)!('https://files.test/a.jpg'),
+      );
+
+      expect(capturedInput?.content ?? null).toBe(sent ? 'is it safe?' : null);
+      // Nothing cleared the draft: an unsent message waits there for the tap.
+      expect(draftState.get().text).toBe('is it safe?');
+      pendingSnapshots.delete(mark);
+    },
+  );
 });
