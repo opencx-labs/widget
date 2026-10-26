@@ -125,8 +125,10 @@ Use the installed `WidgetConfig` declaration for exact keys and defaults.
 
 ## v5 context and features
 
-An omitted or false `streaming` keeps polling, including with v2 agents and
-verified users. Set `streaming: true` only for requested live features supported
+The script embed (`initOpenScript`) streams when `streaming` is omitted and the
+organization supports it; `streaming: false` keeps polling. In the React and
+headless packages, omitted or false keeps polling, including with v2 agents and
+verified users; set `streaming: true` only for requested live features supported
 by the organization. Live replies use SSE; polling still reconciles persisted
 history and human replies. Layout, agent version and delivery are independent:
 Companion does not turn on streaming or page access, and the popover can use the
