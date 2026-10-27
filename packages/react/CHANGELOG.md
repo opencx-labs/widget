@@ -1,5 +1,14 @@
 # @opencx/widget-react
 
+## 5.6.1
+
+### Patch Changes
+
+- d12fd8b: Visitors can attach .m4v, .mkv and .3gp videos, and files up to 50 MB (was 25 MB).
+- Updated dependencies [d12fd8b]
+  - @opencx/widget-core@5.6.1
+  - @opencx/widget-react-headless@5.6.1
+
 ## 5.6.0
 
 ### Minor Changes
