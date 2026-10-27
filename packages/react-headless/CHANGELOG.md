@@ -1,5 +1,12 @@
 # @opencx/widget-react-headless
 
+## 5.6.1
+
+### Patch Changes
+
+- Updated dependencies [d12fd8b]
+  - @opencx/widget-core@5.6.1
+
 ## 5.6.0
 
 ### Minor Changes
