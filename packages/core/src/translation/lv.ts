@@ -40,7 +40,7 @@ export const LatvianLanguage: TranslationInterface = {
   step_arguments: 'Argumenti',
   step_result: 'Rezultāts',
   attach_files:
-    'Pievienot attēlus, video, PDF vai izklājlapas (maksimālais izmērs 25 MB)',
+    'Pievienot attēlus, video, PDF vai izklājlapas (maksimālais izmērs 50 MB)',
   mark_page_active:
     'Noklikšķiniet uz kaut kā lapā, lai to atzīmētu — Esc, lai atceltu',
   mark_page: 'Atzīmējiet kaut ko lapā, lai par to pajautātu',

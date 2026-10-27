@@ -22,7 +22,7 @@ import {
 } from '../../utils/attachment-kind';
 
 // Mirrors the server-side MAX_WIDGET_UPLOAD_BYTES cap on /widget/v2/upload.
-export const MAX_FILE_BYTES = 25 * 1024 * 1024;
+export const MAX_FILE_BYTES = 50 * 1024 * 1024;
 
 // Attachment formats every chat accepts, regardless of assignee.
 export const BASE_FILE_ACCEPT = {

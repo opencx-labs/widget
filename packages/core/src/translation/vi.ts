@@ -40,7 +40,7 @@ export const VietnameseLanguage: TranslationInterface = {
   step_arguments: 'Đối số',
   step_result: 'Kết quả',
   attach_files:
-    'Đính kèm hình ảnh, video, PDF hoặc bảng tính (kích thước tối đa 25 MB)',
+    'Đính kèm hình ảnh, video, PDF hoặc bảng tính (kích thước tối đa 50 MB)',
   mark_page_active:
     'Nhấp vào bất kỳ nội dung nào trên trang để đánh dấu — nhấn Esc để hủy',
   mark_page: 'Đánh dấu nội dung trên trang để hỏi về nội dung đó',

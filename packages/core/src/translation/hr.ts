@@ -40,7 +40,7 @@ export const CroatianLanguage: TranslationInterface = {
   step_arguments: 'Argumenti',
   step_result: 'Rezultat',
   attach_files:
-    'Priložite slike, videozapise, PDF-ove ili proračunske tablice (najveća veličina 25 MB)',
+    'Priložite slike, videozapise, PDF-ove ili proračunske tablice (najveća veličina 50 MB)',
   mark_page_active:
     'Kliknite bilo što na stranici da biste to označili — Esc za odustajanje',
   mark_page: 'Označite nešto na stranici da biste pitali o tome',

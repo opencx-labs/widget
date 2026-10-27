@@ -40,7 +40,7 @@ export const GermanLanguage: TranslationInterface = {
   step_arguments: 'Argumente',
   step_result: 'Ergebnis',
   attach_files:
-    'Bilder, Videos, PDFs oder Tabellen anhängen (maximale Größe 25 MB)',
+    'Bilder, Videos, PDFs oder Tabellen anhängen (maximale Größe 50 MB)',
   mark_page_active:
     'Klicken Sie auf etwas auf der Seite, um es zu markieren — Esc zum Abbrechen',
   mark_page: 'Markieren Sie etwas auf der Seite, um danach zu fragen',

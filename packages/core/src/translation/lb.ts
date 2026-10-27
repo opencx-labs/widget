@@ -40,7 +40,7 @@ export const LuxembourgishLanguage: TranslationInterface = {
   step_arguments: 'Argumenter',
   step_result: 'Resultat',
   attach_files:
-    'Biller, Videoen, PDFen oder Tabelle bäifügen (maximal Gréisst 25 MB)',
+    'Biller, Videoen, PDFen oder Tabelle bäifügen (maximal Gréisst 50 MB)',
   mark_page_active:
     'Klickt op eppes op der Säit, fir et ze markéieren — Esc fir ofzebriechen',
   mark_page: 'Markéiert eppes op der Säit, fir doriwwer ze froen',

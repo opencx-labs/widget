@@ -40,7 +40,7 @@ export const MalteseLanguage: TranslationInterface = {
   step_arguments: 'Argumenti',
   step_result: 'Riżultat',
   attach_files:
-    'Ehmeż stampi, vidjows, PDFs jew spreadsheets (daqs massimu 25 MB)',
+    'Ehmeż stampi, vidjows, PDFs jew spreadsheets (daqs massimu 50 MB)',
   mark_page_active:
     'Ikklikkja xi ħaġa fil-paġna biex timmarkaha — Esc biex tikkanċella',
   mark_page: 'Immarka xi ħaġa fil-paġna biex tistaqsi dwarha',

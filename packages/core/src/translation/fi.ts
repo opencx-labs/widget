@@ -40,7 +40,7 @@ export const FinnishLanguage: TranslationInterface = {
   step_arguments: 'Argumentit',
   step_result: 'Tulos',
   attach_files:
-    'Liitä kuvia, videoita, PDF-tiedostoja tai laskentataulukoita (enimmäiskoko 25 MB)',
+    'Liitä kuvia, videoita, PDF-tiedostoja tai laskentataulukoita (enimmäiskoko 50 MB)',
   mark_page_active:
     'Merkitse sivulta jotain napsauttamalla sitä — peruuta Esc-näppäimellä',
   mark_page: 'Merkitse sivulta jotain kysyäksesi siitä',

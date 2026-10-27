@@ -40,7 +40,7 @@ export const NorwegianBokmalLanguage: TranslationInterface = {
   step_arguments: 'Argumenter',
   step_result: 'Resultat',
   attach_files:
-    'Legg ved bilder, videoer, PDF-er eller regneark (maksimal størrelse 25 MB)',
+    'Legg ved bilder, videoer, PDF-er eller regneark (maksimal størrelse 50 MB)',
   mark_page_active:
     'Klikk på noe på siden for å markere det — Esc for å avbryte',
   mark_page: 'Marker noe på siden for å spørre om det',

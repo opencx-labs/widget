@@ -40,7 +40,7 @@ export const LithuanianLanguage: TranslationInterface = {
   step_arguments: 'Argumentai',
   step_result: 'Rezultatas',
   attach_files:
-    'Pridėti vaizdus, vaizdo įrašus, PDF ar skaičiuokles (didžiausias dydis 25 MB)',
+    'Pridėti vaizdus, vaizdo įrašus, PDF ar skaičiuokles (didžiausias dydis 50 MB)',
   mark_page_active:
     'Spustelėkite ką nors puslapyje, kad pažymėtumėte — Esc atšaukti',
   mark_page: 'Pažymėkite ką nors puslapyje, kad galėtumėte apie tai paklausti',

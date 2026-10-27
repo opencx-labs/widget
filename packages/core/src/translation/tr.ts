@@ -40,7 +40,7 @@ export const TurkishLanguage: TranslationInterface = {
   step_arguments: 'Bağımsız değişkenler',
   step_result: 'Sonuç',
   attach_files:
-    'Görsel, video, PDF veya elektronik tablo ekle (en fazla 25 MB)',
+    'Görsel, video, PDF veya elektronik tablo ekle (en fazla 50 MB)',
   mark_page_active:
     "İşaretlemek için sayfadaki bir öğeye tıklayın — iptal etmek için Esc'ye basın",
   mark_page: 'Hakkında soru sormak için sayfadaki bir öğeyi işaretleyin',

@@ -41,6 +41,9 @@ export const VIDEO_ACCEPT: Record<string, string[]> = {
   'video/mp4': ['.mp4'],
   'video/webm': ['.webm'],
   'video/quicktime': ['.mov'],
+  'video/x-m4v': ['.m4v'],
+  'video/x-matroska': ['.mkv'],
+  'video/3gpp': ['.3gp'],
 };
 
 export function getSpreadsheet({

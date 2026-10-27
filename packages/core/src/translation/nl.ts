@@ -40,7 +40,7 @@ export const DutchLanguage: TranslationInterface = {
   step_arguments: 'Argumenten',
   step_result: 'Resultaat',
   attach_files:
-    "Afbeeldingen, video's, pdf's of spreadsheets bijvoegen (maximale grootte 25 MB)",
+    "Afbeeldingen, video's, pdf's of spreadsheets bijvoegen (maximale grootte 50 MB)",
   mark_page_active:
     'Klik op iets op de pagina om het te markeren — Esc om te annuleren',
   mark_page: 'Markeer iets op de pagina om er een vraag over te stellen',

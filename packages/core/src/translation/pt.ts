@@ -40,7 +40,7 @@ export const PortugueseLanguage: TranslationInterface = {
   step_arguments: 'Argumentos',
   step_result: 'Resultado',
   attach_files:
-    'Anexar imagens, vídeos, PDFs ou folhas de cálculo (tamanho máximo 25 MB)',
+    'Anexar imagens, vídeos, PDFs ou folhas de cálculo (tamanho máximo 50 MB)',
   mark_page_active:
     'Clique em algo na página para o marcar — Esc para cancelar',
   mark_page: 'Marque algo na página para perguntar sobre isso',

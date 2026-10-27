@@ -39,7 +39,7 @@ export const JapaneseLanguage: TranslationInterface = {
   steps: 'ステップ',
   step_arguments: '引数',
   step_result: '結果',
-  attach_files: '画像、動画、PDF、スプレッドシートを添付（最大サイズ 25 MB）',
+  attach_files: '画像、動画、PDF、スプレッドシートを添付（最大サイズ 50 MB）',
   mark_page_active: 'ページ上の項目をクリックしてマーク — Esc でキャンセル',
   mark_page: '質問したいページ上の項目をマーク',
   stop_response: '回答を停止',
