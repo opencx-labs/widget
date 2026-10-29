@@ -20,6 +20,8 @@ export const LatvianLanguage: TranslationInterface = {
   csat_title: 'Kāda bija jūsu saruna?',
   csat_submitted_title: 'Jūs novērtējāt sarunu kā',
   csat_feedback_placeholder: 'Pastāstiet mums vairāk... (neobligāti)',
+  csat_feedback_label: 'Dalieties ar savu viedokli',
+  csat_submit: 'Sūtīt',
   follow_up_placeholder: 'Turpināt…',
   companion_layout_label: 'Izkārtojums',
   companion_layout_floating: 'Peldošs',

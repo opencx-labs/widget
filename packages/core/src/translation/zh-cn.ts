@@ -20,6 +20,8 @@ export const ChineseSimplifiedLanguage: TranslationInterface = {
   csat_title: '您的对话感觉如何？',
   csat_submitted_title: '您将此对话评价为',
   csat_feedback_placeholder: '告诉我们更多...（可选）',
+  csat_feedback_label: '分享您的反馈',
+  csat_submit: '发送',
   follow_up_placeholder: '继续提问…',
   companion_layout_label: '布局',
   companion_layout_floating: '浮动',

@@ -20,6 +20,8 @@ export const JapaneseLanguage: TranslationInterface = {
   csat_title: '会話はいかがでしたか？',
   csat_submitted_title: '会話を次のように評価しました',
   csat_feedback_placeholder: '詳しく教えてください...（任意）',
+  csat_feedback_label: 'ご意見をお聞かせください',
+  csat_submit: '送信',
   follow_up_placeholder: '続けて質問…',
   companion_layout_label: 'レイアウト',
   companion_layout_floating: 'フローティング',

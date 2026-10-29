@@ -20,6 +20,8 @@ export const ArabicLanguage: TranslationInterface = {
   csat_title: 'كيف كانت محادثتك؟',
   csat_submitted_title: 'لقد قيّمت المحادثة بـ',
   csat_feedback_placeholder: 'أخبرنا المزيد... (اختياري)',
+  csat_feedback_label: 'شاركنا رأيك',
+  csat_submit: 'إرسال',
   follow_up_placeholder: 'تابع المحادثة…',
   companion_layout_label: 'التخطيط',
   companion_layout_floating: 'عائم',

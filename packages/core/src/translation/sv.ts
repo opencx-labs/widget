@@ -20,6 +20,8 @@ export const SwedishLanguage: TranslationInterface = {
   csat_title: 'Hur var din konversation?',
   csat_submitted_title: 'Du betygsatte konversationen som',
   csat_feedback_placeholder: 'Berätta mer... (valfritt)',
+  csat_feedback_label: 'Dela din åsikt',
+  csat_submit: 'Skicka',
   follow_up_placeholder: 'Följ upp…',
   companion_layout_label: 'Layout',
   companion_layout_floating: 'Flytande',

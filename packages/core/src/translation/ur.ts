@@ -20,6 +20,8 @@ export const UrduLanguage: TranslationInterface = {
   csat_title: 'آپ کی گفتگو کیسی رہی؟',
   csat_submitted_title: 'آپ نے گفتگو کو درجہ دیا',
   csat_feedback_placeholder: 'ہمیں مزید بتائیں... (اختیاری)',
+  csat_feedback_label: 'اپنی رائے دیں',
+  csat_submit: 'بھیجیں',
   follow_up_placeholder: 'مزید پوچھیں…',
   companion_layout_label: 'لے آؤٹ',
   companion_layout_floating: 'فلوٹنگ',

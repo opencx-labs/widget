@@ -20,6 +20,8 @@ export const SlovakLanguage: TranslationInterface = {
   csat_title: 'Aká bola vaša konverzácia?',
   csat_submitted_title: 'Konverzáciu ste ohodnotili ako',
   csat_feedback_placeholder: 'Povedzte nám viac... (nepovinné)',
+  csat_feedback_label: 'Podeľte sa o svoj názor',
+  csat_submit: 'Odoslať',
   follow_up_placeholder: 'Pokračovať…',
   companion_layout_label: 'Rozloženie',
   companion_layout_floating: 'Plávajúce',
