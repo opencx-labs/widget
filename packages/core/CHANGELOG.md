@@ -1,5 +1,11 @@
 # @opencx/widget-core
 
+## 5.7.0
+
+### Minor Changes
+
+- d4892d9: YouTube links in chat messages show as a video thumbnail that plays in a pop-up inside the chat, instead of opening YouTube.
+
 ## 5.6.1
 
 ### Patch Changes
