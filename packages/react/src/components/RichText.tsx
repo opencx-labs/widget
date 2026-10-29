@@ -11,6 +11,8 @@ import {
   filterConfiguredStyles,
 } from './configured-text-styles';
 import { stripCitationRefs } from '../utils/strip-citation-refs';
+import { getYouTubeVideoId } from '../utils/youtube-video-id';
+import { YouTubeVideo } from './YouTubeVideo';
 
 /**
  * Everything rendered here is UNTRUSTED: AI replies, agent messages and
@@ -75,6 +77,16 @@ function RichTextContent({
       }
       components={{
         a: ({ children, ...props }) => {
+          const { href } = props;
+          const youTubeId = href ? getYouTubeVideoId(href) : null;
+          if (href && youTubeId) {
+            return (
+              <YouTubeVideo
+                id={youTubeId}
+                title={typeof children === 'string' ? children : href}
+              />
+            );
+          }
           return (
             <a target={props.target || anchorTarget || '_top'} {...props}>
               {children}
