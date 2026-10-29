@@ -1,5 +1,17 @@
 # @opencx/widget-react
 
+## 5.7.0
+
+### Minor Changes
+
+- d4892d9: YouTube links in chat messages show as a video thumbnail that plays in a pop-up inside the chat, instead of opening YouTube.
+
+### Patch Changes
+
+- Updated dependencies [d4892d9]
+  - @opencx/widget-core@5.7.0
+  - @opencx/widget-react-headless@5.7.0
+
 ## 5.6.1
 
 ### Patch Changes
