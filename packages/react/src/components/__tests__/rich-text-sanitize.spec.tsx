@@ -4,11 +4,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 // `RichText` only reads `anchorTarget` off the widget config, while the real
 // `DialogerProvider` reads the iframe ref. Stubbing both keeps these tests about
-// the SANITIZER rather than about headless provider plumbing.
+// the SANITIZER rather than about headless provider plumbing. The opened video
+// dialog translates its dismiss label, which reads the language and host dir.
 // (`vi.mock` is hoisted above imports, so the static import sees the stub.)
 vi.mock('@opencx/widget-react-headless', () => ({
-  useConfig: () => ({ anchorTarget: '_top' }),
+  useConfig: () => ({ anchorTarget: '_top', language: 'en' }),
   useWidget: () => ({ contentIframeRef: undefined }),
+  useDocumentDir: () => ({ dir: 'ltr' }),
 }));
 
 import { DialogerProvider } from '../Dialoger';
@@ -102,6 +104,26 @@ describe('RichText sanitization (untrusted model/agent output)', () => {
     expect(el.querySelector('a')?.getAttribute('href')).toBe(
       'https://example.com/docs',
     );
+  });
+
+  it('turns a YouTube link into a thumbnail that plays in the in-chat player', () => {
+    const el = render(
+      '[Setup course](https://www.youtube.com/watch?v=dQw4w9WgXcQ) and [docs](https://example.com/docs)',
+    );
+    expect(el.querySelector('a')?.getAttribute('href')).toBe(
+      'https://example.com/docs',
+    );
+    expect(el.querySelector('a[href*="youtube"]')).toBeNull();
+    expect(el.querySelector('button img')?.getAttribute('src')).toBe(
+      'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
+    );
+
+    act(() => el.querySelector('button')?.click());
+    expect(
+      document
+        .querySelector('iframe[title="Setup course"]')
+        ?.getAttribute('src'),
+    ).toBe('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1');
   });
 
   it('keeps the className remark-gfm puts on fenced code blocks', () => {
