@@ -15,11 +15,19 @@ This is enforced via the `fixed` group in `.changeset/config.json` — do not re
 
 ## Checks
 
-Every pull request runs `.github/workflows/ci.yml`: lint, type-check, `pnpm test`, the browser specs (`pnpm exec vitest run --project react-browser`) and the embed e2e (`pnpm -F @opencx/widget test:e2e`), each after `pnpm build`. Packages read each other from `dist`, so build before running any of them locally.
+Every pull request runs `.github/workflows/ci.yml`: lint, type-check, `pnpm test`, the browser specs (`pnpm exec vitest run --project react-browser`) and the embed e2e (`pnpm -F @opencx/widget test:e2e`), in that order, each only once the previous passed. Lint runs before `pnpm build`; everything after it needs the build, because packages read each other from `dist`, so build before running them locally too.
 
 ## Publishing
 
-Always commit the version bump (package.json + CHANGELOG.md changes) after publishing. A past publish from an uncommitted version bump caused the registry and the repo to disagree, which led to a version mismatch between packages.
+Releases go out from CI (`.github/workflows/release.yml`), not from a laptop:
+
+1. A PR that changes a published package adds a changeset (`pnpm cs`).
+2. Every push to `main` opens or updates the `chore(release): publish widget` PR, which applies the pending changesets (`pnpm csv`): versions and CHANGELOGs.
+3. Merging that PR runs `pnpm csp` (clean, build, lint, type-check, test, then `changeset publish`) through npm trusted publishing, so no token or one-time password is involved, then tags `vX.Y.Z` and creates the `Widget vX.Y.Z` GitHub release.
+
+Betas: `pnpm cs:pre` enters pre mode; commit `.changeset/pre.json`. Release PRs then publish `-beta.N` versions under the `beta` dist-tag, so CDN embeds on `latest` don't move. `pnpm cs:pre:exit` leaves pre mode.
+
+Publishing by hand is the fallback only. Always commit the version bump (package.json + CHANGELOG.md changes) after publishing. A past publish from an uncommitted version bump caused the registry and the repo to disagree, which led to a version mismatch between packages.
 
 - `pnpm cs` — create a changeset
 - `pnpm csv` — apply changesets (bumps versions)
