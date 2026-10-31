@@ -10,27 +10,12 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# One job, cheapest check first: each step runs only if every earlier one
+# passed, and setup (install, build) is paid once instead of once per check.
 jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: lint
-            run: pnpm lint
-          - name: type-check
-            run: pnpm type-check
-          - name: test
-            run: pnpm test
-          - name: test:browser
-            run: pnpm exec vitest run --project react-browser
-            browser: true
-          - name: test:e2e
-            run: pnpm -F @opencx/widget test:e2e
-            browser: true
-    name: ${{ matrix.name }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -39,9 +24,17 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Packages resolve each other's types and code from dist, so every check
-      # needs the build. It also runs the production-JSX guard.
+      - name: lint
+        run: pnpm lint
+      # Packages resolve each other's types and code from dist, so type-check and
+      # tests need the build. It also runs the production-JSX guard.
       - run: pnpm build
-      - if: matrix.browser
-        run: pnpm exec playwright install --with-deps chromium
-      - run: ${{ matrix.run }}
+      - name: type-check
+        run: pnpm type-check
+      - name: test
+        run: pnpm test
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: test:browser
+        run: pnpm exec vitest run --project react-browser
+      - name: test:e2e
+        run: pnpm -F @opencx/widget test:e2e

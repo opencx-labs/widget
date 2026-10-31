@@ -15,7 +15,7 @@ This is enforced via the `fixed` group in `.changeset/config.json` — do not re
 
 ## Checks
 
-Every pull request runs `.github/workflows/ci.yml`: lint, type-check, `pnpm test`, the browser specs (`pnpm exec vitest run --project react-browser`) and the embed e2e (`pnpm -F @opencx/widget test:e2e`), each after `pnpm build`. Packages read each other from `dist`, so build before running any of them locally.
+Every pull request runs `.github/workflows/ci.yml`: lint, type-check, `pnpm test`, the browser specs (`pnpm exec vitest run --project react-browser`) and the embed e2e (`pnpm -F @opencx/widget test:e2e`), in that order, each only once the previous passed. Lint runs before `pnpm build`; everything after it needs the build, because packages read each other from `dist`, so build before running them locally too.
 
 ## Publishing
 
