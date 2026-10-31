@@ -32,7 +32,7 @@ async function eventually(check) {
   throw error;
 }
 
-for (const name of ['trunkrs', 'deonlinedrogist', 'qoyod']) {
+for (const name of ['parcel', 'pharmacy', 'accounting']) {
   for (const mobile of [false, true]) {
     test(
       `${name}: ${mobile ? 'mobile' : 'desktop'} open, send, close and reopen`,
@@ -219,7 +219,7 @@ for (const name of ['trunkrs', 'deonlinedrogist', 'qoyod']) {
             'iframe[title="OpenCX Live Chat Trigger"]',
           );
           const frame = page.frameLocator('iframe[title="OpenCX Live Chat"]');
-          if (name === 'trunkrs') await trigger.locator('button').click();
+          if (name === 'parcel') await trigger.locator('button').click();
           else await page.locator('.j-chat-link').click();
           await eventually(async () => {
             const visible = await page
@@ -239,7 +239,7 @@ for (const name of ['trunkrs', 'deonlinedrogist', 'qoyod']) {
               'panel must actually paint after customer launcher',
             );
           });
-          if (name === 'trunkrs') {
+          if (name === 'parcel') {
             await frame
               .locator('input[name="name"]')
               .pressSequentially('Synthetic Visitor');
@@ -247,7 +247,7 @@ for (const name of ['trunkrs', 'deonlinedrogist', 'qoyod']) {
               .locator('input[name="email"]')
               .pressSequentially('visitor@example.invalid');
             await frame
-              .locator('input[placeholder^="Trunkrs-nummer"]')
+              .locator('input[placeholder^="Pakkie-nummer"]')
               .pressSequentially('41000000');
             await frame
               .locator('input[placeholder^="Post code"]')
@@ -281,17 +281,17 @@ for (const name of ['trunkrs', 'deonlinedrogist', 'qoyod']) {
           );
           assert.equal(send.body.features.page_context, false);
           assert.equal(send.body.features.client_tools, false);
-          if (name === 'trunkrs') {
+          if (name === 'parcel') {
             assert.ok(send.body.content.includes('41000000'));
             assert.ok(send.body.content.includes('0000AA'));
           }
           assert.equal(send.body.capabilities.connections, false);
-          if (name === 'deonlinedrogist')
+          if (name === 'pharmacy')
             assert.deepEqual(send.body.clientContext?.category, {
               id: 0,
               name: 'Homepagina',
             });
-          if (name === 'qoyod') {
+          if (name === 'accounting') {
             assert.equal(
               await page.evaluate(() => window.fixtureConfigs[0].token),
               mobile ? 'fixture-jo' : 'fixture-sa',
@@ -348,7 +348,7 @@ for (const name of ['trunkrs', 'deonlinedrogist', 'qoyod']) {
               `close must not flash back: ${closeSamples[i - 1]} -> ${closeSamples[i]}`,
             );
           }
-          if (name === 'trunkrs') await trigger.locator('button').click();
+          if (name === 'parcel') await trigger.locator('button').click();
           else await page.locator('.j-chat-link').click();
           await frame
             .getByText('LOCAL_COMPAT_REPLY', { exact: true })
@@ -358,9 +358,9 @@ for (const name of ['trunkrs', 'deonlinedrogist', 'qoyod']) {
             '/',
             'customer fallback must not navigate away',
           );
-          // Let Qoyod's delayed nudge and 500ms close reconciliation both run.
+          // Let Hisab's delayed nudge and 500ms close reconciliation both run.
           // Checking only immediately after reopen would miss a stale hide timer.
-          if (name === 'qoyod') await page.waitForTimeout(800);
+          if (name === 'accounting') await page.waitForTimeout(800);
           await eventually(async () =>
             assert.ok(
               await page

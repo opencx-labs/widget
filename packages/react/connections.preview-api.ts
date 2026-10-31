@@ -1,4 +1,4 @@
-export type PreviewMode = 'default' | 'oto' | 'mollie';
+export type PreviewMode = 'default' | 'shipping' | 'payments';
 export type PreviewState = 'idle' | 'slow' | 'error' | 'reconnect';
 
 type PreviewStorage = Pick<
@@ -30,20 +30,20 @@ type StreamPart = Record<string, unknown> & { type: string };
 const SERVER_ID = '11111111-1111-4111-8111-111111111111';
 
 const names: Record<Exclude<PreviewMode, 'default'>, string> = {
-  oto: 'OTO',
-  mollie: 'Bookkeeping',
+  shipping: 'ShipCo',
+  payments: 'Bookkeeping',
 };
 
 const questions: Record<PreviewMode, string> = {
   default: 'Find the order for customer Alex.',
-  oto: 'Show the status of my latest shipments.',
-  mollie: 'Which invoices are missing a matching payment?',
+  shipping: 'Show the status of my latest shipments.',
+  payments: 'Which invoices are missing a matching payment?',
 };
 
 const answers: Record<PreviewMode, string> = {
   default: 'Alex’s order shipped today and arrives Friday.',
-  oto: 'Two shipments were delivered. One is on its way.',
-  mollie: 'I found 3 invoices without a matching payment.',
+  shipping: 'Two shipments were delivered. One is on its way.',
+  payments: 'I found 3 invoices without a matching payment.',
 };
 
 const wait = (duration: number) =>
@@ -140,7 +140,7 @@ const textParts = (text: string): StreamPart[] => [
 ];
 
 export function parsePreviewMode(value: string | null): PreviewMode {
-  return value === 'default' || value === 'mollie' ? value : 'oto';
+  return value === 'default' || value === 'payments' ? value : 'shipping';
 }
 
 export function parsePreviewState(value: string | null): PreviewState {
@@ -198,7 +198,12 @@ export function createPreviewBackend({
       return json({
         org: {
           id: 'preview',
-          name: mode === 'oto' ? 'OTO' : mode === 'mollie' ? 'Mollie' : 'Acme',
+          name:
+            mode === 'shipping'
+              ? 'ShipCo'
+              : mode === 'payments'
+                ? 'PayCo'
+                : 'Acme',
         },
         modes: [],
         sessionPollingIntervalSeconds: 3600,
@@ -298,7 +303,7 @@ export function createPreviewBackend({
       }
       const authorizationUrl = new URL('/connections.consent.html', origin);
       authorizationUrl.searchParams.set('case', mode);
-      if (mode === 'mollie') {
+      if (mode === 'payments') {
         return json(
           {
             authorization_url: authorizationUrl.href,

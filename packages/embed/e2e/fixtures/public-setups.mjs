@@ -1,18 +1,18 @@
 // Sanitized reproductions of public integration patterns observed 2026-09-26.
 // No customer credentials, visitors, remote assets, or production API calls.
 const setups = {
-  trunkrs: `
+  parcel: `
     initOpenScript({token:'fixture-bot',language:'nl',
       initialMessages:['Hoi! Hoe kan ik je helpen?'],
-      theme:{primaryColor:'#220c4a'},bot:{name:'Fred AI',avatar:'/avatar.svg'},
-      textContent:{welcomeScreen:{title:'👋 Hey, welkom bij Trunkrs!',description:'Stel je vraag aan Fred'}},
-      collectUserData:true,extraDataCollectionFields:['Trunkrs-nummer (beginnend met 41)','Post code']});
+      theme:{primaryColor:'#220c4a'},bot:{name:'Sam AI',avatar:'/avatar.svg'},
+      textContent:{welcomeScreen:{title:'👋 Hey, welkom bij Pakkie!',description:'Stel je vraag aan Sam'}},
+      collectUserData:true,extraDataCollectionFields:['Pakkie-nummer (beginnend met 41)','Post code']});
   `,
-  deonlinedrogist: `
+  pharmacy: `
     const options={token:'fixture-bot',language:'nl',collectUserData:false,
       initialMessages:['Waarmee kan ik u van dienst zijn?'],
       textContent:{welcomeScreen:{title:'Welkom',description:'Chat met onze drogisten'}},
-      assets:{organizationLogo:'/avatar.svg'},bot:{name:'DeOnlineDrogist support',avatar:'/avatar.svg'},
+      assets:{organizationLogo:'/avatar.svg'},bot:{name:'Drogo support',avatar:'/avatar.svg'},
       extraDataCollectionFields:['Ordernummer'],
       accessibility:{widgetTriggerButton:{label:'Chat met onze drogisten'}},
       context:{category:{id:0,name:'Homepagina'}}};
@@ -36,10 +36,10 @@ const setups = {
     }
     document.querySelectorAll('.j-chat-link,#opencx-start').forEach(el=>el.addEventListener('click',e=>{e.preventDefault();openChat()}));
   `,
-  qoyod: `
+  accounting: `
     const tokens={SA:'fixture-sa',JO:'fixture-jo'};
-    initOpenScript({token:tokens[document.documentElement.dataset.qyCountry],language:'ar',
-      initialMessages:['حياك الله عميلنا العزيز في قيود، كيف نقدر نخدمك؟'],
+    initOpenScript({token:tokens[document.documentElement.dataset.hostCountry],language:'ar',
+      initialMessages:['حياك الله عميلنا العزيز في حساب، كيف نقدر نخدمك؟'],
       theme:{primaryColor:'#021544'},thisWasHelpfulOrNot:{enabled:false},bot:{name:'يوسف',avatar:'/avatar.svg'}});
     function frames(){return document.querySelectorAll('#opencx-root iframe')}
     function trigger(){return [...frames()].find(f=>/Trigger/i.test(f.title))}
@@ -48,7 +48,7 @@ const setups = {
     function visible(){const r=panel()?.getBoundingClientRect();return r&&r.width>80&&r.height>80}
     function nudge(){const w=panel()?.parentElement;if(w){w.style.display='block';w.style.opacity='1';w.style.transform='none'}}
     document.addEventListener('click',e=>{
-      const el=e.target.closest('[data-qy-open-chat]');if(!el)return;
+      const el=e.target.closest('[data-host-open-chat]');if(!el)return;
       e.preventDefault();e.stopImmediatePropagation();let tries=0;
       function poll(){const btn=trigger()?.contentDocument?.querySelector('button');
         if(btn){if(!opened())btn.click();setTimeout(()=>{nudge();setTimeout(()=>{if(!visible())location.href=el.href},250)},300);return}
@@ -56,8 +56,8 @@ const setups = {
     },true);
     let closedSince=0;
     setInterval(()=>{
-      for(const f of frames()){const d=f.contentDocument;if(d?.head&&!d.getElementById('qy-cx-nobrand')){
-        const s=d.createElement('style');s.id='qy-cx-nobrand';s.textContent='a[href*="open.cx"],div:has(> a[href*="open.cx"]){display:none!important}';d.head.appendChild(s)}}
+      for(const f of frames()){const d=f.contentDocument;if(d?.head&&!d.getElementById('host-cx-nobrand')){
+        const s=d.createElement('style');s.id='host-cx-nobrand';s.textContent='a[href*="open.cx"],div:has(> a[href*="open.cx"]){display:none!important}';d.head.appendChild(s)}}
       const w=panel()?.parentElement;if(!w)return;
       if(opened()){closedSince=0;return}if(!closedSince)closedSince=Date.now();
       if(Date.now()-closedSince>500&&getComputedStyle(w).display!=='none'){
@@ -68,11 +68,11 @@ const setups = {
 
 export function fixtureHtml(name, country = 'SA') {
   if (!(name in setups)) throw new Error('Unknown fixture');
-  return `<!doctype html><html lang="${name === 'qoyod' ? 'ar' : 'nl'}" dir="${name === 'qoyod' ? 'rtl' : 'ltr'}" data-qy-country="${country}">
+  return `<!doctype html><html lang="${name === 'accounting' ? 'ar' : 'nl'}" dir="${name === 'accounting' ? 'rtl' : 'ltr'}" data-host-country="${country}">
     <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <style>body{font:16px system-ui}#opencx-start{position:fixed;right:20px;bottom:20px}
-    ${name === 'deonlinedrogist' ? '#opencx-root>button{width:60px!important;height:60px!important}#opencx-root>button,#opencx-start,iframe[title="OpenCX Live Chat Trigger"]{z-index:52!important}' : ''}</style></head>
-    <body><a href="/contact-us/" class="j-chat-link" data-qy-open-chat>Open support</a>
-    ${name === 'deonlinedrogist' ? '<button id="opencx-start">Chat</button>' : '<script src="/script.js"></script>'}
+    ${name === 'pharmacy' ? '#opencx-root>button{width:60px!important;height:60px!important}#opencx-root>button,#opencx-start,iframe[title="OpenCX Live Chat Trigger"]{z-index:52!important}' : ''}</style></head>
+    <body><a href="/contact-us/" class="j-chat-link" data-host-open-chat>Open support</a>
+    ${name === 'pharmacy' ? '<button id="opencx-start">Chat</button>' : '<script src="/script.js"></script>'}
     <script>addEventListener('DOMContentLoaded',()=>{${setups[name]}})</script></body></html>`;
 }

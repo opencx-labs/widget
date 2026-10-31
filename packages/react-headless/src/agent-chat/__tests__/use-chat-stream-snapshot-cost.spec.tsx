@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  * the parts that already finished. `@ai-sdk/react` 4.0.34 snapshotted the
  * store with `structuredClone(message)` on every delta, so the work per update
  * grew with the reply; on React Native a long reply piled up enough updates to
- * hit React's limit ("Maximum update depth exceeded", Mollie, Oct 2026).
+ * hit React's limit ("Maximum update depth exceeded", Oct 2026).
  * 4.0.67 copies shallowly, which keeps a finished part's nested data the same
  * object from one snapshot to the next. If a bump brings the deep copy back,
  * this fails loudly instead of resurfacing as a crash on a customer's device.

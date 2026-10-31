@@ -1,6 +1,6 @@
 ---
 name: opencx-widget
-description: Working in the OpenCX widget monorepo (@opencx/widget-core, widget-react-headless, widget-react, widget). Use when adding or changing a widget configuration option, a custom component slot, a translation, the companion shell, the streaming agent engine and its multi-send queue, page marks, @-mentions, dictation, the embed loader, or when releasing. Encodes the package boundaries, the "how Ali adds a config feature" convention, the feature-narrowing rule, and the release flow.
+description: Working in the OpenCX widget monorepo (@opencx/widget-core, widget-react-headless, widget-react, widget). Use when adding or changing a widget configuration option, a custom component slot, a translation, the companion shell, the streaming agent engine and its multi-send queue, page marks, @-mentions, dictation, the embed loader, or when releasing. Encodes the package boundaries, the house style for adding a config option, the feature-narrowing rule, and the release flow.
 ---
 
 # OpenCX widget
@@ -41,8 +41,8 @@ Follow the pattern of `accessibility.widgetTriggerButton.label`, `hooks.onMessag
 4. Test the behavior (a `*.spec.ts(x)` beside the code, in `__tests__/`), not the option's existence.
 5. Add a changeset with all four packages (`pnpm cs`). Do not hand-edit versions or CHANGELOGs.
 
-Before renaming or removing any public option or export, grep the dashboard in the
-sibling `opencx` repo (`dashboard/apps/dashboard/app`) — it consumes `displayMode`,
+Before renaming or removing any public option or export, check the OpenCX
+dashboard, which consumes `displayMode`,
 `context`, `onUiAction`, `showStepToolIO`, `HostedSpecRenderer`,
 `segmentContent`, and `customComponents['message::after']`.
 

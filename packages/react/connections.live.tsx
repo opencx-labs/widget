@@ -60,8 +60,8 @@ function LiveConnections() {
           <a href="/connections.live.html" aria-current="page">
             Linear · Live
           </a>
-          <a href="/connections.preview.html?case=oto">OTO · Preview</a>
-          <a href="/connections.preview.html?case=mollie">Mollie · Preview</a>
+          <a href="/connections.preview.html?case=shipping">ShipCo · Preview</a>
+          <a href="/connections.preview.html?case=payments">PayCo · Preview</a>
           <a href="/connections.preview.html?case=default">
             Shared account · Preview
           </a>
