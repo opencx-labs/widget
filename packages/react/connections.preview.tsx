@@ -26,7 +26,7 @@ function Preview() {
   return (
     <main>
       <aside>
-        <a className="brand" href="?case=oto">
+        <a className="brand" href="?case=shipping">
           OpenCX
         </a>
         <div>
@@ -37,8 +37,8 @@ function Preview() {
           <a href="/connections.live.html">Linear · Live</a>
           {[
             ['default', 'Shared account'],
-            ['oto', 'OTO'],
-            ['mollie', 'Mollie'],
+            ['shipping', 'ShipCo'],
+            ['payments', 'PayCo'],
           ].map(([id, label]) => (
             <a
               aria-current={mode === id ? 'page' : undefined}
@@ -80,25 +80,25 @@ function Preview() {
         <p className="hint">
           {mode === 'default'
             ? 'The assistant uses the team’s shared connection.'
-            : mode === 'oto'
+            : mode === 'shipping'
               ? 'Each user connects their own account in the widget.'
               : 'Customers approve access in your product. Your gateway keeps the credentials.'}
         </p>
       </aside>
       <section className="host" aria-label="Example customer product">
         <header>
-          {mode === 'oto'
-            ? 'OTO / Shipments'
-            : mode === 'mollie'
-              ? 'Mollie / Payments'
+          {mode === 'shipping'
+            ? 'ShipCo / Shipments'
+            : mode === 'payments'
+              ? 'PayCo / Payments'
               : 'Acme / Orders'}
           <span>Alex · Main account</span>
         </header>
         <div className="content">
           <h2>
-            {mode === 'oto'
+            {mode === 'shipping'
               ? 'Shipments'
-              : mode === 'mollie'
+              : mode === 'payments'
                 ? 'Payments'
                 : 'Orders'}
           </h2>
@@ -106,7 +106,9 @@ function Preview() {
           <div className="metrics">
             <div>
               <p>This month</p>
-              <strong>{mode === 'oto' ? '128 shipments' : '€24,810'}</strong>
+              <strong>
+                {mode === 'shipping' ? '128 shipments' : '€24,810'}
+              </strong>
             </div>
             <div>
               <p>Completed</p>

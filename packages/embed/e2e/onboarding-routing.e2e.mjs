@@ -48,7 +48,7 @@ test(
           if (url.pathname === '/')
             return route.fulfill({
               contentType: 'text/html',
-              body: fixtureHtml('trunkrs', 'SA'),
+              body: fixtureHtml('parcel', 'SA'),
             });
           if (url.pathname === '/script.js')
             return route.fulfill({
@@ -119,7 +119,7 @@ test(
           .locator('input[name="email"]')
           .pressSequentially('visitor@example.invalid');
         await frame
-          .locator('input[placeholder^="Trunkrs-nummer"]')
+          .locator('input[placeholder^="Pakkie-nummer"]')
           .pressSequentially('41000000');
         await frame
           .locator('input[placeholder^="Post code"]')

@@ -39,7 +39,7 @@ const origin = 'https://preview.example';
 const fallback = vi.fn<typeof fetch>();
 
 function backend(
-  mode: 'default' | 'oto' | 'mollie',
+  mode: 'default' | 'shipping' | 'payments',
   state: 'idle' | 'slow' | 'error' | 'reconnect' = 'idle',
   storage = new MemoryStorage(),
 ) {
@@ -75,7 +75,7 @@ afterEach(() => fallback.mockReset());
 
 describe('connection preview backend', () => {
   it('creates distinct sessions and lists each once', async () => {
-    const { fetch } = backend('mollie');
+    const { fetch } = backend('payments');
     const firstId = await createSession(fetch);
     const secondId = await createSession(fetch);
     expect(secondId).not.toBe(firstId);
@@ -90,7 +90,7 @@ describe('connection preview backend', () => {
   });
 
   it('isolates messages and connection requests while preserving account access across sessions', async () => {
-    const { fetch, storage } = backend('mollie');
+    const { fetch, storage } = backend('payments');
     const firstId = await createSession(fetch);
     await (
       await post(fetch, '/backend/widget/v5/chat/stream', {
@@ -111,7 +111,7 @@ describe('connection preview backend', () => {
       'connection_required',
     );
 
-    storage.setItem(preview.storageKeys.connected('mollie'), 'true');
+    storage.setItem(preview.storageKeys.connected('payments'), 'true');
     // A late completion must update the original session, even after another opens.
     const requestId = '33333333-3333-4333-8333-000000000001';
     await (
@@ -135,7 +135,7 @@ describe('connection preview backend', () => {
     expect(firstHistory).not.toContain('Check the second account request.');
     expect(secondHistory).toContain('Check the second account request.');
     expect(secondHistory).not.toContain('Check the first account request.');
-    expect(secondHistory).toContain(preview.answers.mollie);
+    expect(secondHistory).toContain(preview.answers.payments);
     expect(
       property(await messages(firstId), 'handled_connection_request_ids'),
     ).toEqual([requestId]);
@@ -189,7 +189,7 @@ describe('connection preview backend', () => {
   });
 
   it('enables streaming and emits a complete connection request through SSE', async () => {
-    const { fetch } = backend('oto');
+    const { fetch } = backend('shipping');
     const sessionId = await createSession(fetch);
     const config: unknown = await (
       await fetch(`${origin}/backend/widget/v2/config`)
@@ -199,7 +199,7 @@ describe('connection preview backend', () => {
     const response = await post(fetch, '/backend/widget/v5/chat/stream', {
       session_id: sessionId,
       uuid: '77777777-7777-4777-8777-777777777777',
-      content: preview.questions.oto,
+      content: preview.questions.shipping,
     });
     const body = await response.text();
     expect(response.headers.get('content-type')).toBe('text/event-stream');
@@ -210,19 +210,19 @@ describe('connection preview backend', () => {
   });
 
   it('serves settled history on reload and reports no active resumed stream', async () => {
-    const { fetch } = backend('oto');
+    const { fetch } = backend('shipping');
     const sessionId = await createSession(fetch);
     const streamed = await post(fetch, '/backend/widget/v5/chat/stream', {
       session_id: sessionId,
       uuid: '77777777-7777-4777-8777-777777777777',
-      content: preview.questions.oto,
+      content: preview.questions.shipping,
     });
     await streamed.text();
 
     const poll = await fetch(`${origin}/backend/widget/v2/poll/${sessionId}`);
     const history = JSON.stringify(await poll.json());
-    expect(history).toContain(preview.questions.oto);
-    expect(history).toContain('Connect OTO so I can check your account.');
+    expect(history).toContain(preview.questions.shipping);
+    expect(history).toContain('Connect ShipCo so I can check your account.');
 
     const turnMessages = await fetch(
       `${origin}/backend/widget/v5/chat/${sessionId}/messages`,
@@ -239,19 +239,19 @@ describe('connection preview backend', () => {
   });
 
   it('does not leak a background continuation into reloaded history', async () => {
-    const { fetch, storage } = backend('oto');
+    const { fetch, storage } = backend('shipping');
     const sessionId = await createSession(fetch);
     const connectionRequestId = '33333333-3333-4333-8333-000000000001';
     const initial = await post(fetch, '/backend/widget/v5/chat/stream', {
       session_id: sessionId,
       uuid: '77777777-7777-4777-8777-777777777777',
-      content: preview.questions.oto,
+      content: preview.questions.shipping,
     });
     await initial.text();
-    storage.setItem(preview.storageKeys.connected('oto'), 'true');
+    storage.setItem(preview.storageKeys.connected('shipping'), 'true');
 
     const continuation =
-      'The connection to OTO is ready. Please use its tools to continue my previous request.';
+      'The connection to ShipCo is ready. Please use its tools to continue my previous request.';
     const resumed = await post(fetch, '/backend/widget/v5/chat/stream', {
       session_id: sessionId,
       uuid: '88888888-8888-4888-8888-888888888888',
@@ -265,8 +265,8 @@ describe('connection preview backend', () => {
 
     const poll = await fetch(`${origin}/backend/widget/v2/poll/${sessionId}`);
     const history = JSON.stringify(await poll.json());
-    expect(history).toContain(preview.questions.oto);
-    expect(history).toContain(preview.answers.oto);
+    expect(history).toContain(preview.questions.shipping);
+    expect(history).toContain(preview.answers.shipping);
     expect(history).not.toContain(continuation);
     expect(history).not.toContain('88888888-8888-4888-8888-888888888888');
 
@@ -280,12 +280,12 @@ describe('connection preview backend', () => {
   });
 
   it('does not handle a pending connection request after an ordinary send', async () => {
-    const { fetch } = backend('oto');
+    const { fetch } = backend('shipping');
     const sessionId = await createSession(fetch);
     const initial = await post(fetch, '/backend/widget/v5/chat/stream', {
       session_id: sessionId,
       uuid: '77777777-7777-4777-8777-777777777777',
-      content: preview.questions.oto,
+      content: preview.questions.shipping,
     });
     expect(await initial.text()).toContain(
       '33333333-3333-4333-8333-000000000001',
@@ -310,7 +310,7 @@ describe('connection preview backend', () => {
   });
 
   it('exposes the owner-bound OAuth attempt outcome', async () => {
-    const { fetch, storage } = backend('oto');
+    const { fetch, storage } = backend('shipping');
     const started: unknown = await (
       await post(
         fetch,
@@ -340,7 +340,7 @@ describe('connection preview backend', () => {
   });
 
   it('keeps customer-managed setup external and continues after its grant', async () => {
-    const { fetch, storage } = backend('mollie');
+    const { fetch, storage } = backend('payments');
     const sessionId = await createSession(fetch);
     const started: unknown = await (
       await post(
@@ -352,19 +352,19 @@ describe('connection preview backend', () => {
     expect(started).toMatchObject({ completion: 'external' });
     expect(property(started, 'attempt_id')).toBeUndefined();
 
-    storage.setItem(preview.storageKeys.connected('mollie'), 'true');
+    storage.setItem(preview.storageKeys.connected('payments'), 'true');
     const response = await post(fetch, '/backend/widget/v5/chat/stream', {
       session_id: sessionId,
       uuid: '88888888-8888-4888-8888-888888888888',
       content: 'Continue the request.',
     });
     const body = await response.text();
-    expect(body).toContain(preview.answers.mollie);
+    expect(body).toContain(preview.answers.payments);
     expect(body).not.toContain('connection_required');
   });
 
   it('fails the first start request in the retry preview', async () => {
-    const { fetch } = backend('oto', 'error');
+    const { fetch } = backend('shipping', 'error');
     const path =
       '/backend/widget/v5/connections/11111111-1111-4111-8111-111111111111/start';
     expect((await post(fetch, path, {})).status).toBe(503);
@@ -372,12 +372,12 @@ describe('connection preview backend', () => {
   });
 
   it('mints a fresh request after the expired-request continuation', async () => {
-    const { fetch } = backend('oto', 'reconnect');
+    const { fetch } = backend('shipping', 'reconnect');
     const sessionId = await createSession(fetch);
     const initial = await post(fetch, '/backend/widget/v5/chat/stream', {
       session_id: sessionId,
       uuid: '99999999-9999-4999-8999-999999999998',
-      content: preview.questions.oto,
+      content: preview.questions.shipping,
     });
     expect(await initial.text()).toContain(
       '33333333-3333-4333-8333-000000000001',
@@ -390,7 +390,7 @@ describe('connection preview backend', () => {
       session_id: sessionId,
       uuid: '99999999-9999-4999-8999-999999999999',
       content:
-        'The connection request for OTO expired. Please create a new authorized connection request for OTO and continue my previous request.',
+        'The connection request for ShipCo expired. Please create a new authorized connection request for ShipCo and continue my previous request.',
     });
     expect(await response.text()).toContain(
       '33333333-3333-4333-8333-000000000002',
@@ -401,19 +401,21 @@ describe('connection preview backend', () => {
 
 describe('preview parameters', () => {
   it('falls back to safe examples for unknown values', () => {
-    expect(parsePreviewMode('unknown')).toBe('oto');
+    expect(parsePreviewMode('unknown')).toBe('shipping');
     expect(parsePreviewState('unknown')).toBe('idle');
   });
 
   it('reset clears preview state without touching host-page storage', () => {
     const storage = new MemoryStorage();
-    storage.setItem(preview.storageKeys.connected('oto'), 'true');
+    storage.setItem(preview.storageKeys.connected('shipping'), 'true');
     storage.setItem(preview.storageKeys.attempt('attempt-1'), 'failed');
     storage.setItem('host-preference', 'kept');
 
-    clearPreviewState(storage, 'oto');
+    clearPreviewState(storage, 'shipping');
 
-    expect(storage.getItem(preview.storageKeys.connected('oto'))).toBeNull();
+    expect(
+      storage.getItem(preview.storageKeys.connected('shipping')),
+    ).toBeNull();
     expect(
       storage.getItem(preview.storageKeys.attempt('attempt-1')),
     ).toBeNull();

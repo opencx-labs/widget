@@ -172,17 +172,17 @@ the earlier real-backend checks above were not rerun for this animation-only edi
 
 ## Public-site integration fixtures (2026-09-26)
 
-Added sanitized Trunkrs, DeOnlineDrogist and Qoyod integration patterns under
+Added sanitized Pakkie, Drogo and Hisab integration patterns under
 `packages/embed/e2e/`, exercising the built production embed with real Chromium
 layout and normal motion. Customer tokens/assets are replaced; every network
 request is intercepted locally and unexpected requests fail. No OpenAI key or
 live customer/backend access is required.
 
-Six desktop/mobile cases passed: customer-triggered visible opening, Trunkrs
-contact form and extra fields, message/reply delivery, close/reopen, Qoyod RTL
-and country token selection, DeOnlineDrogist host context, one root and no page
+Six desktop/mobile cases passed: customer-triggered visible opening, Pakkie
+contact form and extra fields, message/reply delivery, close/reopen, Hisab RTL
+and country token selection, Drogo host context, one root and no page
 errors. Legacy delivery remains v2 with page-context, client-tools and connections
-disabled even when the mock backend advertises support. Qoyod's post-reopen
+disabled even when the mock backend advertises support. Hisab's post-reopen
 visibility is checked after its delayed reconciliation timers run.
 
 These are reduced integration fixtures, not full customer sites. Production CSP,
@@ -201,7 +201,7 @@ wrapper keeps opacity on the same JS frame loop as scale/y and transitionEnd;
 the existing spring is unchanged.
 
 The new monotonic-close assertion failed before the fix and all six customer
-desktop/mobile cases passed afterward. The original local Trunkrs preview was
+desktop/mobile cases passed afterward. The original local Pakkie preview was
 remeasured: 117 closing/closed frames with no opacity rebound. React type check,
 targeted lint, React/embed builds and the production JSX guard passed. These
 checks remain Chromium-only and do not constitute a v5 stable release approval.

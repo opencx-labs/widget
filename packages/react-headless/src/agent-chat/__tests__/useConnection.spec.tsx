@@ -156,7 +156,7 @@ it('opens on the first click, isolates the popup and waits for verified backend 
 
 it('rechecks external access on popup close without trusting gateway status', async () => {
   fixture.widgetCtx.api.startConnection.mockResolvedValue({
-    authorization_url: 'https://mollie.example/connect',
+    authorization_url: 'https://payments.example/connect',
     completion: 'external',
   });
   const { result } = renderHook();
@@ -172,7 +172,7 @@ it('rechecks external access on popup close without trusting gateway status', as
 
 it('rechecks a customer-managed connection when the user returns from its page', async () => {
   fixture.widgetCtx.api.startConnection.mockResolvedValue({
-    authorization_url: 'https://mollie.example/connect',
+    authorization_url: 'https://payments.example/connect',
     completion: 'external',
   });
   const { result } = renderHook();
@@ -191,7 +191,7 @@ it('detects returning from a popup that took focus before the API finished', asy
   fixture.widgetCtx.api.startConnection.mockImplementation(async () => {
     window.dispatchEvent(new Event('blur'));
     return {
-      authorization_url: 'https://mollie.example/connect',
+      authorization_url: 'https://payments.example/connect',
       completion: 'external',
     };
   });
@@ -417,7 +417,7 @@ it('continues a newer request while the accepted prior send is still settling', 
 it('does not resume a blocked external popup on unrelated focus changes', async () => {
   vi.mocked(window.open).mockReturnValue(null);
   fixture.widgetCtx.api.startConnection.mockResolvedValue({
-    authorization_url: 'https://mollie.example/connect',
+    authorization_url: 'https://payments.example/connect',
     completion: 'external',
   });
   const { result } = renderHook();

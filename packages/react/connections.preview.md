@@ -3,8 +3,8 @@
 Run the React package dev server, then open `/connections.preview.html`. The demo opens Widget v5 in its companion sidebar layout.
 
 - Shared account: the assistant uses the connection configured by the team.
-- OTO: Connect opens consent immediately. Approve once; the widget resumes after the backend confirms access.
-- Mollie: Connect opens the customer product. Returning or closing that page automatically asks the gateway to recheck access; it does not prove that setup succeeded.
+- ShipCo: Connect opens consent immediately. Approve once; the widget resumes after the backend confirms access.
+- PayCo: Connect opens the customer product. Returning or closing that page automatically asks the gateway to recheck access; it does not prove that setup succeeded.
 - Cancelled approval allows another attempt. If the browser blocks popups, the same Connect action becomes a direct link; no new setup request is created.
 - Connection setup appears inline when the assistant needs authorization. There is no Connections button in the header.
 - Try a state switches between the normal flow, slow loading, a failed first attempt with retry, and an expired request that the assistant renews. Restart flow clears only preview connection state.
