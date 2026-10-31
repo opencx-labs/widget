@@ -13,6 +13,10 @@ Never bump or publish a subset of them — even if only one package changed, all
 
 This is enforced via the `fixed` group in `.changeset/config.json` — do not remove it. When creating a changeset, include all four packages (the fixed group syncs them regardless).
 
+## Checks
+
+Every pull request runs `.github/workflows/ci.yml`: lint, type-check, `pnpm test`, the browser specs (`pnpm exec vitest run --project react-browser`) and the embed e2e (`pnpm -F @opencx/widget test:e2e`), each after `pnpm build`. Packages read each other from `dist`, so build before running any of them locally.
+
 ## Publishing
 
 Always commit the version bump (package.json + CHANGELOG.md changes) after publishing. A past publish from an uncommitted version bump caused the registry and the repo to disagree, which led to a version mismatch between packages.
