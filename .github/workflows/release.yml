@@ -1,8 +1,9 @@
 name: release
 
 # Every push to main opens or updates the release PR from the pending changesets.
-# Merging that PR publishes all four packages to npm through trusted publishing
-# (no token, no one-time password), then tags vX.Y.Z and creates the GitHub release.
+# Merging that PR publishes all four packages to npm with the NPM_TOKEN secret
+# (a granular token that bypasses the one-time password), then tags vX.Y.Z and
+# creates the GitHub release.
 
 on:
   push:
@@ -11,7 +12,6 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  id-token: write
 
 concurrency:
   group: release
@@ -42,6 +42,8 @@ jobs:
           commit: 'chore(release): publish widget'
           # One vX.Y.Z tag and release below instead of one per package.
           createGithubReleases: false
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - if: steps.changesets.outputs.published == 'true'
         name: Tag and create the GitHub release

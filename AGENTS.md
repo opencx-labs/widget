@@ -23,7 +23,9 @@ Releases go out from CI (`.github/workflows/release.yml`), not from a laptop:
 
 1. A PR that changes a published package adds a changeset (`pnpm cs`).
 2. Every push to `main` opens or updates the `chore(release): publish widget` PR, which applies the pending changesets (`pnpm csv`): versions and CHANGELOGs.
-3. Merging that PR runs `pnpm csp` (clean, build, lint, type-check, test, then `changeset publish`) through npm trusted publishing, so no token or one-time password is involved, then tags `vX.Y.Z` and creates the `Widget vX.Y.Z` GitHub release.
+3. Merging that PR runs `pnpm csp` (clean, build, lint, type-check, test, then `changeset publish`) with the `NPM_TOKEN` repo secret, then tags `vX.Y.Z` and creates the `Widget vX.Y.Z` GitHub release.
+
+`NPM_TOKEN` is an npm granular access token with read and write on the four packages and "Bypass two-factor authentication" on, so CI never waits for a one-time password. npm caps write tokens at 90 days: rotate it before it expires, or the next release fails at publish with an auth error.
 
 Betas: `pnpm cs:pre` enters pre mode; commit `.changeset/pre.json`. Release PRs then publish `-beta.N` versions under the `beta` dist-tag, so CDN embeds on `latest` don't move. `pnpm cs:pre:exit` leaves pre mode.
 
