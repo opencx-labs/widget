@@ -1,0 +1,57 @@
+name: release
+
+# Every push to main opens or updates the release PR from the pending changesets.
+# Merging that PR publishes all four packages to npm with the NPM_TOKEN secret
+# (a granular token that bypasses the one-time password), then tags vX.Y.Z and
+# creates the GitHub release.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The changelog links each entry to the commit that added its changeset.
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - uses: changesets/action@v1.9.0
+        id: changesets
+        with:
+          version: pnpm csv
+          publish: pnpm csp
+          title: 'chore(release): publish widget'
+          commit: 'chore(release): publish widget'
+          # One vX.Y.Z tag and release below instead of one per package.
+          createGithubReleases: false
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - if: steps.changesets.outputs.published == 'true'
+        name: Tag and create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(node -p 'require("./packages/embed/package.json").version')
+          awk -v h="## $version" '$0 == h { on = 1; next } /^## / { on = 0 } on' packages/embed/CHANGELOG.md >"$RUNNER_TEMP/notes.md"
+          prerelease=()
+          [[ $version == *-* ]] && prerelease=(--prerelease --latest=false)
+          gh release create "v$version" --target "$GITHUB_SHA" --title "Widget v$version" --notes-file "$RUNNER_TEMP/notes.md" "${prerelease[@]}"

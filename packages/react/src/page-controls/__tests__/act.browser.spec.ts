@@ -5,6 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { actOnPage } from '../act';
 import { beginSnapshot, resetRefsForTest } from '../control-ref';
+import { isAgentPointerEvent } from '../pointer-sequence';
 
 const mount = (html: string) => {
   document.body.innerHTML = html;
@@ -59,7 +60,9 @@ describe('clicking', () => {
       'mouseup',
       'click',
     ]) {
-      menu?.addEventListener(type, () => seen.push(type));
+      menu?.addEventListener(type, (e) => {
+        if (isAgentPointerEvent(e)) seen.push(type);
+      });
     }
     // A component library's dropdown: it opens on pointerdown, not click.
     menu?.addEventListener('pointerdown', () => {
