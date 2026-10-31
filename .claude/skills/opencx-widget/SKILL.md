@@ -83,40 +83,20 @@ types, `pnpm -F @opencx/widget-core build` before type-checking the consumers.
 
 Stable v5 is published under `latest`; beta is a separate prerelease channel.
 Check registry tags and `.changeset/pre.json` before choosing a release channel.
-Use Changesets to keep all four public packages at one version:
+CI publishes (`.github/workflows/release.yml`, flow in `AGENTS.md` → Publishing).
+A change ships by adding a changeset (`pnpm cs`) to its PR; merging the
+`chore(release): publish widget` PR publishes all four packages, tags `vX.Y.Z`
+and creates the GitHub release. Do not version or publish by hand unless CI
+publishing is broken, and then follow the manual fallback in `AGENTS.md`.
 
-```bash
-pnpm install --frozen-lockfile
-pnpm csv              # apply pending changesets: versions and changelogs
-pnpm x                # clean production builds, JSX checks, lint, types, tests
-```
+After a release, verify all four registry versions and internal dependencies,
+downloaded tarball contents, and the pinned embed CDN script. npm can acknowledge
+a publish before its metadata or tarball is available; poll with a bounded timeout
+and report any remaining gap. Publication does not prove that OpenCX consumers
+have upgraded.
 
-Commit the generated versions and changelogs through the repository's release PR
-before publishing. Build and publish from the merged commit; if the merge changes
-files beyond the validated tree, validate that tree first. Do not skip protected
-review or include unrelated working-tree edits.
-
-For a stable release:
-
-```bash
-pnpm -r --filter @opencx/widget-core --filter @opencx/widget-react-headless \
-  --filter @opencx/widget-react --filter @opencx/widget \
-  publish --tag latest --access public --no-git-checks
-```
-
-This publishes the packages sequentially and converts workspace dependencies to
-released versions. Complete npm's login or publish approval only if requested by
-the CLI; do not pre-supply an OTP. For a partial publish, first check exactly which
-versions exist and retry only missing packages with the same validated artifacts.
-
-Verify all four registry versions and internal dependencies, downloaded tarball
-contents, and the pinned embed CDN script. npm can acknowledge a publish before
-its metadata or tarball is available; poll with a bounded timeout and report any
-remaining gap. Check the GitHub release/tag separately and point it at the merged
-release commit. Publication does not prove that OpenCX consumers have upgraded.
-
-Only enter Changesets pre mode for an explicitly requested prerelease line, and
-publish it under its intended tag rather than `latest`.
+Only enter Changesets pre mode (`pnpm cs:pre`) for an explicitly requested
+prerelease line; its release PRs publish under the pre tag rather than `latest`.
 
 See [references/architecture.md](references/architecture.md) for the message lifecycle and
 the streaming turn state machine.
